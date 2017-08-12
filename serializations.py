@@ -537,6 +537,22 @@ class PSBT(object):
 
                 # add to list
                 psbt_input.partial_sigs[pubkey] = signature
+            # hd key paths
+            elif key_type == 0x06:
+                # read in master key fingerprint from key
+                fingerprint = key[1:]
+
+                # read in array of integers from value
+                value = f.read(value_len)
+                keypath = []
+                i = 0
+                while i < value_len:
+                    kyepath.append(struct.unpack("<I", f.read(4))[0])
+                    i += 4
+
+                # add to keypath map
+                psbt_input.hd_keypaths[fingerprint] = keypath
+
             # unknown stuff
             else:
                 # read in the value
@@ -607,6 +623,15 @@ class PSBT(object):
                     r += pubkey
                     r += ser_compact_size(len(sig))
                     r += sig
+
+                # write hd keypaths
+                for fingerprint, keypath in psbt_input.hd_keypaths.items():
+                    r += ser_compact_size(len(fingerprint) + 1)
+                    r += b"\x06"
+                    r += fingerprint
+                    r += ser_compact_size(len(keypath) * 4)
+                    for num in keypath:
+                        r += struct.pack("<I", num)
             # separator
             r += b"\x00"
 
