@@ -441,6 +441,7 @@ class PSBT(object):
         # Read loop
         separators = 0
         psbt_input = PartiallySignedInput()
+        in_globals = True
         while True:
 
             # read the size of the key
@@ -451,7 +452,7 @@ class PSBT(object):
 
             # Check for separator
             if key_len == 0:
-                last_type = 0x03
+                in_globals = False
 
                 if separators > 0:
                     self.inputs.append(copy.copy(psbt_input))
@@ -466,79 +467,76 @@ class PSBT(object):
 
             # First byte of key is the type
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
-            if key_type < last_type:
-                raise IOError("Type is not sequential")
-            last_type = key_type
 
             # read in value length
             value_len = deser_compact_size(f)
 
             # Do stuff based on type
-            # Raw tx
+            # Raw tx or non witness utxo
             if key_type == 0x00:
-                self.tx.deserialize(f)
-            # redeemscript
+                if in_globals:
+                    self.tx.deserialize(f)
+                else:
+                    # Read in the transaction
+                    tx = CTransaction()
+                    tx.deserialize(f)
+                    tx.calc_sha256()
+
+                    # check that this utxo matches the input
+                    if self.tx.vin[separators - 1].prevout.hash != tx.sha256:
+                        raise IOError("Provided non witness utxo does not match the required utxo for input")
+
+                    psbt_input.non_witness_utxo = tx
+            # redeemscript or witness utxo
             elif key_type == 0x01:
-                # retrieve hash160 from key
-                script_hash160 = key[1:]
+                if in_globals:
+                    # retrieve hash160 from key
+                    script_hash160 = key[1:]
 
-                # read in the redeemscript
-                redeemscript = f.read(value_len)
+                    # read in the redeemscript
+                    redeemscript = f.read(value_len)
 
-                # Check redeemscript and its hash
-                real_hash160 = hash160(redeemscript)
-                if script_hash160 != real_hash160:
-                    raise IOError("Provided hash160 does not match the redeemscript's hash160")
+                    # Check redeemscript and its hash
+                    real_hash160 = hash160(redeemscript)
+                    if script_hash160 != real_hash160:
+                        raise IOError("Provided hash160 does not match the redeemscript's hash160")
 
-                # add to map
-                self.redeem_scripts[script_hash160] = redeemscript
+                    # add to map
+                    self.redeem_scripts[script_hash160] = redeemscript
+                else:
+                    # read in the utxo
+                    vout = CTxOut()
+                    vout.deserialize(f)
+
+                    # add to map
+                    psbt_input.witness_utxo = vout
             # witness script
             elif key_type == 0x02:
-                # retrieve sha256 from key
-                script_sha256 = key[1:]
+                if in_globals:
+                    # retrieve sha256 from key
+                    script_sha256 = key[1:]
 
-                # read in the witness script
-                witnessscript = f.read(value_len)
+                    # read in the witness script
+                    witnessscript = f.read(value_len)
 
-                # check witnessscript and its hash
-                real_sha256 = sha256(witnessscript)
-                if script_sha256 != real_sha256:
-                    raise IOError("Provided sha256 does not match the witnessscript's sha256")
+                    # check witnessscript and its hash
+                    real_sha256 = sha256(witnessscript)
+                    if script_sha256 != real_sha256:
+                        raise IOError("Provided sha256 does not match the witnessscript's sha256")
 
-                # add to map
-                self.witness_scripts[script_sha256] = witnessscript
-            # non witness utxo
-            elif key_type == 0x03:
-                # Read in the transaction
-                tx = CTransaction()
-                tx.deserialize(f)
-                tx.calc_sha256()
+                    # add to map
+                    self.witness_scripts[script_sha256] = witnessscript
+                else:
+                    # read in the pubkey from key
+                    pubkey = key[1:]
 
-                # check that this utxo matches the input
-                if self.tx.vin[separators - 1].prevout.hash != tx.sha256:
-                    raise IOError("Provided non witness utxo does not match the required utxo for input")
+                    # read in the signature from value
+                    signature = f.read(value_len)
 
-                psbt_input.non_witness_utxo = tx
-            # witness utxo
-            elif key_type == 0x04:
-                # read in the utxo
-                vout = CTxOut()
-                vout.deserialize(f)
-
-                # add to map
-                psbt_input.witness_utxo = vout
-            #partial signatures
-            elif key_type == 0x05:
-                # read in the pubkey from key
-                pubkey = key[1:]
-
-                # read in the signature from value
-                signature = f.read(value_len)
-
-                # add to list
-                psbt_input.partial_sigs[pubkey] = signature
+                    # add to list
+                    psbt_input.partial_sigs[pubkey] = signature
             # hd key paths
-            elif key_type == 0x06:
+            elif key_type == 0x03:
                 # read in master key fingerprint from key
                 fingerprint = key[1:]
 
@@ -606,12 +604,12 @@ class PSBT(object):
             if not tx_in.scriptSig and not tx_in_wit:
                 # If there is a witness utxo, then don't add the non witness one
                 if psbt_input.witness_utxo:
-                    r += b"\x01\x04"
+                    r += b"\x01\x01"
                     utxo = psbt_input.witness_utxo.serialize()
                     r += ser_compact_size(len(utxo))
                     r += utxo
                 elif psbt_input.non_witness_utxo:
-                    r += b"\x01\x03"
+                    r += b"\x01\x00"
                     utxo = psbt_input.non_witness_utxo.serialize()
                     r += ser_compact_size(len(utxo))
                     r += utxo
@@ -619,7 +617,7 @@ class PSBT(object):
                 # write any partial signatures
                 for pubkey, sig in psbt_input.partial_sigs.items():
                     r += ser_compact_size(len(pubkey) + 1)
-                    r += b"\x05"
+                    r += b"\x02"
                     r += pubkey
                     r += ser_compact_size(len(sig))
                     r += sig
@@ -627,7 +625,7 @@ class PSBT(object):
                 # write hd keypaths
                 for fingerprint, keypath in psbt_input.hd_keypaths.items():
                     r += ser_compact_size(len(fingerprint) + 1)
-                    r += b"\x06"
+                    r += b"\x03"
                     r += fingerprint
                     r += ser_compact_size(len(keypath) * 4)
                     for num in keypath:
@@ -639,7 +637,7 @@ class PSBT(object):
         return binascii.hexlify(r)
 
 if __name__ == "__main__":
-    tx_str = "70736274ff01007e020000000224fd35c30ae6a3b91d4fea157b6dfe65f99222ec64d7c4cab1cea8ae7cc1c8e70000000000ffffffff24fd35c30ae6a3b91d4fea157b6dfe65f99222ec64d7c4cab1cea8ae7cc1c8e70100000000ffffffff01c0512677000000001976a914a1df2c408e2434e777604c2d7074e7cb1de365bf88ac000000001501c6602a01b964802d9ac6f87d3b82dfd2beb58b1269522102414dd7bdddd4cc5cdb0c58bbc4dbd2581b1564fec78674786fcecc2951ff5c472102bf5710e1afc286426eab28830174107d2c30cca321099f5d6c3068fe9453c58c21031f46229f46e37de9cc269acbecbe3187179e9084c6be309201a7595fb00ab01753ae1501f79cc859e9125d76d1656e40ac74256eca3a8678220020398feb11655776a3ad40e11bc3b997a6efb48fbe271df127d550be9b03afd7462102398feb11655776a3ad40e11bc3b997a6efb48fbe271df127d550be9b03afd74669522102414dd7bdddd4cc5cdb0c58bbc4dbd2581b1564fec78674786fcecc2951ff5c472102bf5710e1afc286426eab28830174107d2c30cca321099f5d6c3068fe9453c58c21031f46229f46e37de9cc269acbecbe3187179e9084c6be309201a7595fb00ab01753ae0001042000ca9a3b0000000017a914f79cc859e9125d76d1656e40ac74256eca3a867887220502bf5710e1afc286426eab28830174107d2c30cca321099f5d6c3068fe9453c58c4830450221008c38aa67ef6e4151f93b05aeedf6791df264b60c3a6fe1ba10f50062ce0d36c4022065cc7da2b189a4b1c77c275fa6206608b468c4576a04b33eb9741849c2edda3801000103fd6e010200000002271b8fddc6f282ef3eafdc73013defdf5e379fd9d257963e847d8fb66505446d000000004847304402202fe33eb56cff3711a0628b490a24d8264dd13fc2f76145855d70c90e4e32f38f02200293f5481015e8752788b4cab4b0d8a9dfc704db10fe52e701d75ae25dabb53e01feffffff98734d18111d2109552eba6fa922ee101823b99bb84b0053a028519804f6f173000000004847304402202712722c4bfb779af938e858c3bd9fd458fadbca57e2db2f9b2d507f6f6167d0022023303d9c4549015cacaa433af71a8651758a94e05e7e1cf3af5abb269c3351d801feffffff0400ca9a3b0000000017a914f79cc859e9125d76d1656e40ac74256eca3a86788700ca9a3b0000000017a914c6602a01b964802d9ac6f87d3b82dfd2beb58b128700ca9a3b0000000017a9148e12ff153070c91ebb92030b5db684ea6017f1dc87c0fab32c000000001976a914e421ff5ba6f10ccad2c83a32af9a0e0f89c34eaa88ac00000000220502bf5710e1afc286426eab28830174107d2c30cca321099f5d6c3068fe9453c58c483045022100b4ad551e8703bf548c734b2dd374220a6217a160132ea2e2783bdc151ce89e8a02206db6fe0ea6f9e77f218a98dd6f03b4470bf9e6f1b563a66ede7b83efc40b31590100"
+    tx_str = "70736274ff01007e020000000269309231ff7253ee0358fa1bf6f87832adaf289e90c9a6c751ca984dc6f5e9bf0000000000ffffffff69309231ff7253ee0358fa1bf6f87832adaf289e90c9a6c751ca984dc6f5e9bf0100000000ffffffff01c0512677000000001976a9148a172cef76ea0dbb32906f4bdb16ca71d7120c4e88ac000000001501b891e2c295362be87b7ec33f7eb49d368e4414bf695221021a0f39420f3c09bacf273a8d70a57f65994367e2e3fef0aea3e5062b68eae24d2103c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab5221029340aa786b2f617717b33a1fc065f1ac627419390e51b81e14b675142b38697353ae1501f71c5b393c1dac613b171fae28d43f1d56dcb5e62200204c55a98cf8bcfcc5d7ce58b47f38d051d9ad93bf93689ee8f4010b4cb9be907d21024c55a98cf8bcfcc5d7ce58b47f38d051d9ad93bf93689ee8f4010b4cb9be907d695221021a0f39420f3c09bacf273a8d70a57f65994367e2e3fef0aea3e5062b68eae24d2103c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab5221029340aa786b2f617717b33a1fc065f1ac627419390e51b81e14b675142b38697353ae0001012000ca9a3b0000000017a914f71c5b393c1dac613b171fae28d43f1d56dcb5e687220203c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab524730440220118786d0c8be84990a7b91bf3e5785f76c21ec0af95e1ff4e6188e889feb0c5902205f6aedb27efe700f22016480485fe702528ba52c8fef04b7def4b609652f8b7601000100fd6e0102000000020072fa62c337b714b84d54f4cc06c6c6ea77c27bee1715a07ca95f9bdd1cd84f000000004847304402207b6d2a7f9f092fca96e351b8ee1443adef3d7480c90b9098e5b1b6ad3acfdf9802207149d6289cebb49c24f5d8107f01dfb431bbf574d73988497c1de84db0c9427401fefffffff313a21a58d6c2d3dabe2254aa5236a5c923dd1b1d849bac4d44f6783aa5885400000000484730440220570710941112b315b768d5468e167895c8d4a6e123980c819619f68c5213da5e0220703d08524331733c628e96872268493ecb6be97ccae555d381a040c526df186301feffffff0400ca9a3b0000000017a914f71c5b393c1dac613b171fae28d43f1d56dcb5e68700ca9a3b0000000017a914b891e2c295362be87b7ec33f7eb49d368e4414bf8700ca9a3b0000000017a91425b43bde0b3d4adb6b2560c8ed6e34fae073f46b87c0fab32c000000001976a914666494defa0621b18222c9463ce3e696216b177d88ac00000000220203c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab52473044022016f36b657af3cf1f583125bf110793672902d38f10bfb14479697340222453e9022075e9ac9a759f4d3e3e1cb0402e32277fafb66ed4d758d504acaa6d1f2175b9e00100"
     tx = PSBT()
     tx.deserialize(tx_str)
     serialized = tx.serialize()
