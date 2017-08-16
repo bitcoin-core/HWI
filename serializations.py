@@ -241,15 +241,16 @@ class CTxOut(object):
         return r
 
     def is_p2sh(self):
-        return len(self.scriptPubKey) == 23 and self.scriptPubKey[0] == 0xa9 and self.scriptPubKey[1] == 0x14 and self.scriptPubKey[22] == 0x87
+        return len(self.scriptPubKey) == 23 and self.scriptPubKey[0] == b"\xa9" and self.scriptPubKey[1] == b"\x14" and self.scriptPubKey[22] == "\x87"
 
     def is_p2pkh(self):
-        return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
+        return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == b"\x76" and self.scriptPubKey[1] == b"\xa9" and self.scriptPubKey[2] == b"\x14" and self.scriptPubKey[23] == b"\x88" and self.scriptPubKey[24] == b"\xac"
+    def is_p2pk(self):
+        return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == b"\x21" or self.scriptPubKey[0] == b"\x41") and self.scriptPubKey[-1] == b"\xac"
 
     def __repr__(self):
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
-            % (self.nValue // COIN, self.nValue % COIN,
-               bytes_to_hex_str(self.scriptPubKey))
+            % (self.nValue, self.nValue, binascii.hexlify(self.scriptPubKey))
 
 
 class CScriptWitness(object):
@@ -419,7 +420,6 @@ class PartiallySignedInput:
         self.non_witness_utxo = None
         self.witness_utxo = None
         self.partial_sigs = {}
-        self.hd_keypaths = {}
         self.unknown = {}
 
 class PSBT(object):
@@ -432,6 +432,7 @@ class PSBT(object):
         self.redeem_scripts = {}
         self.witness_scripts = {}
         self.inputs = []
+        self.hd_keypaths = {}
 
     def deserialize(self, hexstring):
         f = BufferedReader(BytesIO(binascii.unhexlify(hexstring)))
@@ -509,6 +510,7 @@ class PSBT(object):
 
                     # add to map
                     self.redeem_scripts[script_hash160] = redeemscript
+                    print(self.redeem_scripts)
                 else:
                     # read in the utxo
                     vout = CTxOut()
@@ -543,8 +545,8 @@ class PSBT(object):
                     psbt_input.partial_sigs[pubkey] = signature
             # hd key paths
             elif key_type == 0x03:
-                # read in master key fingerprint from key
-                fingerprint = key[1:]
+                # read in pubkey from key
+                pubkey = key[1:]
 
                 # read in array of integers from value
                 value = f.read(value_len)
@@ -555,7 +557,7 @@ class PSBT(object):
                     i += 4
 
                 # add to keypath map
-                psbt_input.hd_keypaths[fingerprint] = keypath
+                self.hd_keypaths[pubkey] = keypath
 
             # unknown stuff
             else:
@@ -596,6 +598,15 @@ class PSBT(object):
             r += ser_compact_size(len(script))
             r += script
 
+        # write hd keypaths
+        for fingerprint, keypath in self.hd_keypaths.items():
+            r += ser_compact_size(len(fingerprint) + 1)
+            r += b"\x03"
+            r += fingerprint
+            r += ser_compact_size(len(keypath) * 4)
+            for num in keypath:
+                r += struct.pack("<I", num)
+
         # separator
         r += b"\x00"
 
@@ -628,14 +639,6 @@ class PSBT(object):
                     r += ser_compact_size(len(sig))
                     r += sig
 
-                # write hd keypaths
-                for fingerprint, keypath in psbt_input.hd_keypaths.items():
-                    r += ser_compact_size(len(fingerprint) + 1)
-                    r += b"\x03"
-                    r += fingerprint
-                    r += ser_compact_size(len(keypath) * 4)
-                    for num in keypath:
-                        r += struct.pack("<I", num)
             # separator
             r += b"\x00"
 
