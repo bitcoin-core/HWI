@@ -551,7 +551,7 @@ class PSBT(object):
                 keypath = []
                 i = 0
                 while i < value_len:
-                    kyepath.append(struct.unpack("<I", f.read(4))[0])
+                    keypath.append(struct.unpack("<I", value[i:i + 4])[0])
                     i += 4
 
                 # add to keypath map

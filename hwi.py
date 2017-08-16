@@ -136,7 +136,8 @@ def process_commands(command, command_args, device_path, device_type):
             tx.deserialize(command_args)
             client.sign_tx(tx)
         except Exception as e:
-            print(e.message)
+            import traceback
+            traceback.print_exc()
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
             exit
 
