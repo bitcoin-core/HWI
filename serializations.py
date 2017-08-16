@@ -510,7 +510,6 @@ class PSBT(object):
 
                     # add to map
                     self.redeem_scripts[script_hash160] = redeemscript
-                    print(self.redeem_scripts)
                 else:
                     # read in the utxo
                     vout = CTxOut()

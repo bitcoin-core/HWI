@@ -7,10 +7,11 @@ import base64
 import pyaes
 import hashlib
 import os
+import binascii
 
 from hwi import HardwareWalletClient
-from serializations import CTransaction, PSBT, hash256
-from base58 import get_xpub_fingerprint
+from serializations import CTransaction, PSBT, hash256, hash160
+from base58 import get_xpub_fingerprint, decode, to_address
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8*512
@@ -159,19 +160,29 @@ class DigitalBitboxClient(HardwareWalletClient):
         sighash_tuples = []
         for txin, psbt_in in zip(blank_tx.vin, tx.inputs):
             sighash = b""
+            pubkeys = []
             if psbt_in.non_witness_utxo:
                 utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
 
                 # Check if P2SH
-                if utxo.is_p2sh:
+                if utxo.is_p2sh():
                     # Look up redeemscript
-                    print(tx.redeem_scripts)
                     redeemscript = tx.redeem_scripts[utxo.scriptPubKey[2:22]]
                     # Add to blank_tx
                     txin.scriptSig = redeemscript
+                    # Find which pubkeys to sign with for this input
+                    for pubkey in tx.hd_keypaths.keys():
+                        if pubkey in redeemscript:
+                            pubkeys.append(pubkey)
                 # Check if P2PKH
-                elif utxo.is_p2pkh:
+                elif utxo.is_p2pkh() or utxo.is_p2pk():
                     txin.scriptSig = psbt_in.non_witness_utxo.vout[txin.prevout.n].scriptPubKey
+                    # Find which pubkeys to sign with for this input
+                    for pubkey in tx.hd_keypaths.keys():
+                        if utxo.is_p2pk and pubkey in utxo.scriptPubKey:
+                            pubkeys.append(pubkey)
+                        if utxo.is_p2pkh and hash160(pubkey) in utxo.scriptPubKey:
+                            pubkeys.append(pubkey)
                 # We don't know what this is, skip it
                 else:
                     continue
@@ -202,7 +213,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Get the scriptCode
                 scriptCode = b""
                 witness_program = b""
-                if psbt_in.witness_utxo.is_p2sh:
+                if psbt_in.witness_utxo.is_p2sh():
                     # Look up redeemscript
                     redeemscript = tx.redeem_scripts[psbt_in.witness_utxo.scriptPubKey[2:22]]
                     witness_program += redeemscript
@@ -218,6 +229,13 @@ class DigitalBitboxClient(HardwareWalletClient):
                     scriptCode += b"\x19\x76\xa9\x14"
                     scriptCode += redeemscript[2:]
                     scriptCode += b"\x88\xac"
+
+                # Find pubkeys to sign with in the scriptCode
+
+                # Find which pubkeys to sign with for this input
+                for pubkey in tx.hd_keypaths.keys():
+                    if hash160(pubkey) in scriptCode or pubkey in scriptCode:
+                        pubkeys.append(pubkey)
 
                 # Make sighash preimage
                 preimage = b""
@@ -235,28 +253,36 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # hash it
                 sighash += hash256(preimage)
 
-            # Make BIP 32 keypath strings
-            for fp, keypath in psbt_in.hd_keypaths.items():
-                # Check that the fingerprint matches our master key fingerprint
-                if master_fp == fp:
+            # Figure out which keypath thing is for this input
+            for pubkey in pubkeys:
+                keypath = tx.hd_keypaths[pubkey]
+                print(master_fp)
+                print(keypath[0])
+                if master_fp == keypath[0]:
                     # Add the keypath strings
                     keypath_str = 'm/'
-                    for index in keypath:
-                        keypath_str += str(index)
+                    for index in keypath[1:]:
+                        keypath_str += str(index) + "/"
 
                     # Create tuples and add to List
-                    sighash_tuples.append((sighash, keypath_str))
+                    tup = (binascii.hexlify(sighash), keypath_str)
+                    sighash_tuples.append(tup)
 
         # Sign the sighashes
         to_send = '{"sign":{"data":['
         for tup in sighash_tuples:
-            to_send += '{"hash":'
+            to_send += '{"hash":"'
             to_send += tup[0]
-            to_send += ',"keypath":"'
+            to_send += '","keypath":"'
             to_send += tup[1]
-            to_send += '"}'
-        to_send += '}}'
+            to_send += '"},'
+        to_send = to_send[:-1]
+        to_send += ']}}'
+        print(to_send)
 
+        reply = send_encrypt(to_send, self.password, self.device)
+        print(reply)
+        print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
         print(reply)
 
