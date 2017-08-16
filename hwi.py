@@ -141,6 +141,10 @@ def process_commands(command, command_args, device_path, device_type):
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
             exit
 
+    if command == 'getxpub':
+        print(client.get_pubkey_at_path(command_args))
+        return
+
     # Close the device
     device.close()
 
