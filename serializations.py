@@ -174,6 +174,50 @@ def FromHex(obj, hex_string):
 def ToHex(obj):
     return bytes_to_hex_str(obj.serialize())
 
+def ser_sig_der(r, s):
+    sig = b"\x30"
+
+    # Make r and s as short as possible
+    ri = 0
+    for b in r:
+        if b == "\x00":
+            ri += 1
+        else:
+            break
+    r = r[ri:]
+    si = 0
+    for b in s:
+        if b == "\x00":
+            si += 1
+        else:
+            break;
+    s = s[si:]
+
+    # Make positive of neg
+    first = struct.unpack("B", r[0])[0]
+    if first & (1 << 7) != 0:
+        r = b"\x00" + r
+    first = struct.unpack("B", s[0])[0]
+    if first & (1 << 7) != 0:
+        s = b"\x00" + s
+
+    # Write total length
+    total_len = len(r) + len(s) + 4
+    sig += struct.pack("B", total_len)
+
+    # write r
+    sig += b"\x02"
+    sig += struct.pack("B", len(r))
+    sig += r
+
+    # write s
+    sig += b"\x02"
+    sig += struct.pack("B", len(s))
+    sig += s
+
+    sig += "\x01"
+    return sig
+
 # Objects that map to bitcoind objects, which can be serialized/deserialized
 
 MSG_WITNESS_FLAG = 1<<30
@@ -421,6 +465,11 @@ class PartiallySignedInput:
         self.witness_utxo = None
         self.partial_sigs = {}
         self.unknown = {}
+    def set_null(self):
+        self.non_witness_utxo = None
+        self.witness_utxo = None
+        self.partial_sigs.clear()
+        self.unknown.clear()
 
 class PSBT(object):
 

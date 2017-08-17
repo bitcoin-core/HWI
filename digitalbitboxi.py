@@ -10,7 +10,7 @@ import os
 import binascii
 
 from hwi import HardwareWalletClient
-from serializations import CTransaction, PSBT, hash256, hash160
+from serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der
 from base58 import get_xpub_fingerprint, decode, to_address
 
 applen = 225280 # flash size minus bootloader length
@@ -158,7 +158,7 @@ class DigitalBitboxClient(HardwareWalletClient):
 
         # create sighashes
         sighash_tuples = []
-        for txin, psbt_in in zip(blank_tx.vin, tx.inputs):
+        for txin, psbt_in, i_num in zip(blank_tx.vin, tx.inputs, range(len(blank_tx.vin))):
             sighash = b""
             pubkeys = []
             if psbt_in.non_witness_utxo:
@@ -190,9 +190,11 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Serialize and add sighash ALL
                 ser_tx = blank_tx.serialize_without_witness()
                 ser_tx += b"\x01\x00\x00\x00"
+                print(binascii.hexlify(ser_tx))
 
                 # Hash it
                 sighash += hash256(ser_tx)
+                print(binascii.hexlify(sighash))
                 txin.scriptSig = b""
             elif psbt_in.witness_utxo:
                 # Calculate hashPrevouts and hashSequence
@@ -265,7 +267,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                         keypath_str += str(index) + "/"
 
                     # Create tuples and add to List
-                    tup = (binascii.hexlify(sighash), keypath_str)
+                    tup = (binascii.hexlify(sighash), keypath_str, i_num, pubkey)
                     sighash_tuples.append(tup)
 
         # Sign the sighashes
@@ -282,9 +284,53 @@ class DigitalBitboxClient(HardwareWalletClient):
 
         reply = send_encrypt(to_send, self.password, self.device)
         print(reply)
+        if 'error' in reply:
+            return
         print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
         print(reply)
+        if 'error' in reply:
+            return
+
+        # Extract sigs
+        sigs = []
+        for item in reply['sign']:
+            sigs.append(binascii.unhexlify(item['sig']))
+
+        # Make sigs der
+        der_sigs = []
+        for sig in sigs:
+            der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+
+        # add sigs to tx
+        for tup, sig in zip(sighash_tuples, der_sigs):
+            tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
+
+        # For each input, finalize only p2pkh and p2pk
+        for txin, psbt_in in zip(tx.tx.vin, tx.inputs):
+            if psbt_in.non_witness_utxo:
+                utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+                if utxo.is_p2pkh:
+                    txin.scriptSig = struct.pack("B", len(psbt_in.partial_sigs.values()[0])) + psbt_in.partial_sigs.values()[0] + struct.pack("B", len(psbt_in.partial_sigs.keys()[0])) + psbt_in.partial_sigs.keys()[0]
+                elif utxo.is_p2pk:
+                    txin.scriptSig = truct.pack("B", len(psbt_in.partial_sigs.values()[0])) + psbt_in.partial_sigs.values()[0]
+                psbt_in.set_null()
+
+        # Extract sigs
+        sigs = []
+        for item in reply['sign']:
+            sigs.append(binascii.unhexlify(item['sig']))
+
+        # Make sigs der
+        der_sigs = []
+        for sig in sigs:
+            der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+
+        # add sigs to tx
+        for tup, sig in zip(sighash_tuples, der_sigs):
+            tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
+
+        return tx.serialize()
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string

@@ -134,7 +134,8 @@ def process_commands(command, command_args, device_path, device_type):
         try:
             tx = PSBT()
             tx.deserialize(command_args)
-            client.sign_tx(tx)
+            print(json.dumps(client.sign_tx(tx)))
+            return
         except Exception as e:
             import traceback
             traceback.print_exc()
