@@ -22,6 +22,7 @@ class HardwareWalletClient(object):
     # device is an HID device that has already been opened.
     def __init__(self, device):
         self.device = device
+        self.message_magic = b"\x18Bitcoin Signed Message:\n"
 
     # Get the master BIP 44 pubkey
     def get_master_xpub(self):
@@ -40,8 +41,8 @@ class HardwareWalletClient(object):
             'implement this method')
 
     # Must return a base64 encoded string with the signed message
-    # The message can be any string
-    def sign_message(self, message):
+    # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
+    def sign_message(self, message, keypath):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
@@ -127,7 +128,6 @@ def process_commands(command, command_args, device_path, device_type):
     # Do the commands
     if command == 'getmasterxpub':
         print(client.get_master_xpub())
-        return
 
     if command == 'signtx':
         # Deserialize the transaction
@@ -135,7 +135,6 @@ def process_commands(command, command_args, device_path, device_type):
             tx = PSBT()
             tx.deserialize(command_args)
             print(json.dumps(client.sign_tx(tx)))
-            return
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -143,8 +142,10 @@ def process_commands(command, command_args, device_path, device_type):
             exit
 
     if command == 'getxpub':
-        print(client.get_pubkey_at_path(command_args))
-        return
+        print(client.get_pubkey_at_path(command_args[0]))
+
+    if command == 'signmessage':
+        print(client.sign_message(command_args[0], command_args[1]))
 
     # Close the device
     device.close()
@@ -155,7 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
     parser.add_argument('command', help='The action to do')
-    parser.add_argument('args', help='Arguments for the command', nargs='?')
+    parser.add_argument('args', help='Arguments for the command', nargs='*')
 
     args = parser.parse_args()
     command = args.command

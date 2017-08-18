@@ -218,6 +218,16 @@ def ser_sig_der(r, s):
     sig += "\x01"
     return sig
 
+def ser_sig_compact(r, s, recid):
+    rec = struct.unpack("B", recid)[0]
+    prefix = struct.pack("B", 27 + 4 +rec)
+
+    sig = b""
+    sig += prefix
+    sig += r + s
+
+    return sig
+
 # Objects that map to bitcoind objects, which can be serialized/deserialized
 
 MSG_WITNESS_FLAG = 1<<30

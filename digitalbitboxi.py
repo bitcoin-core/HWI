@@ -10,7 +10,7 @@ import os
 import binascii
 
 from hwi import HardwareWalletClient
-from serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der
+from serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from base58 import get_xpub_fingerprint, decode, to_address
 
 applen = 225280 # flash size minus bootloader length
@@ -334,9 +334,38 @@ class DigitalBitboxClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
-    def sign_message(self, message):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+    def sign_message(self, message, keypath):
+        to_hash = b""
+        to_hash += self.message_magic
+        to_hash += ser_compact_size(len(message))
+        to_hash += message
+
+        hashed_message = hash256(to_hash)
+
+        to_send = '{"sign":{"data":[{"hash":"'
+        to_send += binascii.hexlify(hashed_message)
+        to_send += '","keypath":"'
+        to_send += keypath
+        to_send += '"}]}}'
+
+        reply = send_encrypt(to_send, self.password, self.device)
+        print(reply)
+        if 'error' in reply:
+            return
+        print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
+        reply = send_encrypt(to_send, self.password, self.device)
+        print(reply)
+        if 'error' in reply:
+            return
+
+        sig = binascii.unhexlify(reply['sign'][0]['sig'])
+        r = sig[0:32]
+        s = sig[32:64]
+        recid = binascii.unhexlify(reply['sign'][0]['recid'])
+        compact_sig = ser_sig_compact(r, s, recid)
+        print(binascii.hexlify(compact_sig))
+
+        return json.dumps({"signature":base64.b64encode(compact_sig)})
 
     # Setup a new device
     def setup_device(self):
