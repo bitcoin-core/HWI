@@ -115,6 +115,8 @@ def process_commands(command, command_args, device_path, device_type):
         import keepkeyi
         client = keepkeyi.KeepKeyClient(device=device, path=device_path)
     elif device_type == 'ledger':
+        # hack to use btchip-python's getDongle pipeline
+        device.close()
         import ledgeri
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
