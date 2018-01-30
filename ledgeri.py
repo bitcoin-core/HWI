@@ -5,6 +5,9 @@ from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
 import json
+import struct
+import base58
+from serializations import hash256, hash160
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
 class LedgerClient(HardwareWalletClient):
@@ -17,12 +20,46 @@ class LedgerClient(HardwareWalletClient):
         self.app = btchip(dongle)
         self.device = device
 
-    # Must return a dict with the pubkey, chaincode, and xpub. The pubkey and
-    # chaincode must be hex strings.
+    # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        path = path[2:]
+        # This call returns raw uncompressed pubkey, chaincode
+        pubkey = self.app.getWalletPublicKey(path)
+        if path != "":
+            parent_path = ""
+            for ind in path.split("/")[:-1]:
+                parent_path += ind+"/"
+            parent_path = parent_path[:-1]
+
+            # Get parent key fingerprint
+            parent = self.app.getWalletPublicKey(parent_path)
+            fpr = hash160(compress_public_key(parent["publicKey"]))[:4]
+
+            # Compute child info
+            childstr = path.split("/")[-1]
+            hard = 0
+            if childstr[-1] == "'":
+                childstr = childstr[:-1]
+                hard = 0x80000000
+            child = struct.pack(">I", int(childstr)+hard)
+        # Special case for m
+        else:
+            child = "00000000".decode('hex')
+            fpr = child
+
+        chainCode = pubkey["chainCode"]
+        publicKey = compress_public_key(pubkey["publicKey"])
+
+        depth = len(path.split("/")) if len(path) > 0 else 0
+        depth = struct.pack("B", depth)
+
+        version = "0488B21E".decode('hex')
+        version = "043587cf".decode('hex')
+        extkey = version+depth+fpr+child+chainCode+publicKey
+        checksum = hash256(extkey)[:4]
+
+        return json.dumps({"xpub":base58.encode(extkey+checksum)})
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
