@@ -55,7 +55,6 @@ class LedgerClient(HardwareWalletClient):
         depth = struct.pack("B", depth)
 
         version = "0488B21E".decode('hex')
-        version = "043587cf".decode('hex')
         extkey = version+depth+fpr+child+chainCode+publicKey
         checksum = hash256(extkey)[:4]
 
