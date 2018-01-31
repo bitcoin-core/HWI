@@ -538,10 +538,11 @@ class PSBT(object):
             value_len = deser_compact_size(f)
 
             # Do stuff based on type
-            # Raw tx or non witness utxo
             if key_type == 0x00:
+                # Raw tx
                 if in_globals:
                     self.tx.deserialize(f)
+                # Non-witness utxo
                 else:
                     # Read in the transaction
                     tx = CTransaction()
@@ -553,8 +554,8 @@ class PSBT(object):
                         raise IOError("Provided non witness utxo does not match the required utxo for input")
 
                     psbt_input.non_witness_utxo = tx
-            # redeemscript or witness utxo
             elif key_type == 0x01:
+                # redeemscript
                 if in_globals:
                     # retrieve hash160 from key
                     script_hash160 = key[1:]
@@ -569,6 +570,7 @@ class PSBT(object):
 
                     # add to map
                     self.redeem_scripts[script_hash160] = redeemscript
+                # witness utxo
                 else:
                     # read in the utxo
                     vout = CTxOut()
@@ -576,8 +578,8 @@ class PSBT(object):
 
                     # add to map
                     psbt_input.witness_utxo = vout
-            # witness script
             elif key_type == 0x02:
+                # witness script
                 if in_globals:
                     # retrieve sha256 from key
                     script_sha256 = key[1:]
@@ -592,6 +594,7 @@ class PSBT(object):
 
                     # add to map
                     self.witness_scripts[script_sha256] = witnessscript
+                # partial signature
                 else:
                     # read in the pubkey from key
                     pubkey = key[1:]
