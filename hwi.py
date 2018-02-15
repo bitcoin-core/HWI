@@ -115,6 +115,8 @@ def process_commands(command, command_args, device_path, device_type):
         import keepkeyi
         client = keepkeyi.KeepKeyClient(device=device, path=device_path)
     elif device_type == 'ledger':
+        # hack to use btchip-python's getDongle pipeline
+        device.close()
         import ledgeri
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
@@ -129,7 +131,7 @@ def process_commands(command, command_args, device_path, device_type):
     if command == 'getmasterxpub':
         print(client.get_master_xpub())
 
-    if command == 'signtx':
+    elif command == 'signtx':
         # Deserialize the transaction
         try:
             tx = PSBT()
@@ -141,11 +143,12 @@ def process_commands(command, command_args, device_path, device_type):
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
             exit
 
-    if command == 'getxpub':
+    elif command == 'getxpub':
         print(client.get_pubkey_at_path(command_args[0]))
-
-    if command == 'signmessage':
+    elif command == 'signmessage':
         print(client.sign_message(command_args[0], command_args[1]))
+    else:
+        print(json.dumps({'error':'Unknown command'}))
 
     # Close the device
     device.close()
