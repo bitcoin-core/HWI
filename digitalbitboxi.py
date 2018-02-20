@@ -226,7 +226,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 if len(witness_program) == 34 and witness_program[0] == OP_0 and witness_program[1] == 0x20:
                     # look up witnessscript and set as scriptCode
                     witnessscript = tx.witness_scripts[redeemscript[2:]]
-                    scriptCode += witnessscript
+                    scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
                 else:
                     scriptCode += b"\x19\x76\xa9\x14"
                     scriptCode += redeemscript[2:]
