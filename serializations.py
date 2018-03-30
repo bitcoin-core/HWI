@@ -613,6 +613,7 @@ class PSBT(object):
                 value = f.read(value_len)
                 keypath = []
                 i = 0
+                # Note that the first item of the keypath is actually the master key fingerprint
                 while i < value_len:
                     keypath.append(struct.unpack("<I", value[i:i + 4])[0])
                     i += 4
@@ -660,10 +661,11 @@ class PSBT(object):
             r += script
 
         # write hd keypaths
-        for fingerprint, keypath in self.hd_keypaths.items():
-            r += ser_compact_size(len(fingerprint) + 1)
+        # Note that the first item of self.hd_keypaths is the master key fingerprint
+        for pubkey, keypath in self.hd_keypaths.items():
+            r += ser_compact_size(len(pubkey) + 1)
             r += b"\x03"
-            r += fingerprint
+            r += pubkey
             r += ser_compact_size(len(keypath) * 4)
             for num in keypath:
                 r += struct.pack("<I", num)
