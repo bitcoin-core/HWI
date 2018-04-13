@@ -46,7 +46,7 @@ class LedgerClient(HardwareWalletClient):
             child = struct.pack(">I", int(childstr)+hard)
         # Special case for m
         else:
-            child = "00000000".decode('hex')
+            child = bytearray.fromhex("00000000")
             fpr = child
 
         chainCode = pubkey["chainCode"]
@@ -55,7 +55,7 @@ class LedgerClient(HardwareWalletClient):
         depth = len(path.split("/")) if len(path) > 0 else 0
         depth = struct.pack("B", depth)
 
-        version = "0488B21E".decode('hex')
+        version = bytearray.fromhex("0488B21E")
         extkey = version+depth+fpr+child+chainCode+publicKey
         checksum = hash256(extkey)[:4]
 
@@ -88,7 +88,7 @@ class LedgerClient(HardwareWalletClient):
             for pubkey, path in tx.hd_keypaths.items():
                 if struct.pack("<I", path[0]) == master_fpr and len(path) > 2 and path[-2] == 1:
                     # For possible matches, check if pubkey matches possible template
-                    if hash160(pubkey) in txout.scriptPubKey or hash160("0014".decode('hex')+hash160(pubkey)) in txout.scriptPubKey:
+                    if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014")+hash160(pubkey)) in txout.scriptPubKey:
                         change_path = ''
                         for index in path[1:]:
                             change_path += str(index)+"/"
@@ -99,7 +99,7 @@ class LedgerClient(HardwareWalletClient):
 
             seq = format(txin.nSequence, 'x')
             seq = seq.zfill(8)
-            seq = bytearray(seq.decode('hex'))
+            seq = bytearray.fromhex(seq)
             seq.reverse()
             seq_hex = ''.join('{:02x}'.format(x) for x in seq)
 
