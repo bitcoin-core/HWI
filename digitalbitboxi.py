@@ -150,8 +150,6 @@ class DigitalBitboxClient(HardwareWalletClient):
 
         # Create a transaction with all scriptsigs blanekd out
         blank_tx = CTransaction(tx.tx)
-        for txin in blank_tx.vin:
-            txin.scriptSig = b""
 
         # Get the master key fingerprint
         master_fp = get_xpub_fingerprint(json.loads(self.get_pubkey_at_path('m/0'))['xpub'])
@@ -167,7 +165,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Check if P2SH
                 if utxo.is_p2sh():
                     # Look up redeemscript
-                    redeemscript = tx.redeem_scripts[utxo.scriptPubKey[2:22]]
+                    redeemscript = psbt_in.redeem_script
                     # Add to blank_tx
                     txin.scriptSig = redeemscript
                     # Find which pubkeys to sign with for this input
@@ -178,8 +176,8 @@ class DigitalBitboxClient(HardwareWalletClient):
                 elif utxo.is_p2pkh() or utxo.is_p2pk():
                     txin.scriptSig = psbt_in.non_witness_utxo.vout[txin.prevout.n].scriptPubKey
                     # Find which pubkeys to sign with for this input
-                    for pubkey in tx.hd_keypaths.keys():
-                        if utxo.is_p2pk and pubkey in utxo.scriptPubKey:
+                    for pubkey in psbt_in.hd_keypaths.keys():
+                        if utxo.is_p2pk() and pubkey in utxo.scriptPubKey:
                             pubkeys.append(pubkey)
                         if utxo.is_p2pkh and hash160(pubkey) in utxo.scriptPubKey:
                             pubkeys.append(pubkey)
@@ -217,7 +215,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 witness_program = b""
                 if psbt_in.witness_utxo.is_p2sh():
                     # Look up redeemscript
-                    redeemscript = tx.redeem_scripts[psbt_in.witness_utxo.scriptPubKey[2:22]]
+                    redeemscript = psbt_in.redeem_script
                     witness_program += redeemscript
                 else:
                     witness_program += psbt_in.witness_utxo.scriptPubKey
@@ -225,7 +223,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Check if witness_program is script hash
                 if len(witness_program) == 34 and witness_program[0] == OP_0 and witness_program[1] == 0x20:
                     # look up witnessscript and set as scriptCode
-                    witnessscript = tx.witness_scripts[redeemscript[2:]]
+                    witnessscript = psbt_in.witness_script
                     scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
                 else:
                     scriptCode += b"\x19\x76\xa9\x14"
@@ -235,7 +233,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Find pubkeys to sign with in the scriptCode
 
                 # Find which pubkeys to sign with for this input
-                for pubkey in tx.hd_keypaths.keys():
+                for pubkey in psbt_in.hd_keypaths.keys():
                     if hash160(pubkey) in scriptCode or pubkey in scriptCode:
                         pubkeys.append(pubkey)
 
