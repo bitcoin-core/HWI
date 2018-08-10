@@ -118,7 +118,7 @@ class LedgerClient(HardwareWalletClient):
             witness_program = b""
             if psbt_in.witness_utxo.is_p2sh():
                 # Look up redeemscript
-                redeemscript = tx.redeem_scripts[psbt_in.witness_utxo.scriptPubKey[2:22]]
+                redeemscript = psbt_in.redeem_script
                 witness_program += redeemscript
             else:
                 witness_program += psbt_in.witness_utxo.scriptPubKey
@@ -126,7 +126,7 @@ class LedgerClient(HardwareWalletClient):
             # Check if witness_program is script hash
             if len(witness_program) == 34 and ord(witness_program[0]) == 0x00 and ord(witness_program[1]) == 0x20:
                 # look up witnessscript and set as scriptCode
-                witnessscript = tx.witness_scripts[redeemscript[2:]]
+                witnessscript = psbt_in.witness_script
                 scriptCode += witnessscript
             else:
                 scriptCode += b"\x76\xa9\x14"
@@ -137,13 +137,13 @@ class LedgerClient(HardwareWalletClient):
             script_codes[i_num] = scriptCode
 
             # Find which pubkeys could sign this input
-            for pubkey in tx.hd_keypaths.keys():
+            for pubkey in psbt_in.hd_keypaths.keys():
                 if hash160(pubkey) in scriptCode or pubkey in scriptCode:
                     pubkeys.append(pubkey)
 
             # Figure out which keys in inputs are from our wallet
             for pubkey in pubkeys:
-                keypath = tx.hd_keypaths[pubkey]
+                keypath = psbt_in.hd_keypaths[pubkey]
                 if master_fpr == struct.pack("<I", keypath[0]):
                     # Add the keypath strings
                     keypath_str = ''
@@ -170,7 +170,7 @@ class LedgerClient(HardwareWalletClient):
                 tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
 
         # Send PSBT back
-        return tx.serialize()
+        return HexToBase64(tx.serialize())
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
