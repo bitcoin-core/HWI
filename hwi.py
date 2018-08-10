@@ -6,7 +6,7 @@ import json
 
 from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids
-from serializations import PSBT
+from serializations import PSBT, Base64ToHex, HexToBase64
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -135,7 +135,7 @@ def process_commands(command, command_args, device_path, device_type):
         # Deserialize the transaction
         try:
             tx = PSBT()
-            tx.deserialize(command_args[0])
+            tx.deserialize(Base64ToHex(command_args[0]))
             print(json.dumps(client.sign_tx(tx)))
         except Exception as e:
             import traceback

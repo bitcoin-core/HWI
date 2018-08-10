@@ -21,6 +21,7 @@ import struct
 import binascii
 import hashlib
 import copy
+import base64
 
 def sha256(s):
     return hashlib.new('sha256', s).digest()
@@ -173,6 +174,12 @@ def FromHex(obj, hex_string):
 # Convert a binary-serializable object to hex (eg for submission via RPC)
 def ToHex(obj):
     return bytes_to_hex_str(obj.serialize())
+
+def Base64ToHex(s):
+    return binascii.hexlify(base64.b64decode(s))
+
+def HexToBase64(s):
+    return base64.b64encode(binascii.unhexlify(s))
 
 def ser_sig_der(r, s):
     sig = b"\x30"
@@ -465,21 +472,273 @@ class CTransaction(object):
                 return False
         return True
 
+    def is_null(self):
+        return len(self.vin) == 0 and len(self.vout) == 0
+
     def __repr__(self):
         return "CTransaction(nVersion=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
             % (self.nVersion, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+
+def DeserializeHDKeypath(f, key, hd_keypaths):
+    if len(key) != 34 and len(key) != 66:
+        raise IOError("Size of key was not the expected size for the type partial signature pubkey")
+    pubkey = key[1:]
+    if pubkey in hd_keypaths:
+        raise IOError("Duplicate key, input partial signature for pubkey already provided")
+
+    value = deser_string(f)
+    hd_keypaths[pubkey] = struct.unpack("<" + "I" * (len(value) // 4), value)
+
+def SerializeHDKeypath(hd_keypaths, type):
+    r = b""
+    for pubkey, path in hd_keypaths.items():
+        r += ser_string(type + pubkey)
+        packed = struct.pack("<" + "I" * len(path), *path)
+        r += ser_string(packed)
+    return r
 
 class PartiallySignedInput:
     def __init__(self):
         self.non_witness_utxo = None
         self.witness_utxo = None
         self.partial_sigs = {}
+        self.sighash = 0
+        self.redeem_script = b""
+        self.witness_script = b""
+        self.hd_keypaths = {}
+        self.final_script_sig = b""
+        self.final_script_witness = CTxInWitness()
         self.unknown = {}
+
     def set_null(self):
         self.non_witness_utxo = None
         self.witness_utxo = None
         self.partial_sigs.clear()
+        self.sighash = 0
+        self.redeem_script = b""
+        self.witness_script = b""
+        self.hd_keypaths.clear()
+        self.final_script_sig = b""
+        self.final_script_witness = CTxInWitness()
         self.unknown.clear()
+
+    def deserialize(self, f):
+        while True:
+            # read the key
+            try:
+                key = deser_string(f)
+            except Exception:
+                break
+
+            # Check for separator
+            if len(key) == 0:
+                break
+
+            # First byte of key is the type
+            key_type = struct.unpack("b", bytearray([key[0]]))[0]
+
+            if key_type == 0:
+                if self.non_witness_utxo:
+                    raise IOError("Duplicate Key, input non witness utxo already provided")
+                elif len(key) != 1:
+                    raise IOError("non witness utxo key is more than one byte type")
+                self.non_witness_utxo = CTransaction()
+                value = BufferedReader(BytesIO(deser_string(f)))
+                self.non_witness_utxo.deserialize(value)
+
+            elif key_type == 1:
+                if self.witness_utxo:
+                    raise IOError("Duplicate Key, input witness utxo already provided")
+                elif len(key) != 1:
+                    raise IOError("witness utxo key is more than one byte type")
+                self.witness_utxo = CTxOut()
+                value = BufferedReader(BytesIO(deser_string(f)))
+                self.witness_utxo.deserialize(value)
+
+            elif key_type == 2:
+                if len(key) != 34 and len(key) != 66:
+                    raise IOError("Size of key was not the expected size for the type partial signature pubkey")
+                pubkey = key[1:]
+                if pubkey in self.partial_sigs:
+                    raise IOError("Duplicate key, input partial signature for pubkey already provided")
+
+                sig = deser_string(f)
+                self.partial_sigs[pubkey] = sig;
+
+            elif key_type == 3:
+                if self.sighash > 0:
+                    raise IOError("Duplicate key, input sighash type already provided")
+                elif len(key) != 1:
+                    raise IOError("sighash key is more than one byte type")
+                value = deser_string(f)
+                self.sighash = struct.unpack("<I", value)[0]
+
+            elif key_type == 4:
+                if len(self.redeem_script) != 0:
+                    raise IOError("Duplicate key, input redeemScript already provided")
+                elif len(key) != 1:
+                    raise IOError("redeemScript key is more than one byte type")
+                self.redeem_script = deser_string(f)
+
+            elif key_type == 5:
+                if len(self.witness_script) != 0:
+                    raise IOError("Duplicate key, input witnessScript already provided")
+                elif len(key) != 1:
+                    raise IOError("witnessScript key is more than one byte type")
+                self.witness_script = deser_string(f)
+
+            elif key_type == 6:
+                DeserializeHDKeypath(f, key, self.hd_keypaths)
+
+            elif key_type == 7:
+                if len(self.final_script_sig) != 0:
+                    raise IOError("Duplicate key, input final scriptSig already provided")
+                elif len(key) != 1:
+                    raise IOError("final scriptSig key is more than one byte type")
+                self.final_script_sig = deser_string(f)
+
+            elif key_type == 8:
+                if not self.final_script_witness.is_null():
+                    raise IOError("Duplicate key, input final scriptWitness already provided")
+                elif len(key) != 1:
+                    raise IOError("final scriptWitness key is more than one byte type")
+                value = BufferedReader(BytesIO(deser_string(f)))
+                self.final_script_witness.deserialize(value)
+
+            else:
+                if key in self.unknown:
+                    raise IOError("Duplicate key, key for unknown value already provided")
+                value = deser_string(f)
+                self.unknown[key] = value
+
+    def serialize(self):
+        r = b""
+
+        if self.non_witness_utxo:
+            r += ser_string(b"\x00")
+            tx = self.non_witness_utxo.serialize_with_witness()
+            r += ser_string(tx)
+
+        elif self.witness_utxo:
+            r += ser_string(b"\x01")
+            tx = self.witness_utxo.serialize()
+            r += ser_string(tx)
+
+        if len(self.final_script_sig) == 0 and self.final_script_witness.is_null():
+            for pubkey, sig in self.partial_sigs.items():
+                r += ser_string(b"\x02" + pubkey)
+                r += ser_string(sig)
+
+            if self.sighash > 0:
+                r += ser_string(b"\x03")
+                r += ser_string(struct.pack("<I", self.sighash))
+
+            if len(self.redeem_script) != 0:
+                r += ser_string(b"\x04")
+                r += ser_string(self.redeem_script)
+
+            if len(self.witness_script) != 0:
+                r += ser_string(b"\x05")
+                r += ser_string(self.witness_script)
+
+            r += SerializeHDKeypath(self.hd_keypaths, b"\x06")
+
+        if len(self.final_script_sig) != 0:
+            r += ser_string(b"\x07")
+            r += ser_string(self.final_script_sig)
+
+        if not self.final_script_witness.is_null():
+            r += ser_string(b"\x08")
+            r += self.final_script_witness.serialize()
+
+        for key, value in self.unknown:
+            r += ser_string(key)
+            r += ser_string(value)
+
+        r += b"\x00"
+
+        return r
+
+    def is_sane(self):
+        # Cannot have both witness and non-witness utxos
+        if self.witness_utxo and self.non_witness_utxo: return False
+
+        # if we have witness script or scriptwitness, must have witness utxo
+        if len(self.witness_script) != 0 and not self.witness_utxo: return False
+        if not self.final_script_witness.is_null() and not self.witness_utxo: return False
+
+        return True
+
+class PartiallySignedOutput:
+    def __init__(self):
+        self.redeem_script = b""
+        self.witness_script = b""
+        self.hd_keypaths = {}
+        self.unknown = {}
+
+    def set_null(self):
+        self.redeem_script = b""
+        self.witness_script = b""
+        self.hd_keypaths.clear()
+        self.unknown.clear()
+
+    def deserialize(self, f):
+        while True:
+            # read the key
+            try:
+                key = deser_string(f)
+            except Exception:
+                break
+
+            # Check for separator
+            if len(key) == 0:
+                break
+
+            # First byte of key is the type
+            key_type = struct.unpack("b", bytearray([key[0]]))[0]
+
+            if key_type == 0:
+                if len(self.redeem_script) != 0:
+                    raise IOError("Duplicate key, output redeemScript already provided")
+                elif len(key) != 1:
+                    raise IOError("Output redeemScript key is more than one byte type")
+                self.redeem_script = deser_string(f)
+
+            elif key_type == 1:
+                if len(self.witness_script) != 0:
+                    raise IOError("Duplicate key, output witnessScript already provided")
+                elif len(key) != 1:
+                    raise IOError("Output witnessScript key is more than one byte type")
+                self.witness_script = deser_string(f)
+
+            elif key_type == 2:
+                DeserializeHDKeypath(f, key, self.hd_keypaths)
+
+            else:
+                if key in self.unknown:
+                    raise IOError("Duplicate key, key for unknown value already provided")
+                value = deser_string(f)
+                self.unknown[key] = value
+
+    def serialize(self):
+        r = b""
+        if len(self.redeem_script) != 0:
+            r += ser_string(b"\x00")
+            r += ser_string(self.redeem_script)
+
+        if len(self.witness_script) != 0:
+            r += ser_string(b"\x01")
+            r += ser_string(self.witness_script)
+
+        r += SerializeHDKeypath(self.hd_keypaths, b"\x02")
+
+        for key, value in self.unknown:
+            r += ser_string(key)
+            r += ser_string(value)
+
+        r += b"\x00"
+
+        return r
 
 class PSBT(object):
 
@@ -488,155 +747,92 @@ class PSBT(object):
             self.tx = tx
         else:
             self.tx = CTransaction()
-        self.redeem_scripts = {}
-        self.witness_scripts = {}
         self.inputs = []
-        self.hd_keypaths = {}
+        self.outputs = []
+        self.unknown = []
 
     def deserialize(self, hexstring):
         f = BufferedReader(BytesIO(binascii.unhexlify(hexstring)))
 
         # Read the magic bytes
-        magic = f.read(4)
-        magic_sep = f.read(1)
-        if magic != b"psbt" and magic_sep != b"\xff":
+        magic = f.read(5)
+        if magic != b"psbt\xff":
             raise IOError("invalid magic")
-
-        last_type = 0x00
 
         # Read loop
         separators = 0
         psbt_input = PartiallySignedInput()
         in_globals = True
         while True:
-
-            # read the size of the key
+            # read the key
             try:
-                key_len = deser_compact_size(f)
+                key = deser_string(f)
             except Exception:
                 break
 
             # Check for separator
-            if key_len == 0:
-                in_globals = False
-
-                if separators > 0:
-                    self.inputs.append(copy.copy(psbt_input))
-                    psbt_input = PartiallySignedInput()
-
-                separators += 1
-                continue;
-
-
-            # read key
-            key = f.read(key_len)
+            if len(key) == 0:
+                break
 
             # First byte of key is the type
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
-            # read in value length
-            value_len = deser_compact_size(f)
-
             # Do stuff based on type
             if key_type == 0x00:
-                # Raw tx
-                if in_globals:
-                    self.tx.deserialize(f)
-                # Non-witness utxo
-                else:
-                    # Read in the transaction
-                    tx = CTransaction()
-                    tx.deserialize(f)
-                    tx.calc_sha256()
+                # Checks for correctness
+                if not self.tx.is_null:
+                    raise IOError("Duplicate key, unsigned tx already provided")
+                elif len(key) > 1:
+                    raise IOError("Global unsigned tx key is more than one byte type")
 
-                    # check that this utxo matches the input
-                    if self.tx.vin[separators - 1].prevout.hash != tx.sha256:
-                        raise IOError("Provided non witness utxo does not match the required utxo for input")
+                # read in value
+                value = BufferedReader(BytesIO(deser_string(f)))
+                self.tx.deserialize(value)
 
-                    psbt_input.non_witness_utxo = tx
-            elif key_type == 0x01:
-                # redeemscript
-                if in_globals:
-                    # retrieve hash160 from key
-                    script_hash160 = key[1:]
+                # Make sure that all scriptSigs and scriptWitnesses are empty
+                for txin in self.tx.vin:
+                    if len(txin.scriptSig) != 0 or not self.tx.wit.is_null():
+                        raise IOError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
 
-                    # read in the redeemscript
-                    redeemscript = f.read(value_len)
-
-                    # Check redeemscript and its hash
-                    real_hash160 = hash160(redeemscript)
-                    if script_hash160 != real_hash160:
-                        raise IOError("Provided hash160 does not match the redeemscript's hash160")
-
-                    # add to map
-                    self.redeem_scripts[script_hash160] = redeemscript
-                # witness utxo
-                else:
-                    # read in the utxo
-                    vout = CTxOut()
-                    vout.deserialize(f)
-
-                    # add to map
-                    psbt_input.witness_utxo = vout
-            elif key_type == 0x02:
-                # witness script
-                if in_globals:
-                    # retrieve sha256 from key
-                    script_sha256 = key[1:]
-
-                    # read in the witness script
-                    witnessscript = f.read(value_len)
-
-                    # check witnessscript and its hash
-                    real_sha256 = sha256(witnessscript)
-                    if script_sha256 != real_sha256:
-                        raise IOError("Provided sha256 does not match the witnessscript's sha256")
-
-                    # add to map
-                    self.witness_scripts[script_sha256] = witnessscript
-                # partial signature
-                else:
-                    # read in the pubkey from key
-                    pubkey = key[1:]
-
-                    # read in the signature from value
-                    signature = f.read(value_len)
-
-                    # add to list
-                    psbt_input.partial_sigs[pubkey] = signature
-            # hd key paths
-            elif key_type == 0x03:
-                # read in pubkey from key
-                pubkey = key[1:]
-
-                # read in array of integers from value
-                value = f.read(value_len)
-                keypath = []
-                i = 0
-                # Note that the first item of the keypath is actually the master key fingerprint
-                while i < value_len:
-                    keypath.append(struct.unpack("<I", value[i:i + 4])[0])
-                    i += 4
-
-                # add to keypath map
-                self.hd_keypaths[pubkey] = keypath
-
-            # unknown stuff
             else:
-                # read in the value
-                val = f.read(value_len)
+                if key in self.unknown:
+                    raise IOError("Duplicate key, key for unknown value already provided")
+                value = deser_string(f)
+                self.unknown[key] = value
 
-                # global data
-                if separators == 0:
-                    unknown[key] = val
-                else:
-                    psbt_input.unknown[key] = val
+        # make sure that we got an unsigned tx
+        if self.tx.is_null():
+            raise IOError("No unsigned trasaction was provided")
+
+        # Read input data
+        for txin in self.tx.vin:
+            input = PartiallySignedInput()
+            input.deserialize(f)
+            self.inputs.append(input)
+
+            if input.non_witness_utxo and input.non_witness_utxo.rehash() and input.non_witness_utxo.sha256 != txin.prevout.sha256:
+                raise IOError("Non-witness UTXO does not match outpoint hash")
+
+        if (len(self.inputs) != len(self.tx.vin)):
+            raise IOError("Inputs provided does not match the number of inputs in transaction")
+
+        # Read output data
+        for txout in self.tx.vout:
+            output = PartiallySignedOutput()
+            output.deserialize(f)
+            self.outputs.append(output)
+        
+        if len(self.outputs) != len(self.tx.vout):
+            raise IOError("Outputs provided does not match the number of outputs in transaction")
+
+        if not self.is_sane():
+            raise IOError("PSBT is not sane")
 
     def serialize(self):
         r = b""
 
         # magic bytes
-        r += b"\x70\x73\x62\x74\xff"
+        r += b"psbt\xff"
 
         # unsigned tx flag
         r += b"\x01\x00"
@@ -646,73 +842,26 @@ class PSBT(object):
         r += ser_compact_size(len(tx))
         r += tx
 
-        # write redem scripts and witness scripts
-        for script_hash, script in self.redeem_scripts.items():
-            r += ser_compact_size(len(script_hash) + 1)
-            r += b"\x01"
-            r += script_hash
-            r += ser_compact_size(len(script))
-            r += script
-        for script_hash, script in self.witness_scripts.items():
-            r += ser_compact_size(len(script_hash) + 1)
-            r += b"\x02"
-            r += script_hash
-            r += ser_compact_size(len(script))
-            r += script
-
-        # write hd keypaths
-        # Note that the first item of self.hd_keypaths is the master key fingerprint
-        for pubkey, keypath in self.hd_keypaths.items():
-            r += ser_compact_size(len(pubkey) + 1)
-            r += b"\x03"
-            r += pubkey
-            r += ser_compact_size(len(keypath) * 4)
-            for num in keypath:
-                r += struct.pack("<I", num)
-
         # separator
         r += b"\x00"
 
+        # unknowns
+        for key, value in self.unknown:
+            r += ser_string(key)
+            r += ser_string(value)
+
         # inputs
-        for i in range(len(self.tx.vin)):
-            tx_in = self.tx.vin[i]
-            psbt_input = self.inputs[i]
-            try:
-                tx_in_wit = self.tx.wit.vtxinwit[i]
-            except:
-                tx_in_wit = None
-            if not tx_in.scriptSig and not tx_in_wit:
-                # If there is a witness utxo, then don't add the non witness one
-                if psbt_input.witness_utxo:
-                    r += b"\x01\x01"
-                    utxo = psbt_input.witness_utxo.serialize()
-                    r += ser_compact_size(len(utxo))
-                    r += utxo
-                elif psbt_input.non_witness_utxo:
-                    r += b"\x01\x00"
-                    utxo = psbt_input.non_witness_utxo.serialize()
-                    r += ser_compact_size(len(utxo))
-                    r += utxo
+        for input in self.inputs:
+            r += input.serialize()
 
-                # write any partial signatures
-                for pubkey, sig in psbt_input.partial_sigs.items():
-                    r += ser_compact_size(len(pubkey) + 1)
-                    r += b"\x02"
-                    r += pubkey
-                    r += ser_compact_size(len(sig))
-                    r += sig
-
-            # separator
-            r += b"\x00"
+        # outputs
+        for output in self.outputs:
+            r += output.serialize()
 
         # return hex string
         return binascii.hexlify(r)
 
-if __name__ == "__main__":
-    tx_str = "70736274ff01007e020000000269309231ff7253ee0358fa1bf6f87832adaf289e90c9a6c751ca984dc6f5e9bf0000000000ffffffff69309231ff7253ee0358fa1bf6f87832adaf289e90c9a6c751ca984dc6f5e9bf0100000000ffffffff01c0512677000000001976a9148a172cef76ea0dbb32906f4bdb16ca71d7120c4e88ac000000001501b891e2c295362be87b7ec33f7eb49d368e4414bf695221021a0f39420f3c09bacf273a8d70a57f65994367e2e3fef0aea3e5062b68eae24d2103c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab5221029340aa786b2f617717b33a1fc065f1ac627419390e51b81e14b675142b38697353ae1501f71c5b393c1dac613b171fae28d43f1d56dcb5e62200204c55a98cf8bcfcc5d7ce58b47f38d051d9ad93bf93689ee8f4010b4cb9be907d21024c55a98cf8bcfcc5d7ce58b47f38d051d9ad93bf93689ee8f4010b4cb9be907d695221021a0f39420f3c09bacf273a8d70a57f65994367e2e3fef0aea3e5062b68eae24d2103c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab5221029340aa786b2f617717b33a1fc065f1ac627419390e51b81e14b675142b38697353ae0001012000ca9a3b0000000017a914f71c5b393c1dac613b171fae28d43f1d56dcb5e687220203c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab524730440220118786d0c8be84990a7b91bf3e5785f76c21ec0af95e1ff4e6188e889feb0c5902205f6aedb27efe700f22016480485fe702528ba52c8fef04b7def4b609652f8b7601000100fd6e0102000000020072fa62c337b714b84d54f4cc06c6c6ea77c27bee1715a07ca95f9bdd1cd84f000000004847304402207b6d2a7f9f092fca96e351b8ee1443adef3d7480c90b9098e5b1b6ad3acfdf9802207149d6289cebb49c24f5d8107f01dfb431bbf574d73988497c1de84db0c9427401fefffffff313a21a58d6c2d3dabe2254aa5236a5c923dd1b1d849bac4d44f6783aa5885400000000484730440220570710941112b315b768d5468e167895c8d4a6e123980c819619f68c5213da5e0220703d08524331733c628e96872268493ecb6be97ccae555d381a040c526df186301feffffff0400ca9a3b0000000017a914f71c5b393c1dac613b171fae28d43f1d56dcb5e68700ca9a3b0000000017a914b891e2c295362be87b7ec33f7eb49d368e4414bf8700ca9a3b0000000017a91425b43bde0b3d4adb6b2560c8ed6e34fae073f46b87c0fab32c000000001976a914666494defa0621b18222c9463ce3e696216b177d88ac00000000220203c3c411ed379c0c723032eb4290c11a4eb129301ffe4f7d9452b3828bacd8ab52473044022016f36b657af3cf1f583125bf110793672902d38f10bfb14479697340222453e9022075e9ac9a759f4d3e3e1cb0402e32277fafb66ed4d758d504acaa6d1f2175b9e00100"
-    tx = PSBT()
-    tx.deserialize(tx_str)
-    serialized = tx.serialize()
-    print(binascii.hexlify(binascii.unhexlify(tx_str)) == serialized)
-    print(binascii.hexlify(binascii.unhexlify(tx_str)))
-    print(serialized)
+    def is_sane(self):
+        for input in self.inputs:
+            if not input.is_sane(): return False
+        return True
