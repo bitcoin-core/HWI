@@ -304,30 +304,6 @@ class DigitalBitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        # For each input, finalize only p2pkh and p2pk
-        for txin, psbt_in in zip(tx.tx.vin, tx.inputs):
-            if psbt_in.non_witness_utxo:
-                utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
-                if utxo.is_p2pkh:
-                    txin.scriptSig = struct.pack("B", len(psbt_in.partial_sigs.values()[0])) + psbt_in.partial_sigs.values()[0] + struct.pack("B", len(psbt_in.partial_sigs.keys()[0])) + psbt_in.partial_sigs.keys()[0]
-                elif utxo.is_p2pk:
-                    txin.scriptSig = truct.pack("B", len(psbt_in.partial_sigs.values()[0])) + psbt_in.partial_sigs.values()[0]
-                psbt_in.set_null()
-
-        # Extract sigs
-        sigs = []
-        for item in reply['sign']:
-            sigs.append(binascii.unhexlify(item['sig']))
-
-        # Make sigs der
-        der_sigs = []
-        for sig in sigs:
-            der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
-
-        # add sigs to tx
-        for tup, sig in zip(sighash_tuples, der_sigs):
-            tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
-
         return tx.serialize()
 
     # Must return a base64 encoded string with the signed message
