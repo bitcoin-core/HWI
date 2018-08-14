@@ -16,6 +16,7 @@ NO_DEVICE_TYPE = -2
 DEVICE_CONN_ERROR = -3
 UNKNWON_DEVICE_TYPE = -4
 INVALID_TX = -5
+NO_PASSWORD = -6
 
 # This is an abstract class that defines all of the methods that each Hardware
 # wallet subclass must implement.
@@ -57,7 +58,7 @@ class HardwareWalletClient(object):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
-
+NO_PASSWORD
 
 # Get a list of all available hardware wallets
 def enumerate():
@@ -82,7 +83,20 @@ def enumerate():
                 'serial_number':d['serial_number']})
     return result
 
-def process_commands(command, command_args, device_path, device_type):
+def process_commands():
+    parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
+    parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
+    parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
+    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
+    parser.add_argument('command', help='The action to do')
+    parser.add_argument('args', help='Arguments for the command', nargs='*')
+
+    args = parser.parse_args()
+    command = args.command
+    device_path = args.device_path
+    device_type = args.device_type
+    password = args.password
+    command_args = args.args
 
     # List all available hardware wallet devices
     if command == 'enumerate':
@@ -130,8 +144,12 @@ def process_commands(command, command_args, device_path, device_type):
         import ledgeri
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
+        if not password:
+            result = {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
+            print(json.dumps(result))
+            return
         import digitalbitboxi
-        client = digitalbitboxi.DigitalBitboxClient(device=device, password='asdfasdf')
+        client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
     else:
         result = {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
         print(json.dumps(result))
@@ -165,16 +183,4 @@ def process_commands(command, command_args, device_path, device_type):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
-    parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
-    parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
-    parser.add_argument('command', help='The action to do')
-    parser.add_argument('args', help='Arguments for the command', nargs='*')
-
-    args = parser.parse_args()
-    command = args.command
-    device_path = args.device_path
-    device_type = args.device_type
-    command_args = args.args
-
-    process_commands(command, command_args, device_path, device_type)
+    process_commands()
