@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 # Hardware wallet interaction script
 
 import argparse
