@@ -88,6 +88,14 @@ def process_commands(command, command_args, device_path, device_type):
     if command == 'enumerate':
         print(json.dumps(enumerate()))
         return
+    # List available commands
+    if command == 'help':
+        print('Commands:\n\n')
+        print('getmasterxpub                     Get the extended public key at m/44\'/0\'/0\'')
+        print('signtx <psbt>                     Sign the given <psbt>')
+        print('getxpub <path>                    Get the extended public key at <path>')
+        print('signmessage <message> <path>      Sign the <message> with the key at <path>')
+        return
 
     if device_path is None:
         result = {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
