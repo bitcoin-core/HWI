@@ -21,7 +21,7 @@ print("Testing invalid PSBTs")
 for invalid in invalids:
     try:
         psbt = PSBT()
-        psbt.deserialize(Base64ToHex(invalid))
+        psbt.deserialize(invalid)
         assert False
     except:
         pass
@@ -29,8 +29,8 @@ for invalid in invalids:
 print("Testing valid PSBTs")
 for valid in valids:
     psbt = PSBT()
-    psbt.deserialize(Base64ToHex(valid))
-    serd = HexToBase64(psbt.serialize()).decode()
+    psbt.deserialize(valid)
+    serd = psbt.serialize()
     assert(valid == serd)
 
 print("PSBT Serialization tests pass")

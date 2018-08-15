@@ -751,7 +751,8 @@ class PSBT(object):
         self.outputs = []
         self.unknown = []
 
-    def deserialize(self, hexstring):
+    def deserialize(self, psbt):
+        hexstring = Base64ToHex(psbt.strip())
         f = BufferedReader(BytesIO(binascii.unhexlify(hexstring)))
 
         # Read the magic bytes
@@ -859,7 +860,7 @@ class PSBT(object):
             r += output.serialize()
 
         # return hex string
-        return binascii.hexlify(r)
+        return HexToBase64(binascii.hexlify(r)).decode()
 
     def is_sane(self):
         for input in self.inputs:

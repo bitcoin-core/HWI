@@ -163,13 +163,13 @@ def process_commands():
         # Deserialize the transaction
         try:
             tx = PSBT()
-            tx.deserialize(Base64ToHex(command_args[0]))
-            print(json.dumps(client.sign_tx(tx)))
+            tx.deserialize(command_args[0])
         except Exception as e:
             import traceback
             traceback.print_exc()
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
             exit
+        print(json.dumps(client.sign_tx(tx)))
 
     elif command == 'getxpub':
         print(client.get_pubkey_at_path(command_args[0]))
