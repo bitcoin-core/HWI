@@ -201,10 +201,10 @@ def ser_sig_der(r, s):
     s = s[si:]
 
     # Make positive of neg
-    first = struct.unpack("B", r[0])[0]
+    first = r[0]
     if first & (1 << 7) != 0:
         r = b"\x00" + r
-    first = struct.unpack("B", s[0])[0]
+    first = s[0]
     if first & (1 << 7) != 0:
         s = b"\x00" + s
 
@@ -222,7 +222,7 @@ def ser_sig_der(r, s):
     sig += struct.pack("B", len(s))
     sig += s
 
-    sig += "\x01"
+    sig += b"\x01"
     return sig
 
 def ser_sig_compact(r, s, recid):
@@ -302,12 +302,12 @@ class CTxOut(object):
         return r
 
     def is_p2sh(self):
-        return len(self.scriptPubKey) == 23 and self.scriptPubKey[0] == b"\xa9" and self.scriptPubKey[1] == b"\x14" and self.scriptPubKey[22] == "\x87"
+        return len(self.scriptPubKey) == 23 and self.scriptPubKey[0] == 0xa9 and self.scriptPubKey[1] == 0x14 and self.scriptPubKey[22] == 0x87
 
     def is_p2pkh(self):
-        return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == b"\x76" and self.scriptPubKey[1] == b"\xa9" and self.scriptPubKey[2] == b"\x14" and self.scriptPubKey[23] == b"\x88" and self.scriptPubKey[24] == b"\xac"
+        return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
     def is_p2pk(self):
-        return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == b"\x21" or self.scriptPubKey[0] == b"\x41") and self.scriptPubKey[-1] == b"\xac"
+        return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
 
     def __repr__(self):
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
