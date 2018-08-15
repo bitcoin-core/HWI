@@ -179,19 +179,9 @@ class DigitalBitboxClient(HardwareWalletClient):
                     redeemscript = psbt_in.redeem_script
                     # Add to blank_tx
                     txin.scriptSig = redeemscript
-                    # Find which pubkeys to sign with for this input
-                    for pubkey in tx.hd_keypaths.keys():
-                        if pubkey in redeemscript:
-                            pubkeys.append(pubkey)
                 # Check if P2PKH
                 elif utxo.is_p2pkh() or utxo.is_p2pk():
                     txin.scriptSig = psbt_in.non_witness_utxo.vout[txin.prevout.n].scriptPubKey
-                    # Find which pubkeys to sign with for this input
-                    for pubkey in psbt_in.hd_keypaths.keys():
-                        if utxo.is_p2pk() and pubkey in utxo.scriptPubKey:
-                            pubkeys.append(pubkey)
-                        if utxo.is_p2pkh and hash160(pubkey) in utxo.scriptPubKey:
-                            pubkeys.append(pubkey)
                 # We don't know what this is, skip it
                 else:
                     continue
@@ -199,11 +189,9 @@ class DigitalBitboxClient(HardwareWalletClient):
                 # Serialize and add sighash ALL
                 ser_tx = blank_tx.serialize_without_witness()
                 ser_tx += b"\x01\x00\x00\x00"
-                print(binascii.hexlify(ser_tx))
 
                 # Hash it
                 sighash += hash256(ser_tx)
-                print(binascii.hexlify(sighash))
                 txin.scriptSig = b""
             elif psbt_in.witness_utxo:
                 # Calculate hashPrevouts and hashSequence
@@ -256,7 +244,6 @@ class DigitalBitboxClient(HardwareWalletClient):
 
                 # hash it
                 sighash = hash256(preimage)
-                print("preimage {}".format(binascii.hexlify(preimage)))
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
