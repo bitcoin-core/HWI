@@ -56,8 +56,15 @@ def sha256(x):
 
 
 def Hash(x):
-    if type(x) is unicode: x=x.encode('utf-8')
-    return sha256(sha256(x))
+    return sha256(sha256(x.encode('utf-8')))
+
+def to_string(x, enc):
+    if isinstance(x, (bytes, bytearray)):
+        return x.decode(enc)
+    if isinstance(x, str):
+        return x
+    else:
+        raise TypeError("Not a string or bytes like object")
 
 def send_frame(data, device):
     data = bytearray(data)
@@ -69,18 +76,18 @@ def send_frame(data, device):
         if idx == 0:
             # INIT frame
             write = data[idx : idx + min(data_len, usb_report_size - 7)]
-            device.write('\0' + struct.pack(">IBH",HWW_CID, HWW_CMD, data_len & 0xFFFF) + write + '\xEE' * (usb_report_size - 7 - len(write)))
+            device.write(b'\0' + struct.pack(">IBH",HWW_CID, HWW_CMD, data_len & 0xFFFF) + write + b'\xEE' * (usb_report_size - 7 - len(write)))
         else:
             # CONT frame
             write = data[idx : idx + min(data_len, usb_report_size - 5)]
-            device.write('\0' + struct.pack(">IB", HWW_CID, seq) + write + '\xEE' * (usb_report_size - 5 - len(write)))
+            device.write(b'\0' + struct.pack(">IB", HWW_CID, seq) + write + b'\xEE' * (usb_report_size - 5 - len(write)))
             seq += 1
         idx += len(write)
 
 
 def read_frame(device):
     # INIT response
-    read = device.read(usb_report_size)
+    read = bytearray(device.read(usb_report_size))
     cid = ((read[0] * 256 + read[1]) * 256 + read[2]) * 256 + read[3]
     cmd = read[4]
     data_len = read[5] * 256 + read[6]
@@ -88,7 +95,7 @@ def read_frame(device):
     idx = len(read) - 7;
     while idx < data_len:
         # CONT response
-        read = device.read(usb_report_size)
+        read = bytearray(device.read(usb_report_size))
         data += read[5:]
         idx += len(read) - 5
     assert cid == HWW_CID, '- USB command ID mismatch'
@@ -99,16 +106,18 @@ def send_plain(msg, device):
     reply = ""
     try:
         serial_number = device.get_serial_number_string()
-        if serial_number == "dbb.fw:v2.0.0" or serial_number == "dbb.fw:v1.3.2" or serial_number == "dbb.fw:v1.3.1":
-            device.write('\0' + bytearray(msg) + '\0' * (report_buf_size - len(msg)))
-            r = []
-            while len(r) < report_buf_size:
-                r = r + device.read(report_buf_size)
+        if "v2.0." in serial_number or "v1." in serial_number:
+            hidBufSize = 4096
+            device.write('\0' + msg + '\0' * (hidBufSize - len(msg)))
+            r = bytearray()
+            while len(r) < hidBufSize:
+                r += bytearray(self.dbb_hid.read(hidBufSize))
         else:
             send_frame(msg, device)
             r = read_frame(device)
-        r = str(bytearray(r)).rstrip(' \t\r\n\0')
-        r = r.replace("\0", '')
+        r = r.rstrip(b' \t\r\n\0')
+        r = r.replace(b"\0", b'')
+        r = to_string(r, 'utf8')
         reply = json.loads(r)
     except Exception as e:
         reply = json.loads('{"error":"Exception caught while sending plaintext message to DigitalBitbox ' + str(e) + '"}')
@@ -142,6 +151,8 @@ class DigitalBitboxClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
+        if 'error' in reply:
+            return reply
         return json.dumps({'xpub':reply['xpub']})
 
     # Must return a hex string with the signed transaction
@@ -152,7 +163,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = get_xpub_fingerprint(json.loads(self.get_pubkey_at_path('m/0'))['xpub'])
+        master_fp = get_xpub_fingerprint(json.loads(self.get_pubkey_at_path('m/0h'))['xpub'])
 
         # create sighashes
         sighash_tuples = []
@@ -216,9 +227,9 @@ class DigitalBitboxClient(HardwareWalletClient):
                 if psbt_in.witness_utxo.is_p2sh():
                     # Look up redeemscript
                     redeemscript = psbt_in.redeem_script
-                    witness_program += redeemscript
+                    witness_program = redeemscript
                 else:
-                    witness_program += psbt_in.witness_utxo.scriptPubKey
+                    witness_program = psbt_in.witness_utxo.scriptPubKey
 
                 # Check if witness_program is script hash
                 if len(witness_program) == 34 and witness_program[0] == OP_0 and witness_program[1] == 0x20:
@@ -227,15 +238,8 @@ class DigitalBitboxClient(HardwareWalletClient):
                     scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
                 else:
                     scriptCode += b"\x19\x76\xa9\x14"
-                    scriptCode += redeemscript[2:]
+                    scriptCode += witness_program[2:]
                     scriptCode += b"\x88\xac"
-
-                # Find pubkeys to sign with in the scriptCode
-
-                # Find which pubkeys to sign with for this input
-                for pubkey in psbt_in.hd_keypaths.keys():
-                    if hash160(pubkey) in scriptCode or pubkey in scriptCode:
-                        pubkeys.append(pubkey)
 
                 # Make sighash preimage
                 preimage = b""
@@ -244,28 +248,30 @@ class DigitalBitboxClient(HardwareWalletClient):
                 preimage += hashSequence
                 preimage += txin.prevout.serialize()
                 preimage += scriptCode
-                preimage += psbt_in.witness_utxo.nValue
-                preimage += txin.nSequence
+                preimage += struct.pack("<q", psbt_in.witness_utxo.nValue)
+                preimage += struct.pack("<I", txin.nSequence)
                 preimage += hashOutputs
                 preimage += struct.pack("<I", tx.tx.nLockTime)
                 preimage += b"\x01\x00\x00\x00"
 
                 # hash it
-                sighash += hash256(preimage)
+                sighash = hash256(preimage)
+                print("preimage {}".format(binascii.hexlify(preimage)))
 
             # Figure out which keypath thing is for this input
-            for pubkey in pubkeys:
-                keypath = tx.hd_keypaths[pubkey]
-                print(master_fp)
-                print(keypath[0])
+            for pubkey, keypath in psbt_in.hd_keypaths.items():
                 if master_fp == keypath[0]:
                     # Add the keypath strings
-                    keypath_str = 'm/'
+                    keypath_str = 'm'
                     for index in keypath[1:]:
-                        keypath_str += str(index) + "/"
+                        keypath_str += '/'
+                        if index >= 0x80000000:
+                            keypath_str += str(index - 0x80000000) + 'h'
+                        else:
+                            keypath_str += str(index)
 
                     # Create tuples and add to List
-                    tup = (binascii.hexlify(sighash), keypath_str, i_num, pubkey)
+                    tup = (binascii.hexlify(sighash).decode(), keypath_str, i_num, pubkey)
                     sighash_tuples.append(tup)
 
         # Sign the sighashes
@@ -276,7 +282,8 @@ class DigitalBitboxClient(HardwareWalletClient):
             to_send += '","keypath":"'
             to_send += tup[1]
             to_send += '"},'
-        to_send = to_send[:-1]
+        if to_send[-1] == ',':
+            to_send = to_send[:-1]
         to_send += ']}}'
         print(to_send)
 
