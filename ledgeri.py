@@ -7,7 +7,7 @@ import base64
 import json
 import struct
 import base58
-from serializations import hash256, hash160, ser_uint256, PSBT, CTransaction
+from serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
@@ -69,8 +69,7 @@ class LedgerClient(HardwareWalletClient):
         tx_bytes = c_tx.serialize_with_witness()
 
         # Master key fingerprint
-        master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey('0')["publicKey"]))[:4]
-
+        master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey('')["publicKey"]))[:4]
         # An entry per input, each with 0 to many keys to sign with
         all_signature_attempts = [[]]*len(c_tx.vin)
 
@@ -85,7 +84,7 @@ class LedgerClient(HardwareWalletClient):
             # Find which wallet key could be change based on hdsplit: m/.../1/k
             # Wallets shouldn't be sending to change address as user action
             # otherwise this will get confused
-            for pubkey, path in tx.hd_keypaths.items():
+            for pubkey, path in tx.outputs[i_num].hd_keypaths.items():
                 if struct.pack("<I", path[0]) == master_fpr and len(path) > 2 and path[-2] == 1:
                     # For possible matches, check if pubkey matches possible template
                     if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014")+hash160(pubkey)) in txout.scriptPubKey:
@@ -124,7 +123,7 @@ class LedgerClient(HardwareWalletClient):
                 witness_program += psbt_in.witness_utxo.scriptPubKey
 
             # Check if witness_program is script hash
-            if len(witness_program) == 34 and ord(witness_program[0]) == 0x00 and ord(witness_program[1]) == 0x20:
+            if len(witness_program) == 34 and witness_program[0] == 0x00 and witness_program[1] == 0x20:
                 # look up witnessscript and set as scriptCode
                 witnessscript = psbt_in.witness_script
                 scriptCode += witnessscript
@@ -136,7 +135,7 @@ class LedgerClient(HardwareWalletClient):
             # Save scriptcode for later signing
             script_codes[i_num] = scriptCode
 
-            # Find which pubkeys could sign this input
+            # Find which pubkeys could sign this input (should be all?)
             for pubkey in psbt_in.hd_keypaths.keys():
                 if hash160(pubkey) in scriptCode or pubkey in scriptCode:
                     pubkeys.append(pubkey)
@@ -154,7 +153,6 @@ class LedgerClient(HardwareWalletClient):
 
             all_signature_attempts[i_num] = signature_attempts
 
-        # NOTE: This will likely get replaced on unified segwit/legacy signing firmware
         # Process them up front with all scriptcodes blank
         blank_script_code = bytearray()
         for i in range(len(segwit_inputs)):
@@ -170,7 +168,7 @@ class LedgerClient(HardwareWalletClient):
                 tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
 
         # Send PSBT back
-        return HexToBase64(tx.serialize())
+        return tx.serialize()
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
