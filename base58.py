@@ -12,7 +12,7 @@ b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 from binascii import hexlify, unhexlify
 import struct
-from serializations import hash256
+from serializations import hash256, hash160
 
 def encode(b):
     """Encode bytes to a base58-encoded string"""
@@ -71,8 +71,24 @@ def get_xpub_fingerprint(s):
     fingerprint = data[5:9]
     return struct.unpack("<I", fingerprint)[0]
 
+def get_xpub_id(xpub):
+    data = decode(xpub)
+    pubkey = data[-37:-4]
+    return hexlify(hash160(pubkey)[::-1]).decode()
+
 def to_address(b, version):
     data = version + b
     checksum = hash256(data)[0:4]
     data += checksum
     return encode(data)
+
+def xpub_to_address(xpub):
+    data = decode(xpub)
+    pubkey = data[-37:-4]
+    pkh = hash160(pubkey)
+    return to_address(pkh, b'\x6f')
+
+def xpub_to_pub_hex(xpub):
+    data = decode(xpub)
+    pubkey = data[-37:-4]
+    return hexlify(pubkey).decode()

@@ -8,7 +8,8 @@ import json
 
 from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids
-from serializations import PSBT, Base64ToHex, HexToBase64
+from serializations import PSBT, Base64ToHex, HexToBase64, hash160
+from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_id
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -109,6 +110,7 @@ def process_commands():
         print('signtx <psbt>                     Sign the given <psbt>')
         print('getxpub <path>                    Get the extended public key at <path>')
         print('signmessage <message> <path>      Sign the <message> with the key at <path>')
+        print('getkeypool <path base> <start> <end>   Returns the JSON array for importmulti with pubkeys at <path_base>/i from <start> to <end> inclusive')
         return
 
     if device_path is None:
@@ -175,6 +177,30 @@ def process_commands():
         print(client.get_pubkey_at_path(command_args[0]))
     elif command == 'signmessage':
         print(client.sign_message(command_args[0], command_args[1]))
+    elif command == 'getkeypool':
+        # args[0]: path base (e.g. m/44'/0'/0')
+        # args[1]; start index (e.g. 0)
+        # args[2]: end index (e.g. 1000)
+        master_xpub = json.loads(client.get_pubkey_at_path('m/'))['xpub']
+        master_fpr = get_xpub_id(master_xpub)
+        path_base = command_args[0]
+        start = int(command_args[1])
+        end = int(command_args[2])
+
+        import_data = []
+        for i in range(start, end + 1):
+            this_import = {}
+            if (path_base[-1] == '/'):
+                path = path_base + str(i)
+            else:
+                path = path_base + '/' + str(i)
+            xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
+            address = xpub_to_address(xpub)
+            this_import['scriptPubKey'] = {'address' : address}
+            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path}}]
+            this_import['timestamp'] = 'now'
+            import_data.append(this_import)
+        print(json.dumps(import_data))
     else:
         print(json.dumps({'error':'Unknown command'}))
 

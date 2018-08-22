@@ -159,7 +159,7 @@ class LedgerClient(HardwareWalletClient):
             self.app.startUntrustedTransaction(i==0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
 
         # Number of unused fields for Nano S, only changepath and transaction in bytes req
-        outputData = self.app.finalizeInput("DUMMY", -1, -1, change_path, tx_bytes)
+        outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
 
         # For each input we control do segwit signature
         for i in range(len(segwit_inputs)):
