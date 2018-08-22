@@ -129,7 +129,7 @@ class LedgerClient(HardwareWalletClient):
             if psbt_in.witness_utxo is not None and psbt_in.witness_utxo.is_p2sh():
                 redeemscript = psbt_in.redeem_script
                 witness_program += redeemscript
-            elif psbt_in.witness_utxo is not None and psbt_in.non_witness_utxo.is_p2sh():
+            elif psbt_in.non_witness_utxo is not None and psbt_in.non_witness_utxo.vout[txin.prevout.n].is_p2sh():
                 redeemscript = psbt_in.redeem_script
             elif psbt_in.witness_utxo is not None:
                 witness_program += psbt_in.witness_utxo.scriptPubKey
