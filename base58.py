@@ -86,7 +86,7 @@ def xpub_to_address(xpub):
     data = decode(xpub)
     pubkey = data[-37:-4]
     pkh = hash160(pubkey)
-    return to_address(pkh, b'\x6f')
+    return to_address(pkh, b'\x00')
 
 def xpub_to_pub_hex(xpub):
     data = decode(xpub)
