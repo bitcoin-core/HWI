@@ -73,8 +73,15 @@ class LedgerClient(HardwareWalletClient):
         # An entry per input, each with 0 to many keys to sign with
         all_signature_attempts = [[]]*len(c_tx.vin)
 
-        # Inputs during segwit preprocessing step
+        # NOTE: We only support signing Segwit inputs, where we can skip over non-segwit
+        # inputs, or non-segwit inputs, where *all* inputs are non-segwit. This is due
+        # to Ledger's mutually exclusive signing steps for each type.
         segwit_inputs = []
+        # Legacy style inputs
+        legacy_inputs = []
+
+        has_segwit = False
+        has_legacy = False
 
         script_codes = [[]]*len(c_tx.vin)
 
@@ -102,35 +109,52 @@ class LedgerClient(HardwareWalletClient):
             seq.reverse()
             seq_hex = ''.join('{:02x}'.format(x) for x in seq)
 
-            # We will not attempt to sign non-witness inputs but
-            # need information for pre-processing
             if psbt_in.non_witness_utxo:
                 segwit_inputs.append({"value":txin.prevout.serialize()+struct.pack("<Q", psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue), "witness":True, "sequence":seq_hex})
-                continue
+                # We only need legacy inputs in the case where all inputs are legacy, we check
+                # later
+                ledger_prevtx = bitcoinTransaction(psbt_in.non_witness_utxo.serialize())
+                legacy_inputs.append(self.app.getTrustedInput(ledger_prevtx, txin.prevout.n))
+                legacy_inputs[-1]["sequence"] = seq_hex
+                has_legacy = True
             else:
                 segwit_inputs.append({"value":txin.prevout.serialize()+struct.pack("<Q", psbt_in.witness_utxo.nValue), "witness":True, "sequence":seq_hex})
+                has_segwit = True
 
             pubkeys = []
             signature_attempts = []
 
             scriptCode = b""
             witness_program = b""
-            if psbt_in.witness_utxo.is_p2sh():
-                # Look up redeemscript
+            if psbt_in.witness_utxo is not None and psbt_in.witness_utxo.is_p2sh():
                 redeemscript = psbt_in.redeem_script
                 witness_program += redeemscript
-            else:
+            elif psbt_in.witness_utxo is not None and psbt_in.non_witness_utxo.is_p2sh():
+                redeemscript = psbt_in.redeem_script
+            elif psbt_in.witness_utxo is not None:
                 witness_program += psbt_in.witness_utxo.scriptPubKey
+            elif psbt_in.non_witness_utxo is not None:
+                # No-op
+                redeemscript = b""
+                witness_program = b""
+            else:
+                raise Exception("PSBT is missing input utxo information, cannot sign")
 
             # Check if witness_program is script hash
             if len(witness_program) == 34 and witness_program[0] == 0x00 and witness_program[1] == 0x20:
                 # look up witnessscript and set as scriptCode
                 witnessscript = psbt_in.witness_script
                 scriptCode += witnessscript
-            else:
+            elif len(witness_program) > 0:
+                # p2wpkh
                 scriptCode += b"\x76\xa9\x14"
                 scriptCode += witness_program[2:]
                 scriptCode += b"\x88\xac"
+            elif len(witness_program) == 0:
+                if len(redeemscript) > 0:
+                    scriptCode = redeemscript
+                else:
+                    scriptCode = psbt_in.non_witness_utxo.vout[txin.prevout.n].scriptPubKey
 
             # Save scriptcode for later signing
             script_codes[i_num] = scriptCode
@@ -153,19 +177,32 @@ class LedgerClient(HardwareWalletClient):
 
             all_signature_attempts[i_num] = signature_attempts
 
-        # Process them up front with all scriptcodes blank
-        blank_script_code = bytearray()
-        for i in range(len(segwit_inputs)):
-            self.app.startUntrustedTransaction(i==0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
+        # Sign any segwit inputs
+        if has_segwit:
+            # Process them up front with all scriptcodes blank
+            blank_script_code = bytearray()
+            for i in range(len(segwit_inputs)):
+                self.app.startUntrustedTransaction(i==0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
 
-        # Number of unused fields for Nano S, only changepath and transaction in bytes req
-        outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
+            # Number of unused fields for Nano S, only changepath and transaction in bytes req
+            outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
 
-        # For each input we control do segwit signature
-        for i in range(len(segwit_inputs)):
-            for signature_attempt in all_signature_attempts[i]:
-                self.app.startUntrustedTransaction(False, 0, [segwit_inputs[i]], script_codes[i], c_tx.nVersion)
-                tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
+            # For each input we control do segwit signature
+            for i in range(len(segwit_inputs)):
+                # Don't try to sign legacy inputs
+                if tx.inputs[i].non_witness_utxo is not None:
+                    continue
+                for signature_attempt in all_signature_attempts[i]:
+                    self.app.startUntrustedTransaction(False, 0, [segwit_inputs[i]], script_codes[i], c_tx.nVersion)
+                    tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
+        elif has_legacy:
+            # Legacy signing if all inputs are legacy
+            for i in range(len(legacy_inputs)):
+                for signature_attempt in all_signature_attempts[i]:
+                    assert(tx.inputs[i].non_witness_utxo is not None)
+                    self.app.startUntrustedTransaction(i==0, i, legacy_inputs, script_codes[i], c_tx.nVersion)
+                    outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
+                    tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
 
         # Send PSBT back
         return tx.serialize()
