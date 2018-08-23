@@ -7,7 +7,7 @@ from trezorlib import coins
 from trezorlib import messages as proto
 from trezorlib import protobuf
 from trezorlib import tools
-from base58 import get_xpub_fingerprint, decode, to_address
+from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
 
 import binascii
 import json
@@ -38,7 +38,10 @@ class TrezorClient(HardwareWalletClient):
     def get_pubkey_at_path(self, path):
         expanded_path = tools.parse_path(path)
         output = self.client.get_public_node(expanded_path)
-        return json.dumps({'xpub':output.xpub})
+        if self.is_testnet:
+            return json.dumps({'xpub':xpub_main_2_test(output.xpub)})
+        else:
+            return json.dumps({'xpub':output.xpub})
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
@@ -111,16 +114,24 @@ class TrezorClient(HardwareWalletClient):
             # append to inputs
             inputs.append(txinputtype)
 
+        # address version byte
+        if self.is_testnet:
+            p2pkh_version = b'\x6f'
+            p2sh_version = b'\c4'
+        else:
+            p2pkh_version = b'\x00'
+            p2sh_version = b'\x05'
+
         # prepare outputs
         outputs = []
         for out in tx.tx.vout:
             txoutput = proto.TxOutputType()
             if out.is_p2pkh:
-                txoutput.address = to_address(out.scriptPubKey[2:22], b"\x00")
+                txoutput.address = to_address(out.scriptPubKey[2:22], p2pkh_version)
                 txoutput.amount = out.nValue
                 txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
             elif out.is_p2sh:
-                txoutput.address = to_address(out.scriptPubKey[3:23], b"\x05")
+                txoutput.address = to_address(out.scriptPubKey[3:23], p2sh_version)
                 txoutput.amount = out.nValue
                 txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
             else:
@@ -131,8 +142,12 @@ class TrezorClient(HardwareWalletClient):
             outputs.append(txoutput)
 
         # Sign the transaction
-        self.client.set_tx_api(coins.tx_api['Bitcoin'])
-        signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
+        if self.is_testnet:
+            self.client.set_tx_api(coins.tx_api['Testnet'])
+            signed_tx = self.client.sign_tx("Testnet", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
+        else:
+            self.client.set_tx_api(coins.tx_api['Bitcoin'])
+            signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
         print(signed_tx)
 
         return

@@ -82,13 +82,22 @@ def to_address(b, version):
     data += checksum
     return encode(data)
 
-def xpub_to_address(xpub):
+def xpub_to_address(xpub, testnet=False):
     data = decode(xpub)
     pubkey = data[-37:-4]
     pkh = hash160(pubkey)
-    return to_address(pkh, b'\x00')
+    if testnet:
+        return to_address(pkh, b'\x6f')
+    else:
+        return to_address(pkh, b'\x00')
 
 def xpub_to_pub_hex(xpub):
     data = decode(xpub)
     pubkey = data[-37:-4]
     return hexlify(pubkey).decode()
+
+def xpub_main_2_test(xpub):
+    data = decode(xpub)
+    test_data = b'\x04\x35\x87\xCF' + data[4:-4]
+    checksum = hash256(test_data)[0:4]
+    return encode(test_data + checksum)

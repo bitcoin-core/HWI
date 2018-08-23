@@ -11,7 +11,7 @@ import binascii
 
 from hwi import HardwareWalletClient
 from serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
-from base58 import get_xpub_fingerprint, decode, to_address
+from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8*512
@@ -153,7 +153,11 @@ class DigitalBitboxClient(HardwareWalletClient):
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
         if 'error' in reply:
             return reply
-        return json.dumps({'xpub':reply['xpub']})
+
+        if self.is_testnet:
+            return json.dumps({'xpub':xpub_main_2_test(reply['xpub'])})
+        else:
+            return json.dumps({'xpub':reply['xpub']})
 
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format

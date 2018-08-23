@@ -55,7 +55,10 @@ class LedgerClient(HardwareWalletClient):
         depth = len(path.split("/")) if len(path) > 0 else 0
         depth = struct.pack("B", depth)
 
-        version = bytearray.fromhex("0488B21E")
+        if self.is_testnet:
+            version = bytearray.fromhex("043587CF")
+        else:
+            version = bytearray.fromhex("0488B21E")
         extkey = version+depth+fpr+child+chainCode+publicKey
         checksum = hash256(extkey)[:4]
 
