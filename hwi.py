@@ -187,6 +187,10 @@ def process_commands():
         path_base = command_args[0]
         start = int(command_args[1])
         end = int(command_args[2])
+
+        if device_type == 'digitalbitbox':
+            if '\'' not in path_base and 'h' not in path_base and 'H' not in path_base:
+                print(json.dumps({'error' : 'The digital bitbox requires one part of the derivation path to be derived using hardened keys'}))
         master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
         master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
