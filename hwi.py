@@ -173,7 +173,7 @@ def process_commands():
             import traceback
             traceback.print_exc()
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
-            exit
+            return
         print(json.dumps(client.sign_tx(tx)))
 
     elif command == 'getxpub':
