@@ -71,10 +71,10 @@ def get_xpub_fingerprint(s):
     fingerprint = data[5:9]
     return struct.unpack("<I", fingerprint)[0]
 
-def get_xpub_id(xpub):
+def get_xpub_fingerprint_as_id(xpub):
     data = decode(xpub)
-    pubkey = data[-37:-4]
-    return hexlify(hash160(pubkey)[::-1]).decode()
+    fingerprint = data[5:9] + b'\x00' * 16
+    return hexlify(fingerprint[::-1]).decode()
 
 def to_address(b, version):
     data = version + b
