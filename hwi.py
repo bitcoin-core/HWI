@@ -200,7 +200,7 @@ def process_commands():
             xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
             address = xpub_to_address(xpub, args.testnet)
             this_import['scriptPubKey'] = {'address' : address}
-            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path}}]
+            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
             this_import['timestamp'] = 'now'
             import_data.append(this_import)
         print(json.dumps(import_data))

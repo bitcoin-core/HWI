@@ -25,6 +25,8 @@ class LedgerClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         path = path[2:]
+        path = path.replace('h', '\'')
+        path = path.replace('H', '\'')
         # This call returns raw uncompressed pubkey, chaincode
         pubkey = self.app.getWalletPublicKey(path)
         if path != "":
@@ -40,7 +42,7 @@ class LedgerClient(HardwareWalletClient):
             # Compute child info
             childstr = path.split("/")[-1]
             hard = 0
-            if childstr[-1] == "'":
+            if childstr[-1] == "'" or childstr[-1] == "h" or childstr[-1] == "H":
                 childstr = childstr[:-1]
                 hard = 0x80000000
             child = struct.pack(">I", int(childstr)+hard)
