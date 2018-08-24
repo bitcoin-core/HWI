@@ -9,6 +9,7 @@ from trezorlib.tx_api import TxApi
 from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
 from serializations import ser_uint256, uint256_from_str
 
+import bech32
 import binascii
 import json
 
@@ -125,9 +126,11 @@ class TrezorClient(HardwareWalletClient):
         if self.is_testnet:
             p2pkh_version = b'\x6f'
             p2sh_version = b'\xc4'
+            bech32_hrp = 'tb'
         else:
             p2pkh_version = b'\x00'
             p2sh_version = b'\x05'
+            bech32_hrp = 'bc'
 
         # prepare outputs
         outputs = []
@@ -140,8 +143,11 @@ class TrezorClient(HardwareWalletClient):
             elif out.is_p2sh():
                 txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
             else:
-                # TODO: Figure out what to do here. for now, just break
-                break
+                wit, ver, prog = out.is_witness()
+                if wit:
+                    txoutput.address = bech32.encode(bech32_hrp, ver, prog)
+                else:
+                    raise TypeError("Output is not an address")
 
             # append to outputs
             outputs.append(txoutput)

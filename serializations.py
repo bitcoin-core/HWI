@@ -309,6 +309,18 @@ class CTxOut(object):
     def is_p2pk(self):
         return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
 
+    def is_witness(self):
+        if len(self.scriptPubKey) < 4 or len(self.scriptPubKey) > 42:
+            return (False, None, None)
+
+        if self.scriptPubKey[0] != 0 and (self.scriptPubKey[0] < 81 or self.scriptPubKey[0] > 96):
+            return (False, None, None)
+
+        if self.scriptPubKey[1] + 2 == len(self.scriptPubKey):
+            return (True, self.scriptPubKey[0] - 0x50 if self.scriptPubKey[0] else 0, self.scriptPubKey[2:])
+
+        return (False, None, None)
+
     def __repr__(self):
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
             % (self.nValue, self.nValue, binascii.hexlify(self.scriptPubKey))
