@@ -30,6 +30,8 @@ class KeepKeyClient(HardwareWalletClient):
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
+        path = path.replace('h', '\'')
+        path = path.replace('H', '\'')
         expanded_path = self.client.expand_path(path)
         output = self.client.get_public_node(expanded_path)
         if self.is_testnet:

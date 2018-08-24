@@ -9,7 +9,7 @@ import json
 from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids
 from serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_id
+from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -173,7 +173,7 @@ def process_commands():
             import traceback
             traceback.print_exc()
             print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
-            exit
+            return
         print(json.dumps(client.sign_tx(tx)))
 
     elif command == 'getxpub':
@@ -184,11 +184,15 @@ def process_commands():
         # args[0]: path base (e.g. m/44'/0'/0')
         # args[1]; start index (e.g. 0)
         # args[2]: end index (e.g. 1000)
-        master_xpub = json.loads(client.get_pubkey_at_path('m/'))['xpub']
-        master_fpr = get_xpub_id(master_xpub)
         path_base = command_args[0]
         start = int(command_args[1])
         end = int(command_args[2])
+
+        if device_type == 'digitalbitbox':
+            if '\'' not in path_base and 'h' not in path_base and 'H' not in path_base:
+                print(json.dumps({'error' : 'The digital bitbox requires one part of the derivation path to be derived using hardened keys'}))
+        master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
+        master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
         import_data = []
         for i in range(start, end + 1):
@@ -200,7 +204,7 @@ def process_commands():
             xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
             address = xpub_to_address(xpub, args.testnet)
             this_import['scriptPubKey'] = {'address' : address}
-            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path}}]
+            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
             this_import['timestamp'] = 'now'
             import_data.append(this_import)
         print(json.dumps(import_data))
