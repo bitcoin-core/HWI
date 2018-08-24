@@ -87,6 +87,16 @@ class TrezorClient(HardwareWalletClient):
             txinputtype.prev_index = txin.prevout.n
             txinputtype.sequence = txin.nSequence
 
+            # Detrermine spend type
+            if psbt_in.non_witness_utxo:
+                txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+            elif psbt_in.witness_utxo:
+                # Check if the output is p2sh
+                if psbt_in.witness_utxo.is_p2sh():
+                    txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
+                else:
+                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+
             # Check for 1 key
             if len(psbt_in.hd_keypaths) == 1:
                 # Is this key ours
@@ -96,16 +106,6 @@ class TrezorClient(HardwareWalletClient):
                 if fp == master_fp:
                     # Set the keypath
                     txinputtype.address_n = keypath
-                    if psbt_in.non_witness_utxo:
-                        txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
-                    elif psbt_in.witness_utxo:
-                        # Check if the output is p2sh
-                        if psbt_in.witness_utxo.is_p2sh():
-                            txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
-                        else:
-                            txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
-                else:
-                    raise TypeError("All inputs must have a key for this device")
 
             # Check for multisig (more than 1 key)
             elif len(psbt_in.hd_keypaths) > 1:

@@ -93,6 +93,16 @@ class KeepKeyClient(HardwareWalletClient):
             txinputtype.prev_index = txin.prevout.n
             txinputtype.sequence = txin.nSequence
 
+            # Detrermine spend type
+            if psbt_in.non_witness_utxo:
+                txinputtype.script_type = 0
+            elif psbt_in.witness_utxo:
+                # Check if the output is p2sh
+                if psbt_in.witness_utxo.is_p2sh():
+                    txinputtype.script_type = 3
+                else:
+                    txinputtype.script_type = 4
+
             # Check for 1 key
             if len(psbt_in.hd_keypaths) == 1:
                 # Is this key ours
@@ -102,16 +112,6 @@ class KeepKeyClient(HardwareWalletClient):
                 if fp == master_fp:
                     # Set the keypath
                     txinputtype.address_n.extend(keypath)
-                    if psbt_in.non_witness_utxo:
-                        txinputtype.script_type = 0
-                    elif psbt_in.witness_utxo:
-                        # Check if the output is p2sh
-                        if psbt_in.witness_utxo.is_p2sh():
-                            txinputtype.script_type = 3
-                        else:
-                            txinputtype.script_type = 4
-                else:
-                    raise TypeError("All inputs must have a key for this device")
 
             # Check for multisig (more than 1 key)
             elif len(psbt_in.hd_keypaths) > 1:
