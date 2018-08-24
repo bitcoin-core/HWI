@@ -166,6 +166,8 @@ class TrezorClient(HardwareWalletClient):
                 keypath = psbt_in.hd_keypaths[pubkey][1:]
                 if fp == master_fp:
                     psbt_in.partial_sigs[pubkey] = sig + b'\x01'
+                break
+            signatures.remove(sig)
 
         return tx.serialize()
 
