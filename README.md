@@ -2,9 +2,32 @@
 
 This project contains several scripts for interacting with Bitcoin hardware wallets.
 
-## Using
+## Prerequisites
 
-You will need Python 3. The main script is `hwi.py`.
+Python 3 is required. The libraries and udev rules for each device must also be installed.
+
+Install all of the libraries using `pip` (in virtualenv or system):
+
+```
+pip3 install hidapi # HID API needed in general
+pip3 install trezor[hidapi] # Trezor One
+pip3 install btchip-python # Ledger Nano S
+pip3 install keepkey # KeepKey
+```
+
+## Usage
+
+To use, first enumerate all devices and find the one that you want to use with
+
+```
+./hwi.py enumerate
+```
+
+Once the device type and device path is known, issue commands to it like so:
+
+```
+./hwi.py -t <type> -d <path> <command> <command args>
+```
 
 ## Device Support
 
