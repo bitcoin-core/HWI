@@ -201,13 +201,15 @@ class LedgerClient(HardwareWalletClient):
                     self.app.startUntrustedTransaction(False, 0, [segwit_inputs[i]], script_codes[i], c_tx.nVersion)
                     tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
         elif has_legacy:
+            first_input = True
             # Legacy signing if all inputs are legacy
             for i in range(len(legacy_inputs)):
                 for signature_attempt in all_signature_attempts[i]:
                     assert(tx.inputs[i].non_witness_utxo is not None)
-                    self.app.startUntrustedTransaction(i==0, i, legacy_inputs, script_codes[i], c_tx.nVersion)
+                    self.app.startUntrustedTransaction(first_input, i, legacy_inputs, script_codes[i], c_tx.nVersion)
                     outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
                     tx.inputs[i].partial_sigs[signature_attempt[1]] = self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)
+                    first_input = False
 
         # Send PSBT back
         return tx.serialize()
