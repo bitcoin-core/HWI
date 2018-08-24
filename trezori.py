@@ -3,21 +3,46 @@
 from hwi import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.transport import get_transport
-from trezorlib import coins
+from trezorlib import protobuf, tools
 from trezorlib import messages as proto
-from trezorlib import protobuf
-from trezorlib import tools
+from trezorlib.tx_api import TxApi
 from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from serializations import ser_uint256, uint256_from_str
 
 import binascii
 import json
-#
-# class HWITxApi(TxApi):
-#     def __init__(self, tx):
-#         self.tx = tx
-#
-#     def get_tx(self, txhash):
 
+class TxAPIPSBT(TxApi):
+
+    def __init__(self, psbt):
+        super().__init__('bitcoin_psbt', None)
+        self.psbt = psbt
+
+    def get_tx(self, txhash):
+        tx = None
+        for psbt_in in self.psbt.inputs:
+            if psbt_in.non_witness_utxo and psbt_in.non_witness_utxo.sha256 == uint256_from_str(binascii.unhexlify(txhash)[::-1]):
+                tx = psbt_in.non_witness_utxo
+        if not tx:
+            raise ValueError("TX {} not found in PSBT".format(txhash))
+
+        t = proto.TransactionType()
+        t.version = tx.nVersion
+        t.lock_time = tx.nLockTime
+
+        for vin in tx.vin:
+            i = t._add_inputs()
+            i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
+            i.prev_index = vin.prevout.n
+            i.script_sig = vin.scriptSig
+            i.sequence = vin.nSequence
+
+        for vout in tx.vout:
+            o = t._add_bin_outputs()
+            o.amount = vout.nValue
+            o.script_pubkey = vout.scriptPubKey
+
+        return t
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -57,53 +82,35 @@ class TrezorClient(HardwareWalletClient):
             txinputtype = proto.TxInputType()
 
             # Set the input stuff
-            txinputtype.prev_hash = txin.prevout.hash
+            txinputtype.prev_hash = ser_uint256(txin.prevout.hash)[::-1]
             txinputtype.prev_index = txin.prevout.n
             txinputtype.sequence = txin.nSequence
 
             # Check for 1 key
             if len(psbt_in.hd_keypaths) == 1:
                 # Is this key ours
-                if psbt_in.hd_keypaths.keys()[0] == master_fp:
+                pubkey = list(psbt_in.hd_keypaths.keys())[0]
+                fp = psbt_in.hd_keypaths[pubkey][0]
+                keypath = list(psbt_in.hd_keypaths[pubkey][1:])
+                if fp == master_fp:
                     # Set the keypath
-                    txinputtype.address_n.extend(psbt_in.hd_keypaths.values()[0])
-                else:
-                    txinputtype.script_type = proto.InputScriptType.EXTERNAL
-
-                    # Set spend type
-                    if txinputtype.script_type != proto.InputScriptType.EXTERNAL and psbt_in.non_witness_utxo:
+                    txinputtype.address_n = keypath
+                    if psbt_in.non_witness_utxo:
                         txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                    elif psbt_in.witness_utxo:
+                        # Check if the output is p2sh
+                        if psbt_in.witness_utxo.is_p2sh():
+                            txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
+                        else:
+                            txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                else:
+                    raise TypeError("All inputs must have a key for this device")
 
             # Check for multisig (more than 1 key)
             elif len(psbt_in.hd_keypaths) > 1:
-                # Find our keypath
-                for fp, keypath in psbt_in.hd_keypaths.items():
-                    if fp == master_fp:
-
-                        # Set the keypaths
-                        txinputtype.address_n.extend(keypath)
-
-                        # Set multisig
-                        multisig = proto_types.MultisigRedeemScriptType(
-                            pubkeys=[
-                                proto_types.HDNodePathType(node=master_key, address_n=keypath),
-                            ],
-                            signatures=[b''],
-                        )
-                        txinputtype.multisig = multisig
-
-                        break
-
-                # Set spend type
-                if psbt_in.non_witness_utxo:
-                    txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
-
-            if psbt_in.witness_utxo:
-                # Check if the output is p2sh
-                if psbt_in.witness_utxo.is_p2sh():
-                    txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
-                else:
-                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                raise TypeError("Cannot sign multisig yet")
+            else:
+                raise TypeError("All inputs must have a key for this device")
 
             # Set the amount
             if psbt_in.non_witness_utxo:
@@ -117,7 +124,7 @@ class TrezorClient(HardwareWalletClient):
         # address version byte
         if self.is_testnet:
             p2pkh_version = b'\x6f'
-            p2sh_version = b'\c4'
+            p2sh_version = b'\xc4'
         else:
             p2pkh_version = b'\x00'
             p2sh_version = b'\x05'
@@ -126,14 +133,12 @@ class TrezorClient(HardwareWalletClient):
         outputs = []
         for out in tx.tx.vout:
             txoutput = proto.TxOutputType()
-            if out.is_p2pkh:
-                txoutput.address = to_address(out.scriptPubKey[2:22], p2pkh_version)
-                txoutput.amount = out.nValue
-                txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
-            elif out.is_p2sh:
-                txoutput.address = to_address(out.scriptPubKey[3:23], p2sh_version)
-                txoutput.amount = out.nValue
-                txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
+            txoutput.amount = out.nValue
+            txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
+            if out.is_p2pkh():
+                txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
+            elif out.is_p2sh():
+                txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
             else:
                 # TODO: Figure out what to do here. for now, just break
                 break
@@ -142,15 +147,21 @@ class TrezorClient(HardwareWalletClient):
             outputs.append(txoutput)
 
         # Sign the transaction
+        self.client.set_tx_api(TxAPIPSBT(tx))
         if self.is_testnet:
-            self.client.set_tx_api(coins.tx_api['Testnet'])
             signed_tx = self.client.sign_tx("Testnet", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
         else:
-            self.client.set_tx_api(coins.tx_api['Bitcoin'])
             signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
-        print(signed_tx)
 
-        return
+        signatures = signed_tx[0]
+        for psbt_in in tx.inputs:
+            for pubkey, sig in zip(psbt_in.hd_keypaths.keys(), signatures):
+                fp = psbt_in.hd_keypaths[pubkey][0]
+                keypath = psbt_in.hd_keypaths[pubkey][1:]
+                if fp == master_fp:
+                    psbt_in.partial_sigs[pubkey] = sig + b'\x01'
+
+        return tx.serialize()
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string

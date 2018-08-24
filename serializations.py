@@ -240,7 +240,7 @@ def ser_sig_compact(r, s, recid):
 MSG_WITNESS_FLAG = 1<<30
 
 class COutPoint(object):
-    def __init__(self, hash=0, n=0):
+    def __init__(self, hash=0, n=0xffffffff):
         self.hash = hash
         self.n = n
 
@@ -545,6 +545,7 @@ class PartiallySignedInput:
                 self.non_witness_utxo = CTransaction()
                 value = BufferedReader(BytesIO(deser_string(f)))
                 self.non_witness_utxo.deserialize(value)
+                self.non_witness_utxo.rehash()
 
             elif key_type == 1:
                 if self.witness_utxo:
