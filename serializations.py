@@ -240,7 +240,7 @@ def ser_sig_compact(r, s, recid):
 MSG_WITNESS_FLAG = 1<<30
 
 class COutPoint(object):
-    def __init__(self, hash=0, n=0):
+    def __init__(self, hash=0, n=0xffffffff):
         self.hash = hash
         self.n = n
 
@@ -308,6 +308,18 @@ class CTxOut(object):
         return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
     def is_p2pk(self):
         return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
+
+    def is_witness(self):
+        if len(self.scriptPubKey) < 4 or len(self.scriptPubKey) > 42:
+            return (False, None, None)
+
+        if self.scriptPubKey[0] != 0 and (self.scriptPubKey[0] < 81 or self.scriptPubKey[0] > 96):
+            return (False, None, None)
+
+        if self.scriptPubKey[1] + 2 == len(self.scriptPubKey):
+            return (True, self.scriptPubKey[0] - 0x50 if self.scriptPubKey[0] else 0, self.scriptPubKey[2:])
+
+        return (False, None, None)
 
     def __repr__(self):
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
@@ -545,6 +557,7 @@ class PartiallySignedInput:
                 self.non_witness_utxo = CTransaction()
                 value = BufferedReader(BytesIO(deser_string(f)))
                 self.non_witness_utxo.deserialize(value)
+                self.non_witness_utxo.rehash()
 
             elif key_type == 1:
                 if self.witness_utxo:
