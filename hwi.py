@@ -27,6 +27,7 @@ class HardwareWalletClient(object):
     def __init__(self, device):
         self.device = device
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
+        self.is_testnet = False
 
     # Get the master BIP 44 pubkey
     def get_master_xpub(self):
@@ -89,6 +90,7 @@ def process_commands():
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
+    parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('command', help='The action to do')
     parser.add_argument('args', help='Arguments for the command', nargs='*')
 
@@ -155,7 +157,8 @@ def process_commands():
     else:
         result = {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
         print(json.dumps(result))
-        exit
+        return
+    client.is_testnet = args.testnet
 
     # Do the commands
     if command == 'getmasterxpub':
@@ -195,7 +198,7 @@ def process_commands():
             else:
                 path = path_base + '/' + str(i)
             xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
-            address = xpub_to_address(xpub)
+            address = xpub_to_address(xpub, args.testnet)
             this_import['scriptPubKey'] = {'address' : address}
             this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path}}]
             this_import['timestamp'] = 'now'

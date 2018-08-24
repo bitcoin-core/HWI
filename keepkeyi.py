@@ -1,10 +1,12 @@
 # KeepKey interaction script
 
+from base58 import xpub_main_2_test
 from hwi import HardwareWalletClient
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.client import KeepKeyClient as KeepKey
 
 import binascii
+import json
 
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class KeepKeyClient(HardwareWalletClient):
@@ -30,8 +32,10 @@ class KeepKeyClient(HardwareWalletClient):
     def get_pubkey_at_path(self, path):
         expanded_path = self.client.expand_path(path)
         output = self.client.get_public_node(expanded_path)
-        print({'xpub':output.xpub})
-        return
+        if self.is_testnet:
+            return json.dumps({'xpub':xpub_main_2_test(output.xpub)})
+        else:
+            return json.dumps({'xpub':output.xpub})
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
