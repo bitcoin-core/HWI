@@ -47,14 +47,14 @@ Please also see [docs](docs/) for additional information about each device.
 | P2PKH Inputs | Yes | Yes | Yes | Partial | No |
 | P2SH-P2WPKH Inputs | Yes | Yes | Yes | Partial | No |
 | P2WPKH Inputs | Yes | Yes | Yes | Partial | No |
-| P2SH Multisig Inputs | ?? | No | Yes | No | No |
-| P2SH-P2WSH Multisig Inputs | ?? | No | Yes | No | No |
-| P2WSH Multisig Inputs | ?? | No | Yes | No | No |
-| Bare Multisig Inputs | ?? | No | Yes | No | No |
-| Aribtrary scriptPubKey Inputs | ?? | No | Yes | No | No |
-| Aribtrary redeemScript Inputs | ?? | No | Yes | No | No |
-| Arbitrary witnessScript Inputs | ?? | No | Yes | No | No |
-| Non-wallet inputs | ?? | Yes | Yes | Yes | No |
+| P2SH Multisig Inputs | Yes | No | Yes | No | No |
+| P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | No |
+| P2WSH Multisig Inputs | Yes | No | Yes | No | No |
+| Bare Multisig Inputs | Yes | No | Yes | No | No |
+| Aribtrary scriptPubKey Inputs | Yes | No | Yes | No | No |
+| Aribtrary redeemScript Inputs | Yes | No | Yes | No | No |
+| Arbitrary witnessScript Inputs | Yes | No | Yes | No | No |
+| Non-wallet inputs | Yes | Yes | Yes | Yes | No |
 | Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | ?? | No |
 
 ## License
