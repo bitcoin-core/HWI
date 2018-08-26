@@ -7,7 +7,7 @@ import hid
 import json
 
 from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
-                        digitalbitbox_device_ids
+                        digitalbitbox_device_ids, coldcard_device_ids
 from serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
 
@@ -60,7 +60,6 @@ class HardwareWalletClient(object):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
-NO_PASSWORD
 
 # Get a list of all available hardware wallets
 def enumerate():
@@ -82,6 +81,10 @@ def enumerate():
         # Get DigitalBitboxes
         elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
             result.append({'type':'digitalbitbox', 'path':d['path'].decode("utf-8"),
+                'serial_number':d['serial_number']})
+        # Get ColdCards
+        elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
+            result.append({'type':'coldcard', 'path':d['path'].decode("utf-8"),
                 'serial_number':d['serial_number']})
     return result
 
@@ -154,6 +157,9 @@ def process_commands():
             return
         import digitalbitboxi
         client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
+    elif device_type == 'coldcard':
+        import coldcardi
+        client = coldcardi.ColdCardClient(device=device)
     else:
         result = {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
         print(json.dumps(result))
