@@ -13,6 +13,7 @@ pip3 install hidapi # HID API needed in general
 pip3 install trezor[hidapi] # Trezor One
 pip3 install btchip-python # Ledger Nano S
 pip3 install keepkey # KeepKey
+pip3 install ckcc-protocol # Coldcard
 ```
 
 ## Usage
@@ -35,27 +36,27 @@ The below table lists what devices and features are supported for each device.
 
 Please also see [docs](docs/) for additional information about each device.
 
-| Feature \ Device | Ledger Nano S | Trezor One | Digital BitBox | KeepKey | ColdCard |
+| Feature \ Device | Ledger Nano S | Trezor One | Digital BitBox | KeepKey | Coldcard |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | Support Planned | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Partial | Partial | Partial | Partial | No |
-| xpub retrieval | Yes | Yes | Yes | Yes | No |
+| Implemented | Partial | Partial | Partial | Partial | Partial |
+| xpub retrieval | Yes | Yes | Yes | Yes | Yes |
 | Message Signing | Yes | No | No | No | No |
 | Device Setup | No | No | No | No | No |
 | Device Recovery | No | No | No | No | No |
 | Device Reset | No | No | No | No | No |
-| P2PKH Inputs | Yes | Yes | Yes | Partial | No |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Partial | No |
-| P2WPKH Inputs | Yes | Yes | Yes | Partial | No |
-| P2SH Multisig Inputs | Yes | No | Yes | No | No |
-| P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | No |
-| P2WSH Multisig Inputs | Yes | No | Yes | No | No |
-| Bare Multisig Inputs | Yes | No | Yes | No | No |
-| Aribtrary scriptPubKey Inputs | Yes | No | Yes | No | No |
-| Aribtrary redeemScript Inputs | Yes | No | Yes | No | No |
-| Arbitrary witnessScript Inputs | Yes | No | Yes | No | No |
-| Non-wallet inputs | Yes | Yes | Yes | Yes | No |
-| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | ?? | No |
+| P2PKH Inputs | Yes | Yes | Yes | Partial | Yes |
+| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
+| P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
+| P2SH Multisig Inputs | Yes | No | Yes | No | ?? |
+| P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | ?? |
+| P2WSH Multisig Inputs | Yes | No | Yes | No | ?? |
+| Bare Multisig Inputs | Yes | No | Yes | No | ?? |
+| Aribtrary scriptPubKey Inputs | Yes | No | Yes | No | ?? |
+| Aribtrary redeemScript Inputs | Yes | No | Yes | No | ?? |
+| Arbitrary witnessScript Inputs | Yes | No | Yes | No | ?? |
+| Non-wallet inputs | Yes | Yes | Yes | Yes | Yes |
+| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | ?? | ?? |
 
 ## License
 
