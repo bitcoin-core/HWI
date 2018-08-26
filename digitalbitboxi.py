@@ -150,6 +150,8 @@ class DigitalBitboxClient(HardwareWalletClient):
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
+        if '\'' not in path and 'h' not in path and 'H' not in path:
+            raise ValueError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
         if 'error' in reply:
             return reply
