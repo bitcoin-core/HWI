@@ -112,7 +112,7 @@ def process_commands():
         print('signtx <psbt>                     Sign the given <psbt>')
         print('getxpub <path>                    Get the extended public key at <path>')
         print('signmessage <message> <path>      Sign the <message> with the key at <path>')
-        print('getkeypool <path base> <start> <end>   Returns the JSON array for importmulti with pubkeys at <path_base>/i from <start> to <end> inclusive')
+        print('getkeypool <path base> <start> <end> <internal>   Returns the JSON array for importmulti with pubkeys at <path_base>/i from <start> to <end> inclusive. `internal=True` results in these addresses being treated as change addresses.')
         return
 
     if device_path is None:
@@ -184,9 +184,11 @@ def process_commands():
         # args[0]: path base (e.g. m/44'/0'/0')
         # args[1]; start index (e.g. 0)
         # args[2]: end index (e.g. 1000)
+        # args[3]: internal (e.g. False)
         path_base = command_args[0]
         start = int(command_args[1])
         end = int(command_args[2])
+        internal = (command_args[3] == 'True') or (command_args[3] == 'true')
 
         if device_type == 'digitalbitbox':
             if '\'' not in path_base and 'h' not in path_base and 'H' not in path_base:
@@ -206,6 +208,7 @@ def process_commands():
             this_import['scriptPubKey'] = {'address' : address}
             this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
             this_import['timestamp'] = 'now'
+            this_import['internal'] = internal
             import_data.append(this_import)
         print(json.dumps(import_data))
     else:
