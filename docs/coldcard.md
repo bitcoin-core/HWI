@@ -1,3 +1,9 @@
 # ColdCard
 
-The ColdCard is not yet supported by HWI. Support is planned.
+The ColdCard is partially supported by HWI
+
+Current implemented commands are:
+
+* `getmasterxpub`
+* `signtx`
+* `getxpub`

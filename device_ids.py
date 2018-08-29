@@ -21,3 +21,7 @@ trezor_device_ids = [
 keepkey_device_ids = [
     (0x2B24, 0x0001),  # KeepKey
 ]
+
+coldcard_device_ids = [
+    (0xd13e, 0xcc10),
+]
