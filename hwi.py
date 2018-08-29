@@ -160,7 +160,7 @@ def process_commands(args):
 
     getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')
     getxpub_parser.add_argument('path', help='The BIP 32 derivation path to derive the key at')
-    getmasterxpub_parser.set_defaults(func=getxpub)
+    getxpub_parser.set_defaults(func=getxpub)
 
     signmsg_parser = subparsers.add_parser('signmessage', help='Sign a message')
     signmsg_parser.add_argument('message', help='The message to sign')
