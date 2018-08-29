@@ -86,7 +86,57 @@ def enumerate():
         elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
             result.append({'type':'coldcard', 'path':d['path'].decode("utf-8"),
                 'serial_number':d['serial_number']})
-    return result
+    print(json.dumps(result))
+
+def getmasterxpub(args, client):
+    print(client.get_master_xpub())
+
+def signtx(args, client):
+    # Deserialize the transaction
+    try:
+        tx = PSBT()
+        tx.deserialize(args.psbt)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
+        return
+    print(json.dumps(client.sign_tx(tx)))
+
+def getxpub(args, client):
+    print(client.get_pubkey_at_path(args.path))
+
+def signmessage(args, client):
+    print(client.sign_message(args.message, args.path))
+
+def getkeypool(args, client):
+    # args[0]: path base (e.g. m/44'/0'/0')
+    # args[1]; start index (e.g. 0)
+    # args[2]: end index (e.g. 1000)
+    # args[3]: internal (e.g. False)
+    path_base = args.path_base
+    start = args.start
+    end = args.end
+    internal = args.internal
+
+    master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
+    master_fpr = get_xpub_fingerprint_as_id(master_xpub)
+
+    import_data = []
+    for i in range(start, end + 1):
+        this_import = {}
+        if (path_base[-1] == '/'):
+            path = path_base + str(i)
+        else:
+            path = path_base + '/' + str(i)
+        xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
+        address = xpub_to_address(xpub, args.testnet)
+        this_import['scriptPubKey'] = {'address' : address}
+        this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
+        this_import['timestamp'] = 'now'
+        this_import['internal'] = internal
+        import_data.append(this_import)
+    print(json.dumps(import_data))
 
 def process_commands():
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
@@ -94,28 +144,45 @@ def process_commands():
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
-    parser.add_argument('command', help='The action to do')
-    parser.add_argument('args', help='Arguments for the command', nargs='*')
+
+    subparsers = parser.add_subparsers(description='Commands', dest='command')
+
+    enumerate_parser = subparsers.add_parser('enumerate', help='List all available devices')
+    enumerate_parser.set_defaults(func=enumerate)
+
+    getmasterxpub_parser = subparsers.add_parser('getmasterxpub', help='Get the extended public key at m/44\'/0\'/0\'')
+    getmasterxpub_parser.set_defaults(func=getmasterxpub)
+
+    signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
+    signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign')
+    signtx_parser.set_defaults(func=signtx)
+
+    getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')
+    getxpub_parser.add_argument('path', help='The BIP 32 derivation path to derive the key at')
+    getmasterxpub_parser.set_defaults(func=getxpub)
+
+    signmsg_parser = subparsers.add_parser('signmessage', help='Sign a message')
+    signmsg_parser.add_argument('message', help='The message to sign')
+    signmsg_parser.add_argument('path', help='The BIP 32 derivation path of the key to sign the message with')
+    signmsg_parser.set_defaults(func=signmessage)
+
+    getkeypol_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
+    getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
+    getkeypol_parser.add_argument('path_base', help='The prefix of the derivation path')
+    getkeypol_parser.add_argument('start', type=int, help='The index to start at. The first key will be <path_base>/<start>')
+    getkeypol_parser.add_argument('end', type=int, help='The index to end at. The last key will be <path_base>/<end>')
+    getkeypol_parser.set_defaults(func=getkeypool)
 
     args = parser.parse_args()
-    command = args.command
+
     device_path = args.device_path
     device_type = args.device_type
     password = args.password
-    command_args = args.args
+    command = args.command
 
     # List all available hardware wallet devices
     if command == 'enumerate':
-        print(json.dumps(enumerate()))
-        return
-    # List available commands
-    if command == 'help':
-        print('Commands:\n\n')
-        print('getmasterxpub                     Get the extended public key at m/44\'/0\'/0\'')
-        print('signtx <psbt>                     Sign the given <psbt>')
-        print('getxpub <path>                    Get the extended public key at <path>')
-        print('signmessage <message> <path>      Sign the <message> with the key at <path>')
-        print('getkeypool <path base> <start> <end> <internal>   Returns the JSON array for importmulti with pubkeys at <path_base>/i from <start> to <end> inclusive. `internal=True` results in these addresses being treated as change addresses.')
+        args.func()
         return
 
     if device_path is None:
@@ -167,58 +234,7 @@ def process_commands():
     client.is_testnet = args.testnet
 
     # Do the commands
-    if command == 'getmasterxpub':
-        print(client.get_master_xpub())
-
-    elif command == 'signtx':
-        # Deserialize the transaction
-        try:
-            tx = PSBT()
-            tx.deserialize(command_args[0])
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
-            return
-        print(json.dumps(client.sign_tx(tx)))
-
-    elif command == 'getxpub':
-        print(client.get_pubkey_at_path(command_args[0]))
-    elif command == 'signmessage':
-        print(client.sign_message(command_args[0], command_args[1]))
-    elif command == 'getkeypool':
-        # args[0]: path base (e.g. m/44'/0'/0')
-        # args[1]; start index (e.g. 0)
-        # args[2]: end index (e.g. 1000)
-        # args[3]: internal (e.g. False)
-        path_base = command_args[0]
-        start = int(command_args[1])
-        end = int(command_args[2])
-        internal = (command_args[3] == 'True') or (command_args[3] == 'true')
-
-        if device_type == 'digitalbitbox':
-            if '\'' not in path_base and 'h' not in path_base and 'H' not in path_base:
-                print(json.dumps({'error' : 'The digital bitbox requires one part of the derivation path to be derived using hardened keys'}))
-        master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
-        master_fpr = get_xpub_fingerprint_as_id(master_xpub)
-
-        import_data = []
-        for i in range(start, end + 1):
-            this_import = {}
-            if (path_base[-1] == '/'):
-                path = path_base + str(i)
-            else:
-                path = path_base + '/' + str(i)
-            xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
-            address = xpub_to_address(xpub, args.testnet)
-            this_import['scriptPubKey'] = {'address' : address}
-            this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
-            this_import['timestamp'] = 'now'
-            this_import['internal'] = internal
-            import_data.append(this_import)
-        print(json.dumps(import_data))
-    else:
-        print(json.dumps({'error':'Unknown command'}))
+    args.func(args, client)
 
     # Close the device
     device.close()
