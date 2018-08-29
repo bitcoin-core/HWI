@@ -5,6 +5,7 @@
 import argparse
 import hid
 import json
+import sys
 
 from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
@@ -138,7 +139,7 @@ def getkeypool(args, client):
         import_data.append(this_import)
     print(json.dumps(import_data))
 
-def process_commands():
+def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
@@ -173,7 +174,7 @@ def process_commands():
     getkeypol_parser.add_argument('end', type=int, help='The index to end at. The last key will be <path_base>/<end>')
     getkeypol_parser.set_defaults(func=getkeypool)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     device_path = args.device_path
     device_type = args.device_type
@@ -241,4 +242,4 @@ def process_commands():
 
 
 if __name__ == '__main__':
-    process_commands()
+    process_commands(sys.argv[1:])
