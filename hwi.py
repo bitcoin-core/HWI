@@ -119,6 +119,7 @@ def getkeypool(args, client):
     start = args.start
     end = args.end
     internal = args.internal
+    keypool = args.keypool
 
     master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
@@ -136,6 +137,7 @@ def getkeypool(args, client):
         this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
         this_import['timestamp'] = 'now'
         this_import['internal'] = internal
+        this_import['keypool'] = keypool
         import_data.append(this_import)
     print(json.dumps(import_data))
 
@@ -169,6 +171,7 @@ def process_commands(args):
 
     getkeypol_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
     getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
+    getkeypol_parser.add_argument('--keypool', action='store_true', help='Indicates that the keys are to be imported to the keypool')
     getkeypol_parser.add_argument('path_base', help='The prefix of the derivation path')
     getkeypol_parser.add_argument('start', type=int, help='The index to start at. The first key will be <path_base>/<start>')
     getkeypol_parser.add_argument('end', type=int, help='The index to end at. The last key will be <path_base>/<end>')
