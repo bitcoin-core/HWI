@@ -1,10 +1,10 @@
 # Trezor interaction script
 
-from hwi import HardwareWalletClient
+from .hwwclient import HardwareWalletClient
 from ckcc.client import ColdcardDevice
 from ckcc.protocol import CCProtocolPacker
 from ckcc.constants import MAX_BLK_LEN
-from base58 import xpub_main_2_test
+from .base58 import xpub_main_2_test
 from hashlib import sha256
 
 import base64
@@ -26,9 +26,9 @@ class ColdCardClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
         if self.is_testnet:
-            return json.dumps({'xpub':xpub_main_2_test(xpub)})
+            return {'xpub':xpub_main_2_test(xpub)}
         else:
-            return json.dumps({'xpub':xpub})
+            return {'xpub':xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -79,7 +79,7 @@ class ColdCardClient(HardwareWalletClient):
         result_len, result_sha = done
 
         result = self.device.download_file(result_len, result_sha, file_number=1)
-        return base64.b64encode(result).decode()
+        return {'psbt':base64.b64encode(result).decode()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
@@ -96,6 +96,3 @@ class ColdCardClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
-
-# Avoid circular imports
-from hwi import HardwareWalletClient

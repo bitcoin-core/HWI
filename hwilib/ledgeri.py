@@ -1,13 +1,13 @@
 # Ledger interaction script
 
-from hwi import HardwareWalletClient
+from .hwwclient import HardwareWalletClient
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
 import json
 import struct
-import base58
-from serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
+from . import base58
+from .serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
@@ -64,7 +64,7 @@ class LedgerClient(HardwareWalletClient):
         extkey = version+depth+fpr+child+chainCode+publicKey
         checksum = hash256(extkey)[:4]
 
-        return json.dumps({"xpub":base58.encode(extkey+checksum)})
+        return {"xpub":base58.encode(extkey+checksum)}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -212,7 +212,7 @@ class LedgerClient(HardwareWalletClient):
                     first_input = False
 
         # Send PSBT back
-        return tx.serialize()
+        return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -236,7 +236,7 @@ class LedgerClient(HardwareWalletClient):
 
         sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return json.dumps({"signature":base64.b64encode(sig).decode('utf-8')})
+        return {"signature":base64.b64encode(sig).decode('utf-8')}
 
     # Setup a new device
     def setup_device(self):
@@ -245,6 +245,3 @@ class LedgerClient(HardwareWalletClient):
     # Wipe this device
     def wipe_device(self):
         raise NotImplementedError('The Ledger Nano S does not support wiping via software')
-
-# Avoid circular imports
-from hwi import HardwareWalletClient

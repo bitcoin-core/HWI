@@ -1,13 +1,13 @@
 # Trezor interaction script
 
-from hwi import HardwareWalletClient
+from .hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.transport import get_transport
 from trezorlib import protobuf, tools
 from trezorlib import messages as proto
 from trezorlib.tx_api import TxApi
-from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
-from serializations import ser_uint256, uint256_from_str
+from .base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from .serializations import ser_uint256, uint256_from_str
 
 import bech32
 import binascii
@@ -65,9 +65,9 @@ class TrezorClient(HardwareWalletClient):
         expanded_path = tools.parse_path(path)
         output = self.client.get_public_node(expanded_path)
         if self.is_testnet:
-            return json.dumps({'xpub':xpub_main_2_test(output.xpub)})
+            return {'xpub':xpub_main_2_test(output.xpub)}
         else:
-            return json.dumps({'xpub':output.xpub})
+            return {'xpub':output.xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
@@ -169,7 +169,7 @@ class TrezorClient(HardwareWalletClient):
                 break
             signatures.remove(sig)
 
-        return tx.serialize()
+        return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -186,6 +186,3 @@ class TrezorClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
-
-# Avoid circular imports
-from hwi import HardwareWalletClient
