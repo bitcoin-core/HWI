@@ -188,3 +188,7 @@ class KeepKeyClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
+
+    # Close the device
+    def close(self):
+        self.client.close()

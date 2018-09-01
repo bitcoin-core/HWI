@@ -17,8 +17,8 @@ class LedgerClient(HardwareWalletClient):
     # hacked in device support using btchip-python
     def __init__(self, device):
         super(LedgerClient, self).__init__(device)
-        dongle = getDongle(True)
-        self.app = btchip(dongle)
+        self.dongle = getDongle(True)
+        self.app = btchip(self.dongle)
         self.device = device
 
     # Must return a dict with the xpub
@@ -245,3 +245,7 @@ class LedgerClient(HardwareWalletClient):
     # Wipe this device
     def wipe_device(self):
         raise NotImplementedError('The Ledger Nano S does not support wiping via software')
+
+    # Close the device
+    def close(self):
+        self.dongle.close()
