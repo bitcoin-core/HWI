@@ -17,6 +17,8 @@ class LedgerClient(HardwareWalletClient):
     # hacked in device support using btchip-python
     def __init__(self, device):
         super(LedgerClient, self).__init__(device)
+        # hack to use btchip-python's getDongle pipeline
+        device.close()
         self.dongle = getDongle(True)
         self.app = btchip(self.dongle)
         self.device = device
