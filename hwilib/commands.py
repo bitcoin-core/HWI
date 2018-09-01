@@ -21,6 +21,7 @@ DEVICE_CONN_ERROR = -3
 UNKNWON_DEVICE_TYPE = -4
 INVALID_TX = -5
 NO_PASSWORD = -6
+BAD_ARGUMENT = -7
 
 # Get a list of all available hardware wallets
 def enumerate():
@@ -106,6 +107,11 @@ def getkeypool(args, client):
         import_data.append(this_import)
     return import_data
 
+def displayaddress(args, client):
+    if args.p2sh_p2wpkh == True and args.bech32 == True:
+        return json.dumps({'error':'You must choose one address type only.','code':BAD_ARGUMENT})
+    return client.display_address(args.path, args.p2sh_p2wpkh, args.bech32)
+
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
@@ -141,6 +147,12 @@ def process_commands(args):
     getkeypol_parser.add_argument('start', type=int, help='The index to start at. The first key will be <path_base>/<start>')
     getkeypol_parser.add_argument('end', type=int, help='The index to end at. The last key will be <path_base>/<end>')
     getkeypol_parser.set_defaults(func=getkeypool)
+
+    displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
+    displayaddr_parser.add_argument('path', help='The BIP 32 derivation path of the key embedded in the address')
+    displayaddr_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Display the p2sh-nested segwit address associated with this key path')
+    displayaddr_parser.add_argument('--bech32', action='store_true', help='Display the bech32 version of the address associated with this key path')
+    displayaddr_parser.set_defaults(func=displayaddress)
 
     args = parser.parse_args(args)
 

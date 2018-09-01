@@ -341,6 +341,11 @@ class DigitalBitboxClient(HardwareWalletClient):
 
         return {"signature":base64.b64encode(compact_sig)}
 
+    # Display address of specified type on the device. Only supports single-key based addresses.
+    def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        raise NotImplementedError('The HardwareWalletClient base class does not '
+            'implement this method')
+
     # Setup a new device
     def setup_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
