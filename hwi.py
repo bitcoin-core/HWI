@@ -3,6 +3,7 @@
 # Hardware wallet interaction script
 
 import argparse
+import binascii
 import hid
 import json
 import sys
@@ -11,6 +12,7 @@ from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,
                         digitalbitbox_device_ids, coldcard_device_ids
 from serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
+from bip32utils import BIP32Key
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -124,6 +126,10 @@ def getkeypool(args, client):
     master_xpub = json.loads(client.get_pubkey_at_path('m/0h'))['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
+    # Get the key at the base
+    base_key = json.loads(client.get_pubkey_at_path(path_base))['xpub']
+    parent = BIP32Key.fromExtendedKey(base_key)
+
     import_data = []
     for i in range(start, end + 1):
         this_import = {}
@@ -131,10 +137,12 @@ def getkeypool(args, client):
             path = path_base + str(i)
         else:
             path = path_base + '/' + str(i)
-        xpub = json.loads(client.get_pubkey_at_path(path))['xpub']
-        address = xpub_to_address(xpub, args.testnet)
+
+        child = parent.ChildKey(i)
+        address = child.Address()
+
+        this_import['pubkeys'] = [{binascii.hexlify(child.PublicKey()).decode() : {master_fpr : path.replace('\'', 'h')}}]
         this_import['scriptPubKey'] = {'address' : address}
-        this_import['pubkeys'] = [{xpub_to_pub_hex(xpub) : {master_fpr : path.replace('\'', 'h')}}]
         this_import['timestamp'] = 'now'
         this_import['internal'] = internal
         this_import['keypool'] = keypool
