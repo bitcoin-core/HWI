@@ -9,9 +9,9 @@ import hashlib
 import os
 import binascii
 
-from hwi import HardwareWalletClient
-from serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
-from base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from .hwwclient import HardwareWalletClient
+from .serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
+from .base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8*512
@@ -304,7 +304,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return {'psbt':tx.serialize())
+        return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string

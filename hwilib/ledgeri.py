@@ -1,13 +1,13 @@
 # Ledger interaction script
 
-from hwi import HardwareWalletClient
+from .hwwclient import HardwareWalletClient
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
 import json
 import struct
-import base58
-from serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
+from . import base58
+from .serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
@@ -245,6 +245,3 @@ class LedgerClient(HardwareWalletClient):
     # Wipe this device
     def wipe_device(self):
         raise NotImplementedError('The Ledger Nano S does not support wiping via software')
-
-# Avoid circular imports
-from hwi import HardwareWalletClient

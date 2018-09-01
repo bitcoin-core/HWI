@@ -1,10 +1,10 @@
 # Trezor interaction script
 
-from hwi import HardwareWalletClient
+from .hwwclient import HardwareWalletClient
 from ckcc.client import ColdcardDevice
 from ckcc.protocol import CCProtocolPacker
 from ckcc.constants import MAX_BLK_LEN
-from base58 import xpub_main_2_test
+from .base58 import xpub_main_2_test
 from hashlib import sha256
 
 import base64
@@ -96,6 +96,3 @@ class ColdCardClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
-
-# Avoid circular imports
-from hwi import HardwareWalletClient

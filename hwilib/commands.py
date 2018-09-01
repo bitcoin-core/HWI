@@ -8,10 +8,10 @@ import hid
 import json
 import sys
 
-from device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
+from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
-from serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
+from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
+from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
 from bip32utils import BIP32Key
 
 # Error codes
@@ -169,23 +169,23 @@ def process_commands(args):
 
     # Make a client
     if device_type == 'trezor':
-        import trezori
+        from . import trezori
         client = trezori.TrezorClient(device=device, path=device_path)
     elif device_type == 'keepkey':
-        import keepkeyi
+        from . import keepkeyi
         client = keepkeyi.KeepKeyClient(device=device, path=device_path)
     elif device_type == 'ledger':
         # hack to use btchip-python's getDongle pipeline
         device.close()
-        import ledgeri
+        from . import ledgeri
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
         if not password:
             return {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
-        import digitalbitboxi
+        from . import digitalbitboxi
         client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
     elif device_type == 'coldcard':
-        import coldcardi
+        from . import coldcardi
         client = coldcardi.ColdCardClient(device=device)
     else:
         return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
