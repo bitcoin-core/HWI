@@ -217,6 +217,7 @@ class LedgerClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
+        message = bytearray(message, 'utf-8')
         keypath = keypath[2:]
         # First display on screen what address you're signing for
         self.app.getWalletPublicKey(keypath, True)
@@ -232,12 +233,10 @@ class LedgerClient(HardwareWalletClient):
             r = r[1:]
         if sLength == 33:
             s = s[1:]
-        r = str(r)
-        s = str(s)
 
-        sig = chr(27 + 4 + (signature[0] & 0x01)) + r + s
+        sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return json.dumps({"signature":base64.b64encode(sig)})
+        return json.dumps({"signature":base64.b64encode(sig).decode('utf-8')})
 
     # Setup a new device
     def setup_device(self):
