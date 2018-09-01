@@ -157,9 +157,9 @@ class DigitalBitboxClient(HardwareWalletClient):
             return reply
 
         if self.is_testnet:
-            return json.dumps({'xpub':xpub_main_2_test(reply['xpub'])})
+            return {'xpub':xpub_main_2_test(reply['xpub'])}
         else:
-            return json.dumps({'xpub':reply['xpub']})
+            return {'xpub':reply['xpub']}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format
@@ -304,7 +304,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return tx.serialize()
+        return {'psbt':tx.serialize())
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -339,7 +339,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         compact_sig = ser_sig_compact(r, s, recid)
         print(binascii.hexlify(compact_sig))
 
-        return json.dumps({"signature":base64.b64encode(compact_sig)})
+        return {"signature":base64.b64encode(compact_sig)}
 
     # Setup a new device
     def setup_device(self):

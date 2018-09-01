@@ -89,10 +89,10 @@ def enumerate():
         elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
             result.append({'type':'coldcard', 'path':d['path'].decode("utf-8"),
                 'serial_number':d['serial_number']})
-    print(json.dumps(result))
+    return result
 
 def getmasterxpub(args, client):
-    print(client.get_master_xpub())
+    return client.get_master_xpub()
 
 def signtx(args, client):
     # Deserialize the transaction
@@ -102,15 +102,14 @@ def signtx(args, client):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(json.dumps({'error':'You must provide a PSBT','code':INVALID_TX}))
-        return
-    print(json.dumps(client.sign_tx(tx)))
+        return json.dumps({'error':'You must provide a PSBT','code':INVALID_TX})
+    return client.sign_tx(tx)
 
 def getxpub(args, client):
-    print(client.get_pubkey_at_path(args.path))
+    return client.get_pubkey_at_path(args.path)
 
 def signmessage(args, client):
-    print(client.sign_message(args.message, args.path))
+    return client.sign_message(args.message, args.path)
 
 def getkeypool(args, client):
     # args[0]: path base (e.g. m/44'/0'/0')
@@ -147,7 +146,7 @@ def getkeypool(args, client):
         this_import['internal'] = internal
         this_import['keypool'] = keypool
         import_data.append(this_import)
-    print(json.dumps(import_data))
+    return import_data
 
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
@@ -194,17 +193,12 @@ def process_commands(args):
 
     # List all available hardware wallet devices
     if command == 'enumerate':
-        args.func()
-        return
+        return args.func()
 
     if device_path is None:
-        result = {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
-        print(json.dumps(result))
-        return
+        return {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
     if device_type is None:
-        result = {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
-        print(json.dumps(result))
-        return
+        return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
 
     # Open the device
     try:
@@ -213,9 +207,7 @@ def process_commands(args):
         device.open_path(device_path)
     except Exception as e:
         print(e)
-        result = {'error':'Unable to connect to specified device','code':DEVICE_CONN_ERROR}
-        print(json.dumps(result))
-        return
+        return {'error':'Unable to connect to specified device','code':DEVICE_CONN_ERROR}
 
     # Make a client
     if device_type == 'trezor':
@@ -231,26 +223,24 @@ def process_commands(args):
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
         if not password:
-            result = {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
-            print(json.dumps(result))
-            return
+            return {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
         import digitalbitboxi
         client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
     elif device_type == 'coldcard':
         import coldcardi
         client = coldcardi.ColdCardClient(device=device)
     else:
-        result = {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
-        print(json.dumps(result))
-        return
+        return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
     client.is_testnet = args.testnet
 
     # Do the commands
-    args.func(args, client)
+    result = args.func(args, client)
 
     # Close the device
     device.close()
 
+    return result
 
 if __name__ == '__main__':
-    process_commands(sys.argv[1:])
+    result = process_commands(sys.argv[1:])
+    print(json.dumps(result))

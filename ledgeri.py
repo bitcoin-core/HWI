@@ -64,7 +64,7 @@ class LedgerClient(HardwareWalletClient):
         extkey = version+depth+fpr+child+chainCode+publicKey
         checksum = hash256(extkey)[:4]
 
-        return json.dumps({"xpub":base58.encode(extkey+checksum)})
+        return {"xpub":base58.encode(extkey+checksum)}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -212,7 +212,7 @@ class LedgerClient(HardwareWalletClient):
                     first_input = False
 
         # Send PSBT back
-        return tx.serialize()
+        return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -236,7 +236,7 @@ class LedgerClient(HardwareWalletClient):
 
         sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return json.dumps({"signature":base64.b64encode(sig).decode('utf-8')})
+        return {"signature":base64.b64encode(sig).decode('utf-8')}
 
     # Setup a new device
     def setup_device(self):

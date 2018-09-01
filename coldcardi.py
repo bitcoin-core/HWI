@@ -26,9 +26,9 @@ class ColdCardClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
         if self.is_testnet:
-            return json.dumps({'xpub':xpub_main_2_test(xpub)})
+            return {'xpub':xpub_main_2_test(xpub)}
         else:
-            return json.dumps({'xpub':xpub})
+            return {'xpub':xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -79,7 +79,7 @@ class ColdCardClient(HardwareWalletClient):
         result_len, result_sha = done
 
         result = self.device.download_file(result_len, result_sha, file_number=1)
-        return base64.b64encode(result).decode()
+        return {'psbt':base64.b64encode(result).decode()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with

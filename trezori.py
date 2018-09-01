@@ -65,9 +65,9 @@ class TrezorClient(HardwareWalletClient):
         expanded_path = tools.parse_path(path)
         output = self.client.get_public_node(expanded_path)
         if self.is_testnet:
-            return json.dumps({'xpub':xpub_main_2_test(output.xpub)})
+            return {'xpub':xpub_main_2_test(output.xpub)}
         else:
-            return json.dumps({'xpub':output.xpub})
+            return {'xpub':output.xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
@@ -169,7 +169,7 @@ class TrezorClient(HardwareWalletClient):
                 break
             signatures.remove(sig)
 
-        return tx.serialize()
+        return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
