@@ -8,8 +8,8 @@ from trezorlib import messages as proto
 from trezorlib.tx_api import TxApi
 from .base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
 from .serializations import ser_uint256, uint256_from_str
+from . import bech32
 
-import bech32
 import binascii
 import json
 
@@ -191,3 +191,7 @@ class TrezorClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
+
+    # Close the device
+    def close(self):
+        self.client.close()
