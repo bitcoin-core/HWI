@@ -238,6 +238,9 @@ class LedgerClient(HardwareWalletClient):
 
         return {"signature":base64.b64encode(sig).decode('utf-8')}
 
+    def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        self.app.getWalletPublicKey(keypath[2:], True, (p2sh_p2wpkh or bech32), bech32)
+
     # Setup a new device
     def setup_device(self):
         raise NotImplementedError('The Ledger Nano S does not support software setup')
