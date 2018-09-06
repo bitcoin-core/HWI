@@ -63,26 +63,32 @@ def enumerate():
     result = []
     devices = hid.enumerate()
     for d in devices:
+        d_data = {}
         # Get trezors
         if (d['vendor_id'], d['product_id']) in trezor_device_ids:
-            result.append({'type':'trezor','path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'trezor'
         # Get keepkeys
         elif (d['vendor_id'], d['product_id']) in keepkey_device_ids:
-            result.append({'type':'keepkey', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'keepkey'
         # Get ledgers
         elif (d['vendor_id'], d['product_id']) in ledger_device_ids:
-            result.append({'type':'ledger', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'ledger'
         # Get DigitalBitboxes
         elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
-            result.append({'type':'digitalbitbox', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'digitalbitbox'
         # Get ColdCards
         elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
-            result.append({'type':'coldcard', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'coldcard'
+        else:
+            continue
+        d_data['path'] = d['path'].decode("utf-8")
+        d_data['serial_number'] = d['serial_number']
+
+        client = get_client(d_data['type'], d_data['path'])
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+        d_data['fingerprint'] = get_xpub_fingerprint_as_id(master_xpub)
+
+        result.append(d_data)
     return result
 
 def find_device(fingerprint):
