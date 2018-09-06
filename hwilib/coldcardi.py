@@ -17,6 +17,7 @@ class ColdCardClient(HardwareWalletClient):
 
     # device is an HID device that has already been opened.
     def __init__(self, device):
+        super(ColdCardClient, self).__init__(device)
         self.device = ColdcardDevice(dev=device)
 
     # Must return a dict with the xpub
