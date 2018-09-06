@@ -100,6 +100,7 @@ def find_device(fingerprint):
         if master_fpr == fingerprint:
             return client
         client.close()
+    return None
 
 def getmasterxpub(args, client):
     return client.get_master_xpub()
@@ -222,8 +223,10 @@ def process_commands(args):
         return args.func()
 
     # Auto detect if that is set
-    if 'fingerprint' in args:
+    if args.fingerprint:
         client = find_device(args.fingerprint)
+        if not client:
+            return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
     else:
         if device_path is None:
             return {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
