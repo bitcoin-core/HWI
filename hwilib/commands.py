@@ -12,7 +12,7 @@ import logging
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
+from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from bip32utils import BIP32Key
 
 # Error codes
@@ -85,7 +85,8 @@ def enumerate():
 
         client = get_client(d_data['type'], d_data['path'])
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-        d_data['fingerprint'] = get_xpub_fingerprint_as_id(master_xpub)
+        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+        client.close()
 
         result.append(d_data)
     return result
@@ -95,7 +96,7 @@ def find_device(fingerprint):
     for d in devices:
         client = get_client(d['type'], d['path'])
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-        master_fpr = get_xpub_fingerprint_as_id(master_xpub)
+        master_fpr = get_xpub_fingerprint_hex(master_xpub)
         if master_fpr == fingerprint:
             return client
         client.close()

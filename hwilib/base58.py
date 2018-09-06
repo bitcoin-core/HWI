@@ -71,6 +71,11 @@ def get_xpub_fingerprint(s):
     fingerprint = data[5:9]
     return struct.unpack("<I", fingerprint)[0]
 
+def get_xpub_fingerprint_hex(xpub):
+    data = decode(xpub)
+    fingerprint = data[5:9]
+    return hexlify(fingerprint).decode()
+
 def get_xpub_fingerprint_as_id(xpub):
     data = decode(xpub)
     fingerprint = data[5:9] + b'\x00' * 16
