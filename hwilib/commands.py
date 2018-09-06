@@ -55,7 +55,6 @@ def get_client(device_type, device_path):
         client = coldcardi.ColdCardClient(device=device)
     else:
         return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
-    client.is_testnet = args.testnet
     return client
 
 # Get a list of all available hardware wallets
@@ -231,6 +230,7 @@ def process_commands(args):
             return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
 
         client = get_client(device_type, device_path)
+    client.is_testnet = args.testnet
 
     # Do the commands
     result = args.func(args, client)
