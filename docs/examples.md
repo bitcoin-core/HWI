@@ -1,6 +1,8 @@
 # Examples
 
-This Example has been taken with a Ledger nano.
+This Example has been taken with a Ledger nano. 
+The OS in this case OSX (17.7.0 Darwin Kernel Version 17.7.0). In Linux the paths should be shorter.
+
 
 ```
 ./hwi.py enumerate
