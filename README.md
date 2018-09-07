@@ -16,6 +16,12 @@ pip3 install keepkey # KeepKey
 pip3 install ckcc-protocol # Coldcard
 pip3 install bip32utils # For BIP32 deriving
 ```
+## Install
+
+```
+git clone https://github.com/achow101/HWI.git
+cd HWI
+```
 
 ## Usage
 
