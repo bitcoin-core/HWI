@@ -7,6 +7,7 @@ import binascii
 import hid
 import json
 import sys
+import logging
 
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
@@ -118,6 +119,7 @@ def process_commands(args):
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
+    parser.add_argument('--debug', help='Print debug statements', action='store_true')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
 
@@ -160,6 +162,9 @@ def process_commands(args):
     device_type = args.device_type
     password = args.password
     command = args.command
+
+    # Setup debug logging
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 
     # List all available hardware wallet devices
     if command == 'enumerate':
