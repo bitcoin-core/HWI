@@ -1,45 +1,48 @@
 # Examples
 
-This Example has been taken with a Ledger nano. 
-The OS in this case OSX (17.7.0 Darwin Kernel Version 17.7.0). In Linux the paths should be shorter.
-
+This Example has been taken with a Ledger nano S.
 
 ```
 ./hwi.py enumerate
-[{"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0", "serial_number": "0001"}, {"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@1/IOUSBHostHIDDevice@14200000,1", "serial_number": "0001"}]```
+[{"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0", "serial_number": "0001"}, {"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@1/IOUSBHostHIDDevice@14200000,1", "serial_number": "0001"}]
 ```
+The OS in this case is OSX (17.7.0 Darwin Kernel Version 17.7.0). In Linux the 
+"path" is shorter.
 
-To extract the Extended Master Public  
+## Useful xpubs to extract
 
-```
- ./hwi.py -t "ledger" -d "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0" getmasterxpub
-=> b'e0c4000000'
-<= b'1b30010208010003'9000
-=> b'f026000000'
-<= b''6d00
-=> b'e04000000d038000002c8000000080000000'
-<= b'4104f4b866b49fb76529a076a1c5b25216c1f4b970cb8e3db9874beb15c5371fdb93747fde522d63be4a564dcda8a71c889f5165eac2990cafee9d416141ae8b09c722313667774c7a76697157783146317a653365676850464d58655438666a57466f4b66f9a82310c4530360ec3fee42049fbb7a3c0bfa72fdf2c5b25b09f1c3df21c938'9000
-=> b'e040000009028000002c80000000'
-<= b'4104280c846650d7771396a679a55b30c558501f0b5554160c1fbd1d7301c845dacc10c256af2c8d6a13ae4a83763fa747c0d4c09cfa60bfc16714e10b0a938a4a6a2231485451557a6535486571334872553755435174564652745a535839615352674a65d62f97789c088a0b0c3ed57754f75273c6696c0d7812c702ca4f2f72c8631c04'9000
-{"xpub": "xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n"}
+Starting from version 0.17, It is possible to to retrieve the Unspent 
+transaction outputs relevant for a set of [Output Descriptors][1] From 
+Bitcoin Core with the `scantxoutset` funcion.
 
-```
+To retrieve the outputs relevant for a specific Hardware wallet it is necssary:
 
-## Useful xpubs
+1. to derive the xpub of the hardware wallet until the last hardened level 
+   with HWI (because the privatkey is required)
+2. To use the obtained xpub to compose the output descriptor
 
-From Bitcoin Core (0.17), it is possible to scan the UTXO set to retrieve the unspent transaction 
-outputs relevant for a set of public keys.
-It is possible to estract an extended public subkey from our hardware wallet and retrieve from the node 
-all the relevant UTXOs, according to a specific [output descriptor][1].
+These are some schemas used in hardware wallets, with the data necessary to build 
+the appropriate output descriptor:
 
-We need to estract from the hardware wallet an Extended Public subKey (xpub) we can derive then 
-from without the device and use it as input in Bitcoin Core.
+| Used schema | hardened path | further derivation | Otput type |
+|-------------| ------------- | -------------------|------------|
+| BIP44       | m/44h/0h/0h   | /0/* and /1/*      | pkh()      |
+| BIP49       | m/49h/0h/0h   | /0/* and /1/*      | sh(wpkh()) |
+| BIP84       | m/84h/0h/0h   | /0/* and /1/*      | wpkh()     |
 
-### BIP44
+NOTE: 
+1. We could also use "combo()" in all cases as "Output Type" because it is a 
+"bundle" which includes pk(KEY) and pkh(KEY). If the key is compressed, it also 
+includes wpkh(KEY) and sh(wpkh(KEY)).
 
-If the hardware wallet is compliant with BIP44 (the default "legacy" in Ledger and Trezor), it has received bitcoins in 
-legacy p2pkh, AKA [pkh][1] addresses.
-It is necessary to extract the extended public subkey until the last hardened level (m/44h/0h/0h)
+2. It is possible to specify how many outputs to search for by setting the maximum 
+   index of the derivation with the "range" key. In the examples it is set to 100.
+
+3. The output of all the search is zero outputs (the hardware wallet is empty).
+
+## BIP44
+
+1. To obtain the xpub relative to the last hardened level (m/44h/0h/0h)
 
 ```
 ./hwi.py -t "ledger" -d "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0" getxpub  m/44h/0h/0h
@@ -54,12 +57,11 @@ It is necessary to extract the extended public subkey until the last hardened le
 {"xpub": "xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n"}
 
 ```
-and to use the xpub (`xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n`)
-in Bitcoin Core (0.17) deriving it further:
-* from 0/0 for normal receiving addresses
-* from 1/0 for change internal addresses 
+2. With this xpub it is possible  extract the relevant UTXOs using the 
+`scantxoutset` in Bitcoin Core (from 0.17).
 
 ```
+
 bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n/0/*)","range":100},
  {"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n/1/*)","range":100}]'
 {
@@ -67,17 +69,12 @@ bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1E
   "searched_items": 49507771,
   "unspents": [
   ],
-  "total_amount": 0.00000000
+  "total_amount": 0.00000000 
 }
 ```
-(there are no UTXOs associated).
+### BIP49 [2]
 
-
-### BIP49
-
-If the hardware wallet is compliant with BIP49 (the "Segwit" wallet in Ledger), it has received bitcoins in 
-Segwit p2sh-p2wpkh, AKA [sh(wpkh())][1] addresses.
-It is necessary to extract the extended public subkey until the last hardened level (m/49h/0h/0h)
+1. To obtain the xpub relative to the last hardened level (m/49h/0h/0h)
 
 ```
  ./hwi.py -t "ledger" -d "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0" getxpub  m/49h/0h/0h
@@ -91,10 +88,8 @@ It is necessary to extract the extended public subkey until the last hardened le
 <= b'4104c34926ea569d26e4ca06ccae25fa4332a07df69fb922a73131cfccf6a544aa3309af253eb5cee3caf8ca9a347a9e8d4429ac55b7a13f72aca36ebb51ca0f489e22314e546e3969454c587046324264664b6f326f316265785a72526e75396d65764663b310aae1803b63157ef3bb7394f985126e5f9ad4b3a6bcb118cd97875dc0e1ce'9000
 {"xpub": "xpub6DP8WTA5cy2qWzdtjMUpLJHkzonepEZytzxFLMzkrcW7U4prscYnmXRQ8BesvMP3iqgQUWisAU6ipXnZw2HnNreEPYJW6TUCAfmwJPyYgG6"}
 ```
-and to use the xpub (`xpub6DP8WTA5cy2qWzdtjMUpLJHkzonepEZytzxFLMzkrcW7U4prscYnmXRQ8BesvMP3iqgQUWisAU6ipXnZw2HnNreEPYJW6TUCAfmwJPyYgG6`)
-in Bitcoin Core (0.17) deriving it further:
-* from 0/0 for normal receiving addresses
-* from 1/0 for change internal addresses 
+2. With this xpub it is possible  extract the relevant UTXOs using the 
+`scantxoutset` in Bitcoin Core (from 0.17).
 
 ```
 bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzonepEZytzxFLMzkrcW7U4prscYnmXRQ8BesvMP3iqgQUWisAU6ipXnZw2HnNreEPYJW6TUCAfmwJPyYgG6/0/*))","range":100},
@@ -107,12 +102,12 @@ bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzo
   "total_amount": 0.00000000
 }
 ```
+"range":100 means that only the first 100 derivations will be searched for.
 
-### BIP84
 
-If the hardware wallet is compliant with BIP49 (the "Segwit" wallet in Ledger), it has received bitcoins in 
-Segwit p2sh-p2wpkh, AKA [wpkh()][1] native segwit addressesaddresses.
-It is necessary to extract the extended public subkey until the last hardened level (m/49h/0h/0h)
+### BIP84 [3]
+
+1. To obtain the xpub relative to the last hardened level (m/84h/0h/0h)
 
 ```
  ./hwi.py -t "ledger" -d "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0" getxpub  m/84h/0h/0h
@@ -127,10 +122,8 @@ It is necessary to extract the extended public subkey until the last hardened le
 {"xpub": "xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB"}
 
 ```
-and to use the xpub (`xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB`) 
-in Bitcoin Core (0.17) deriving it further:
-* from 0/0 for normal receiving addresses
-* from 1/0 for change internal addresses 
+2. With this xpub it is possible  extract the relevant UTXOs using the 
+`scantxoutset` in Bitcoin Core (from 0.17).
 
 ```
 bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB/0/*)","range":100},
@@ -146,8 +139,10 @@ bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vP
 ```
 
 
-[1]: https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
 
+[1]: https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
+[2]: https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
+[3]: https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
 
 
 
