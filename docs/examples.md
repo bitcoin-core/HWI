@@ -55,13 +55,12 @@ includes wpkh(KEY) and sh(wpkh(KEY)).
 => b'e040000009028000002c80000000'
 <= b'4104280c846650d7771396a679a55b30c558501f0b5554160c1fbd1d7301c845dacc10c256af2c8d6a13ae4a83763fa747c0d4c09cfa60bfc16714e10b0a938a4a6a2231485451557a6535486571334872553755435174564652745a535839615352674a65d62f97789c088a0b0c3ed57754f75273c6696c0d7812c702ca4f2f72c8631c04'9000
 {"xpub": "xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n"}
-
 ```
+
 2. With this xpub it is possible  extract the relevant UTXOs using the 
 `scantxoutset` in Bitcoin Core (from 0.17).
 
 ```
-
 bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n/0/*)","range":100},
  {"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n/1/*)","range":100}]'
 {
@@ -72,6 +71,7 @@ bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1E
   "total_amount": 0.00000000 
 }
 ```
+
 ### BIP49 [2]
 
 1. To obtain the xpub relative to the last hardened level (m/49h/0h/0h)
@@ -102,8 +102,6 @@ bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzo
   "total_amount": 0.00000000
 }
 ```
-"range":100 means that only the first 100 derivations will be searched for.
-
 
 ### BIP84 [3]
 
@@ -120,8 +118,8 @@ bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzo
 => b'e040000009028000005480000000'
 <= b'410483472c03c4157d1b0f8ad98c9391dfbfc820e0180d683658ed863609da5f866aafa260048bc42cd97cb997479fd2619c5d160af68a442a80567b41fe3e763fbe22314e5531544d796971575871367278746375424a3433376d4e75736d745a73554769c03458c3a331489e3271a24a76f4ab024e040e7de7b5e88d8ce058d414f565c2'9000
 {"xpub": "xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB"}
-
 ```
+
 2. With this xpub it is possible  extract the relevant UTXOs using the 
 `scantxoutset` in Bitcoin Core (from 0.17).
 
@@ -135,9 +133,7 @@ bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vP
   ],
   "total_amount": 0.00000000
 }
-
 ```
-
 
 
 [1]: https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
