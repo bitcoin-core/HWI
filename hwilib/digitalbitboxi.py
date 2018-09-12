@@ -278,15 +278,15 @@ class DigitalBitboxClient(HardwareWalletClient):
         if to_send[-1] == ',':
             to_send = to_send[:-1]
         to_send += ']}}'
-        print(to_send)
+        logging.debug(to_send)
 
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
             return
         print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
             return
 
@@ -323,12 +323,12 @@ class DigitalBitboxClient(HardwareWalletClient):
         to_send += '"}]}}'
 
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
             return
         print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
             return
 
@@ -337,7 +337,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         s = sig[32:64]
         recid = binascii.unhexlify(reply['sign'][0]['recid'])
         compact_sig = ser_sig_compact(r, s, recid)
-        print(binascii.hexlify(compact_sig))
+        logging.debug(binascii.hexlify(compact_sig))
 
         return {"signature":base64.b64encode(compact_sig)}
 
