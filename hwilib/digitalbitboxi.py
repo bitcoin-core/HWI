@@ -8,6 +8,7 @@ import pyaes
 import hashlib
 import os
 import binascii
+import logging
 
 from .hwwclient import HardwareWalletClient
 from .serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
@@ -278,17 +279,17 @@ class DigitalBitboxClient(HardwareWalletClient):
         if to_send[-1] == ',':
             to_send = to_send[:-1]
         to_send += ']}}'
-        print(to_send)
+        logging.debug(to_send)
 
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
-            return
+            return reply
         print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
-            return
+            return reply
 
         # Extract sigs
         sigs = []
@@ -312,32 +313,32 @@ class DigitalBitboxClient(HardwareWalletClient):
         to_hash = b""
         to_hash += self.message_magic
         to_hash += ser_compact_size(len(message))
-        to_hash += message
+        to_hash += message.encode()
 
         hashed_message = hash256(to_hash)
 
         to_send = '{"sign":{"data":[{"hash":"'
-        to_send += binascii.hexlify(hashed_message)
+        to_send += binascii.hexlify(hashed_message).decode()
         to_send += '","keypath":"'
         to_send += keypath
         to_send += '"}]}}'
 
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
-            return
+            return reply
         print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
         reply = send_encrypt(to_send, self.password, self.device)
-        print(reply)
+        logging.debug(reply)
         if 'error' in reply:
-            return
+            return reply
 
         sig = binascii.unhexlify(reply['sign'][0]['sig'])
         r = sig[0:32]
         s = sig[32:64]
         recid = binascii.unhexlify(reply['sign'][0]['recid'])
         compact_sig = ser_sig_compact(r, s, recid)
-        print(binascii.hexlify(compact_sig))
+        logging.debug(binascii.hexlify(compact_sig))
 
         return {"signature":base64.b64encode(compact_sig)}
 
@@ -358,4 +359,4 @@ class DigitalBitboxClient(HardwareWalletClient):
 
     # Close the device
     def close(self):
-        self.devce.close()
+        self.device.close()

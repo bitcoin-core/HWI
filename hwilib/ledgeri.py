@@ -9,6 +9,7 @@ import struct
 from . import base58
 from .serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
+import logging
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
 class LedgerClient(HardwareWalletClient):
@@ -19,7 +20,7 @@ class LedgerClient(HardwareWalletClient):
         super(LedgerClient, self).__init__(device)
         # hack to use btchip-python's getDongle pipeline
         device.close()
-        self.dongle = getDongle(True)
+        self.dongle = getDongle(logging.getLogger().getEffectiveLevel() == logging.DEBUG)
         self.app = btchip(self.dongle)
         self.device = device
 

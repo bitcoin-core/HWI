@@ -153,7 +153,7 @@ class KeepKeyClient(HardwareWalletClient):
 
             # append to outputs
             outputs.append(txoutput)
-            print(txoutput)
+            logging.debug(txoutput)
 
         # Sign the transaction
         self.client.set_tx_api(TxAPIPSBT(tx))
@@ -163,7 +163,7 @@ class KeepKeyClient(HardwareWalletClient):
             signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
 
         signatures = signed_tx[0]
-        print(binascii.hexlify(signed_tx[1]))
+        logging.debug(binascii.hexlify(signed_tx[1]))
         for psbt_in in tx.inputs:
             for pubkey, sig in zip(psbt_in.hd_keypaths.keys(), signatures):
                 fp = psbt_in.hd_keypaths[pubkey][0]
