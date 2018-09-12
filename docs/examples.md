@@ -11,18 +11,19 @@ The OS in this case is OSX (17.7.0 Darwin Kernel Version 17.7.0). In Linux the
 
 ## Useful xpubs to extract
 
-Starting from version 0.17, It is possible to to retrieve the Unspent 
-transaction outputs relevant for a set of [Output Descriptors][1] From 
-Bitcoin Core with the `scantxoutset` funcion.
+Starting from version Bitcoin Core v.0.17, It is possible to to retrieve 
+the Unspent transaction outputs relevant for a set of [Output Descriptors][1] 
+From Bitcoin Core with the `scantxoutset` funcion.
 
-To retrieve the outputs relevant for a specific Hardware wallet it is necssary:
+To retrieve the outputs relevant for a specific hardware wallet it is 
+necessary:
 
 1. to derive the xpub of the hardware wallet until the last hardened level 
-   with HWI (because the privatkey is required)
+   with HWI (because the private key is required)
 2. To use the obtained xpub to compose the output descriptor
 
-These are some schemas used in hardware wallets, with the data necessary to build 
-the appropriate output descriptor:
+These are some schemas used in hardware wallets, with the data necessary to 
+build the appropriate output descriptor:
 
 | Used schema | hardened path | further derivation | Otput type |
 |-------------| ------------- | -------------------|------------|
@@ -32,11 +33,12 @@ the appropriate output descriptor:
 
 NOTE: 
 1. We could also use "combo()" in all cases as "Output Type" because it is a 
-"bundle" which includes pk(KEY) and pkh(KEY). If the key is compressed, it also 
-includes wpkh(KEY) and sh(wpkh(KEY)).
+   "bundle" which includes pk(KEY) and pkh(KEY). If the key is compressed, it 
+   also includes wpkh(KEY) and sh(wpkh(KEY)).
 
-2. It is possible to specify how many outputs to search for by setting the maximum 
-   index of the derivation with the "range" key. In the examples it is set to 100.
+2. It is possible to specify how many outputs to search for by setting the 
+   maximum index of the derivation with the "range" key. In the examples 
+   it is set to 100.
 
 3. The output of all the search is zero outputs (the hardware wallet is empty).
 
@@ -139,6 +141,5 @@ bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vP
 [1]: https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
 [2]: https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
 [3]: https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
-
 
 
