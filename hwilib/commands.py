@@ -12,7 +12,7 @@ import logging
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id
+from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from bip32utils import BIP32Key
 
 # Error codes
@@ -24,32 +24,83 @@ INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 
+# Get the client for the device
+def get_client(device_type, device_path):
+    # Open the device
+    try:
+        device = hid.device()
+        device_path = bytes(device_path.encode())
+        device.open_path(device_path)
+    except Exception as e:
+        print(e)
+        return {'error':'Unable to connect to specified device','code':DEVICE_CONN_ERROR}
+
+    # Make a client
+    if device_type == 'trezor':
+        from . import trezori
+        client = trezori.TrezorClient(device=device, path=device_path)
+    elif device_type == 'keepkey':
+        from . import keepkeyi
+        client = keepkeyi.KeepKeyClient(device=device, path=device_path)
+    elif device_type == 'ledger':
+        from . import ledgeri
+        client = ledgeri.LedgerClient(device=device)
+    elif device_type == 'digitalbitbox':
+        if not password:
+            return {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
+        from . import digitalbitboxi
+        client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
+    elif device_type == 'coldcard':
+        from . import coldcardi
+        client = coldcardi.ColdCardClient(device=device)
+    else:
+        return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
+    return client
+
 # Get a list of all available hardware wallets
 def enumerate():
     result = []
     devices = hid.enumerate()
     for d in devices:
+        d_data = {}
         # Get trezors
         if (d['vendor_id'], d['product_id']) in trezor_device_ids:
-            result.append({'type':'trezor','path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'trezor'
         # Get keepkeys
         elif (d['vendor_id'], d['product_id']) in keepkey_device_ids:
-            result.append({'type':'keepkey', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'keepkey'
         # Get ledgers
         elif (d['vendor_id'], d['product_id']) in ledger_device_ids:
-            result.append({'type':'ledger', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'ledger'
         # Get DigitalBitboxes
         elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
-            result.append({'type':'digitalbitbox', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'digitalbitbox'
         # Get ColdCards
         elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
-            result.append({'type':'coldcard', 'path':d['path'].decode("utf-8"),
-                'serial_number':d['serial_number']})
+            d_data['type'] = 'coldcard'
+        else:
+            continue
+        d_data['path'] = d['path'].decode("utf-8")
+        d_data['serial_number'] = d['serial_number']
+
+        client = get_client(d_data['type'], d_data['path'])
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+        client.close()
+
+        result.append(d_data)
     return result
+
+def find_device(fingerprint):
+    devices = enumerate()
+    for d in devices:
+        client = get_client(d['type'], d['path'])
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+        master_fpr = get_xpub_fingerprint_hex(master_xpub)
+        if master_fpr == fingerprint:
+            return client
+        client.close()
+    return None
 
 def getmasterxpub(args, client):
     return client.get_master_xpub()
@@ -120,6 +171,7 @@ def process_commands(args):
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
+    parser.add_argument('--fingerprint', '-f', help='The first 4 bytes of the hash160 of the master public key')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
 
@@ -170,40 +222,18 @@ def process_commands(args):
     if command == 'enumerate':
         return args.func()
 
-    if device_path is None:
-        return {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
-    if device_type is None:
-        return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
-
-    # Open the device
-    try:
-        device = hid.device()
-        device_path = bytes(device_path.encode())
-        device.open_path(device_path)
-    except Exception as e:
-        print(e)
-        return {'error':'Unable to connect to specified device','code':DEVICE_CONN_ERROR}
-
-    # Make a client
-    if device_type == 'trezor':
-        from . import trezori
-        client = trezori.TrezorClient(device=device, path=device_path)
-    elif device_type == 'keepkey':
-        from . import keepkeyi
-        client = keepkeyi.KeepKeyClient(device=device, path=device_path)
-    elif device_type == 'ledger':
-        from . import ledgeri
-        client = ledgeri.LedgerClient(device=device)
-    elif device_type == 'digitalbitbox':
-        if not password:
-            return {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
-        from . import digitalbitboxi
-        client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
-    elif device_type == 'coldcard':
-        from . import coldcardi
-        client = coldcardi.ColdCardClient(device=device)
+    # Auto detect if that is set
+    if args.fingerprint:
+        client = find_device(args.fingerprint)
+        if not client:
+            return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
     else:
-        return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
+        if device_path is None:
+            return {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
+        if device_type is None:
+            return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
+
+        client = get_client(device_type, device_path)
     client.is_testnet = args.testnet
 
     # Do the commands
