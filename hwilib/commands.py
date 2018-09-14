@@ -83,10 +83,14 @@ def enumerate():
         d_data['path'] = d['path'].decode("utf-8")
         d_data['serial_number'] = d['serial_number']
 
-        client = get_client(d_data['type'], d_data['path'])
-        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-        client.close()
+        try:
+            client = get_client(d_data['type'], d_data['path'])
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            client.close()
+        except Exception as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+            pass
 
         result.append(d_data)
     return result
