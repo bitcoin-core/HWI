@@ -98,12 +98,15 @@ def enumerate():
 def find_device(fingerprint):
     devices = enumerate()
     for d in devices:
-        client = get_client(d['type'], d['path'])
-        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-        master_fpr = get_xpub_fingerprint_hex(master_xpub)
-        if master_fpr == fingerprint:
-            return client
-        client.close()
+        try:
+            client = get_client(d['type'], d['path'])
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            master_fpr = get_xpub_fingerprint_hex(master_xpub)
+            if master_fpr == fingerprint:
+                return client
+            client.close()
+        except:
+            pass # Ignore things we wouldn't get fingerprints for
     return None
 
 def getmasterxpub(args, client):
