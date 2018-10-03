@@ -132,7 +132,7 @@ def send_encrypt(msg, password, device):
         reply = send_plain(msg, device)
         if 'ciphertext' in reply:
             reply = DecodeAES(secret, ''.join(reply["ciphertext"]))
-            reply = json.loads(reply)
+            reply = json.loads(reply.decode("utf-8"))
         if 'error' in reply:
             password = None
     except Exception as e:
