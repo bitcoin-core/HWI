@@ -170,7 +170,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = get_xpub_fingerprint(json.loads(self.get_pubkey_at_path('m/0h'))['xpub'])
+        master_fp = get_xpub_fingerprint(self.get_pubkey_at_path('m/0h')['xpub'])
 
         # create sighashes
         sighash_tuples = []
