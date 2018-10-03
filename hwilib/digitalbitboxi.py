@@ -227,7 +227,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                     witness_program = psbt_in.witness_utxo.scriptPubKey
 
                 # Check if witness_program is script hash
-                if len(witness_program) == 34 and witness_program[0] == OP_0 and witness_program[1] == 0x20:
+                if len(witness_program) == 34 and witness_program[0] == 0x00 and witness_program[1] == 0x20:
                     # look up witnessscript and set as scriptCode
                     witnessscript = psbt_in.witness_script
                     scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
