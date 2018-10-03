@@ -268,6 +268,10 @@ class DigitalBitboxClient(HardwareWalletClient):
                     tup = (binascii.hexlify(sighash).decode(), keypath_str, i_num, pubkey)
                     sighash_tuples.append(tup)
 
+        # Return early if nothing to do
+        if len(sighash_tuples) == 0:
+            return {'psbt':tx.serialize()}
+
         # Sign the sighashes
         to_send = '{"sign":{"data":['
         for tup in sighash_tuples:
