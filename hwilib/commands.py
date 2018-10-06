@@ -25,7 +25,7 @@ NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 
 # Get the client for the device
-def get_client(device_type, device_path):
+def get_client(device_type, device_path, password=None):
     # Open the device
     try:
         device = hid.device()
@@ -240,7 +240,7 @@ def process_commands(args):
         if device_type is None:
             return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
 
-        client = get_client(device_type, device_path)
+        client = get_client(device_type, device_path, password)
     client.is_testnet = args.testnet
 
     # Do the commands

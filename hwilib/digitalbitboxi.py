@@ -132,7 +132,7 @@ def send_encrypt(msg, password, device):
         reply = send_plain(msg, device)
         if 'ciphertext' in reply:
             reply = DecodeAES(secret, ''.join(reply["ciphertext"]))
-            reply = json.loads(reply)
+            reply = json.loads(reply.decode("utf-8"))
         if 'error' in reply:
             password = None
     except Exception as e:
@@ -170,7 +170,7 @@ class DigitalBitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = get_xpub_fingerprint(json.loads(self.get_pubkey_at_path('m/0h'))['xpub'])
+        master_fp = get_xpub_fingerprint(self.get_pubkey_at_path('m/0h')['xpub'])
 
         # create sighashes
         sighash_tuples = []
@@ -227,7 +227,7 @@ class DigitalBitboxClient(HardwareWalletClient):
                     witness_program = psbt_in.witness_utxo.scriptPubKey
 
                 # Check if witness_program is script hash
-                if len(witness_program) == 34 and witness_program[0] == OP_0 and witness_program[1] == 0x20:
+                if len(witness_program) == 34 and witness_program[0] == 0x00 and witness_program[1] == 0x20:
                     # look up witnessscript and set as scriptCode
                     witnessscript = psbt_in.witness_script
                     scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
@@ -267,6 +267,10 @@ class DigitalBitboxClient(HardwareWalletClient):
                     # Create tuples and add to List
                     tup = (binascii.hexlify(sighash).decode(), keypath_str, i_num, pubkey)
                     sighash_tuples.append(tup)
+
+        # Return early if nothing to do
+        if len(sighash_tuples) == 0:
+            return {'psbt':tx.serialize()}
 
         # Sign the sighashes
         to_send = '{"sign":{"data":['
