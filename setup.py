@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hwi",
-    version="0.0.3",
+    version="0.0.4",
     author="Andrew Chow",
     author_email="andrew@achow101.com",
     description="A library for working with Bitcoin hardware wallets",
@@ -19,7 +19,6 @@ setuptools.setup(
         'btchip-python', # Ledger Nano S
         'keepkey', # KeepKey
         'ckcc-protocol', # Coldcard
-        'bip32utils',
     ],
     python_requires='>=3',
     classifiers=[

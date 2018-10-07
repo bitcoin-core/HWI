@@ -12,8 +12,8 @@ import logging
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
-from bip32utils import BIP32Key
+from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, decompose_xpub, pubkey_to_address
+from .bip32 import CKDpub
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -145,7 +145,7 @@ def getkeypool(args, client):
 
     # Get the key at the base
     base_key = client.get_pubkey_at_path(path_base)['xpub']
-    parent = BIP32Key.fromExtendedKey(base_key)
+    parent_pk, parent_cc = decompose_xpub(base_key)
 
     import_data = []
     for i in range(start, end + 1):
@@ -155,10 +155,10 @@ def getkeypool(args, client):
         else:
             path = path_base + '/' + str(i)
 
-        child = parent.ChildKey(i)
-        address = child.Address()
+        child_pk, child_cc = CKDpub(parent_pk, parent_cc, i)
+        address = pubkey_to_address(child_pk, args.testnet)
 
-        this_import['pubkeys'] = [{binascii.hexlify(child.PublicKey()).decode() : {master_fpr : path.replace('\'', 'h')}}]
+        this_import['pubkeys'] = [{binascii.hexlify(child_pk).decode() : {master_fpr : path.replace('\'', 'h')}}]
         this_import['scriptPubKey'] = {'address' : address}
         this_import['timestamp'] = 'now'
         this_import['internal'] = internal
