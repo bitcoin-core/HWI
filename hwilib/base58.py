@@ -87,14 +87,17 @@ def to_address(b, version):
     data += checksum
     return encode(data)
 
-def xpub_to_address(xpub, testnet=False):
-    data = decode(xpub)
-    pubkey = data[-37:-4]
+def pubkey_to_address(pubkey, testnet=False):
     pkh = hash160(pubkey)
     if testnet:
         return to_address(pkh, b'\x6f')
     else:
         return to_address(pkh, b'\x00')
+
+def xpub_to_address(xpub, testnet=False):
+    data = decode(xpub)
+    pubkey = data[-37:-4]
+    return pubkey_to_address(pubkey, testnet)
 
 def xpub_to_pub_hex(xpub):
     data = decode(xpub)
