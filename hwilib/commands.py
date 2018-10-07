@@ -58,7 +58,7 @@ def get_client(device_type, device_path, password=None):
     return client
 
 # Get a list of all available hardware wallets
-def enumerate():
+def enumerate(args):
     result = []
     devices = hid.enumerate()
     for d in devices:
@@ -84,7 +84,7 @@ def enumerate():
         d_data['serial_number'] = d['serial_number']
 
         try:
-            client = get_client(d_data['type'], d_data['path'])
+            client = get_client(d_data['type'], d_data['path'], args.password)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             client.close()
@@ -227,7 +227,7 @@ def process_commands(args):
 
     # List all available hardware wallet devices
     if command == 'enumerate':
-        return args.func()
+        return args.func(args)
 
     # Auto detect if that is set
     if args.fingerprint:
