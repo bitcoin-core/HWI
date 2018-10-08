@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-from serializations import PSBT, Base64ToHex, HexToBase64
+from hwilib.serializations import PSBT, Base64ToHex, HexToBase64
 import json
 import os
 

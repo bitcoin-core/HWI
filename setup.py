@@ -19,6 +19,7 @@ setuptools.setup(
         'btchip-python', # Ledger Nano S
         'keepkey', # KeepKey
         'ckcc-protocol', # Coldcard
+        'pyaes',
     ],
     python_requires='>=3',
     classifiers=[

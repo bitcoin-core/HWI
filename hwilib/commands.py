@@ -95,14 +95,14 @@ def enumerate(args):
         result.append(d_data)
     return result
 
-def find_device(fingerprint):
-    devices = enumerate()
+def find_device(args):
+    devices = enumerate(args)
     for d in devices:
         try:
-            client = get_client(d['type'], d['path'])
+            client = get_client(d['type'], d['path'], args.password)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             master_fpr = get_xpub_fingerprint_hex(master_xpub)
-            if master_fpr == fingerprint:
+            if master_fpr == args.fingerprint:
                 return client
             client.close()
         except:
@@ -231,7 +231,7 @@ def process_commands(args):
 
     # Auto detect if that is set
     if args.fingerprint:
-        client = find_device(args.fingerprint)
+        client = find_device(args)
         if not client:
             return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
     else:
