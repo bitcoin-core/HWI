@@ -14,7 +14,6 @@ pip3 install trezor[hidapi] # Trezor One
 pip3 install btchip-python # Ledger Nano S
 pip3 install keepkey # KeepKey
 pip3 install ckcc-protocol # Coldcard
-pip3 install bip32utils # For BIP32 deriving
 pip3 install pyaes # For digitalbitbox
 ```
 ## Install
