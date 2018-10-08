@@ -95,16 +95,22 @@ def enumerate(args):
         result.append(d_data)
     return result
 
+# Fingerprint or device type required
 def find_device(args):
+    assert(args.device_path is None)
     devices = enumerate(args)
     for d in devices:
+        if args.device_type is not None and d['type'] != args.device_type:
+            continue
         try:
             client = get_client(d['type'], d['path'], args.password)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             master_fpr = get_xpub_fingerprint_hex(master_xpub)
-            if master_fpr == args.fingerprint:
+            if args.fingerprint and master_fpr != args.fingerprint:
+                client.close()
+                continue
+            else:
                 return client
-            client.close()
         except:
             pass # Ignore things we wouldn't get fingerprints for
     return None
@@ -229,16 +235,13 @@ def process_commands(args):
     if command == 'enumerate':
         return args.func(args)
 
-    # Auto detect if that is set
-    if args.fingerprint:
+    # Auto detect if we are using fingerprint or type to identify device
+    if args.fingerprint or (args.device_type and not args.device_path):
         client = find_device(args)
         if not client:
             return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
     else:
-        if device_path is None:
-            return {'error':'You must specify a device path for all commands except enumerate','code':NO_DEVICE_PATH}
-        if device_type is None:
-            return {'error':'You must specify a device type for all commands except enumerate','code':NO_DEVICE_TYPE}
+        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code':NO_DEVICE_PATH}
 
         client = get_client(device_type, device_path, password)
     client.is_testnet = args.testnet
