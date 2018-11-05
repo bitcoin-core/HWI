@@ -1,48 +1,47 @@
 # Examples
 
-This Example has been taken with a Ledger nano S.
+Example using a Ledger Nano S:
 
 ```
 ./hwi.py enumerate
 [{"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@0/IOUSBHostHIDDevice@14200000,0", "serial_number": "0001"}, {"type": "ledger", "path": "IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/XHC1@14/XHC1@14000000/HS02@14200000/Nano S@14200000/Nano S@1/IOUSBHostHIDDevice@14200000,1", "serial_number": "0001"}]
 ```
-The OS in this case is OSX (17.7.0 Darwin Kernel Version 17.7.0). In Linux the 
+The OS in this case is macOS v10.13.6  (Darwin Kernel Version 17.7.0). In Linux the
 "path" is shorter.
 
-## Useful xpubs to extract
+## Extracting xpubs
 
-Starting from version Bitcoin Core v.0.17, It is possible to to retrieve 
-the Unspent transaction outputs relevant for a set of [Output Descriptors][1] 
-From Bitcoin Core with the `scantxoutset` funcion.
+Bitcoin Core v0.17.0 and later allows you to retrieve the unspent transaction outputs (utxo)
+relevant for a set of [Output Descriptors](https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md) with the `scantxoutset` RPC call.
 
-To retrieve the outputs relevant for a specific hardware wallet it is 
+To retrieve the outputs relevant for a specific hardware wallet it is
 necessary:
 
-1. to derive the xpub of the hardware wallet until the last hardened level 
+1. to derive the xpub of the hardware wallet until the last hardened level
    with HWI (because the private key is required)
-2. To use the obtained xpub to compose the output descriptor
+2. to use the obtained xpub to compose the output descriptor
 
-These are some schemas used in hardware wallets, with the data necessary to 
+These are some schemas used in hardware wallets, with the data necessary to
 build the appropriate output descriptor:
 
-| Used schema | hardened path | further derivation | Otput type |
-|-------------| ------------- | -------------------|------------|
-| BIP44       | m/44h/0h/0h   | /0/* and /1/*      | pkh()      |
-| BIP49       | m/49h/0h/0h   | /0/* and /1/*      | sh(wpkh()) |
-| BIP84       | m/84h/0h/0h   | /0/* and /1/*      | wpkh()     |
+| Used schema | hardened path | further derivation | Output type |
+|-------------| ------------- | -------------------|-------------|
+| BIP44       | m/44h/0h/0h   | /0/* and /1/*      | pkh()       |
+| BIP49       | m/49h/0h/0h   | /0/* and /1/*      | sh(wpkh())  |
+| BIP84       | m/84h/0h/0h   | /0/* and /1/*      | wpkh()      |
 
-NOTE: 
-1. We could also use "combo()" in all cases as "Output Type" because it is a 
-   "bundle" which includes pk(KEY) and pkh(KEY). If the key is compressed, it 
+NOTE:
+1. We could also use "combo()" in all cases as "Output Type" because it is a
+   "bundle" which includes pk(KEY) and pkh(KEY). If the key is compressed, it
    also includes wpkh(KEY) and sh(wpkh(KEY)).
 
-2. It is possible to specify how many outputs to search for by setting the 
-   maximum index of the derivation with the "range" key. In the examples 
+2. It is possible to specify how many outputs to search for by setting the
+   maximum index of the derivation with the "range" key. In the examples
    it is set to 100.
 
-3. The output of all the search is zero outputs (the hardware wallet is empty).
+3. The search returns zero outputs (the hardware wallet is empty).
 
-## BIP44
+### [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)
 
 1. To obtain the xpub relative to the last hardened level (m/44h/0h/0h)
 
@@ -59,8 +58,8 @@ NOTE:
 {"xpub": "xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n"}
 ```
 
-2. With this xpub it is possible  extract the relevant UTXOs using the 
-`scantxoutset` in Bitcoin Core (from 0.17).
+2. With this xpub it is possible  extract the relevant UTXOs using the
+`scantxoutset` RPC call in Bitcoin Core v0.17.0.
 
 ```
 bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n/0/*)","range":100},
@@ -70,11 +69,11 @@ bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1E
   "searched_items": 49507771,
   "unspents": [
   ],
-  "total_amount": 0.00000000 
+  "total_amount": 0.00000000
 }
 ```
 
-### BIP49 [2]
+### [BIP49](https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki)
 
 1. To obtain the xpub relative to the last hardened level (m/49h/0h/0h)
 
@@ -90,8 +89,8 @@ bitcoin-cli scantxoutset start '[{"desc":"pkh(xpub6CyidiQae2HF71YigFJqteLsRi9D1E
 <= b'4104c34926ea569d26e4ca06ccae25fa4332a07df69fb922a73131cfccf6a544aa3309af253eb5cee3caf8ca9a347a9e8d4429ac55b7a13f72aca36ebb51ca0f489e22314e546e3969454c587046324264664b6f326f316265785a72526e75396d65764663b310aae1803b63157ef3bb7394f985126e5f9ad4b3a6bcb118cd97875dc0e1ce'9000
 {"xpub": "xpub6DP8WTA5cy2qWzdtjMUpLJHkzonepEZytzxFLMzkrcW7U4prscYnmXRQ8BesvMP3iqgQUWisAU6ipXnZw2HnNreEPYJW6TUCAfmwJPyYgG6"}
 ```
-2. With this xpub it is possible  extract the relevant UTXOs using the 
-`scantxoutset` in Bitcoin Core (from 0.17).
+2. With this xpub it is possible  extract the relevant UTXOs using the
+`scantxoutset` RPC call in Bitcoin Core v0.17.0.
 
 ```
 bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzonepEZytzxFLMzkrcW7U4prscYnmXRQ8BesvMP3iqgQUWisAU6ipXnZw2HnNreEPYJW6TUCAfmwJPyYgG6/0/*))","range":100},
@@ -105,7 +104,7 @@ bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzo
 }
 ```
 
-### BIP84 [3]
+### [BIP84](https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki)
 
 1. To obtain the xpub relative to the last hardened level (m/84h/0h/0h)
 
@@ -122,8 +121,8 @@ bitcoin-cli scantxoutset start '[{"desc":"sh(wpkh(xpub6DP8WTA5cy2qWzdtjMUpLJHkzo
 {"xpub": "xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB"}
 ```
 
-2. With this xpub it is possible  extract the relevant UTXOs using the 
-`scantxoutset` in Bitcoin Core (from 0.17).
+2. With this xpub it is possible  extract the relevant UTXOs using the
+`scantxoutset` RPC call in Bitcoin Core v0.17.0.
 
 ```
 bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vPC3gyiQbqKDzDcPAq3UQChKPimHc3uCYfTTkpoXdwRTFnVTBdFpM9ysbf6KV34uMqkD3zXr6FzkJtcB/0/*)","range":100},
@@ -136,10 +135,3 @@ bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vP
   "total_amount": 0.00000000
 }
 ```
-
-
-[1]: https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
-[2]: https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
-[3]: https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
-
-
