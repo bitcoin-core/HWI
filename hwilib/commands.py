@@ -134,20 +134,58 @@ def signmessage(args, client):
     return client.sign_message(args.message, args.path)
 
 def getkeypool(args, client):
-    # args[0]: path base (e.g. m/44'/0' for account)
-    # args[1]: path suffix (e.g. 0/* for receive chain)
-    # args[2]; start index (e.g. 0)
-    # args[3]: end index (e.g. 1000)
-    # args[4]: internal (e.g. False)
-    path_base = args.path_base
-    path_suffix = args.path_suffix
+    # args[0]; start index (e.g. 0)
+    # args[1]: end index (e.g. 1000)
+    path = args.path
     start = args.start
     end = args.end
     internal = args.internal
     keypool = args.keypool
+    account = args.account or 0
 
     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
+
+    if not path:
+      # Master key:
+      path = "m/"
+
+      # Purpose
+      if args.bech32 == True:
+        path += "84'/"
+      elif args.p2sh_p2wpkh == True:
+        path += "49'/"
+      else:
+        path += "44'/"
+
+      # Coin type
+      if args.testnet == True:
+        path += "1'/"
+      else:
+        path += "0'/"
+
+      # Account
+      path += str(account) + '\'/'
+
+      # Receive or change
+      if args.internal == True:
+        path += "1/*"
+      else:
+        path += "0/*"
+    else:
+      if path[0] != "m":
+        return {'error':'Path must start with m/','code':BAD_ARGUMENT}
+      if path[-1] != "*":
+        return {'error':'Path must end with /*','code':BAD_ARGUMENT}
+
+    # Find the last hardened derivation:
+    path = path.replace('\'','h')
+    path_suffix = ''
+    for component in path.split("/")[::-1]:
+      if component[-1] == 'h' or component[-1] == 'm':
+        break
+      path_suffix = '/' + component + path_suffix
+    path_base = path.rsplit(path_suffix)[0]
 
     # Get the key at the base
     base_key = client.get_pubkey_at_path(path_base)['xpub']
@@ -163,7 +201,7 @@ def getkeypool(args, client):
           descriptor_open = 'sh(pkh('
           descriptor_close = '))'
 
-    this_import['desc'] = descriptor_open + '[' + master_fpr + '/' + path_base.replace('\'','h').replace('m/', '') + ']' + base_key.replace('\'','h') + '/' + path_suffix + descriptor_close
+    this_import['desc'] = descriptor_open + '[' + master_fpr + path_base.replace('m', '') + ']' + base_key + path_suffix + descriptor_close
     this_import['range'] = [start, end]
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal
@@ -207,14 +245,14 @@ def process_commands(args):
     signmsg_parser.set_defaults(func=signmessage)
 
     getkeypol_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
-    getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypol_parser.add_argument('--keypool', action='store_true', help='Indicates that the keys are to be imported to the keypool')
-    getkeypol_parser.add_argument('path_base', help='The prefix of the derivation path, e.g. m/84h/0h/0h for account 0 native SegWit')
-    getkeypol_parser.add_argument('path_suffix', help='The suffix of the derivation path, e.g. 0/* for receive and 1/* for change')
+    getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
+    getkeypol_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--bech32', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--account', help='BIP43 account (default: 0)')
+    getkeypol_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --bech32 --internal')
     getkeypol_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypol_parser.add_argument('end', type=int, help='The index to end at.')
-    getkeypol_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Generate p2sh-nested segwit addresses')
-    getkeypol_parser.add_argument('--bech32', action='store_true', help='Generate bech32 addresses')
     getkeypol_parser.set_defaults(func=getkeypool)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
