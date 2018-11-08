@@ -3,7 +3,6 @@
 # Hardware wallet interaction script
 
 import argparse
-import binascii
 import hid
 import json
 import sys
@@ -12,8 +11,7 @@ import logging
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, decompose_xpub, pubkey_to_address
-from .bip32 import CKDpub
+from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -136,40 +134,79 @@ def signmessage(args, client):
     return client.sign_message(args.message, args.path)
 
 def getkeypool(args, client):
-    # args[0]: path base (e.g. m/44'/0'/0')
-    # args[1]; start index (e.g. 0)
-    # args[2]: end index (e.g. 1000)
-    # args[3]: internal (e.g. False)
-    path_base = args.path_base
+    # args[0]; start index (e.g. 0)
+    # args[1]: end index (e.g. 1000)
+    path = args.path
     start = args.start
     end = args.end
     internal = args.internal
     keypool = args.keypool
+    account = args.account or 0
 
     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
+    if not path:
+      # Master key:
+      path = "m/"
+
+      # Purpose
+      if args.bech32 == True:
+        path += "84'/"
+      elif args.p2sh_p2wpkh == True:
+        path += "49'/"
+      else:
+        path += "44'/"
+
+      # Coin type
+      if args.testnet == True:
+        path += "1'/"
+      else:
+        path += "0'/"
+
+      # Account
+      path += str(account) + '\'/'
+
+      # Receive or change
+      if args.internal == True:
+        path += "1/*"
+      else:
+        path += "0/*"
+    else:
+      if path[0] != "m":
+        return {'error':'Path must start with m/','code':BAD_ARGUMENT}
+      if path[-1] != "*":
+        return {'error':'Path must end with /*','code':BAD_ARGUMENT}
+
+    # Find the last hardened derivation:
+    path = path.replace('\'','h')
+    path_suffix = ''
+    for component in path.split("/")[::-1]:
+      if component[-1] == 'h' or component[-1] == 'm':
+        break
+      path_suffix = '/' + component + path_suffix
+    path_base = path.rsplit(path_suffix)[0]
+
     # Get the key at the base
     base_key = client.get_pubkey_at_path(path_base)['xpub']
-    parent_pk, parent_cc = decompose_xpub(base_key)
 
     import_data = []
-    for i in range(start, end + 1):
-        this_import = {}
-        if (path_base[-1] == '/'):
-            path = path_base + str(i)
-        else:
-            path = path_base + '/' + str(i)
+    this_import = {}
 
-        child_pk, child_cc = CKDpub(parent_pk, parent_cc, i)
-        address = pubkey_to_address(child_pk, args.testnet)
+    descriptor_open = 'pkh('
+    descriptor_close = ')'
+    if args.bech32 == True:
+          descriptor_open = 'wpkh('
+    elif args.p2sh_p2wpkh == True:
+          descriptor_open = 'sh(pkh('
+          descriptor_close = '))'
 
-        this_import['pubkeys'] = [{binascii.hexlify(child_pk).decode() : {master_fpr : path.replace('\'', 'h')}}]
-        this_import['scriptPubKey'] = {'address' : address}
-        this_import['timestamp'] = 'now'
-        this_import['internal'] = internal
-        this_import['keypool'] = keypool
-        import_data.append(this_import)
+    this_import['desc'] = descriptor_open + '[' + master_fpr + path_base.replace('m', '') + ']' + base_key + path_suffix + descriptor_close
+    this_import['range'] = [start, end]
+    this_import['timestamp'] = 'now'
+    this_import['internal'] = internal
+    this_import['keypool'] = keypool
+    import_data.append(this_import)
     return import_data
 
 def displayaddress(args, client):
@@ -208,11 +245,14 @@ def process_commands(args):
     signmsg_parser.set_defaults(func=signmessage)
 
     getkeypol_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
-    getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypol_parser.add_argument('--keypool', action='store_true', help='Indicates that the keys are to be imported to the keypool')
-    getkeypol_parser.add_argument('path_base', help='The prefix of the derivation path')
-    getkeypol_parser.add_argument('start', type=int, help='The index to start at. The first key will be <path_base>/<start>')
-    getkeypol_parser.add_argument('end', type=int, help='The index to end at. The last key will be <path_base>/<end>')
+    getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
+    getkeypol_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--bech32', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--account', help='BIP43 account (default: 0)')
+    getkeypol_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --bech32 --internal')
+    getkeypol_parser.add_argument('start', type=int, help='The index to start at.')
+    getkeypol_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypol_parser.set_defaults(func=getkeypool)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
