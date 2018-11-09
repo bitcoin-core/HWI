@@ -143,6 +143,9 @@ def getkeypool(args, client):
     keypool = args.keypool
     account = args.account or 0
 
+    if args.p2sh_p2wpkh == True and args.bech32 == True:
+        return json.dumps({'error':'Both `--bech32` and `--p2sh_pw2pkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+
     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
@@ -211,7 +214,7 @@ def getkeypool(args, client):
 
 def displayaddress(args, client):
     if args.p2sh_p2wpkh == True and args.bech32 == True:
-        return json.dumps({'error':'You must choose one address type only.','code':BAD_ARGUMENT})
+        return json.dumps({'error':'Both `--bech32` and `--p2sh_pw2pkh` can not be selected at the same time.','code':BAD_ARGUMENT})
     return client.display_address(args.path, args.p2sh_p2wpkh, args.bech32)
 
 def process_commands(args):
