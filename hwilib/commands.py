@@ -195,7 +195,10 @@ def getkeypool(args, client):
 
     descriptor_open = 'pkh('
     descriptor_close = ')'
-    if args.bech32 == True:
+    if args.combo == True:
+          descriptor_open = 'combo('
+          descriptor_close = ')'
+    elif args.bech32 == True:
           descriptor_open = 'wpkh('
     elif args.p2sh_p2wpkh == True:
           descriptor_open = 'sh(pkh('
@@ -249,6 +252,7 @@ def process_commands(args):
     getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypol_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
     getkeypol_parser.add_argument('--bech32', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--combo', action='store_true', help='Creates a `combo` descriptor. Can be used in conjunction with `--p2sh_p2wpkh` or `--bech32` to use their default derivation paths')
     getkeypol_parser.add_argument('--account', help='BIP43 account (default: 0)')
     getkeypol_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --bech32 --internal')
     getkeypol_parser.add_argument('start', type=int, help='The index to start at.')
