@@ -224,6 +224,8 @@ def process_commands(args):
     parser.add_argument('--fingerprint', '-f', help='The first 4 bytes of the hash160 of the master public key')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
+    # work-around to make subparser required
+    subparsers.required = True
 
     enumerate_parser = subparsers.add_parser('enumerate', help='List all available devices')
     enumerate_parser.set_defaults(func=enumerate)
