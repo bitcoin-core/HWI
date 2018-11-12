@@ -65,6 +65,10 @@ Please also see [docs](docs/) for additional information about each device.
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes |
 | Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | ?? | ?? |
 
+## Using with Bitcoin Core
+
+See (Using Bitcoin Core with Hardware Wallets)[docs/bitcoin-core-usage.md].
+
 ## License
 
 This project is available under the MIT License, Copyright Andrew Chow.
