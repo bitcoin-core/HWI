@@ -143,8 +143,8 @@ def getkeypool(args, client):
     keypool = args.keypool
     account = args.account or 0
 
-    if args.p2sh_p2wpkh == True and args.bech32 == True:
-        return json.dumps({'error':'Both `--bech32` and `--p2sh_pw2pkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+    if args.sh_wpkh == True and args.wpkh == True:
+        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
 
     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
@@ -154,9 +154,9 @@ def getkeypool(args, client):
       path = "m/"
 
       # Purpose
-      if args.bech32 == True:
+      if args.wpkh == True:
         path += "84'/"
-      elif args.p2sh_p2wpkh == True:
+      elif args.sh_wpkh == True:
         path += "49'/"
       else:
         path += "44'/"
@@ -198,9 +198,9 @@ def getkeypool(args, client):
 
     descriptor_open = 'pkh('
     descriptor_close = ')'
-    if args.bech32 == True:
+    if args.wpkh == True:
           descriptor_open = 'wpkh('
-    elif args.p2sh_p2wpkh == True:
+    elif args.sh_wpkh == True:
           descriptor_open = 'sh(wpkh('
           descriptor_close = '))'
 
@@ -213,9 +213,9 @@ def getkeypool(args, client):
     return import_data
 
 def displayaddress(args, client):
-    if args.p2sh_p2wpkh == True and args.bech32 == True:
-        return json.dumps({'error':'Both `--bech32` and `--p2sh_pw2pkh` can not be selected at the same time.','code':BAD_ARGUMENT})
-    return client.display_address(args.path, args.p2sh_p2wpkh, args.bech32)
+    if args.sh_wpkh == True and args.wpkh == True:
+        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+    return client.display_address(args.path, args.sh_wpkh, args.wpkh)
 
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
@@ -252,18 +252,18 @@ def process_commands(args):
     getkeypol_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
     getkeypol_parser.add_argument('--keypool', action='store_true', help='Indicates that the keys are to be imported to the keypool')
     getkeypol_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
-    getkeypol_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
-    getkeypol_parser.add_argument('--bech32', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--sh_wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
+    getkeypol_parser.add_argument('--wpkh', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
     getkeypol_parser.add_argument('--account', help='BIP43 account (default: 0)')
-    getkeypol_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --bech32 --internal')
+    getkeypol_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --wpkh --internal')
     getkeypol_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypol_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypol_parser.set_defaults(func=getkeypool)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
     displayaddr_parser.add_argument('path', help='The BIP 32 derivation path of the key embedded in the address')
-    displayaddr_parser.add_argument('--p2sh_p2wpkh', action='store_true', help='Display the p2sh-nested segwit address associated with this key path')
-    displayaddr_parser.add_argument('--bech32', action='store_true', help='Display the bech32 version of the address associated with this key path')
+    displayaddr_parser.add_argument('--sh_wpkh', action='store_true', help='Display the p2sh-nested segwit address associated with this key path')
+    displayaddr_parser.add_argument('--wpkh', action='store_true', help='Display the bech32 version of the address associated with this key path')
     displayaddr_parser.set_defaults(func=displayaddress)
 
     args = parser.parse_args(args)

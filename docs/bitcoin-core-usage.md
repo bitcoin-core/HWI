@@ -51,7 +51,7 @@ For this example, we will use the Coldcard. As we can see, the device path is `0
 We will be fetching keys at the BIP 84 default.
 
 ```
-$ ./hwi.py -f 8038ecd9 getkeypool --bech32 --keypool 0 1000
+$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool 0 1000
 [{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true}]
 ```
 
@@ -75,7 +75,7 @@ $ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8
 Now we repeat the `getkeypool` and `importmulti` steps but set a `--internal` flag and use the change keypath (`m/44h/0h/0h/1`) in `getkeypool` to generate change keys.
 
 ```
-$ ./hwi.py -f 8038ecd9 getkeypool --bech32 --keypool --internal 0 1000
+$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 0 1000
 [{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}]
 $ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}]
 '
@@ -291,8 +291,8 @@ e51392c82e13bbfe714c73361aff14ac1a1637abf37587a562844ae5a4265adf
 When the keypools run out, they can be refilled by using the `getkeypool` commands as done in the beginning, but with different starting and ending indexes. For example, to refill my keypools, I would use the following `getkeypool` commands:
 
 ```
-$ ./hwi.py -f 8038ecd9 getkeypool --bech32 --keypool --internal 1000 2000
-$ ./hwi.py -f 8038ecd9 getkeypool --bech32 --keypool --internal 1000 2000
+$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 1000 2000
+$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 1000 2000
 ```
 The output can be imported with `importmulti` as shown in the Setup steps.
 
@@ -300,8 +300,8 @@ The output can be imported with `importmulti` as shown in the Setup steps.
 
 The instructions above use BIP 84 to derive keys used for P2WPKH addresses (bech32 addresses).
 HWI follows BIPs 44, 84, and 49. By default, descriptors will be for P2PKH addresses with keys derived at `m/44h/0h/0h/0` for normal receiving keys and `m/44h/0h/0h/1` for change keys.
-Using the `--bech32` option will result in P2WPKH addresses with keys derived at `m/84h/0h/0h/0` for normal receiving keys and `m/84h/0h/0h/1` for change keys.
-Using the `p2sh_p2wpkh` option will result in P2SH nested P2WPKH addresses with keys derived at `m/49h/0h/0h/0` for normal receiving keys and `m/49h/0h/0h/1` for change keys.
+Using the `--wpkh` option will result in P2WPKH addresses with keys derived at `m/84h/0h/0h/0` for normal receiving keys and `m/84h/0h/0h/1` for change keys.
+Using the `sh_wpkh` option will result in P2SH nested P2WPKH addresses with keys derived at `m/49h/0h/0h/0` for normal receiving keys and `m/49h/0h/0h/1` for change keys.
 
 To actually get the correct address type when using `getnewaddress` from Bitcoin Core, you will need to additionally set `-addresstype=p2sh-segwit` and `-changetype=p2sh-segwit`.
 This can be set in the command line (as shown in the example) or in your bitcoin.conf file.
