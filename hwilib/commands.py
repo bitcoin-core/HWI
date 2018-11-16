@@ -201,7 +201,7 @@ def getkeypool(args, client):
     if args.bech32 == True:
           descriptor_open = 'wpkh('
     elif args.p2sh_p2wpkh == True:
-          descriptor_open = 'sh(pkh('
+          descriptor_open = 'sh(wpkh('
           descriptor_close = '))'
 
     this_import['desc'] = descriptor_open + '[' + master_fpr + path_base.replace('m', '') + ']' + base_key + path_suffix + descriptor_close
