@@ -22,16 +22,20 @@ INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 
+class NoPasswordError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class UnknownDeviceError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
 # Get the client for the device
 def get_client(device_type, device_path, password=None):
     # Open the device
-    try:
-        device = hid.device()
-        device_path = bytes(device_path.encode())
-        device.open_path(device_path)
-    except Exception as e:
-        print(e)
-        return {'error':'Unable to connect to specified device','code':DEVICE_CONN_ERROR}
+    device = hid.device()
+    device_path = bytes(device_path.encode())
+    device.open_path(device_path)
 
     # Make a client
     if device_type == 'trezor':
@@ -45,14 +49,14 @@ def get_client(device_type, device_path, password=None):
         client = ledgeri.LedgerClient(device=device)
     elif device_type == 'digitalbitbox':
         if not password:
-            return {'error':'Password must be supplied for digital BitBox','code':NO_PASSWORD}
+            raise NoPasswordError('Password must be supplied for digital BitBox')
         from . import digitalbitboxi
         client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
     elif device_type == 'coldcard':
         from . import coldcardi
         client = coldcardi.ColdCardClient(device=device)
     else:
-        return {'error':'Unknown device type specified','code':UNKNWON_DEVICE_TYPE}
+        raise UnknownDeviceError('Unknown device type specified')
     return client
 
 # Get a list of all available hardware wallets
@@ -285,10 +289,18 @@ def process_commands(args):
         client = find_device(args)
         if not client:
             return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
+    elif args.device_type and args.device_path:
+        try:
+            client = get_client(device_type, device_path, password)
+        except NoPasswordError as e:
+            return {'error':str(e),'code':NO_PASSWORD}
+        except UnknownDeviceError as e:
+            return {'error':str(e),'code':UNKNWON_DEVICE_TYPE}
+        except Exception as e:
+            return {'error':str(e),'code':DEVICE_CONN_ERROR}
     else:
         return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code':NO_DEVICE_PATH}
 
-        client = get_client(device_type, device_path, password)
     client.is_testnet = args.testnet
 
     # Do the commands
