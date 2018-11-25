@@ -9,6 +9,7 @@ import sys
 import logging
 import glob
 import importlib
+import getpass
 
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
@@ -187,6 +188,7 @@ def process_commands(args):
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
+    parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
@@ -240,6 +242,11 @@ def process_commands(args):
 
     # Setup debug logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+
+    # Enter the password on stdin
+    if args.stdinpass:
+        password = getpass.getpass('Enter your device password: ')
+        args.password = password
 
     # List all available hardware wallet devices
     if command == 'enumerate':
