@@ -14,6 +14,7 @@ from .. import bech32
 import binascii
 import json
 import logging
+import os
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -30,6 +31,8 @@ class TrezorClient(HardwareWalletClient):
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
+
+        os.environ['PASSPHRASE'] = password
 
 
     # Must return a dict with the xpub
