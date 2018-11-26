@@ -9,15 +9,17 @@ from hashlib import sha256
 
 import base64
 import json
+import hid
 import io
 import time
 
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdCardClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    def __init__(self, device):
-        super(ColdCardClient, self).__init__(device)
+    def __init__(self, path, password=''):
+        super(ColdCardClient, self).__init__(path, password)
+        device = hid.device()
+        device.open_path(path.encode())
         self.device = ColdcardDevice(dev=device)
 
     # Must return a dict with the xpub

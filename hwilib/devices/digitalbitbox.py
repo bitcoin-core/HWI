@@ -139,13 +139,19 @@ def send_encrypt(msg, password, device):
         reply = {'error':'Exception caught while sending encrypted message to DigitalBitbox ' + str(e)}
     return reply
 
+class NoPasswordError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalBitboxClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    def __init__(self, device, password):
-        super(DigitalBitboxClient, self).__init__(device)
-        self.device = device
+    def __init__(self, path, password):
+        super(DigitalBitboxClient, self).__init__(path, password)
+        if not password:
+            raise NoPasswordError('Password must be supplied for digital BitBox')
+        self.device = hid.device()
+        self.device.open_path(path.encode())
         self.password = password
 
     # Must return a dict with the xpub

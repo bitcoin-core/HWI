@@ -3,8 +3,9 @@
 class HardwareWalletClient(object):
 
     # device is an HID device that has already been opened.
-    def __init__(self, device):
-        self.device = device
+    def __init__(self, path, password):
+        self.path = path
+        self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
         self.is_testnet = False
 

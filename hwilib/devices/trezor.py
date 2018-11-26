@@ -48,11 +48,9 @@ class TxAPIPSBT(TxApi):
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    def __init__(self, device, path):
-        super(TrezorClient, self).__init__(device)
-        device.close()
-        self.client = Trezor(transport=get_transport("hid:"+path.decode()))
+    def __init__(self, path, password=''):
+        super(TrezorClient, self).__init__(path, password)
+        self.client = Trezor(transport=get_transport(path))
 
         # if it wasn't able to find a client, throw an error
         if not self.client:

@@ -14,13 +14,14 @@ import logging
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
 class LedgerClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    # hacked in device support using btchip-python
-    def __init__(self, device):
-        super(LedgerClient, self).__init__(device)
+    def __init__(self, path, password=''):
+        super(LedgerClient, self).__init__(path, password)
+        device = hid.device()
+        device.open_path(path.encode())
+        device.set_nonblocking(True)
+
         self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
         self.app = btchip(self.dongle)
-        self.device = device
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path

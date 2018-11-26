@@ -22,40 +22,30 @@ INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 
-class NoPasswordError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
-
 class UnknownDeviceError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
 
 # Get the client for the device
 def get_client(device_type, device_path, password=None):
-    # Open the device
-    device = hid.device()
-    device_path = bytes(device_path.encode())
-    device.open_path(device_path)
-    device.set_nonblocking(True)
-
     # Make a client
     if device_type == 'trezor':
         from .devices import trezor
-        client = trezor.TrezorClient(device=device, path=device_path)
+        client = trezor.TrezorClient(device_path, password)
     elif device_type == 'keepkey':
         from .devices import keepkey
-        client = keepkey.KeepKeyClient(device=device, path=device_path)
+        client = keepkey.KeepKeyClient(device_path, password)
     elif device_type == 'ledger':
         from .devices import ledger
-        client = ledger.LedgerClient(device=device)
+        client = ledger.LedgerClient(device_path, password)
     elif device_type == 'digitalbitbox':
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
         from .devices import digitalbitbox
-        client = digitalbitbox.DigitalBitboxClient(device=device, password=password)
+        client = digitalbitbox.DigitalBitboxClient(device_path, password)
     elif device_type == 'coldcard':
         from .devices import coldcard
-        client = coldcard.ColdCardClient(device=device)
+        client = coldcard.ColdCardClient(device_path, password)
     else:
         raise UnknownDeviceError('Unknown device type specified')
     return client

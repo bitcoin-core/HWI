@@ -47,14 +47,12 @@ class TxAPIPSBT(TxApi):
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class KeepKeyClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    def __init__(self, device, path):
-        super(KeepKeyClient, self).__init__(device)
-        device.close()
+    def __init__(self, path, password=''):
+        super(KeepKeyClient, self).__init__(path, password)
         devices = HidTransport.enumerate()
         self.client = None
         for d in devices:
-            if d[0] == path:
+            if d[0].decode() == path:
                 transport = HidTransport(d)
                 self.client = KeepKey(transport)
                 break
