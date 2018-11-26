@@ -7,11 +7,15 @@ import hid
 import json
 import sys
 import logging
+import glob
+import importlib
 
 from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
                         digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
+from os.path import dirname, basename, isfile
+from .hwwclient import NoPasswordError
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -28,37 +32,32 @@ class UnknownDeviceError(Exception):
 
 # Get the client for the device
 def get_client(device_type, device_path, password=None):
-    # Make a client
-    if device_type == 'trezor':
-        from .devices import trezor
-        client = trezor.TrezorClient(device_path, password)
-    elif device_type == 'keepkey':
-        from .devices import keepkey
-        client = keepkey.KeepkeyClient(device_path, password)
-    elif device_type == 'ledger':
-        from .devices import ledger
-        client = ledger.LedgerClient(device_path, password)
-    elif device_type == 'digitalbitbox':
-        if not password:
-            raise NoPasswordError('Password must be supplied for digital BitBox')
-        from .devices import digitalbitbox
-        client = digitalbitbox.DigitalbitboxClient(device_path, password)
-    elif device_type == 'coldcard':
-        from .devices import coldcard
-        client = coldcard.ColdcardClient(device_path, password)
-    else:
+    class_name = device_type.capitalize()
+    module = device_type.lower()
+
+    try:
+        imported_dev = importlib.import_module('.devices.' + module, __package__)
+        client_constructor = getattr(imported_dev, class_name + 'Client')
+        client = client_constructor(device_path, password)
+    except ImportError as e:
         raise UnknownDeviceError('Unknown device type specified')
+
     return client
 
 # Get a list of all available hardware wallets
 def enumerate(args):
     result = []
-    from .devices.trezor import enumerate as enumerate_trezor
-    from .devices.coldcard import enumerate as enumerate_coldcard
-    from .devices.digitalbitbox import enumerate as enumerate_digitalbitbox
-    from .devices.keepkey import enumerate as enumerate_keepkey
-    from .devices.ledger import enumerate as enumerate_ledger
-    result = enumerate_trezor(args.password) + enumerate_coldcard(args.password) + enumerate_digitalbitbox(args.password) + enumerate_keepkey(args.password) + enumerate_ledger(args.password)
+
+    # Gets the module names of all the files in devices/
+    files = glob.glob(dirname(__file__)+"/devices/*.py")
+    modules = [ basename(f)[:-3] for f in files if isfile(f) and not f.endswith('__init__.py')]
+
+    for module in modules:
+        try:
+            imported_dev = importlib.import_module('.devices.' + module, __package__)
+            result.extend(imported_dev.enumerate(args.password))
+        except ImportError as e:
+            pass # Ignore ImportErrors, the user may not have all device dependencies installed
     return result
 
 # Fingerprint or device type required
