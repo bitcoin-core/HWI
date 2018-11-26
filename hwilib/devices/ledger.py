@@ -1,13 +1,13 @@
 # Ledger interaction script
 
-from .hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
 import json
 import struct
-from . import base58
-from .serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
+from .. import base58
+from ..serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 import logging
 

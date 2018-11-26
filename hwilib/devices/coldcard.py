@@ -1,10 +1,10 @@
 # Trezor interaction script
 
-from .hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient
 from ckcc.client import ColdcardDevice
 from ckcc.protocol import CCProtocolPacker
 from ckcc.constants import MAX_BLK_LEN
-from .base58 import xpub_main_2_test
+from ..base58 import xpub_main_2_test
 from hashlib import sha256
 
 import base64

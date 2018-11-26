@@ -1,14 +1,14 @@
 # Trezor interaction script
 
-from .hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.transport import get_transport
 from trezorlib import protobuf, tools
 from trezorlib import messages as proto
 from trezorlib.tx_api import TxApi
-from .base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
-from .serializations import ser_uint256, uint256_from_str
-from . import bech32
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from ..serializations import ser_uint256, uint256_from_str
+from .. import bech32
 
 import binascii
 import json
@@ -173,7 +173,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
-    def sign_message(self, message):
+    def sign_message(self, message, keypath):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
