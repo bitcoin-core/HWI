@@ -10,8 +10,6 @@ import logging
 import glob
 import importlib
 
-from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
-                        digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
