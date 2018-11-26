@@ -36,6 +36,7 @@ def get_client(device_type, device_path, password=None):
     device = hid.device()
     device_path = bytes(device_path.encode())
     device.open_path(device_path)
+    device.set_nonblocking(True)
 
     # Make a client
     if device_type == 'trezor':
@@ -71,8 +72,10 @@ def enumerate(args):
         # Get keepkeys
         elif (d['vendor_id'], d['product_id']) in keepkey_device_ids:
             d_data['type'] = 'keepkey'
-        # Get ledgers
-        elif (d['vendor_id'], d['product_id']) in ledger_device_ids:
+        # Get ledgers, only take interface 0 to avoid HID keyboard
+        elif (d['vendor_id'], d['product_id']) in ledger_device_ids and \
+                ('interface_number' in d and  d['interface_number'] == 0 \
+                or ('usage_page' in d and d['usage_page'] == 0xffa0)):
             d_data['type'] = 'ledger'
         # Get DigitalBitboxes
         elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
