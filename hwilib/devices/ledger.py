@@ -7,9 +7,13 @@ import base64
 import json
 import struct
 from .. import base58
+from ..base58 import get_xpub_fingerprint_hex
 from ..serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 import logging
+
+LEDGER_VENDOR_ID = 0x2c97
+LEDGER_DEVICE_ID = 0x0001
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
 class LedgerClient(HardwareWalletClient):
@@ -254,3 +258,25 @@ class LedgerClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.dongle.close()
+
+def enumerate(password=None):
+    results = []
+    for d in hid.enumerate(LEDGER_VENDOR_ID, LEDGER_DEVICE_ID):
+        if ('interface_number' in d and  d['interface_number'] == 0 \
+        or ('usage_page' in d and d['usage_page'] == 0xffa0)):
+            d_data = {}
+
+            path = d['path'].decode()
+            d_data['type'] = 'ledger'
+            d_data['path'] = path
+
+            try:
+                client = LedgerClient(path, password)
+                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                client.close()
+            except Exception as e:
+                d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+            results.append(d_data)
+    return results

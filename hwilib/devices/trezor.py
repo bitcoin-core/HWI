@@ -2,11 +2,11 @@
 
 from ..hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
-from trezorlib.transport import get_transport
+from trezorlib.transport import enumerate_devices, get_transport
 from trezorlib import protobuf, tools
 from trezorlib import messages as proto
 from trezorlib.tx_api import TxApi
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
 
@@ -193,3 +193,22 @@ class TrezorClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.client.close()
+
+def enumerate(password=None):
+    results = []
+    for dev in enumerate_devices():
+        d_data = {}
+
+        d_data['type'] = 'trezor'
+        d_data['path'] = dev.get_path()
+
+        try:
+            client = TrezorClient(d_data['path'], password)
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            client.close()
+        except Exception as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        results.append(d_data)
+    return results

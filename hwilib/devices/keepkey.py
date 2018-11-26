@@ -6,11 +6,14 @@ from keepkeylib.client import KeepKeyClient as KeepKey
 from keepkeylib import tools
 from keepkeylib import messages_pb2, types_pb2 as proto
 from keepkeylib.tx_api import TxApi
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 
 import binascii
 import json
+
+KEEPKEY_VENDOR_ID = 0x2B24
+KEEPKEY_DEVICE_ID = 0x0001
 
 class TxAPIPSBT(TxApi):
 
@@ -50,12 +53,8 @@ class KeepKeyClient(HardwareWalletClient):
     def __init__(self, path, password=''):
         super(KeepKeyClient, self).__init__(path, password)
         devices = HidTransport.enumerate()
-        self.client = None
-        for d in devices:
-            if d[0].decode() == path:
-                transport = HidTransport(d)
-                self.client = KeepKey(transport)
-                break
+        transport = HidTransport((path.encode(), None))
+        self.client = KeepKey(transport)
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
@@ -195,3 +194,23 @@ class KeepKeyClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.client.close()
+
+def enumerate(password=None):
+    results = []
+    for d in HidTransport.enumerate():
+        d_data = {}
+
+        path = d[0].decode()
+        d_data['type'] = 'keepkey'
+        d_data['path'] = path
+
+        try:
+            client = KeepKeyClient(path, password)
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            client.close()
+        except Exception as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        results.append(d_data)
+    return results

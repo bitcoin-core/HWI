@@ -53,41 +53,12 @@ def get_client(device_type, device_path, password=None):
 # Get a list of all available hardware wallets
 def enumerate(args):
     result = []
-    devices = hid.enumerate()
-    for d in devices:
-        d_data = {}
-        # Get trezors
-        if (d['vendor_id'], d['product_id']) in trezor_device_ids:
-            d_data['type'] = 'trezor'
-        # Get keepkeys
-        elif (d['vendor_id'], d['product_id']) in keepkey_device_ids:
-            d_data['type'] = 'keepkey'
-        # Get ledgers, only take interface 0 to avoid HID keyboard
-        elif (d['vendor_id'], d['product_id']) in ledger_device_ids and \
-                ('interface_number' in d and  d['interface_number'] == 0 \
-                or ('usage_page' in d and d['usage_page'] == 0xffa0)):
-            d_data['type'] = 'ledger'
-        # Get DigitalBitboxes
-        elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
-            d_data['type'] = 'digitalbitbox'
-        # Get ColdCards
-        elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
-            d_data['type'] = 'coldcard'
-        else:
-            continue
-        d_data['path'] = d['path'].decode("utf-8")
-        d_data['serial_number'] = d['serial_number']
-
-        try:
-            client = get_client(d_data['type'], d_data['path'], args.password)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-            client.close()
-        except Exception as e:
-            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
-            pass
-
-        result.append(d_data)
+    from .devices.trezor import enumerate as enumerate_trezor
+    from .devices.coldcard import enumerate as enumerate_coldcard
+    from .devices.digitalbitbox import enumerate as enumerate_digitalbitbox
+    from .devices.keepkey import enumerate as enumerate_keepkey
+    from .devices.ledger import enumerate as enumerate_ledger
+    result = enumerate_trezor(args.password) + enumerate_coldcard(args.password) + enumerate_digitalbitbox(args.password) + enumerate_keepkey(args.password) + enumerate_ledger(args.password)
     return result
 
 # Fingerprint or device type required

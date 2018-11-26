@@ -10,9 +10,9 @@ import os
 import binascii
 import logging
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient, NoPasswordError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8*512
@@ -23,6 +23,8 @@ boot_buf_size_reply = 256
 HWW_CID = 0xFF000000
 HWW_CMD = 0x80 + 0x40 + 0x01
 
+DBB_VENDOR_ID = 0x03eb
+DBB_DEVICE_ID = 0x2402
 
 def aes_encrypt_with_iv(key, iv, data):
     aes_cbc = pyaes.AESModeOfOperationCBC(key, iv=iv)
@@ -138,10 +140,6 @@ def send_encrypt(msg, password, device):
     except Exception as e:
         reply = {'error':'Exception caught while sending encrypted message to DigitalBitbox ' + str(e)}
     return reply
-
-class NoPasswordError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
 
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalBitboxClient(HardwareWalletClient):
@@ -370,3 +368,25 @@ class DigitalBitboxClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.device.close()
+
+def enumerate(password=None):
+    results = []
+    for d in hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID):
+        if ('interface_number' in d and  d['interface_number'] == 0 \
+        or ('usage_page' in d and d['usage_page'] == 0xffff)):
+            d_data = {}
+
+            path = d['path'].decode()
+            d_data['type'] = 'digitalbitbox'
+            d_data['path'] = path
+
+            try:
+                client = DigitalBitboxClient(path, password)
+                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                client.close()
+            except Exception as e:
+                d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+            results.append(d_data)
+    return results

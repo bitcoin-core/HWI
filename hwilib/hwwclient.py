@@ -45,3 +45,7 @@ class HardwareWalletClient(object):
     def close(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
+
+class NoPasswordError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)

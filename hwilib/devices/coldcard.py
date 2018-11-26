@@ -1,10 +1,10 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ckcc.client import ColdcardDevice
+from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from ckcc.protocol import CCProtocolPacker
 from ckcc.constants import MAX_BLK_LEN
-from ..base58 import xpub_main_2_test
+from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
 from hashlib import sha256
 
 import base64
@@ -13,14 +13,21 @@ import hid
 import io
 import time
 
+CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
+# Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
+
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdCardClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(ColdCardClient, self).__init__(path, password)
-        device = hid.device()
-        device.open_path(path.encode())
-        self.device = ColdcardDevice(dev=device)
+        # Simulator hard coded pipe socket
+        if path == CC_SIMULATOR_SOCK:
+            self.device = ColdcardDevice(sn=path)
+        else:
+            device = hid.device()
+            device.open_path(path.encode())
+            self.device = ColdcardDevice(dev=device)
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -108,3 +115,39 @@ class ColdCardClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.device.close()
+
+def enumerate(password=None):
+    results = []
+    for d in hid.enumerate(COINKITE_VID, CKCC_PID):
+        d_data = {}
+
+        path = d['path'].decode()
+        d_data['type'] = 'coldcard'
+        d_data['path'] = path
+
+        try:
+            client = ColdCardClient(path)
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            client.close()
+        except Exception as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        results.append(d_data)
+    # Check if the simulator is there
+    try:
+        client = ColdCardClient(CC_SIMULATOR_SOCK)
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+
+        d_data = {}
+        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+        d_data['type'] = 'coldcard'
+        d_data['path'] = CC_SIMULATOR_SOCK
+        results.append(d_data)
+        client.close()
+    except RuntimeError as e:
+        if str(e) == 'Cannot connect to simulator. Is it running?':
+            pass
+        else:
+            raise e
+    return results
