@@ -36,6 +36,7 @@ def get_client(device_type, device_path, password=None):
     device = hid.device()
     device_path = bytes(device_path.encode())
     device.open_path(device_path)
+    device.set_nonblocking(True)
 
     # Make a client
     if device_type == 'trezor':
