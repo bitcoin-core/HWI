@@ -34,7 +34,7 @@ def get_client(device_type, device_path, password=None):
         client = trezor.TrezorClient(device_path, password)
     elif device_type == 'keepkey':
         from .devices import keepkey
-        client = keepkey.KeepKeyClient(device_path, password)
+        client = keepkey.KeepkeyClient(device_path, password)
     elif device_type == 'ledger':
         from .devices import ledger
         client = ledger.LedgerClient(device_path, password)
@@ -42,10 +42,10 @@ def get_client(device_type, device_path, password=None):
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
         from .devices import digitalbitbox
-        client = digitalbitbox.DigitalBitboxClient(device_path, password)
+        client = digitalbitbox.DigitalbitboxClient(device_path, password)
     elif device_type == 'coldcard':
         from .devices import coldcard
-        client = coldcard.ColdCardClient(device_path, password)
+        client = coldcard.ColdcardClient(device_path, password)
     else:
         raise UnknownDeviceError('Unknown device type specified')
     return client

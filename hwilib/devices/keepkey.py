@@ -48,10 +48,10 @@ class TxAPIPSBT(TxApi):
         return t
 
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
-class KeepKeyClient(HardwareWalletClient):
+class KeepkeyClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
-        super(KeepKeyClient, self).__init__(path, password)
+        super(KeepkeyClient, self).__init__(path, password)
         devices = HidTransport.enumerate()
         transport = HidTransport((path.encode(), None))
         self.client = KeepKey(transport)
@@ -205,7 +205,7 @@ def enumerate(password=None):
         d_data['path'] = path
 
         try:
-            client = KeepKeyClient(path, password)
+            client = KeepkeyClient(path, password)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             client.close()

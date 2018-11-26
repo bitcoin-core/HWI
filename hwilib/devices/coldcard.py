@@ -17,10 +17,10 @@ CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
 
 # This class extends the HardwareWalletClient for ColdCard specific things
-class ColdCardClient(HardwareWalletClient):
+class ColdcardClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
-        super(ColdCardClient, self).__init__(path, password)
+        super(ColdcardClient, self).__init__(path, password)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
             self.device = ColdcardDevice(sn=path)
@@ -126,7 +126,7 @@ def enumerate(password=None):
         d_data['path'] = path
 
         try:
-            client = ColdCardClient(path)
+            client = ColdcardClient(path)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             client.close()
@@ -136,7 +136,7 @@ def enumerate(password=None):
         results.append(d_data)
     # Check if the simulator is there
     try:
-        client = ColdCardClient(CC_SIMULATOR_SOCK)
+        client = ColdcardClient(CC_SIMULATOR_SOCK)
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
 
         d_data = {}

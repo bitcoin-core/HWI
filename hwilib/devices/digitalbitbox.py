@@ -142,10 +142,10 @@ def send_encrypt(msg, password, device):
     return reply
 
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
-class DigitalBitboxClient(HardwareWalletClient):
+class DigitalbitboxClient(HardwareWalletClient):
 
     def __init__(self, path, password):
-        super(DigitalBitboxClient, self).__init__(path, password)
+        super(DigitalbitboxClient, self).__init__(path, password)
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
         self.device = hid.device()
@@ -381,7 +381,7 @@ def enumerate(password=None):
             d_data['path'] = path
 
             try:
-                client = DigitalBitboxClient(path, password)
+                client = DigitalbitboxClient(path, password)
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
                 client.close()
