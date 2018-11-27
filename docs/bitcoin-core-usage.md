@@ -31,14 +31,11 @@ $ make
 $ src/bitcoind -daemon -addresstype=bech32 -changetype=bech32
 $ cd ..
 $ git clone https://github.com/achow101/HWI.git
+$ cd HWI
 $ python3 setup.py install
 ```
 
-We will do most of our work from HWI, so go there
-
-```
-$ cd hwi
-```
+You may need some dependencies, on ubuntu install `libudev-dev` and `libusb-1.0-0-dev`
 
 Now we need to find our hardware wallet. We do this using:
 
