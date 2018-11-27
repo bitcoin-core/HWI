@@ -224,11 +224,11 @@ def displayaddress(args, client):
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
-    parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected')
+    parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
-    parser.add_argument('--fingerprint', '-f', help='The first 4 bytes of the hash160 of the master public key')
+    parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
