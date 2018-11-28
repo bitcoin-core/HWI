@@ -1,0 +1,53 @@
+language: python
+os: linux
+dist: xenial
+python:
+    - '3.5'
+cache:
+    pip: true
+    ccache: true
+    directories:
+        - test/work
+addons:
+    apt:
+        sources:
+            - sourceline: 'ppa:bitcoin/bitcoin'
+        packages:
+            - libdb4.8-dev
+            - libdb4.8++-dev
+            - build-essential
+            - curl
+            - git
+            - libsdl2-dev
+            - libsdl2-image-dev
+            - gcc-arm-none-eabi
+            - libnewlib-arm-none-eabi
+            - libudev-dev
+            - libtool
+            - autotools-dev
+            - automake
+            - pkg-config
+            - bsdmainutils
+            - libssl-dev
+            - libevent-dev
+            - libboost-system-dev
+            - libboost-filesystem-dev
+            - libboost-chrono-dev
+            - libboost-test-dev
+            - libboost-thread-dev
+            - libusb-1.0-0-dev
+            - protobuf-compiler
+            - cython3
+            - ccache
+install:
+    - pip install pipenv pysdl2 python-bitcoinrpc
+    # From trezor-mcu to get the correct protobuf version
+    - curl -LO "https://github.com/google/protobuf/releases/download/v3.4.0/protoc-3.4.0-linux-x86_64.zip"
+    - unzip "protoc-3.4.0-linux-x86_64.zip" -d protoc
+    - export PATH="$(pwd)/protoc/bin:$PATH"
+    # Build emulators/simulators and bitcoind
+    - cd test; ./setup_environment.sh; cd ..
+    - pip uninstall -y trezor # Hack to get rid of master branch version of trezor that is installed for trezor-mcu build
+    - python setup.py install
+script:
+    - cd test; ./run_tests.py
