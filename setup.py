@@ -12,7 +12,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/achow101/hwi",
-    packages=setuptools.find_packages(exclude=['dopcs', 'test']),
+    packages=setuptools.find_packages(exclude=['docs', 'test']),
     install_requires=[
         'hidapi', # HID API needed in general
         'trezor[hidapi]', # Trezor One
@@ -27,4 +27,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    extras_require={
+        'tests': ['python-bitcoinrpc']
+    }
 )
