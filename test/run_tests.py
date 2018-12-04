@@ -7,6 +7,7 @@ import unittest
 
 from test_bech32 import TestSegwitAddress
 from test_coldcard import coldcard_test_suite
+from test_descriptor import TestDescriptor
 from test_device import start_bitcoind
 from test_psbt import TestPSBT
 from test_trezor import trezor_test_suite
@@ -35,6 +36,7 @@ args = parser.parse_args()
 
 # Run tests
 suite = unittest.TestSuite()
+suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 
