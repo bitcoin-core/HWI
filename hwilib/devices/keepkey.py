@@ -1,17 +1,19 @@
-# Trezor interaction script
+# KeepKey interaction script
 
-from .hwwclient import HardwareWalletClient
-from trezorlib.client import TrezorClient as Trezor
-from trezorlib.transport import get_transport
-from trezorlib import protobuf, tools
-from trezorlib import messages as proto
-from trezorlib.tx_api import TxApi
-from .base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test
-from .serializations import ser_uint256, uint256_from_str
-from . import bech32
+from ..hwwclient import HardwareWalletClient
+from keepkeylib.transport_hid import HidTransport
+from keepkeylib.client import KeepKeyClient as KeepKey
+from keepkeylib import tools
+from keepkeylib import messages_pb2, types_pb2 as proto
+from keepkeylib.tx_api import TxApi
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..serializations import ser_uint256, uint256_from_str
 
 import binascii
 import json
+
+KEEPKEY_VENDOR_ID = 0x2B24
+KEEPKEY_DEVICE_ID = 0x0001
 
 class TxAPIPSBT(TxApi):
 
@@ -32,37 +34,38 @@ class TxAPIPSBT(TxApi):
         t.lock_time = tx.nLockTime
 
         for vin in tx.vin:
-            i = t._add_inputs()
+            i = t.inputs.add()
             i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
             i.prev_index = vin.prevout.n
             i.script_sig = vin.scriptSig
             i.sequence = vin.nSequence
 
         for vout in tx.vout:
-            o = t._add_bin_outputs()
+            o = t.bin_outputs.add()
             o.amount = vout.nValue
             o.script_pubkey = vout.scriptPubKey
 
         return t
 
-# This class extends the HardwareWalletClient for Trezor specific things
-class TrezorClient(HardwareWalletClient):
+# This class extends the HardwareWalletClient for Digital Bitbox specific things
+class KeepkeyClient(HardwareWalletClient):
 
-    # device is an HID device that has already been opened.
-    def __init__(self, device, path):
-        super(TrezorClient, self).__init__(device)
-        device.close()
-        self.client = Trezor(transport=get_transport("hid:"+path.decode()))
+    def __init__(self, path, password=''):
+        super(KeepkeyClient, self).__init__(path, password)
+        devices = HidTransport.enumerate()
+        transport = HidTransport((path.encode(), None))
+        self.client = KeepKey(transport)
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
 
-
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
-        expanded_path = tools.parse_path(path)
+        path = path.replace('h', '\'')
+        path = path.replace('H', '\'')
+        expanded_path = self.client.expand_path(path)
         output = self.client.get_public_node(expanded_path)
         if self.is_testnet:
             return {'xpub':xpub_main_2_test(output.xpub)}
@@ -70,7 +73,7 @@ class TrezorClient(HardwareWalletClient):
             return {'xpub':output.xpub}
 
     # Must return a hex string with the signed transaction
-    # The tx must be in the psbt format
+    # The tx must be in the combined unsigned transaction format
     def sign_tx(self, tx):
 
         # Get this devices master key fingerprint
@@ -89,23 +92,23 @@ class TrezorClient(HardwareWalletClient):
 
             # Detrermine spend type
             if psbt_in.non_witness_utxo:
-                txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                txinputtype.script_type = 0
             elif psbt_in.witness_utxo:
                 # Check if the output is p2sh
                 if psbt_in.witness_utxo.is_p2sh():
-                    txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
+                    txinputtype.script_type = 3
                 else:
-                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                    txinputtype.script_type = 4
 
             # Check for 1 key
             if len(psbt_in.hd_keypaths) == 1:
                 # Is this key ours
                 pubkey = list(psbt_in.hd_keypaths.keys())[0]
                 fp = psbt_in.hd_keypaths[pubkey][0]
-                keypath = list(psbt_in.hd_keypaths[pubkey][1:])
+                keypath = psbt_in.hd_keypaths[pubkey][1:]
                 if fp == master_fp:
                     # Set the keypath
-                    txinputtype.address_n = keypath
+                    txinputtype.address_n.extend(keypath)
 
             # Check for multisig (more than 1 key)
             elif len(psbt_in.hd_keypaths) > 1:
@@ -126,31 +129,28 @@ class TrezorClient(HardwareWalletClient):
         if self.is_testnet:
             p2pkh_version = b'\x6f'
             p2sh_version = b'\xc4'
-            bech32_hrp = 'tb'
         else:
             p2pkh_version = b'\x00'
             p2sh_version = b'\x05'
-            bech32_hrp = 'bc'
 
         # prepare outputs
         outputs = []
         for out in tx.tx.vout:
             txoutput = proto.TxOutputType()
             txoutput.amount = out.nValue
-            txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
             if out.is_p2pkh():
                 txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
+                txoutput.script_type = 0
             elif out.is_p2sh():
                 txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
+                txoutput.script_type = 1
             else:
-                wit, ver, prog = out.is_witness()
-                if wit:
-                    txoutput.address = bech32.encode(bech32_hrp, ver, prog)
-                else:
-                    raise TypeError("Output is not an address")
+                # TODO: Figure out what to do here. for now, just break
+                break
 
             # append to outputs
             outputs.append(txoutput)
+            logging.debug(txoutput)
 
         # Sign the transaction
         self.client.set_tx_api(TxAPIPSBT(tx))
@@ -160,20 +160,19 @@ class TrezorClient(HardwareWalletClient):
             signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
 
         signatures = signed_tx[0]
+        logging.debug(binascii.hexlify(signed_tx[1]))
         for psbt_in in tx.inputs:
             for pubkey, sig in zip(psbt_in.hd_keypaths.keys(), signatures):
                 fp = psbt_in.hd_keypaths[pubkey][0]
                 keypath = psbt_in.hd_keypaths[pubkey][1:]
                 if fp == master_fp:
                     psbt_in.partial_sigs[pubkey] = sig + b'\x01'
-                break
-            signatures.remove(sig)
 
         return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
-    def sign_message(self, message):
+    def sign_message(self, message, keypath):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
@@ -195,3 +194,23 @@ class TrezorClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.client.close()
+
+def enumerate(password=None):
+    results = []
+    for d in HidTransport.enumerate():
+        d_data = {}
+
+        path = d[0].decode()
+        d_data['type'] = 'keepkey'
+        d_data['path'] = path
+
+        try:
+            client = KeepkeyClient(path, password)
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            client.close()
+        except Exception as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        results.append(d_data)
+    return results

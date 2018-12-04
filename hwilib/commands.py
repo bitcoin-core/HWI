@@ -7,11 +7,13 @@ import hid
 import json
 import sys
 import logging
+import glob
+import importlib
 
-from .device_ids import trezor_device_ids, keepkey_device_ids, ledger_device_ids,\
-                        digitalbitbox_device_ids, coldcard_device_ids
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
+from os.path import dirname, basename, isfile
+from .hwwclient import NoPasswordError
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -22,82 +24,38 @@ INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 
-class NoPasswordError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
-
 class UnknownDeviceError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
 
 # Get the client for the device
 def get_client(device_type, device_path, password=None):
-    # Open the device
-    device = hid.device()
-    device_path = bytes(device_path.encode())
-    device.open_path(device_path)
-    device.set_nonblocking(True)
+    class_name = device_type.capitalize()
+    module = device_type.lower()
 
-    # Make a client
-    if device_type == 'trezor':
-        from . import trezori
-        client = trezori.TrezorClient(device=device, path=device_path)
-    elif device_type == 'keepkey':
-        from . import keepkeyi
-        client = keepkeyi.KeepKeyClient(device=device, path=device_path)
-    elif device_type == 'ledger':
-        from . import ledgeri
-        client = ledgeri.LedgerClient(device=device)
-    elif device_type == 'digitalbitbox':
-        if not password:
-            raise NoPasswordError('Password must be supplied for digital BitBox')
-        from . import digitalbitboxi
-        client = digitalbitboxi.DigitalBitboxClient(device=device, password=password)
-    elif device_type == 'coldcard':
-        from . import coldcardi
-        client = coldcardi.ColdCardClient(device=device)
-    else:
+    try:
+        imported_dev = importlib.import_module('.devices.' + module, __package__)
+        client_constructor = getattr(imported_dev, class_name + 'Client')
+        client = client_constructor(device_path, password)
+    except ImportError as e:
         raise UnknownDeviceError('Unknown device type specified')
+
     return client
 
 # Get a list of all available hardware wallets
 def enumerate(args):
     result = []
-    devices = hid.enumerate()
-    for d in devices:
-        d_data = {}
-        # Get trezors
-        if (d['vendor_id'], d['product_id']) in trezor_device_ids:
-            d_data['type'] = 'trezor'
-        # Get keepkeys
-        elif (d['vendor_id'], d['product_id']) in keepkey_device_ids:
-            d_data['type'] = 'keepkey'
-        # Get ledgers, only take interface 0 to avoid HID keyboard
-        elif (d['vendor_id'], d['product_id']) in ledger_device_ids and \
-                ('interface_number' in d and  d['interface_number'] == 0 \
-                or ('usage_page' in d and d['usage_page'] == 0xffa0)):
-            d_data['type'] = 'ledger'
-        # Get DigitalBitboxes
-        elif (d['vendor_id'], d['product_id']) in digitalbitbox_device_ids:
-            d_data['type'] = 'digitalbitbox'
-        # Get ColdCards
-        elif (d['vendor_id'], d['product_id']) in coldcard_device_ids:
-            d_data['type'] = 'coldcard'
-        else:
-            continue
-        d_data['path'] = d['path'].decode("utf-8")
-        d_data['serial_number'] = d['serial_number']
 
+    # Gets the module names of all the files in devices/
+    files = glob.glob(dirname(__file__)+"/devices/*.py")
+    modules = [ basename(f)[:-3] for f in files if isfile(f) and not f.endswith('__init__.py')]
+
+    for module in modules:
         try:
-            client = get_client(d_data['type'], d_data['path'], args.password)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-            client.close()
-        except Exception as e:
-            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
-            pass
-
-        result.append(d_data)
+            imported_dev = importlib.import_module('.devices.' + module, __package__)
+            result.extend(imported_dev.enumerate(args.password))
+        except ImportError as e:
+            pass # Ignore ImportErrors, the user may not have all device dependencies installed
     return result
 
 # Fingerprint or device type required
