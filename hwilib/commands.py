@@ -9,6 +9,7 @@ from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
 from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError
+from .descriptor import Descriptor
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -182,10 +183,18 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     import_data.append(this_import)
     return import_data
 
-def displayaddress(client, path, sh_wpkh=False, wpkh=False):
-    if sh_wpkh == True and wpkh == True:
-        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
-    return client.display_address(path, sh_wpkh, wpkh)
+def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
+    if path is not None:
+        if sh_wpkh == True and wpkh == True:
+            return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
+        client.display_address(path, sh_wpkh, wpkh)
+    elif desc is not None:
+        descriptor = Descriptor.parse(desc, client.is_testnet)
+        if descriptor is None:
+            return {'error':'Unable to parse descriptor: ' + desc,'code':BAD_ARGUMENT}
+        if descriptor.m_path is None:
+            return {'error':'Descriptor missing origin info: ' + desc,'code':BAD_ARGUMENT}
+        client.display_address(descriptor.m_path, descriptor.sh_wpkh, descriptor.wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):
     try:

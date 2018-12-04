@@ -380,15 +380,16 @@ class TestDisplayAddress(DeviceTestCase):
         self.emulator.stop()
 
     def test_display_address_bad_args(self):
-        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', 'm/49h/1h/0h/0/0'])
+        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
     def test_display_address(self):
-        process_commands(self.dev_args + ['displayaddress', 'm/44h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', 'm/49h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--wpkh', 'm/84h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh(m/84h/1h/0h/0/0)'])
 
 class TestSignMessage(DeviceTestCase):
     def setUp(self):
