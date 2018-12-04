@@ -239,7 +239,7 @@ def process_commands(args):
     command = args.command
 
     # Setup debug logging
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
 
     # List all available hardware wallet devices
     if command == 'enumerate':
