@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
-    get_client, getmasterxpub, getxpub, getkeypool, restore_device, setup_device, \
+    get_client, getmasterxpub, getxpub, getkeypool, getkeys, restore_device, setup_device, \
     signmessage, signtx, wipe_device, NO_DEVICE_PATH, DEVICE_CONN_ERROR, NO_PASSWORD, \
     UNKNWON_DEVICE_TYPE
 
@@ -28,6 +28,9 @@ def getxpub_handler(args, client):
 
 def getkeypool_handler(args, client):
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh)
+
+def getkeys_handler(args, client):
+    return getkeys(client, desc=args.desc)
 
 def restore_device_handler(args, client):
     return restore_device(client, label=args.label)
@@ -87,6 +90,10 @@ def process_commands(args):
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
+
+    getkeys_parser = subparsers.add_parser('getkeys', help='Get JSON array of descriptors')
+    getkeys_parser.add_argument('desc', help='Descriptor request for which to return a descriptor with keys, e.g. wpkh([00000000/84h/1h/0h]/0/*)')
+    getkeys_parser.set_defaults(func=getkeys_handler)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
     group = displayaddr_parser.add_mutually_exclusive_group()

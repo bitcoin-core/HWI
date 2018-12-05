@@ -196,6 +196,20 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
             return {'error':'Descriptor missing origin info: ' + desc,'code':BAD_ARGUMENT}
         client.display_address(descriptor.m_path, descriptor.sh_wpkh, descriptor.wpkh)
 
+def getkeys(client, desc=None):
+    descriptor = Descriptor.parse(desc, client.is_testnet)
+
+    if descriptor is None:
+        return {'error':'Unable to parse descriptor: ' + desc,'code':BAD_ARGUMENT}
+    if descriptor.m_path is None:
+        return {'error':'Descriptor missing origin info: ' + desc,'code':BAD_ARGUMENT}
+
+    # Get the key at the base
+    # TODO: if the last path component is hardened, obtain a list of keys
+    descriptor.base_key = client.get_pubkey_at_path(descriptor.m_path_base)['xpub']
+
+    return [descriptor.serialize()]
+
 def setup_device(client, label='', backup_passphrase=''):
     try:
         return client.setup_device(label, backup_passphrase)
