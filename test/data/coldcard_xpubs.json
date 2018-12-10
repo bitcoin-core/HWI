@@ -1,0 +1,47 @@
+[
+    {
+        "master_xpub": "tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd",
+        "vectors" : [
+            {
+                "path" : "m/0h",
+                "xpub" : "tpubD8NXmKsmWp3Y4WD8VqhKZ61UrvLfghEJjjHsJT8NYBPaHMVDVmCWGmttsn4HE6mEMSdCwcaGtB2iftGFZRcfeF2NxbpzSt2jpkYjdRQuX4W"
+            },
+            {
+                "path" : "m/0h/1",
+                "xpub" : "tpubDBKU51v7tZU5KvJ34JHeQ5Rr2uRg8mJLr3JSRR68HPZXEtwubGyqXBDDUqJmUAHzb9h23zyAJVSbzrV6P5qCKfqu8gQfX1EpH16SBeshMXp"
+            },
+            {
+                "path" : "m/0h/1/2h",
+                "xpub" : "tpubDD4Y2tN94L2KZiQ1tdpC5oUUATuWAwmRTuPchMY3HCkz2fexHBZDriebcpBYBcicEy1WTYAiALgemNXKd6jcuj9Vj4kUxhG3Uw9m8YgbcTn"
+            },
+            {
+                "path" : "m/0h/1/2h/2",
+                "xpub" : "tpubDEt7ap9HgGHPeP5DJqTvuptUw6RoJXfX5bstN8CdSvFgwFa69Qh2mB3hwJ6PAGfvpckRwrazGCJbmeUYtfr5ysREdfqyQSU4UFqhktMCmDr"
+            },
+            {
+                "path" : "m/0h/1/2h/2/1000000000",
+                "xpub" : "tpubDGV2stSVNpSZ7BPHmYYTqt4DXPaqKdqGMTX8ecS5Ae5tiVXd2NrqArPV8EBXzZ55y6u86SQF1i4eQ3JVYJbLdGYz3yTN8UrkJQrbgYjEeHH"
+            },
+            {
+                "path" : "m/0",
+                "xpub" : "tpubD8NXmKsdB9WZs2HhkE7jEZLymyb5dyvjJg2d7gGJCadyaoogRhtcpTUWdxmvECgVUVpGrxxHJzYdKw6q79NtLL4mzNeqbk4h2B2sE8aisFE"
+            },
+            {
+                "path" : "m/0/2147483647h",
+                "xpub" : "tpubDAogKPq6VDemCnuzg2ChNjDFtfiw2bG4Ja17GTxyAmohbNmz29Z7xRitwVdTrUPBdVF1EEuQBrAvUJ6m6kNFKSB723ws3RBxL8a67BnYNd3"
+            },
+            {
+                "path" : "m/0/2147483647h/1",
+                "xpub" : "tpubDDAsHiKquEdhD3dpctEhMgrF3QVFKz2NeCS6kkdTcN6AszAyCppLbQDzTqdqzZV4N1guZyWmxpT59dUPWKuKtijGvETuHSbNQubNvZck3L7"
+            },
+            {
+                "path" : "m/0/2147483647h/1/2147483646h",
+                "xpub" : "tpubDFNKqVRhj269YBcR4QHUeYHruqHQYCJkQX4K2oJG2S9EEEkvzP2fsEL5RB7zXBspZJNuxvv1qFUDafQQaN7j7Tv2g5U5gzb2YNshNZDR1Fx"
+            },
+            {
+                "path" : "m/0/2147483647h/1/2147483646h/2",
+                "xpub" : "tpubDGRkLZjvcoBbAnQjmCcx5Crc6hcU2BBJbXFyX516GSEw68mj6NTB7W7sXnMNA3iVoxDPYTt2QbR3oP8cjxxgkjaN9mqrAP43VqASDa3W4Qz"
+            }
+        ]
+    }
+]

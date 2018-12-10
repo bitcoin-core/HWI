@@ -1,5 +1,7 @@
 # Bitcoin Hardware Wallet Interaction scripts
 
+[![Build Status](https://travis-ci.org/achow101/HWI.svg?branch=master)](https://travis-ci.org/achow101/HWI)
+
 This project contains several scripts for interacting with Bitcoin hardware wallets.
 
 ## Prerequisites

@@ -503,7 +503,7 @@ def DeserializeHDKeypath(f, key, hd_keypaths):
 
 def SerializeHDKeypath(hd_keypaths, type):
     r = b""
-    for pubkey, path in hd_keypaths.items():
+    for pubkey, path in sorted(hd_keypaths.items()):
         r += ser_string(type + pubkey)
         packed = struct.pack("<" + "I" * len(path), *path)
         r += ser_string(packed)
@@ -638,7 +638,7 @@ class PartiallySignedInput:
             r += ser_string(tx)
 
         if len(self.final_script_sig) == 0 and self.final_script_witness.is_null():
-            for pubkey, sig in self.partial_sigs.items():
+            for pubkey, sig in sorted(self.partial_sigs.items()):
                 r += ser_string(b"\x02" + pubkey)
                 r += ser_string(sig)
 
@@ -664,7 +664,7 @@ class PartiallySignedInput:
             r += ser_string(b"\x08")
             r += self.final_script_witness.serialize()
 
-        for key, value in self.unknown:
+        for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
             r += ser_string(value)
 
@@ -745,7 +745,7 @@ class PartiallySignedOutput:
 
         r += SerializeHDKeypath(self.hd_keypaths, b"\x02")
 
-        for key, value in self.unknown:
+        for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
             r += ser_string(value)
 
@@ -762,7 +762,7 @@ class PSBT(object):
             self.tx = CTransaction()
         self.inputs = []
         self.outputs = []
-        self.unknown = []
+        self.unknown = {}
 
     def deserialize(self, psbt):
         hexstring = Base64ToHex(psbt.strip())
@@ -860,7 +860,7 @@ class PSBT(object):
         r += b"\x00"
 
         # unknowns
-        for key, value in self.unknown:
+        for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
             r += ser_string(value)
 

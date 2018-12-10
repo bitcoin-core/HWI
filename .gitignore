@@ -3,3 +3,5 @@ __pycache__/
 build/
 dist/
 hwi.egg-info/
+test/emulator.img
+test/work

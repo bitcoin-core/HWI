@@ -2,6 +2,7 @@
 
 from ..hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
+from trezorlib.client import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
 from trezorlib import protobuf, tools
 from trezorlib import messages as proto
@@ -12,6 +13,7 @@ from .. import bech32
 
 import binascii
 import json
+import logging
 
 class TxAPIPSBT(TxApi):
 
@@ -50,7 +52,14 @@ class TrezorClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(TrezorClient, self).__init__(path, password)
-        self.client = Trezor(transport=get_transport(path))
+        if path.startswith('udp'):
+            logging.debug('Simulator found, using DebugLink')
+            transport = get_transport(path)
+            self.client = TrezorClientDebugLink(transport=transport)
+            debuglink = transport.find_debug()
+            self.client.set_debuglink(debuglink)
+        else:
+            self.client = Trezor(transport=get_transport(path))
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
