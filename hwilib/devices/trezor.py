@@ -2,11 +2,10 @@
 
 from ..hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
-from trezorlib.client import TrezorClientDebugLink
+from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
-from trezorlib import protobuf, tools
+from trezorlib import protobuf, tools, btc
 from trezorlib import messages as proto
-from trezorlib.tx_api import TxApi
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
@@ -14,38 +13,6 @@ from .. import bech32
 import binascii
 import json
 import logging
-
-class TxAPIPSBT(TxApi):
-
-    def __init__(self, psbt):
-        super().__init__('bitcoin_psbt', None)
-        self.psbt = psbt
-
-    def get_tx(self, txhash):
-        tx = None
-        for psbt_in in self.psbt.inputs:
-            if psbt_in.non_witness_utxo and psbt_in.non_witness_utxo.sha256 == uint256_from_str(binascii.unhexlify(txhash)[::-1]):
-                tx = psbt_in.non_witness_utxo
-        if not tx:
-            raise ValueError("TX {} not found in PSBT".format(txhash))
-
-        t = proto.TransactionType()
-        t.version = tx.nVersion
-        t.lock_time = tx.nLockTime
-
-        for vin in tx.vin:
-            i = t._add_inputs()
-            i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
-            i.prev_index = vin.prevout.n
-            i.script_sig = vin.scriptSig
-            i.sequence = vin.nSequence
-
-        for vout in tx.vout:
-            o = t._add_bin_outputs()
-            o.amount = vout.nValue
-            o.script_pubkey = vout.scriptPubKey
-
-        return t
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -56,8 +23,6 @@ class TrezorClient(HardwareWalletClient):
             logging.debug('Simulator found, using DebugLink')
             transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
-            debuglink = transport.find_debug()
-            self.client.set_debuglink(debuglink)
         else:
             self.client = Trezor(transport=get_transport(path))
 
@@ -70,7 +35,7 @@ class TrezorClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         expanded_path = tools.parse_path(path)
-        output = self.client.get_public_node(expanded_path)
+        output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
             return {'xpub':xpub_main_2_test(output.xpub)}
         else:
@@ -81,7 +46,7 @@ class TrezorClient(HardwareWalletClient):
     def sign_tx(self, tx):
 
         # Get this devices master key fingerprint
-        master_key = self.client.get_public_node([0])
+        master_key = btc.get_public_node(self.client, [0])
         master_fp = get_xpub_fingerprint(master_key.xpub)
 
         # Prepare inputs
@@ -159,12 +124,38 @@ class TrezorClient(HardwareWalletClient):
             # append to outputs
             outputs.append(txoutput)
 
+        # Prepare prev txs
+        prevtxs = {}
+        for psbt_in in tx.inputs:
+            if psbt_in.non_witness_utxo:
+                prev = psbt_in.non_witness_utxo
+
+                t = proto.TransactionType()
+                t.version = prev.nVersion
+                t.lock_time = prev.nLockTime
+
+                for vin in prev.vin:
+                    i = proto.TxInputType()
+                    i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
+                    i.prev_index = vin.prevout.n
+                    i.script_sig = vin.scriptSig
+                    i.sequence = vin.nSequence
+
+                for vout in prev.vout:
+                    o = proto.TxOutputBinType()
+                    o.amount = vout.nValue
+                    o.script_pubkey = vout.scriptPubKey
+                logging.debug(psbt_in.non_witness_utxo.hash)
+                prevtxs[psbt_in.non_witness_utxo.hash] = t
+
         # Sign the transaction
-        self.client.set_tx_api(TxAPIPSBT(tx))
+        tx_details = proto.SignTx()
+        tx_details.version = tx.tx.nVersion
+        tx_details.lock_time = tx.tx.nLockTime
         if self.is_testnet:
-            signed_tx = self.client.sign_tx("Testnet", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
+            signed_tx = btc.sign_tx(self.client, "Testnet", inputs, outputs, tx_details, prevtxs)
         else:
-            signed_tx = self.client.sign_tx("Bitcoin", inputs, outputs, tx.tx.nVersion, tx.tx.nLockTime)
+            signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
 
         signatures = signed_tx[0]
         for psbt_in in tx.inputs:
