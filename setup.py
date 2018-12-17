@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['docs', 'test']),
     install_requires=[
         'hidapi', # HID API needed in general
-        'trezor[hidapi]', # Trezor One
+        'trezor>=0.11.0', # Trezor One
         'btchip-python', # Ledger Nano S
         'keepkey', # KeepKey
         'ckcc-protocol', # Coldcard

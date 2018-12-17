@@ -14,8 +14,8 @@ import time
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from trezorlib.transport import enumerate_devices
 from trezorlib.transport.udp import UdpTransport
-from trezorlib.client import TrezorClientDebugLink
-from trezorlib import coins
+from trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from trezorlib import device
 
 from hwilib.commands import process_commands
 
@@ -56,13 +56,9 @@ for dev in enumerate_devices():
     if isinstance(dev, UdpTransport):
         wirelink = dev
         break
-debuglink = wirelink.find_debug()
 client = TrezorClientDebugLink(wirelink)
-client.set_debuglink(debuglink)
-client.set_tx_api(coins.tx_api['Bitcoin'])
-client.wipe_device()
-client.transport.session_begin()
-client.load_device_by_mnemonic(mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
+device.wipe(client)
+load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
 
 # Tests!
 
@@ -104,8 +100,8 @@ with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/bip32_
     vectors = json.load(f)
 for vec in vectors:
     # Setup with xprv
-    client.wipe_device()
-    client.load_device_by_xprv(xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
+    device.wipe(client)
+    load_device_by_xprv(client=client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
 
     # Test getmasterxpub
     gmxp_res = process_commands(dev_args + ['getmasterxpub'])
