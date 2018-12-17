@@ -170,7 +170,7 @@ def getkeypool(args, client):
           descriptor_close = '))'
 
     this_import['desc'] = descriptor_open + '[' + master_fpr + path_base.replace('m', '') + ']' + base_key + path_suffix + descriptor_close
-    this_import['range'] = [start, end]
+    this_import['range'] = {'start': start, 'end': end}
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal
     this_import['keypool'] = keypool
