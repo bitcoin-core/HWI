@@ -4,6 +4,7 @@ from ..hwwclient import HardwareWalletClient
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
+from trezorlib.ui import ClickUI
 from trezorlib import protobuf, tools, btc
 from trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
@@ -24,7 +25,7 @@ class TrezorClient(HardwareWalletClient):
             transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
         else:
-            self.client = Trezor(transport=get_transport(path))
+            self.client = Trezor(transport=get_transport(path), ui=ClickUI())
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
@@ -140,13 +141,15 @@ class TrezorClient(HardwareWalletClient):
                     i.prev_index = vin.prevout.n
                     i.script_sig = vin.scriptSig
                     i.sequence = vin.nSequence
+                    t.inputs.append(i)
 
                 for vout in prev.vout:
                     o = proto.TxOutputBinType()
                     o.amount = vout.nValue
                     o.script_pubkey = vout.scriptPubKey
+                    t.output.append(o)
                 logging.debug(psbt_in.non_witness_utxo.hash)
-                prevtxs[psbt_in.non_witness_utxo.hash] = t
+                prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
         # Sign the transaction
         tx_details = proto.SignTx()
