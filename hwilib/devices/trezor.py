@@ -141,13 +141,15 @@ class TrezorClient(HardwareWalletClient):
                     i.prev_index = vin.prevout.n
                     i.script_sig = vin.scriptSig
                     i.sequence = vin.nSequence
+                    t.inputs.append(i)
 
                 for vout in prev.vout:
                     o = proto.TxOutputBinType()
                     o.amount = vout.nValue
                     o.script_pubkey = vout.scriptPubKey
+                    t.output.append(o)
                 logging.debug(psbt_in.non_witness_utxo.hash)
-                prevtxs[psbt_in.non_witness_utxo.hash] = t
+                prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
         # Sign the transaction
         tx_details = proto.SignTx()
