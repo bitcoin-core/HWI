@@ -30,7 +30,7 @@ class UnknownDeviceError(Exception):
         Exception.__init__(self,*args,**kwargs)
 
 # Get the client for the device
-def get_client(device_type, device_path, password=None):
+def get_client(device_type, device_path, password=''):
     class_name = device_type.capitalize()
     module = device_type.lower()
 
@@ -187,7 +187,7 @@ def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
-    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)')
+    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
     parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')

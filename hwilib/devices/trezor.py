@@ -34,7 +34,6 @@ class TrezorClient(HardwareWalletClient):
 
         os.environ['PASSPHRASE'] = password
 
-
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
@@ -200,7 +199,7 @@ class TrezorClient(HardwareWalletClient):
     def close(self):
         self.client.close()
 
-def enumerate(password=None):
+def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
         d_data = {}

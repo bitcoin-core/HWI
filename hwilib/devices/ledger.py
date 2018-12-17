@@ -259,7 +259,7 @@ class LedgerClient(HardwareWalletClient):
     def close(self):
         self.dongle.close()
 
-def enumerate(password=None):
+def enumerate(password=''):
     results = []
     for d in hid.enumerate(LEDGER_VENDOR_ID, LEDGER_DEVICE_ID):
         if ('interface_number' in d and  d['interface_number'] == 0 \

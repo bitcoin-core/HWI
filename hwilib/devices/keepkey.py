@@ -195,7 +195,7 @@ class KeepkeyClient(HardwareWalletClient):
     def close(self):
         self.client.close()
 
-def enumerate(password=None):
+def enumerate(password=''):
     results = []
     for d in HidTransport.enumerate():
         d_data = {}

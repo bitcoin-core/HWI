@@ -369,7 +369,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     def close(self):
         self.device.close()
 
-def enumerate(password=None):
+def enumerate(password=''):
     results = []
     for d in hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID):
         if ('interface_number' in d and  d['interface_number'] == 0 \
