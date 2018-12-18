@@ -767,6 +767,7 @@ class PSBT(object):
     def deserialize(self, psbt):
         hexstring = Base64ToHex(psbt.strip())
         f = BufferedReader(BytesIO(binascii.unhexlify(hexstring)))
+        end = len(binascii.unhexlify(hexstring))
 
         # Read the magic bytes
         magic = f.read(5)
@@ -820,6 +821,8 @@ class PSBT(object):
 
         # Read input data
         for txin in self.tx.vin:
+            if f.tell() == end:
+                break
             input = PartiallySignedInput()
             input.deserialize(f)
             self.inputs.append(input)
@@ -832,6 +835,8 @@ class PSBT(object):
 
         # Read output data
         for txout in self.tx.vout:
+            if f.tell() == end:
+                break
             output = PartiallySignedOutput()
             output.deserialize(f)
             self.outputs.append(output)
