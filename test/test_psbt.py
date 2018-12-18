@@ -1,36 +1,31 @@
 #! /usr/bin/env python3
 
-from hwilib.serializations import PSBT, Base64ToHex, HexToBase64
+from hwilib.serializations import PSBT
 import json
 import os
+import unittest
 
-print("Running PSBT Serialization Test")
+class TestPSBT(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Open the data file
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_psbt.json'), encoding='utf-8') as f:
+            cls.data = json.load(f)
 
-# Open the data file
-with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_psbt.json'), encoding='utf-8') as f:
-    d = json.load(f)
-    invalids = d['invalid']
-    valids = d['valid']
-    creators = d['creator']
-    signers = d['signer']
-    combiners = d['combiner']
-    finalizers = d['finalizer']
-    extractors = d['extractor']
+    def test_invalid_psbt(self):
+        for invalid in self.data['invalid']:
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(IOError) as cm:
+                    psbt = PSBT()
+                    psbt.deserialize(invalid)
 
-print("Testing invalid PSBTs")
-for invalid in invalids:
-    try:
-        psbt = PSBT()
-        psbt.deserialize(invalid)
-        assert False
-    except:
-        pass
+    def test_valid_psbt(self):
+        for valid in self.data['valid']:
+            with self.subTest(valid=valid):
+                psbt = PSBT()
+                psbt.deserialize(valid)
+                serd = psbt.serialize()
+                self.assertEqual(valid, serd)
 
-print("Testing valid PSBTs")
-for valid in valids:
-    psbt = PSBT()
-    psbt.deserialize(valid)
-    serd = psbt.serialize()
-    assert(valid == serd)
-
-print("PSBT Serialization tests pass")
+if __name__ == "__main__":
+    unittest.main()
