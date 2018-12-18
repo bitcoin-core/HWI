@@ -1,10 +1,14 @@
 #! /usr/bin/env python3
 
 import argparse
-import multiprocessing
-import os
 import subprocess
-import sys
+import unittest
+
+from test_bech32 import TestSegwitAddress
+from test_coldcard import coldcard_test_suite
+from test_device import start_bitcoind
+from test_psbt import TestPSBT
+from test_trezor import trezor_test_suite
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
 trezor_group = parser.add_mutually_exclusive_group()
@@ -17,9 +21,16 @@ parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoi
 args = parser.parse_args()
 
 # Run tests
-subprocess.check_call(['python3', 'test_bech32.py'])
-subprocess.check_call(['python3', 'test_psbt.py'])
+suite = unittest.TestSuite()
+suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
+suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
+
+if not args.no_trezor or not args.no_coldcard:
+    # Start bitcoind
+    rpc, userpass = start_bitcoind(args.bitcoind)
+
 if not args.no_trezor:
-    subprocess.check_call(['python3', 'test_trezor.py', args.trezor, args.bitcoind])
+    suite.addTest(trezor_test_suite(args.trezor, rpc, userpass))
 if not args.no_coldcard:
-    subprocess.check_call(['python3', 'test_coldcard.py', args.coldcard, args.bitcoind])
+    suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass))
+unittest.TextTestRunner().run(suite)
