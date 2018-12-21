@@ -243,6 +243,14 @@ keypool_desc = process_commands(dev_args + ['getkeypool', '--keypool', '--path',
 assert(keypool_desc['error'] == 'Path must end with /*')
 assert(keypool_desc['code'] == -7)
 
+# Test displayaddress
+logging.info('Testing displayaddress legacy')
+process_commands(dev_args + ['displayaddress', 'm/44h/1h/0h/0/0'])
+logging.info('Testing displayaddress p2sh segwit')
+process_commands(dev_args + ['displayaddress', '--sh_wpkh', 'm/49h/1h/0h/0/0'])
+logging.info('Testing displayaddress native segwit')
+process_commands(dev_args + ['displayaddress', '--wpkh', 'm/84h/1h/0h/0/0'])
+
 # Test signtx
 logging.info('Testing signtx')
 # Import some keys to the watch only wallet and send coins to them
