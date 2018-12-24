@@ -147,7 +147,7 @@ class TrezorClient(HardwareWalletClient):
                     o = proto.TxOutputBinType()
                     o.amount = vout.nValue
                     o.script_pubkey = vout.scriptPubKey
-                    t.output.append(o)
+                    t.bin_outputs.append(o)
                 logging.debug(psbt_in.non_witness_utxo.hash)
                 prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
