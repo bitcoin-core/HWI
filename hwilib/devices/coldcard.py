@@ -94,23 +94,19 @@ class ColdcardClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
     def sign_message(self, message, keypath):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The Coldcard does not currently implement signmessage')
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The Coldcard does not currently implement displayaddress')
 
     # Setup a new device
     def setup_device(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The Coldcard does not currently implement setup')
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The Coldcard does not currently implement wipe')
 
     # Close the device
     def close(self):
