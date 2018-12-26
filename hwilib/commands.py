@@ -119,7 +119,7 @@ def getkeypool(args, client):
     account = args.account or 0
 
     if args.sh_wpkh == True and args.wpkh == True:
-        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
 
     try:
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
@@ -192,7 +192,7 @@ def getkeypool(args, client):
 
 def displayaddress(args, client):
     if args.sh_wpkh == True and args.wpkh == True:
-        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
     return client.display_address(args.path, args.sh_wpkh, args.wpkh)
 
 def process_commands(args):

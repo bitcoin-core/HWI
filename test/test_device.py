@@ -98,6 +98,12 @@ class TestGetKeypool(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
 
+    def test_getkeypool_bad_args(self):
+        result = process_commands(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['code'], -7)
+
     def test_getkeypool(self):
         non_keypool_desc = process_commands(self.dev_args + ['getkeypool', '0', '20'])
         import_result = self.wpk_rpc.importmulti(non_keypool_desc)
@@ -220,6 +226,13 @@ class TestSignTx(DeviceTestCase):
         self.wrpc.sendrawtransaction(finalize_res['hex'])
 
 class TestDisplayAddress(DeviceTestCase):
+
+    def test_display_address_bad_args(self):
+        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', 'm/49h/1h/0h/0/0'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['code'], -7)
+
     def test_display_address(self):
         process_commands(self.dev_args + ['displayaddress', 'm/44h/1h/0h/0/0'])
         process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', 'm/49h/1h/0h/0/0'])
