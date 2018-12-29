@@ -1,11 +1,11 @@
 # Trezor interaction script
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient, DeviceAlreadyInitError, UnavailableActionError
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
-from trezorlib.ui import ClickUI
-from trezorlib import protobuf, tools, btc
+from trezorlib.ui import ClickUI, mnemonic_words
+from trezorlib import protobuf, tools, btc, device
 from trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
@@ -32,6 +32,7 @@ class TrezorClient(HardwareWalletClient):
         if not self.client:
             raise IOError("no Device")
 
+        self.password = password
         os.environ['PASSPHRASE'] = password
 
     # Must return a dict with the xpub
@@ -192,19 +193,28 @@ class TrezorClient(HardwareWalletClient):
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The Trezor does not currently implement setup')
+        if self.client.features.initialized:
+            raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
+        passphrase_enabled = False
+        if self.password:
+            passphrase_enabled = True
+        device.reset(self.client, passphrase_protection=bool(self.password))
+        return {'success': True}
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The Trezor does not currently implement wipe')
+        device.wipe(self.client)
+        return {'success': True}
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label=''):
-        raise NotImplementedError('The Trezor does not implement device restoring')
+        passphrase_enabled = False
+        device.recover(self.client, label=label, input_callback=mnemonic_words, passphrase_protection=bool(self.password))
+        return {'success': True}
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The Trezor does not implement this method')
+        raise UnavailableActionError('The Trezor does not support creating a backup via software')
 
     # Close the device
     def close(self):
