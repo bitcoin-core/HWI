@@ -352,18 +352,15 @@ class DigitalbitboxClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The DigitalBitbox does not currently implement displayaddress')
 
     # Setup a new device
     def setup_device(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The DigitalBitbox does not currently implement setup')
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+        raise NotImplementedError('The DigitalBitbox does not currently implement wipe')
 
     # Close the device
     def close(self):

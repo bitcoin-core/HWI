@@ -23,6 +23,7 @@ UNKNWON_DEVICE_TYPE = -4
 INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
+NOT_IMPLEMENTED = -8
 
 class UnknownDeviceError(Exception):
     def __init__(self,*args,**kwargs):
@@ -79,24 +80,33 @@ def find_device(args):
     return None
 
 def getmasterxpub(args, client):
-    return client.get_master_xpub()
+    try:
+        return client.get_master_xpub()
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
 
 def signtx(args, client):
     # Deserialize the transaction
     try:
         tx = PSBT()
         tx.deserialize(args.psbt)
+        return client.sign_tx(tx)
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         return {'error':'You must provide a PSBT','code':INVALID_TX}
-    return client.sign_tx(tx)
 
 def getxpub(args, client):
-    return client.get_pubkey_at_path(args.path)
+    try:
+        return client.get_pubkey_at_path(args.path)
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
 
 def signmessage(args, client):
-    return client.sign_message(args.message, args.path)
+    try:
+        return client.sign_message(args.message, args.path)
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
 
 def getkeypool(args, client):
     # args[0]; start index (e.g. 0)
@@ -109,9 +119,12 @@ def getkeypool(args, client):
     account = args.account or 0
 
     if args.sh_wpkh == True and args.wpkh == True:
-        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
 
-    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+    try:
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
 
     if not path:
@@ -179,7 +192,7 @@ def getkeypool(args, client):
 
 def displayaddress(args, client):
     if args.sh_wpkh == True and args.wpkh == True:
-        return json.dumps({'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT})
+        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
     return client.display_address(args.path, args.sh_wpkh, args.wpkh)
 
 def process_commands(args):
