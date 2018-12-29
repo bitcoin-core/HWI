@@ -360,7 +360,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The DigitalBitbox does not currently implement displayaddress')
+        raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
