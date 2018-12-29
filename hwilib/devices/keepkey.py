@@ -219,8 +219,11 @@ def enumerate(password=''):
 
         try:
             client = KeepkeyClient(path, password)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            if client.client.features.initialized:
+                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            else:
+                d_data['error'] = 'Not initialized'
             client.close()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)

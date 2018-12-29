@@ -424,8 +424,14 @@ def enumerate(password=''):
 
             try:
                 client = DigitalbitboxClient(path, password)
-                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+
+                # Check initialized
+                reply = send_encrypt('{"device" : "info"}', password, client.device)
+                if 'error' in reply and reply['error']['code'] == 101:
+                    d_data['error'] = 'Not initialized'
+                else:
+                    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                    d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
                 client.close()
             except Exception as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
