@@ -255,6 +255,10 @@ class LedgerClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The Ledger Nano S does not support wiping via software')
 
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise NotImplementedError('The Ledger Nano S does not implement device restoring')
+
     # Close the device
     def close(self):
         self.dongle.close()

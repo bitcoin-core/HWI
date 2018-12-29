@@ -187,6 +187,10 @@ class KeepkeyClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The KeepKey does not currently implement wipe')
 
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise NotImplementedError('The Keepkey does not implement device restoring')
+
     # Close the device
     def close(self):
         self.client.close()

@@ -41,6 +41,10 @@ class HardwareWalletClient(object):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
     # Close the device
     def close(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '

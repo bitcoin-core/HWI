@@ -198,6 +198,10 @@ class TrezorClient(HardwareWalletClient):
     def wipe_device(self):
         raise NotImplementedError('The Trezor does not currently implement wipe')
 
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise NotImplementedError('The Trezor does not implement device restoring')
+
     # Close the device
     def close(self):
         self.client.close()
