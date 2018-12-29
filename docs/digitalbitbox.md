@@ -1,12 +1,16 @@
 # Digital BitBox
 
-The Digital BitBox is partially supported by HWI
+The Digital BitBox is supported by HWI
 
 Current implemented commands are:
 
 * `getmasterxpub`
 * `signtx`
 * `getxpub` (with some caveats)
+- `setup`
+- `wipe`
+- `restore`
+- `backup`
 
 ## Usage Notes
 
@@ -19,3 +23,7 @@ You must specify your Digital BitBox password using the `-p` option. E.g.
 ## `getxpub` Caveats
 
 The Digital BitBox requires that one of the levels in the derivation path is hardened.
+
+## Note on `restore`
+
+The Digital BitBox does not allow users to restore a backup or seed via software.
