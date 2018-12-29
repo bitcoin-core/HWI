@@ -224,6 +224,14 @@ def restore_device(args, client):
     except ValueError as e:
         return {'error': str(e), 'code': BAD_ARGUMENT}
 
+def backup_device(args, client):
+    try:
+        return client.backup_device(args.label, args.backup_passphrase)
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
+
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
@@ -285,6 +293,11 @@ def process_commands(args):
     restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process')
     restore_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     restore_parser.set_defaults(func=restore_device)
+
+    backup_parser = subparsers.add_parser('backup', help='Initiate the device backup creation process')
+    backup_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
+    backup_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
+    backup_parser.set_defaults(func=backup_device)
 
     args = parser.parse_args(args)
 

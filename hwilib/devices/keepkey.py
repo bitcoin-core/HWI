@@ -191,6 +191,10 @@ class KeepkeyClient(HardwareWalletClient):
     def restore_device(self, label=''):
         raise NotImplementedError('The Keepkey does not implement device restoring')
 
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise NotImplementedError('The Keepkey does not implement this method')
+
     # Close the device
     def close(self):
         self.client.close()

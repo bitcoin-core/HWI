@@ -259,6 +259,10 @@ class LedgerClient(HardwareWalletClient):
     def restore_device(self, label=''):
         raise NotImplementedError('The Ledger Nano S does not implement device restoring')
 
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise NotImplementedError('The Ledger Nano S does not implement this method')
+
     # Close the device
     def close(self):
         self.dongle.close()

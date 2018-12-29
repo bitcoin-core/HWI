@@ -202,6 +202,10 @@ class TrezorClient(HardwareWalletClient):
     def restore_device(self, label=''):
         raise NotImplementedError('The Trezor does not implement device restoring')
 
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise NotImplementedError('The Trezor does not implement this method')
+
     # Close the device
     def close(self):
         self.client.close()
