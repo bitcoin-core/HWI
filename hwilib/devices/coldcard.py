@@ -112,7 +112,7 @@ class ColdcardClient(HardwareWalletClient):
     def close(self):
         self.device.close()
 
-def enumerate(password=None):
+def enumerate(password=''):
     results = []
     for d in hid.enumerate(COINKITE_VID, CKCC_PID):
         d_data = {}
