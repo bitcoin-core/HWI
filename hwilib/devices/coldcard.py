@@ -3,7 +3,7 @@
 from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from ckcc.protocol import CCProtocolPacker
-from ckcc.constants import MAX_BLK_LEN
+from ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
 from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
 from hashlib import sha256
 
@@ -98,7 +98,16 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The Coldcard does not currently implement displayaddress')
+        keypath = keypath.replace('h', '\'')
+        keypath = keypath.replace('H', '\'')
+
+        if p2sh_p2wpkh:
+            format = AF_P2WPKH_P2SH
+        elif bech32:
+            format = AF_P2WPKH
+        else:
+            format = AF_CLASSIC
+        self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
