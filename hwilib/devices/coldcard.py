@@ -1,6 +1,6 @@
 # Trezor interaction script
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from ckcc.protocol import CCProtocolPacker
 from ckcc.constants import MAX_BLK_LEN
@@ -102,19 +102,39 @@ class ColdcardClient(HardwareWalletClient):
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The Coldcard does not currently implement setup')
+        raise UnavailableActionError('The Coldcard does not support software setup')
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The Coldcard does not currently implement wipe')
+        raise UnavailableActionError('The Coldcard does not support wiping via software')
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label=''):
-        raise NotImplementedError('The Coldcard does not implement device restoring')
+        raise UnavailableActionError('The Coldcard does not support restoring via software')
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The Coldcard does not implement this method')
+        self.device.check_mitm()
+
+        ok = self.device.send_recv(CCProtocolPacker.start_backup())
+        assert ok == None
+
+        while 1:
+            time.sleep(0.250)
+            done = self.device.send_recv(CCProtocolPacker.get_backup_file(), timeout=None)
+            if done == None:
+                continue
+            break
+
+        if len(done) != 2:
+            raise ValueError('Failed: %r' % done)
+
+        result_len, result_sha = done
+
+        result = self.device.download_file(result_len, result_sha, file_number=0)
+        filename = time.strftime('backup-%Y%m%d-%H%M.7z')
+        open(filename, 'wb').write(result)
+        return {'success': True, 'message': 'The backup has be written to {}'.format(filename)}
 
     # Close the device
     def close(self):
