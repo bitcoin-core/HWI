@@ -208,6 +208,12 @@ def setup_device(args, client):
     except ValueError as e:
         return {'error': str(e), 'code': BAD_ARGUMENT}
 
+def wipe_device(args, client):
+    try:
+        return client.wipe_device()
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
@@ -262,6 +268,9 @@ def process_commands(args):
     setupdev_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     setupdev_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
     setupdev_parser.set_defaults(func=setup_device)
+
+    wipedev_parser = subparsers.add_parser('wipe', help='Wipe a device')
+    wipedev_parser.set_defaults(func=wipe_device)
 
     args = parser.parse_args(args)
 
