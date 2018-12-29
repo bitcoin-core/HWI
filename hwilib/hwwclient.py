@@ -32,7 +32,7 @@ class HardwareWalletClient(object):
             'implement this method')
 
     # Setup a new device
-    def setup_device(self):
+    def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
@@ -47,5 +47,13 @@ class HardwareWalletClient(object):
             'implement this method')
 
 class NoPasswordError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class UnavailableActionError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class DeviceAlreadyInitError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)

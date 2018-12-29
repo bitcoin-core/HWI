@@ -101,7 +101,7 @@ class ColdcardClient(HardwareWalletClient):
         raise NotImplementedError('The Coldcard does not currently implement displayaddress')
 
     # Setup a new device
-    def setup_device(self):
+    def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The Coldcard does not currently implement setup')
 
     # Wipe this device

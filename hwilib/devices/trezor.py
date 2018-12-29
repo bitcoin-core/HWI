@@ -191,7 +191,7 @@ class TrezorClient(HardwareWalletClient):
       )
 
     # Setup a new device
-    def setup_device(self):
+    def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The Trezor does not currently implement setup')
 
     # Wipe this device

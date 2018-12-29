@@ -355,7 +355,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         raise NotImplementedError('The DigitalBitbox does not currently implement displayaddress')
 
     # Setup a new device
-    def setup_device(self):
+    def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The DigitalBitbox does not currently implement setup')
 
     # Wipe this device
