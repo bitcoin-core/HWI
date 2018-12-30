@@ -11,6 +11,7 @@ Current implemented commands are:
 - `wipe`
 - `restore`
 - `backup`
+- `displayaddress`
 
 ## Usage Notes
 
@@ -27,3 +28,7 @@ The Digital BitBox requires that one of the levels in the derivation path is har
 ## Note on `restore`
 
 The Digital BitBox does not allow users to restore a backup or seed via software.
+
+## Note on `displayaddress`
+
+The Digital BitBox does not have a screen to display an address on, so the implementation just raises an error stating this.

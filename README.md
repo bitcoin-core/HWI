@@ -67,7 +67,7 @@ Please also see [docs](docs/) for additional information about each device.
 | Arbitrary witnessScript Inputs | Yes | No | Yes | No | N/A |
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes |
 | Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | Partial | Yes |
-| Display on device screen | Yes | Yes | N/A | No | No |
+| Display on device screen | Yes | Yes | N/A | No | Yes |
 
 ## Using with Bitcoin Core
 

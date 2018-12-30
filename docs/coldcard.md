@@ -11,6 +11,7 @@ Current implemented commands are:
 - `wipe`
 - `restore`
 - `backup`
+- `displayaddress`
 
 ## Notes on `setup`, `wipe`, and `restore`
 
