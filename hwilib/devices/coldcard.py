@@ -107,7 +107,8 @@ class ColdcardClient(HardwareWalletClient):
             format = AF_P2WPKH
         else:
             format = AF_CLASSIC
-        self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
+        address = self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
+        return {'address': address}
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):

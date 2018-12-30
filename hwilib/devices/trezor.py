@@ -183,13 +183,14 @@ class TrezorClient(HardwareWalletClient):
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         expanded_path = tools.parse_path(keypath)
-        output = btc.get_address(
+        address = btc.get_address(
             self.client,
             "Testnet" if self.is_testnet else "Bitcoin",
             expanded_path,
             show_display=True,
             script_type=proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
         )
+        return {'address': address}
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
