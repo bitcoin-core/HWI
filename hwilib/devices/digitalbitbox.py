@@ -12,7 +12,8 @@ import logging
 
 from ..hwwclient import HardwareWalletClient, NoPasswordError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex, xpub_to_address
+from ..bech32 import encode as to_bech32_address
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8*512
@@ -352,7 +353,27 @@ class DigitalbitboxClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The DigitalBitbox does not currently implement displayaddress')
+        xpub = self.get_pubkey_at_path(keypath)['xpub']
+        if not p2sh_p2wpkh and not bech32:
+            return {"address":xpub_to_address(xpub, testnet=self.is_testnet)}
+
+        pub = decode(xpub)[-37:-4]
+        pub_hash = hash160(pub)
+        if bech32:
+            if self.is_testnet:
+                hrp = 'tb'
+            else:
+                hrp = 'bc'
+            address = to_bech32_address(hrp, 0, pub_hash)
+        elif p2sh_p2wpkh:
+            p2wpkh_scr = b"\x00\x14" + pub_hash
+            if self.is_testnet:
+                ver = b"\xc4"
+            else:
+                ver = b"\x05"
+            address = to_address(hash160(p2wpkh_scr), ver)
+
+        return {"address":address}
 
     # Setup a new device
     def setup_device(self):
