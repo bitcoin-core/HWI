@@ -1,4 +1,4 @@
-# Trezor interaction script
+# Coldcard interaction script
 
 from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
