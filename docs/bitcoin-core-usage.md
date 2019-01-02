@@ -49,7 +49,7 @@ We will be fetching keys at the BIP 84 default.
 
 ```
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool 0 1000
-[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true}]
+[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": {"start": 0, "end": 1000}, "timestamp": "now", "keypool": true, "watchonly": true}]
 ```
 
 We now create a new Bitcoin Core wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
@@ -60,8 +60,8 @@ $ ../bitcoin/src/bitcoin-cli createwallet "coldcard" true
   "name": "coldcard",
   "warning": ""
 }
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true}]
-'
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": {"start": 0, "end": 1000}, "timestamp": "now", "keypool": true, "watchonly": true}]'
+
 [
   {
     "success": true
@@ -73,9 +73,9 @@ Now we repeat the `getkeypool` and `importmulti` steps but set a `--internal` fl
 
 ```
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 0 1000
-[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}]
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}]
-'
+[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}}]
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]'
+
 [
   {
     "success": true
@@ -92,8 +92,8 @@ Here are some examples (`<blockheight>` refers to a block height before the wall
 $ ../bitcoin/src/bitcoin-cli rescanblockchain <blockheight>
 $ ../bitcoin/src/bitcoin-cli rescanblockchain 500000 # Rescan from block 500000
 
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": <blockheight>, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}]
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": 500000, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000]}] # Imports and rescans from block 500000
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": <blockheight>, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]'
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": 500000, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]' # Imports and rescans from block 500000
 ```
 
 ## Usage
