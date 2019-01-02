@@ -237,3 +237,8 @@ class TestDisplayAddress(DeviceTestCase):
         process_commands(self.dev_args + ['displayaddress', 'm/44h/1h/0h/0/0'])
         process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', 'm/49h/1h/0h/0/0'])
         process_commands(self.dev_args + ['displayaddress', '--wpkh', 'm/84h/1h/0h/0/0'])
+
+class TestSignMessage(DeviceTestCase):
+
+    def test_sign_msg(self):
+        process_commands(self.dev_args + ['signmessage', 'Message signing test', 'm/44h/1h/0h/0/0'])

@@ -110,6 +110,8 @@ def signmessage(args, client):
         return client.sign_message(args.message, args.path)
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
 
 def getkeypool(args, client):
     # args[0]; start index (e.g. 0)
