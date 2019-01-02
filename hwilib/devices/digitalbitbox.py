@@ -348,7 +348,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         compact_sig = ser_sig_compact(r, s, recid)
         logging.debug(binascii.hexlify(compact_sig))
 
-        return {"signature":base64.b64encode(compact_sig)}
+        return {"signature":base64.b64encode(compact_sig).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
