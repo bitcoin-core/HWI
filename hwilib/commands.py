@@ -188,6 +188,7 @@ def getkeypool(args, client):
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal
     this_import['keypool'] = keypool
+    this_import['watchonly'] = True
     import_data.append(this_import)
     return import_data
 
