@@ -16,6 +16,8 @@ import json
 import logging
 import os
 
+py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
+
 # Only handles up to 15 of 15
 def parse_multisig(script):
     # Get m
@@ -89,7 +91,8 @@ class TrezorClient(HardwareWalletClient):
 
         # Prepare inputs
         inputs = []
-        for psbt_in, txin in zip(tx.inputs, tx.tx.vin):
+        to_ignore = [] # Note down which inputs whose signatures we're going to ignore
+        for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
             txinputtype = proto.TxInputType()
 
             # Set the input stuff
@@ -98,54 +101,67 @@ class TrezorClient(HardwareWalletClient):
             txinputtype.sequence = txin.nSequence
 
             # Detrermine spend type
+            scriptcode = b''
             if psbt_in.non_witness_utxo:
+                utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
                 txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                scriptcode = utxo.scriptPubKey
+                txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
             elif psbt_in.witness_utxo:
+                utxo = psbt_in.witness_utxo
                 # Check if the output is p2sh
                 if psbt_in.witness_utxo.is_p2sh():
                     txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
                 else:
                     txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
-
-            # Check for 1 key
-            if len(psbt_in.hd_keypaths) == 1:
-                # Is this key ours
-                pubkey = list(psbt_in.hd_keypaths.keys())[0]
-                fp = psbt_in.hd_keypaths[pubkey][0]
-                keypath = list(psbt_in.hd_keypaths[pubkey][1:])
-                if fp == master_fp:
-                    # Set the keypath
-                    txinputtype.address_n = keypath
-            # Check for multisig (more than 1 key)
-            elif len(psbt_in.hd_keypaths) > 1:
-                if psbt_in.witness_script:
-                    valid, multisig = parse_multisig(psbt_in.witness_script)
-                elif psbt_in.redeem_script:
-                    valid, multisig = parse_multisig(psbt_in.redeem_script)
-                else:
-                    valid, multisig = (False, None)
-
-                if valid:
-                    ms_pubkeys = []
-                    for key in psbt_in.hd_keypaths.keys():
-                        keypath = psbt_in.hd_keypaths[key]
-                        if keypath[0] == master_fp:
-                            txinputtype.address_n = keypath[1:]
-                            break
-
-                    # Add to txinputtype
-                    txinputtype.multisig = multisig
-                else:
-                    raise TypeError('Cannot sign transactions with arbitrary scripts')
-
-            else:
-                raise TypeError("All inputs must have a key for this device")
-
-            # Set the amount
-            if psbt_in.non_witness_utxo:
-                txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
-            elif psbt_in.witness_utxo:
+                scriptcode = psbt_in.witness_utxo.scriptPubKey
                 txinputtype.amount = psbt_in.witness_utxo.nValue
+
+            # Set the script
+            if psbt_in.witness_script:
+                scriptcode = psbt_in.witness_script
+            elif psbt_in.redeem_script:
+                scriptcode = psbt_in.redeem_script
+
+            def ignore_input():
+                txinputtype.address_n = [0x80000000]
+                inputs.append(txinputtype)
+                to_ignore.append(input_num)
+
+            # Check for multisig
+            is_ms, multisig = parse_multisig(scriptcode)
+            if is_ms:
+                # Add to txinputtype
+                txinputtype.multisig = multisig
+                if psbt_in.non_witness_utxo:
+                    if utxo.is_p2sh:
+                        txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
+                    else:
+                        # Cannot sign bare multisig, ignore it
+                        ignore_input()
+                        continue
+            elif not is_ms and psbt_in.non_witness_utxo and not utxo.is_p2pkh:
+                # Cannot sign unknown spk, ignore it
+                ignore_input()
+                continue
+            elif not is_ms and psbt_in.witness_utxo and psbt_in.witness_script:
+                # Cannot sign unknown witness script, ignore it
+                ignore_input()
+                continue
+
+            # Find key to sign with
+            found = False
+            for key in psbt_in.hd_keypaths.keys():
+                keypath = psbt_in.hd_keypaths[key]
+                if keypath[0] == master_fp and key not in psbt_in.partial_sigs:
+                    txinputtype.address_n = keypath[1:]
+                    found = True
+                    break
+
+            if not found:
+                # This input is not one of ours
+                ignore_input()
+                continue
 
             # append to inputs
             inputs.append(txinputtype)
@@ -215,15 +231,15 @@ class TrezorClient(HardwareWalletClient):
         else:
             signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
 
-        signatures = signed_tx[0]
-        for psbt_in in tx.inputs:
-            for pubkey, sig in zip(psbt_in.hd_keypaths.keys(), signatures):
+        # Each input has one signature
+        for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
+            if input_num in to_ignore:
+                continue
+            for pubkey in psbt_in.hd_keypaths.keys():
                 fp = psbt_in.hd_keypaths[pubkey][0]
-                keypath = psbt_in.hd_keypaths[pubkey][1:]
-                if fp == master_fp:
+                if fp == master_fp and key not in psbt_in.partial_sigs:
                     psbt_in.partial_sigs[pubkey] = sig + b'\x01'
-                break
-            signatures.remove(sig)
+                    break
 
         return {'psbt':tx.serialize()}
 
