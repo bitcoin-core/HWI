@@ -11,6 +11,7 @@ from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test,
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
 
+import base64
 import binascii
 import json
 import logging
@@ -246,7 +247,9 @@ class TrezorClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
-        raise NotImplementedError('The Trezor does not currently implement signmessage')
+        path = tools.parse_path(keypath)
+        result = btc.sign_message(self.client, 'Bitcoin', path, message)
+        return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
