@@ -16,6 +16,40 @@ import json
 import logging
 import os
 
+# Only handles up to 15 of 15
+def parse_multisig(script):
+    # Get m
+    m = script[0] - 80
+    if m < 1 or m > 15:
+        return (False, None)
+
+    # Get pubkeys and build HDNodePathType
+    pubkeys = []
+    offset = 1
+    while True:
+        pubkey_len = script[offset]
+        if pubkey_len != 33:
+            break
+        offset += 1
+        key = script[offset:offset + 33]
+        offset += 33
+
+        hd_node = proto.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=key)
+        pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=[]))
+
+    # Check things at the end
+    n = script[offset] - 80
+    if n != len(pubkeys):
+        return (False, None)
+    offset += 1
+    op_cms = script[offset]
+    if op_cms != 174:
+        return (False, None)
+
+    # Build MultisigRedeemScriptType and return it
+    multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
+    return (True, multisig)
+
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
@@ -82,10 +116,28 @@ class TrezorClient(HardwareWalletClient):
                 if fp == master_fp:
                     # Set the keypath
                     txinputtype.address_n = keypath
-
             # Check for multisig (more than 1 key)
             elif len(psbt_in.hd_keypaths) > 1:
-                raise TypeError("Cannot sign multisig yet")
+                if psbt_in.witness_script:
+                    valid, multisig = parse_multisig(psbt_in.witness_script)
+                elif psbt_in.redeem_script:
+                    valid, multisig = parse_multisig(psbt_in.redeem_script)
+                else:
+                    valid, multisig = (False, None)
+
+                if valid:
+                    ms_pubkeys = []
+                    for key in psbt_in.hd_keypaths.keys():
+                        keypath = psbt_in.hd_keypaths[key]
+                        if keypath[0] == master_fp:
+                            txinputtype.address_n = keypath[1:]
+                            break
+
+                    # Add to txinputtype
+                    txinputtype.multisig = multisig
+                else:
+                    raise TypeError('Cannot sign transactions with arbitrary scripts')
+
             else:
                 raise TypeError("All inputs must have a key for this device")
 
