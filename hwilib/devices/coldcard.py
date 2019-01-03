@@ -32,6 +32,7 @@ class ColdcardClient(HardwareWalletClient):
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
+        self.device.check_mitm()
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
@@ -98,6 +99,7 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
