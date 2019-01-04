@@ -186,7 +186,16 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        raise NotImplementedError('The KeepKey does not currently implement displayaddress')
+        keypath = keypath.replace('h', '\'')
+        keypath = keypath.replace('H', '\'')
+        expanded_path = tools.parse_path(keypath)
+        address = self.client.get_address(
+            "Testnet" if self.is_testnet else "Bitcoin",
+            expanded_path,
+            show_display=True,
+            script_type=proto.SPENDWITNESS if bech32 else (proto.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.SPENDADDRESS)
+        )
+        return {'address': address}
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
