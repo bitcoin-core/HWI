@@ -9,6 +9,7 @@ from keepkeylib.tx_api import TxApi
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 
+import base64
 import binascii
 import json
 import os
@@ -177,7 +178,11 @@ class KeepkeyClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
-        raise NotImplementedError('The KeepKey does not currently implement signmessage')
+        keypath = keypath.replace('h', '\'')
+        keypath = keypath.replace('H', '\'')
+        expanded_path = tools.parse_path(keypath)
+        result = self.client.sign_message('Bitcoin', expanded_path, message)
+        return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
