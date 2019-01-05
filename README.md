@@ -48,9 +48,9 @@ Please also see [docs](docs/) for additional information about each device.
 | Feature \ Device | Ledger Nano S | Trezor One | Digital BitBox | KeepKey | Coldcard |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | Support Planned | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Partial | Yes | Partial | Partial |
+| Implemented | Yes | Partial | Yes | Partial | Yes |
 | xpub retrieval | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | No | Yes | No | No |
+| Message Signing | Yes | No | Yes | No | Yes |
 | Device Setup | N/A | Yes | Yes | Yes | N/A |
 | Device Wipe | N/A | Yes | Yes | Yes | N/A |
 | Device Recovery | N/A | Yes | N/A | Yes | N/A |

@@ -1,8 +1,8 @@
-# Trezor interaction script
+# Coldcard interaction script
 
 from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
-from ckcc.protocol import CCProtocolPacker
+from ckcc.protocol import CCProtocolPacker, CCProtoError
 from ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
 from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
 from hashlib import sha256
@@ -95,7 +95,31 @@ class ColdcardClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
     def sign_message(self, message, keypath):
-        raise NotImplementedError('The Coldcard does not currently implement signmessage')
+        self.device.check_mitm()
+        keypath = keypath.replace('h', '\'')
+        keypath = keypath.replace('H', '\'')
+
+        try:
+            ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
+            assert ok == None
+        except CCProtoError as e:
+            raise ValueError(str(e))
+
+        while 1:
+            time.sleep(0.250)
+            done = self.device.send_recv(CCProtocolPacker.get_signed_msg(), timeout=None)
+            if done == None:
+                continue
+
+            break
+
+        if len(done) != 2:
+            raise ValueError('Failed: %r' % done)
+
+        addr, raw = done
+
+        sig = str(base64.b64encode(raw), 'ascii').replace('\n', '')
+        return {"signature": sig}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
