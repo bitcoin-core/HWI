@@ -98,7 +98,7 @@ def signtx(args, client):
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
     except IOError as e:
         return {'error':'You must provide a PSBT','code':INVALID_TX}
-    except Excetion as e:
+    except Exception as e:
         return {'error': str(e), 'code': BAD_ARGUMENT}
 
 def getxpub(args, client):
