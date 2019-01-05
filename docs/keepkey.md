@@ -10,10 +10,16 @@ Current implemented commands are:
 - `wipe`
 - `restore`
 - `backup`
+- `signtx`
+- `displayaddress`
+- `signmessage`
 
-## `signtx` Notes
+## `signtx` Caveats
 
-`signtx` has an implementation but has not been tested to be working. Use at your own risk.
+Due to the limitations of the KeepKey, some transactions cannot be signed by a KeepKey.
+
+- Multisig inputs are limited to at most n-of-15 multisigs. This is a firmware limitation.
+* Transactions with arbitrary input scripts (scriptPubKey, redeemScript, or witnessScript) and arbitrary output scripts cannot be signed. This is a firmware limitation.
 
 ## Note on `backup`
 
