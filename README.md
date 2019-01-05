@@ -49,26 +49,26 @@ Please also see [docs](docs/) for additional information about each device.
 | Feature \ Device | Ledger Nano S | Trezor One | Digital BitBox | KeepKey | Coldcard |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | Support Planned | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Yes | Yes | Partial | Yes |
+| Implemented | Yes | Yes | Yes | Yes | Yes |
 | xpub retrieval | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | Yes | Yes | No | Yes |
+| Message Signing | Yes | Yes | Yes | Yes | Yes |
 | Device Setup | N/A | Yes | Yes | Yes | N/A |
 | Device Wipe | N/A | Yes | Yes | Yes | N/A |
 | Device Recovery | N/A | Yes | N/A | Yes | N/A |
 | Device Backup | N/A | N/A | Yes | N/A | Yes |
-| P2PKH Inputs | Yes | Yes | Yes | Partial | Yes |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
-| P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | No | N/A |
+| P2PKH Inputs | Yes | Yes | Yes | Yes | Yes |
+| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes |
+| P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes |
+| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | N/A |
 | P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | N/A |
-| P2WSH Multisig Inputs | Yes | Yes | Yes | No | N/A |
-| Bare Multisig Inputs | Yes | N/A | Yes | No | N/A |
-| Aribtrary scriptPubKey Inputs | Yes | N/A | Yes | No | N/A |
-| Aribtrary redeemScript Inputs | Yes | N/A | Yes | No | N/A |
-| Arbitrary witnessScript Inputs | Yes | N/A | Yes | No | N/A |
+| P2WSH Multisig Inputs | Yes | No | Yes | Yes | N/A |
+| Bare Multisig Inputs | Yes | N/A | Yes | N/A | N/A |
+| Aribtrary scriptPubKey Inputs | Yes | N/A | Yes | N/A | N/A |
+| Aribtrary redeemScript Inputs | Yes | N/A | Yes | N/A | N/A |
+| Arbitrary witnessScript Inputs | Yes | N/A | Yes | N/A | N/A |
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | Partial | Yes |
-| Display on device screen | Yes | Yes | N/A | No | Yes |
+| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | Yes | Yes |
+| Display on device screen | Yes | Yes | N/A | Yes | Yes |
 
 ## Using with Bitcoin Core
 
