@@ -9,8 +9,9 @@ import hashlib
 import os
 import binascii
 import logging
+import time
 
-from ..hwwclient import HardwareWalletClient, NoPasswordError
+from ..hwwclient import HardwareWalletClient, NoPasswordError, UnavailableActionError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -140,6 +141,13 @@ def send_encrypt(msg, password, device):
     except Exception as e:
         reply = {'error':'Exception caught while sending encrypted message to DigitalBitbox ' + str(e)}
     return reply
+
+def stretch_backup_key(password):
+    key = hashlib.pbkdf2_hmac('sha512', password.encode(), b'Digital Bitbox', 20480)
+    return binascii.hexlify(key).decode()
+
+def format_backup_filename(name):
+    return '{}-{}.pdf'.format(name, time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime()))
 
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
@@ -355,12 +363,49 @@ class DigitalbitboxClient(HardwareWalletClient):
         raise NotImplementedError('The DigitalBitbox does not currently implement displayaddress')
 
     # Setup a new device
-    def setup_device(self):
-        raise NotImplementedError('The DigitalBitbox does not currently implement setup')
+    def setup_device(self, label='', passphrase=''):
+        # Make sure this is not initialized
+        reply = send_encrypt('{"device" : "info"}', self.password, self.device)
+        if 'error' not in reply or ('error' in reply and reply['error']['code'] != 101):
+            raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
+
+        # Need a wallet name and backup passphrase
+        if not label or not passphrase:
+            raise ValueError('THe label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
+
+        # Set password
+        to_send = {'password': self.password}
+        reply = send_plain(json.dumps(to_send).encode(), self.device)
+
+        # Now make the wallet
+        key = stretch_backup_key(passphrase)
+        backup_filename = format_backup_filename(label)
+        to_send = {'seed': {'source': 'create', 'key': key, 'filename': backup_filename}}
+        reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
+        if 'error' in reply:
+            return {'success': False, 'error': reply['error']['message']}
+        return {'success': True}
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The DigitalBitbox does not currently implement wipe')
+        reply = send_encrypt('{"reset" : "__ERASE__"}', self.password, self.device)
+        if 'error' in reply:
+            return {'success': False, 'error': reply['error']['message']}
+        return {'success': True}
+
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
+
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        key = stretch_backup_key(passphrase)
+        backup_filename = format_backup_filename(label)
+        to_send = {'backup': {'source': 'HWW', 'key': key, 'filename': backup_filename}}
+        reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
+        if 'error' in reply:
+            return {'success': False, 'error': reply['error']['message']}
+        return {'success': True}
 
     # Close the device
     def close(self):
@@ -379,8 +424,14 @@ def enumerate(password=''):
 
             try:
                 client = DigitalbitboxClient(path, password)
-                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+
+                # Check initialized
+                reply = send_encrypt('{"device" : "info"}', password, client.device)
+                if 'error' in reply and reply['error']['code'] == 101:
+                    d_data['error'] = 'Not initialized'
+                else:
+                    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                    d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
                 client.close()
             except Exception as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + str(e)

@@ -1,6 +1,6 @@
 # Ledger interaction script
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
@@ -248,12 +248,20 @@ class LedgerClient(HardwareWalletClient):
         self.app.getWalletPublicKey(keypath[2:], True, (p2sh_p2wpkh or bech32), bech32)
 
     # Setup a new device
-    def setup_device(self):
-        raise NotImplementedError('The Ledger Nano S does not support software setup')
+    def setup_device(self, label='', passphrase=''):
+        raise UnavailableActionError('The Ledger Nano S does not support software setup')
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The Ledger Nano S does not support wiping via software')
+        raise UnavailableActionError('The Ledger Nano S does not support wiping via software')
+
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise UnavailableActionError('The Ledger Nano S does not support restoring via software')
+
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise UnavailableActionError('The Ledger Nano S does not support creating a backup via software')
 
     # Close the device
     def close(self):

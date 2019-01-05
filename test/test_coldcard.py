@@ -27,8 +27,25 @@ def coldcard_test_suite(simulator, rpc, userpass):
         resp = dev.send_recv(CCProtocolPacker.logout())
     atexit.register(cleanup_simulator)
 
+    # Coldcard specific setup and wipe tests
+    class TestColdcardSetupWipe(DeviceTestCase):
+        def test_setup(self):
+            result = process_commands(self.dev_args + ['setup'])
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['error'], 'The Coldcard does not support software setup')
+            self.assertEqual(result['code'], -9)
+
+        def test_wipe(self):
+            result = process_commands(self.dev_args + ['wipe'])
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['error'], 'The Coldcard does not support wiping via software')
+            self.assertEqual(result['code'], -9)
+
     # Generic device tests
     suite = unittest.TestSuite()
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardSetupWipe, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', ''))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd'))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd'))
     # HACK: Skip this in headless simulator because it requires user input

@@ -14,7 +14,7 @@ import getpass
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
-from .hwwclient import NoPasswordError
+from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -25,6 +25,8 @@ INVALID_TX = -5
 NO_PASSWORD = -6
 BAD_ARGUMENT = -7
 NOT_IMPLEMENTED = -8
+UNAVAILABLE_ACTION = -9
+DEVICE_ALREADY_INIT = -10
 
 class UnknownDeviceError(Exception):
     def __init__(self,*args,**kwargs):
@@ -197,6 +199,40 @@ def displayaddress(args, client):
         return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
     return client.display_address(args.path, args.sh_wpkh, args.wpkh)
 
+def setup_device(args, client):
+    try:
+        return client.setup_device(args.label, args.backup_passphrase)
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    except DeviceAlreadyInitError as e:
+        return {'error': str(e), 'code': DEVICE_ALREADY_INIT}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
+
+def wipe_device(args, client):
+    try:
+        return client.wipe_device()
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+
+def restore_device(args, client):
+    try:
+        return client.restore_device(args.label)
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    except DeviceAlreadyInitError as e:
+        return {'error': str(e), 'code': DEVICE_ALREADY_INIT}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
+
+def backup_device(args, client):
+    try:
+        return client.backup_device(args.label, args.backup_passphrase)
+    except UnavailableActionError as e:
+        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
+
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
@@ -246,6 +282,23 @@ def process_commands(args):
     displayaddr_parser.add_argument('--sh_wpkh', action='store_true', help='Display the p2sh-nested segwit address associated with this key path')
     displayaddr_parser.add_argument('--wpkh', action='store_true', help='Display the bech32 version of the address associated with this key path')
     displayaddr_parser.set_defaults(func=displayaddress)
+
+    setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p')
+    setupdev_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
+    setupdev_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
+    setupdev_parser.set_defaults(func=setup_device)
+
+    wipedev_parser = subparsers.add_parser('wipe', help='Wipe a device')
+    wipedev_parser.set_defaults(func=wipe_device)
+
+    restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process')
+    restore_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
+    restore_parser.set_defaults(func=restore_device)
+
+    backup_parser = subparsers.add_parser('backup', help='Initiate the device backup creation process')
+    backup_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
+    backup_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
+    backup_parser.set_defaults(func=backup_device)
 
     args = parser.parse_args(args)
 

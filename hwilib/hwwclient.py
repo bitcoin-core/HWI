@@ -32,7 +32,7 @@ class HardwareWalletClient(object):
             'implement this method')
 
     # Setup a new device
-    def setup_device(self):
+    def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
@@ -41,11 +41,27 @@ class HardwareWalletClient(object):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
     # Close the device
     def close(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
 class NoPasswordError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class UnavailableActionError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class DeviceAlreadyInitError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)

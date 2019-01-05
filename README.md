@@ -48,28 +48,30 @@ Please also see [docs](docs/) for additional information about each device.
 | Feature \ Device | Ledger Nano S | Trezor One | Digital BitBox | KeepKey | Coldcard |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | Support Planned | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Partial | Partial | Partial | Partial | Partial |
+| Implemented | Yes | Partial | Yes | Partial | Partial |
 | xpub retrieval | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | No | No | No | No |
-| Device Setup | No | No | No | No | No |
-| Device Recovery | No | No | No | No | No |
-| Device Reset | No | No | No | No | No |
+| Message Signing | Yes | No | Yes | No | No |
+| Device Setup | N/A | Yes | Yes | Yes | N/A |
+| Device Wipe | N/A | Yes | Yes | Yes | N/A |
+| Device Recovery | N/A | Yes | N/A | Yes | N/A |
+| Device Backup | N/A | N/A | Yes | N/A | Yes |
 | P2PKH Inputs | Yes | Yes | Yes | Partial | Yes |
 | P2SH-P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
 | P2WPKH Inputs | Yes | Yes | Yes | Partial | Yes |
-| P2SH Multisig Inputs | Yes | No | Yes | No | ?? |
-| P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | ?? |
-| P2WSH Multisig Inputs | Yes | No | Yes | No | ?? |
-| Bare Multisig Inputs | Yes | No | Yes | No | ?? |
-| Aribtrary scriptPubKey Inputs | Yes | No | Yes | No | ?? |
-| Aribtrary redeemScript Inputs | Yes | No | Yes | No | ?? |
-| Arbitrary witnessScript Inputs | Yes | No | Yes | No | ?? |
+| P2SH Multisig Inputs | Yes | No | Yes | No | N/A |
+| P2SH-P2WSH Multisig Inputs | Yes | No | Yes | No | N/A |
+| P2WSH Multisig Inputs | Yes | No | Yes | No | N/A |
+| Bare Multisig Inputs | Yes | No | Yes | No | N/A |
+| Aribtrary scriptPubKey Inputs | Yes | No | Yes | No | N/A |
+| Aribtrary redeemScript Inputs | Yes | No | Yes | No | N/A |
+| Arbitrary witnessScript Inputs | Yes | No | Yes | No | N/A |
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | ?? | ?? |
+| Mixed Segwit and Non-Segwit Inputs | No | Yes | Yes | Partial | Yes |
+| Display on device screen | Yes | Yes | N/A | No | No |
 
 ## Using with Bitcoin Core
 
-See (Using Bitcoin Core with Hardware Wallets)[docs/bitcoin-core-usage.md].
+See [Using Bitcoin Core with Hardware Wallets](docs/bitcoin-core-usage.md).
 
 ## License
 

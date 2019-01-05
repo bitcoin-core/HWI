@@ -1,6 +1,6 @@
 # KeepKey interaction script
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.client import KeepKeyClient as KeepKey
 from keepkeylib import tools
@@ -11,6 +11,7 @@ from ..serializations import ser_uint256, uint256_from_str
 
 import binascii
 import json
+import os
 
 KEEPKEY_VENDOR_ID = 0x2B24
 KEEPKEY_DEVICE_ID = 0x0001
@@ -59,6 +60,9 @@ class KeepkeyClient(HardwareWalletClient):
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
+
+        self.password = password
+        os.environ['PASSPHRASE'] = password
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -180,12 +184,25 @@ class KeepkeyClient(HardwareWalletClient):
         raise NotImplementedError('The KeepKey does not currently implement displayaddress')
 
     # Setup a new device
-    def setup_device(self):
-        raise NotImplementedError('The KeepKey does not currently implement setup')
+    def setup_device(self, label='', passphrase=''):
+        if self.client.features.initialized:
+            raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
+        self.client.reset_device(False, 256, bool(self.password), True, label, 'english')
+        return {'success': True}
 
     # Wipe this device
     def wipe_device(self):
-        raise NotImplementedError('The KeepKey does not currently implement wipe')
+        self.client.wipe_device()
+        return {'success': True}
+
+    # Restore device from mnemonic or xprv
+    def restore_device(self, label=''):
+        self.client.recovery_device(False, 24, bool(self.password), True, label, 'english')
+        return {'success': True}
+
+    # Begin backup process
+    def backup_device(self, label='', passphrase=''):
+        raise UnavailableActionError('The Keepkey does not support creating a backup via software')
 
     # Close the device
     def close(self):
@@ -202,8 +219,11 @@ def enumerate(password=''):
 
         try:
             client = KeepkeyClient(path, password)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            if client.client.features.initialized:
+                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            else:
+                d_data['error'] = 'Not initialized'
             client.close()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
