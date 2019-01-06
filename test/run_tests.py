@@ -2,6 +2,7 @@
 
 import argparse
 import subprocess
+import sys
 import unittest
 
 from test_bech32 import TestSegwitAddress
@@ -33,4 +34,5 @@ if not args.no_trezor:
     suite.addTest(trezor_test_suite(args.trezor, rpc, userpass))
 if not args.no_coldcard:
     suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass))
-unittest.TextTestRunner().run(suite)
+result = unittest.TextTestRunner().run(suite)
+sys.exit(not result.wasSuccessful())
