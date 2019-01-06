@@ -91,6 +91,7 @@ class TestDeviceConnect(DeviceTestCase):
 
 class TestGetKeypool(DeviceTestCase):
     def setUp(self):
+        self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
         if '{}_test'.format(self.type) not in self.rpc.listwallets():
             self.rpc.createwallet('{}_test'.format(self.type), True)
         self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.type))
@@ -193,6 +194,7 @@ class TestGetKeypool(DeviceTestCase):
 
 class TestSignTx(DeviceTestCase):
     def setUp(self):
+        self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
         if '{}_test'.format(self.type) not in self.rpc.listwallets():
             self.rpc.createwallet('{}_test'.format(self.type), True)
         self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.type))
