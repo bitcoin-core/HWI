@@ -18,8 +18,9 @@ setuptools.setup(
         'trezor>=0.11.0', # Trezor One
         'btchip-python', # Ledger Nano S
         'keepkey', # KeepKey
-        'ckcc-protocol', # Coldcard
+        'ckcc-protocol[cli]', # Coldcard
         'pyaes',
+        'ecdsa', # Needed for Ledger but their library does not install it
     ],
     python_requires='>=3',
     classifiers=[

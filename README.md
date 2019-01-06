@@ -14,8 +14,9 @@ Install all of the libraries using `pip` (in virtualenv or system):
 pip3 install hidapi # HID API needed in general
 pip3 install trezor[hidapi] # Trezor One
 pip3 install btchip-python # Ledger Nano S
+pip3 install ecdsa # Needed for btchip-python but is not installed by it
 pip3 install keepkey # KeepKey
-pip3 install ckcc-protocol # Coldcard
+pip3 install ckcc-protocol[cli] # Coldcard
 pip3 install pyaes # For digitalbitbox
 ```
 ## Install
