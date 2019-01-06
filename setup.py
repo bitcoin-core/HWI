@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hwi",
-    version="0.0.4",
+    version="0.0.5",
     author="Andrew Chow",
     author_email="andrew@achow101.com",
     description="A library for working with Bitcoin hardware wallets",
@@ -33,5 +33,10 @@ setuptools.setup(
     ],
     extras_require={
         'tests': ['python-bitcoinrpc']
+    },
+    entry_points={
+        'console_scripts': [
+            'hwi = hwilib.cli:main'
+        ]
     }
 )
