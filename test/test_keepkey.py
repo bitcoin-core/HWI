@@ -15,7 +15,7 @@ from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import KeepKeyDebugClient
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignTx
 
-from hwilib.commands import process_commands
+from hwilib.cli import process_commands
 
 class KeepkeyEmulator(DeviceEmulator):
     def __init__(self, emulator_path):

@@ -17,7 +17,7 @@ from trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, 
 from trezorlib import device
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignTx
 
-from hwilib.commands import process_commands
+from hwilib.cli import process_commands
 
 class TrezorEmulator(DeviceEmulator):
     def __init__(self, path):
