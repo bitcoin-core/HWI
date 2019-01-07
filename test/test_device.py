@@ -218,11 +218,13 @@ class TestSignTx(DeviceTestCase):
         self.wpk_rpc.sendtoaddress(pkh_addr, 10)
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
-        # Create a psbt spending the above
-        psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():10}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
-        sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
-        finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
-        self.assertTrue(finalize_res['complete'])
+        # Spend different amounts, requiring 1 to 3 inputs
+        for i in range(3):
+            # Create a psbt spending the above
+            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*10}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
+            sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
+            finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
+            self.assertTrue(finalize_res['complete'])
         self.wrpc.sendrawtransaction(finalize_res['hex'])
 
 class TestDisplayAddress(DeviceTestCase):
