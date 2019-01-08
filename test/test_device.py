@@ -41,7 +41,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -49,24 +49,27 @@ class DeviceTestCase(unittest.TestCase):
         self.path = path
         self.fingerprint = fingerprint
         self.master_xpub = master_xpub
+        self.password = password
         self.dev_args = ['-t', self.type, '-d', self.path]
+        if password:
+            self.dev_args.extend(['-p', password])
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub):
+    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = ''):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, name))
         return suite
 
 class TestDeviceConnect(DeviceTestCase):
     def test_enumerate(self):
-        enum_res = process_commands(['enumerate'])
+        enum_res = process_commands(['-p', self.password, 'enumerate'])
         found = False
         for device in enum_res:
-            self.assertNotIn('error', device)
             if device['type'] == self.type and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
+                self.assertNotIn('error', device)
                 found = True
         self.assertTrue(found)
 
@@ -78,15 +81,15 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = process_commands(['-t', self.type, '-d', self.path, 'getmasterxpub'])
+        gmxp_res = process_commands(['-t', self.type, '-d', self.path, '-p', self.password, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
     def test_fingerprint_autodetect(self):
-        gmxp_res = process_commands(['-f', self.fingerprint, 'getmasterxpub'])
+        gmxp_res = process_commands(['-f', self.fingerprint, '-p', self.password, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
     def test_type_only_autodetech(self):
-        gmxp_res = process_commands(['-t', self.type, 'getmasterxpub'])
+        gmxp_res = process_commands(['-t', self.type, '-p', self.password, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
 class TestGetKeypool(DeviceTestCase):

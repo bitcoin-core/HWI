@@ -23,6 +23,7 @@ ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--ledger', help='Run physical Ledger Nano S/X tests.', action='store_true')
 
 parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoin/src/bitcoind')
+parser.add_argument('--password', '-p', help='Device password')
 args = parser.parse_args()
 
 # Run tests
