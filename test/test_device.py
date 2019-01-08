@@ -202,7 +202,7 @@ class TestSignTx(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
 
-    def _test_signtx(self, input_type):
+    def _test_signtx(self, input_type, multisig):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '30', '40'])
         import_result = self.wrpc.importmulti(keypool_desc)
@@ -215,8 +215,34 @@ class TestSignTx(DeviceTestCase):
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
         self.wrpc.importaddress(wpkh_addr)
         self.wrpc.importaddress(pkh_addr)
-        send_amount = 10
+
+        # pubkeys to construct 2-of-3 multisig descriptors for import
+        sh_wpkh_info = self.wrpc.getaddressinfo(sh_wpkh_addr)
+        wpkh_info = self.wrpc.getaddressinfo(wpkh_addr)
+        pkh_info = self.wrpc.getaddressinfo(pkh_addr)
+
+        # Get origin info/key pair so wallet doesn't forget how to
+        # sign with keys post-import
+        pubkeys = [sh_wpkh_info['desc'][8:-2],\
+                wpkh_info['desc'][5:-1],\
+                pkh_info['desc'][4:-1]]
+
+        sh_multi_desc = {'desc':'sh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+'))', "timestamp":"now", "label":"shmulti"}
+        sh_wsh_multi_desc = {'desc':'sh(wsh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+')))', "timestamp":"now", "label":"shwshmulti"}
+        # re-order pubkeys to allow import without "already have private keys" error
+        wsh_multi_desc = {'desc':'wsh(multi(2,'+pubkeys[2]+','+pubkeys[1]+','+pubkeys[0]+'))', "timestamp":"now", "label":"wshmulti"}
+        multi_result = self.wrpc.importmulti([sh_multi_desc, sh_wsh_multi_desc, wsh_multi_desc])
+        self.assertTrue(multi_result[0]['success'])
+        self.assertTrue(multi_result[1]['success'])
+        self.assertTrue(multi_result[2]['success'])
+
+        sh_multi_addr = self.wrpc.getaddressesbylabel("shmulti").popitem()[0]
+        sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti").popitem()[0]
+        wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti").popitem()[0]
+
+        send_amount = 2
         number_inputs = 0
+        # Single-sig
         if input_type == 'segwit' or input_type == 'all':
             self.wpk_rpc.sendtoaddress(sh_wpkh_addr, send_amount)
             self.wpk_rpc.sendtoaddress(wpkh_addr, send_amount)
@@ -224,6 +250,16 @@ class TestSignTx(DeviceTestCase):
         if input_type == 'legacy' or input_type == 'all':
             self.wpk_rpc.sendtoaddress(pkh_addr, send_amount)
             number_inputs += 1
+        # Now do segwit/legacy multisig
+        if multisig:
+            if input_type == 'legacy' or input_type == 'all':
+                self.wpk_rpc.sendtoaddress(sh_multi_addr, send_amount)
+                number_inputs += 1
+            if input_type == 'segwit' or input_type == 'all':
+                self.wpk_rpc.sendtoaddress(wsh_multi_addr, send_amount)
+                self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, send_amount)
+                number_inputs += 2
+
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
         # Spend different amounts, requiring 1 to 3 inputs
@@ -237,11 +273,13 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        if self.type == 'ledger':
-            self._test_signtx("legacy")
-            self._test_signtx("segwit")
+        supports_mixed = {'coldcard', 'trezor'}
+        supports_multisig = {'ledger'}
+        if self.type not in supports_mixed:
+            self._test_signtx("legacy", self.type in supports_multisig)
+            self._test_signtx("segwit", self.type in supports_multisig)
         else:
-            self._test_signtx("all")
+            self._test_signtx("all", self.type in supports_multisig)
 
 class TestDisplayAddress(DeviceTestCase):
 
