@@ -202,7 +202,7 @@ class TestSignTx(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
 
-    def test_signtx(self):
+    def _test_signtx(self, input_type):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '30', '40'])
         import_result = self.wrpc.importmulti(keypool_desc)
@@ -215,19 +215,33 @@ class TestSignTx(DeviceTestCase):
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
         self.wrpc.importaddress(wpkh_addr)
         self.wrpc.importaddress(pkh_addr)
-        self.wpk_rpc.sendtoaddress(sh_wpkh_addr, 10)
-        self.wpk_rpc.sendtoaddress(wpkh_addr, 10)
-        self.wpk_rpc.sendtoaddress(pkh_addr, 10)
+        send_amount = 10
+        number_inputs = 0
+        if input_type == 'segwit' or input_type == 'all':
+            self.wpk_rpc.sendtoaddress(sh_wpkh_addr, send_amount)
+            self.wpk_rpc.sendtoaddress(wpkh_addr, send_amount)
+            number_inputs += 2
+        if input_type == 'legacy' or input_type == 'all':
+            self.wpk_rpc.sendtoaddress(pkh_addr, send_amount)
+            number_inputs += 1
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
         # Spend different amounts, requiring 1 to 3 inputs
-        for i in range(3):
+        for i in range(number_inputs):
             # Create a psbt spending the above
-            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*10}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
+            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*send_amount}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
             sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
             finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
             self.assertTrue(finalize_res['complete'])
         self.wrpc.sendrawtransaction(finalize_res['hex'])
+
+    # Test wrapper to avoid mixed-inputs signing for Ledger
+    def test_signtx(self):
+        if self.type == 'ledger':
+            self._test_signtx("legacy")
+            self._test_signtx("segwit")
+        else:
+            self._test_signtx("all")
 
 class TestDisplayAddress(DeviceTestCase):
 
