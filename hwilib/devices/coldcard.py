@@ -74,6 +74,8 @@ class ColdcardClient(HardwareWalletClient):
         # start the signing process
         ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
         assert ok == None
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         print("Waiting for OK on the Coldcard...")
 
@@ -102,6 +104,8 @@ class ColdcardClient(HardwareWalletClient):
         try:
             ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
             assert ok == None
+            if self.device.is_simulator:
+                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         except CCProtoError as e:
             raise ValueError(str(e))
 
@@ -134,6 +138,8 @@ class ColdcardClient(HardwareWalletClient):
         else:
             format = AF_CLASSIC
         address = self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return {'address': address}
 
     # Setup a new device
