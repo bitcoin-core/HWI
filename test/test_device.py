@@ -10,6 +10,7 @@ import unittest
 
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from hwilib.commands import process_commands
+from hwilib.serializations import PSBT
 
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
@@ -202,6 +203,56 @@ class TestSignTx(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
 
+    def _generate_and_finalize(self, unknown_inputs, psbt):
+        if not unknown_inputs:
+            # Just do the normal signing process to test "all inputs" case
+            sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
+            finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
+        else:
+            # Sign only input one on first pass
+            # then rest on second pass to test ability to successfully
+            # ignore inputs that are not its own. Then combine both
+            # signing passes to ensure they are actually properly being
+            # partially signed at each step.
+            first_psbt = PSBT()
+            first_psbt.deserialize(psbt['psbt'])
+            second_psbt = PSBT()
+            second_psbt.deserialize(psbt['psbt'])
+
+
+            # Blank master fingerprint to make hww fail to sign
+            # Single input PSBTs will be fully signed by first signer
+            for psbt_input in first_psbt.inputs[1:]:
+                for pubkey, path in psbt_input.hd_keypaths.items():
+                    psbt_input.hd_keypaths[pubkey] = (0,)+path[1:]
+            for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
+                    second_psbt.inputs[0].hd_keypaths[pubkey] = (0,)+path[1:]
+
+            single_input = len(first_psbt.inputs) == 1
+
+            # Process the psbts
+            first_psbt = first_psbt.serialize()
+            second_psbt = second_psbt.serialize()
+
+            # First will always have something to sign
+            first_sign_res = process_commands(self.dev_args + ['signtx', first_psbt])
+            self.assertTrue(single_input == self.wrpc.finalizepsbt(first_sign_res['psbt'])['complete'])
+            # Second may have nothing to sign (1 input case)
+            # and also may throw an error(e.g., ColdCard)
+            second_sign_res = process_commands(self.dev_args + ['signtx', second_psbt])
+            if 'psbt' in second_sign_res:
+                self.assertTrue(not self.wrpc.finalizepsbt(second_sign_res['psbt'])['complete'])
+                combined_psbt = self.wrpc.combinepsbt([first_sign_res['psbt'], second_sign_res['psbt']])
+
+            else:
+                self.assertTrue('error' in second_sign_res)
+                combined_psbt = first_sign_res['psbt']
+
+            finalize_res = self.wrpc.finalizepsbt(combined_psbt)
+            self.assertTrue(finalize_res['complete'])
+            self.assertTrue(self.wrpc.testmempoolaccept([finalize_res['hex']])[0]["allowed"])
+        return finalize_res['hex']
+
     def _test_signtx(self, input_type, multisig):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '30', '40'])
@@ -265,11 +316,18 @@ class TestSignTx(DeviceTestCase):
         # Spend different amounts, requiring 1 to 3 inputs
         for i in range(number_inputs):
             # Create a psbt spending the above
+            if i == number_inputs-1:
+                self.assertTrue((i+1)*send_amount == self.wrpc.getbalance("*", 0, True))
             psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*send_amount}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
-            sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
-            finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
-            self.assertTrue(finalize_res['complete'])
-        self.wrpc.sendrawtransaction(finalize_res['hex'])
+
+            # Sign with unknown inputs in two steps
+            if self.type is not 'trezor': # https://github.com/achow101/HWI/issues/100
+                self._generate_and_finalize(True, psbt)
+            # Sign all inputs all at once
+            final_tx = self._generate_and_finalize(False, psbt)
+
+        # Send off final tx to sweep the wallet
+        self.wrpc.sendrawtransaction(final_tx)
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
