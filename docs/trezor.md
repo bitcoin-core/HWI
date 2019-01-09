@@ -15,10 +15,10 @@ Current implemented commands are:
 
 ## `signtx` Caveats
 
-Due to the limitations of the Trezor and of the lack of documentation, some transactions cannot be signed by a Trezor.
+Due to the limitations of the Trezor, some transactions cannot be signed by a Trezor.
 
-* The current implementation does not support signing Multisig inputs
-* Transactions with arbitrary input scripts (scriptPubKey, redeemScript, or witnessScript) and arbitrary output scripts cannot be signed
+- Multisig inputs are limited to at most n-of-15 multisigs. This is a firmware limitation.
+* Transactions with arbitrary input scripts (scriptPubKey, redeemScript, or witnessScript) and arbitrary output scripts cannot be signed. This is a firmware limitation.
 
 ## Note on `backup`
 

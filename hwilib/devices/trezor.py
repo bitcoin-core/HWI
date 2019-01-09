@@ -11,10 +11,47 @@ from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test,
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
 
+import base64
 import binascii
 import json
 import logging
 import os
+
+py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
+
+# Only handles up to 15 of 15
+def parse_multisig(script):
+    # Get m
+    m = script[0] - 80
+    if m < 1 or m > 15:
+        return (False, None)
+
+    # Get pubkeys and build HDNodePathType
+    pubkeys = []
+    offset = 1
+    while True:
+        pubkey_len = script[offset]
+        if pubkey_len != 33:
+            break
+        offset += 1
+        key = script[offset:offset + 33]
+        offset += 33
+
+        hd_node = proto.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=key)
+        pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=[]))
+
+    # Check things at the end
+    n = script[offset] - 80
+    if n != len(pubkeys):
+        return (False, None)
+    offset += 1
+    op_cms = script[offset]
+    if op_cms != 174:
+        return (False, None)
+
+    # Build MultisigRedeemScriptType and return it
+    multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
+    return (True, multisig)
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -53,132 +90,179 @@ class TrezorClient(HardwareWalletClient):
         master_key = btc.get_public_node(self.client, [0])
         master_fp = get_xpub_fingerprint(master_key.xpub)
 
-        # Prepare inputs
-        inputs = []
-        for psbt_in, txin in zip(tx.inputs, tx.tx.vin):
-            txinputtype = proto.TxInputType()
+        # Do multiple passes for multisig
+        passes = 1
+        p = 0
 
-            # Set the input stuff
-            txinputtype.prev_hash = ser_uint256(txin.prevout.hash)[::-1]
-            txinputtype.prev_index = txin.prevout.n
-            txinputtype.sequence = txin.nSequence
+        while p < passes:
+            # Prepare inputs
+            inputs = []
+            to_ignore = [] # Note down which inputs whose signatures we're going to ignore
+            for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
+                txinputtype = proto.TxInputType()
 
-            # Detrermine spend type
-            if psbt_in.non_witness_utxo:
-                txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
-            elif psbt_in.witness_utxo:
-                # Check if the output is p2sh
-                if psbt_in.witness_utxo.is_p2sh():
-                    txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
-                else:
-                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                # Set the input stuff
+                txinputtype.prev_hash = ser_uint256(txin.prevout.hash)[::-1]
+                txinputtype.prev_index = txin.prevout.n
+                txinputtype.sequence = txin.nSequence
 
-            # Check for 1 key
-            if len(psbt_in.hd_keypaths) == 1:
-                # Is this key ours
-                pubkey = list(psbt_in.hd_keypaths.keys())[0]
-                fp = psbt_in.hd_keypaths[pubkey][0]
-                keypath = list(psbt_in.hd_keypaths[pubkey][1:])
-                if fp == master_fp:
-                    # Set the keypath
-                    txinputtype.address_n = keypath
+                # Detrermine spend type
+                scriptcode = b''
+                if psbt_in.non_witness_utxo:
+                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                    scriptcode = utxo.scriptPubKey
+                    txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
+                elif psbt_in.witness_utxo:
+                    utxo = psbt_in.witness_utxo
+                    # Check if the output is p2sh
+                    if psbt_in.witness_utxo.is_p2sh():
+                        txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
+                    else:
+                        txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                    scriptcode = psbt_in.witness_utxo.scriptPubKey
+                    txinputtype.amount = psbt_in.witness_utxo.nValue
 
-            # Check for multisig (more than 1 key)
-            elif len(psbt_in.hd_keypaths) > 1:
-                raise TypeError("Cannot sign multisig yet")
+                # Set the script
+                if psbt_in.witness_script:
+                    scriptcode = psbt_in.witness_script
+                elif psbt_in.redeem_script:
+                    scriptcode = psbt_in.redeem_script
+
+                def ignore_input():
+                    txinputtype.address_n = [0x80000000]
+                    inputs.append(txinputtype)
+                    to_ignore.append(input_num)
+
+                # Check for multisig
+                is_ms, multisig = parse_multisig(scriptcode)
+                if is_ms:
+                    # Add to txinputtype
+                    txinputtype.multisig = multisig
+                    if psbt_in.non_witness_utxo:
+                        if utxo.is_p2sh:
+                            txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
+                        else:
+                            # Cannot sign bare multisig, ignore it
+                            ignore_input()
+                            continue
+                elif not is_ms and psbt_in.non_witness_utxo and not utxo.is_p2pkh:
+                    # Cannot sign unknown spk, ignore it
+                    ignore_input()
+                    continue
+                elif not is_ms and psbt_in.witness_utxo and psbt_in.witness_script:
+                    # Cannot sign unknown witness script, ignore it
+                    ignore_input()
+                    continue
+
+                # Find key to sign with
+                found = False
+                our_keys = 0
+                for key in psbt_in.hd_keypaths.keys():
+                    keypath = psbt_in.hd_keypaths[key]
+                    if keypath[0] == master_fp and key not in psbt_in.partial_sigs:
+                        if not found:
+                            txinputtype.address_n = keypath[1:]
+                            found = True
+                        our_keys += 1
+
+                # Determine if we need to do more passes to sign everything
+                if our_keys > passes:
+                    passes = our_keys
+
+                if not found:
+                    # This input is not one of ours
+                    ignore_input()
+                    continue
+
+                # append to inputs
+                inputs.append(txinputtype)
+
+            # address version byte
+            if self.is_testnet:
+                p2pkh_version = b'\x6f'
+                p2sh_version = b'\xc4'
+                bech32_hrp = 'tb'
             else:
-                raise TypeError("All inputs must have a key for this device")
+                p2pkh_version = b'\x00'
+                p2sh_version = b'\x05'
+                bech32_hrp = 'bc'
 
-            # Set the amount
-            if psbt_in.non_witness_utxo:
-                txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
-            elif psbt_in.witness_utxo:
-                txinputtype.amount = psbt_in.witness_utxo.nValue
-
-            # append to inputs
-            inputs.append(txinputtype)
-
-        # address version byte
-        if self.is_testnet:
-            p2pkh_version = b'\x6f'
-            p2sh_version = b'\xc4'
-            bech32_hrp = 'tb'
-        else:
-            p2pkh_version = b'\x00'
-            p2sh_version = b'\x05'
-            bech32_hrp = 'bc'
-
-        # prepare outputs
-        outputs = []
-        for out in tx.tx.vout:
-            txoutput = proto.TxOutputType()
-            txoutput.amount = out.nValue
-            txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
-            if out.is_p2pkh():
-                txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
-            elif out.is_p2sh():
-                txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
-            else:
-                wit, ver, prog = out.is_witness()
-                if wit:
-                    txoutput.address = bech32.encode(bech32_hrp, ver, prog)
+            # prepare outputs
+            outputs = []
+            for out in tx.tx.vout:
+                txoutput = proto.TxOutputType()
+                txoutput.amount = out.nValue
+                txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
+                if out.is_p2pkh():
+                    txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
+                elif out.is_p2sh():
+                    txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
                 else:
-                    raise TypeError("Output is not an address")
+                    wit, ver, prog = out.is_witness()
+                    if wit:
+                        txoutput.address = bech32.encode(bech32_hrp, ver, prog)
+                    else:
+                        raise TypeError("Output is not an address")
 
-            # append to outputs
-            outputs.append(txoutput)
+                # append to outputs
+                outputs.append(txoutput)
 
-        # Prepare prev txs
-        prevtxs = {}
-        for psbt_in in tx.inputs:
-            if psbt_in.non_witness_utxo:
-                prev = psbt_in.non_witness_utxo
+            # Prepare prev txs
+            prevtxs = {}
+            for psbt_in in tx.inputs:
+                if psbt_in.non_witness_utxo:
+                    prev = psbt_in.non_witness_utxo
 
-                t = proto.TransactionType()
-                t.version = prev.nVersion
-                t.lock_time = prev.nLockTime
+                    t = proto.TransactionType()
+                    t.version = prev.nVersion
+                    t.lock_time = prev.nLockTime
 
-                for vin in prev.vin:
-                    i = proto.TxInputType()
-                    i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
-                    i.prev_index = vin.prevout.n
-                    i.script_sig = vin.scriptSig
-                    i.sequence = vin.nSequence
-                    t.inputs.append(i)
+                    for vin in prev.vin:
+                        i = proto.TxInputType()
+                        i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
+                        i.prev_index = vin.prevout.n
+                        i.script_sig = vin.scriptSig
+                        i.sequence = vin.nSequence
+                        t.inputs.append(i)
 
-                for vout in prev.vout:
-                    o = proto.TxOutputBinType()
-                    o.amount = vout.nValue
-                    o.script_pubkey = vout.scriptPubKey
-                    t.bin_outputs.append(o)
-                logging.debug(psbt_in.non_witness_utxo.hash)
-                prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
+                    for vout in prev.vout:
+                        o = proto.TxOutputBinType()
+                        o.amount = vout.nValue
+                        o.script_pubkey = vout.scriptPubKey
+                        t.bin_outputs.append(o)
+                    logging.debug(psbt_in.non_witness_utxo.hash)
+                    prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
-        # Sign the transaction
-        tx_details = proto.SignTx()
-        tx_details.version = tx.tx.nVersion
-        tx_details.lock_time = tx.tx.nLockTime
-        if self.is_testnet:
-            signed_tx = btc.sign_tx(self.client, "Testnet", inputs, outputs, tx_details, prevtxs)
-        else:
-            signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
+            # Sign the transaction
+            tx_details = proto.SignTx()
+            tx_details.version = tx.tx.nVersion
+            tx_details.lock_time = tx.tx.nLockTime
+            if self.is_testnet:
+                signed_tx = btc.sign_tx(self.client, "Testnet", inputs, outputs, tx_details, prevtxs)
+            else:
+                signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
 
-        signatures = signed_tx[0]
-        for psbt_in in tx.inputs:
-            for pubkey, sig in zip(psbt_in.hd_keypaths.keys(), signatures):
-                fp = psbt_in.hd_keypaths[pubkey][0]
-                keypath = psbt_in.hd_keypaths[pubkey][1:]
-                if fp == master_fp:
-                    psbt_in.partial_sigs[pubkey] = sig + b'\x01'
-                break
-            signatures.remove(sig)
+            # Each input has one signature
+            for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
+                if input_num in to_ignore:
+                    continue
+                for pubkey in psbt_in.hd_keypaths.keys():
+                    fp = psbt_in.hd_keypaths[pubkey][0]
+                    if fp == master_fp and pubkey not in psbt_in.partial_sigs:
+                        psbt_in.partial_sigs[pubkey] = sig + b'\x01'
+                        break
+
+            p += 1
 
         return {'psbt':tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
-        raise NotImplementedError('The Trezor does not currently implement signmessage')
+        path = tools.parse_path(keypath)
+        result = btc.sign_message(self.client, 'Bitcoin', path, message)
+        return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):

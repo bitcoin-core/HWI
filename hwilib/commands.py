@@ -96,8 +96,10 @@ def signtx(args, client):
         return client.sign_tx(tx)
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
-    except Exception as e:
+    except IOError as e:
         return {'error':'You must provide a PSBT','code':INVALID_TX}
+    except Exception as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
 
 def getxpub(args, client):
     try:
