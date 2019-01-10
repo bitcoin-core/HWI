@@ -15,7 +15,7 @@ pip3 install hidapi # HID API needed in general
 pip3 install trezor[hidapi] # Trezor One
 pip3 install btchip-python # Ledger Nano S
 pip3 install ecdsa # Needed for btchip-python but is not installed by it
-pip3 install keepkey # KeepKey
+pip3 install git+git://github.com/keepkey/python-keepkey.git@43fe80ae2e54b274c7b8641ff409bce4ebe04914#egg=keepkey # KeepKey. The tags and pypi don't have the right version yet, so lock to a specific commit from their git repo
 pip3 install ckcc-protocol[cli] # Coldcard
 pip3 install pyaes # For digitalbitbox
 ```
