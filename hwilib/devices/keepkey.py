@@ -69,7 +69,7 @@ class KeepkeyClient(HardwareWalletClient):
     def get_pubkey_at_path(self, path):
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
-        expanded_path = self.client.expand_path(path)
+        expanded_path = tools.parse_path(path)
         output = self.client.get_public_node(expanded_path)
         if self.is_testnet:
             return {'xpub':xpub_main_2_test(output.xpub)}
