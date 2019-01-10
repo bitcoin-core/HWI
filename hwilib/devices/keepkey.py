@@ -2,6 +2,7 @@
 
 from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from keepkeylib.transport_hid import HidTransport
+from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import KeepKeyClient as KeepKey
 from keepkeylib import tools
 from keepkeylib import messages_pb2, types_pb2 as proto
@@ -103,9 +104,17 @@ class KeepkeyClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(KeepkeyClient, self).__init__(path, password)
-        devices = HidTransport.enumerate()
-        transport = HidTransport((path.encode(), None))
-        self.client = KeepKey(transport)
+        if path.startswith('hid:'):
+            path = path[4:]
+            transport = HidTransport((path.encode(), None))
+            self.client = KeepKey(transport)
+        elif path.startswith('udp:'):
+            path = path[4:]
+            transport = UDPTransport(path)
+            transport.buffer = b'' # HACk: Workaround a bug in the keepkey library
+            self.client = KeepKey(transport)
+        else:
+            raise IOError('Unknown device transport')
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
@@ -324,10 +333,24 @@ class KeepkeyClient(HardwareWalletClient):
 
 def enumerate(password=''):
     results = []
+    paths = []
     for d in HidTransport.enumerate():
+        paths.append('hid:{}'.format(d[0].decode()))
+
+    # Try to open the simulator device and conenct to it
+    try:
+        sim_dev = UDPTransport('127.0.0.1:21324')
+        sim_dev.socket.sendall(b"PINGPING")
+        resp = sim_dev.socket.recv(8)
+        if resp != b'PONGPONG':
+            pass
+        paths.append('udp:127.0.0.1:21324')
+    except:
+        pass
+
+    for path in paths:
         d_data = {}
 
-        path = d[0].decode()
         d_data['type'] = 'keepkey'
         d_data['path'] = path
 
@@ -340,6 +363,8 @@ def enumerate(password=''):
                 d_data['error'] = 'Not initialized'
             client.close()
         except Exception as e:
+            if str(e) == 'Unsupported device':
+                continue
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 
         results.append(d_data)

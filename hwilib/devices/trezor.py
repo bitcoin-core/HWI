@@ -321,6 +321,9 @@ def enumerate(password=''):
             else:
                 d_data['error'] = 'Not initialized'
             client.close()
+        except TypeError as e:
+            if dev.get_path().startswith('udp:'):
+                continue
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 
