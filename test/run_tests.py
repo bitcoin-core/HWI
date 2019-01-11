@@ -11,6 +11,7 @@ from test_device import start_bitcoind
 from test_psbt import TestPSBT
 from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
+from test_digitalbitbox import digitalbitbox_test_suite
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
 trezor_group = parser.add_mutually_exclusive_group()
@@ -22,7 +23,9 @@ coldcard_group.add_argument('--coldcard', help='Path to Coldcard simulator.', de
 ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--ledger', help='Run physical Ledger Nano S/X tests.', action='store_true')
 
+parser.add_argument('--digitalbitbox', help='Run physical Digital Bitbox tests.', action='store_true')
 parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoin/src/bitcoind')
+parser.add_argument('--password', '-p', help='Device password')
 args = parser.parse_args()
 
 # Run tests
@@ -30,7 +33,7 @@ suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 
-if not args.no_trezor or not args.no_coldcard or args.ledger:
+if not args.no_trezor or not args.no_coldcard or args.ledger or args.digitalbitbox:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -40,5 +43,10 @@ if not args.no_coldcard:
     suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass))
 if args.ledger:
     suite.addTest(ledger_test_suite(rpc, userpass))
+if args.digitalbitbox:
+    if args.password:
+        suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.password))
+    else:
+        print('Cannot run Digital Bitbox test without --password set')
 result = unittest.TextTestRunner().run(suite)
 sys.exit(not result.wasSuccessful())
