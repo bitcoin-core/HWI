@@ -131,6 +131,8 @@ class TrezorClient(HardwareWalletClient):
 
                 def ignore_input():
                     txinputtype.address_n = [0x80000000]
+                    txinputtype.multisig = None
+                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
                     to_ignore.append(input_num)
 

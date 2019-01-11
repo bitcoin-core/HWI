@@ -321,8 +321,7 @@ class TestSignTx(DeviceTestCase):
             psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*send_amount}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
 
             # Sign with unknown inputs in two steps
-            if self.type is not 'trezor': # https://github.com/achow101/HWI/issues/100
-                self._generate_and_finalize(True, psbt)
+            self._generate_and_finalize(True, psbt)
             # Sign all inputs all at once
             final_tx = self._generate_and_finalize(False, psbt)
 
