@@ -4,6 +4,7 @@ from ..hwwclient import HardwareWalletClient, UnavailableActionError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import KeepKeyClient as KeepKey
+from keepkeylib.client import KeepKeyDebugClient as KeepKeyDebug
 from keepkeylib import tools
 from keepkeylib import messages_pb2, types_pb2 as proto
 from keepkeylib.tx_api import TxApi
@@ -111,7 +112,13 @@ class KeepkeyClient(HardwareWalletClient):
         elif path.startswith('udp:'):
             path = path[4:]
             transport = UDPTransport(path)
-            self.client = KeepKey(transport)
+            # Use the debug client for the simulator
+            self.client = KeepKeyDebug(transport)
+            # Get the debug link
+            ip, port = path.split(':')
+            new_port = int(port) + 1
+            debug_transport = UDPTransport('{}:{}'.format(ip, new_port))
+            self.client.set_debuglink(debug_transport)
         else:
             raise IOError('Unknown device transport')
 
