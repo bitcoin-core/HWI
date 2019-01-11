@@ -333,8 +333,8 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        supports_mixed = {'coldcard', 'trezor', 'digitalbitbox'}
-        supports_multisig = {'ledger', 'trezor', 'digitalbitbox'}
+        supports_mixed = {'coldcard', 'trezor', 'digitalbitbox', 'keepkey'}
+        supports_multisig = {'ledger', 'trezor', 'digitalbitbox', 'keepkey'}
         if self.type not in supports_mixed:
             self._test_signtx("legacy", self.type in supports_multisig)
             self._test_signtx("segwit", self.type in supports_multisig)
