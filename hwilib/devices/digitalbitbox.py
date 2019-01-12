@@ -10,6 +10,7 @@ import hmac
 import os
 import binascii
 import logging
+import socket
 import time
 
 from ..hwwclient import HardwareWalletClient, NoPasswordError, UnavailableActionError
@@ -75,6 +76,25 @@ def to_string(x, enc):
     else:
         raise TypeError("Not a string or bytes like object")
 
+class BitboxSimulator():
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.connect((self.ip, self.port))
+        self.socket.settimeout(1)
+
+    def send_recv(self, msg):
+        self.socket.sendall(msg)
+        data = self.socket.recv(3584)
+        return data
+
+    def close(self):
+        self.socket.close()
+
+    def get_serial_number_string(self):
+        return 'dbb_fw:v5.0.0'
+
 def send_frame(data, device):
     data = bytearray(data)
     data_len = len(data)
@@ -121,16 +141,19 @@ def get_firmware_version(device):
 def send_plain(msg, device):
     reply = ""
     try:
-        firm_ver = get_firmware_version(device)
-        if (firm_ver[0] == 2 and firm_ver[1] == 0) or (firm_ver[0] == 1):
-            hidBufSize = 4096
-            device.write('\0' + msg + '\0' * (hidBufSize - len(msg)))
-            r = bytearray()
-            while len(r) < hidBufSize:
-                r += bytearray(self.dbb_hid.read(hidBufSize))
+        if isinstance(device, BitboxSimulator):
+            r = device.send_recv(msg)
         else:
-            send_frame(msg, device)
-            r = read_frame(device)
+            firm_ver = get_firmware_version(device)
+            if (firm_ver[0] == 2 and firm_ver[1] == 0) or (firm_ver[0] == 1):
+                hidBufSize = 4096
+                device.write('\0' + msg + '\0' * (hidBufSize - len(msg)))
+                r = bytearray()
+                while len(r) < hidBufSize:
+                    r += bytearray(self.dbb_hid.read(hidBufSize))
+            else:
+                send_frame(msg, device)
+                r = read_frame(device)
         r = r.rstrip(b' \t\r\n\0')
         r = r.replace(b"\0", b'')
         r = to_string(r, 'utf8')
@@ -184,8 +207,14 @@ class DigitalbitboxClient(HardwareWalletClient):
         super(DigitalbitboxClient, self).__init__(path, password)
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
-        self.device = hid.device()
-        self.device.open_path(path.encode())
+        if path.startswith('udp:'):
+            split_path = path.split(':')
+            ip = split_path[1]
+            port = int(split_path[2])
+            self.device = BitboxSimulator(ip, port)
+        else:
+            self.device = hid.device()
+            self.device.open_path(path.encode())
         self.password = password
 
     # Must return a dict with the xpub
@@ -441,7 +470,16 @@ class DigitalbitboxClient(HardwareWalletClient):
 
 def enumerate(password=''):
     results = []
-    for d in hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID):
+    devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)
+    # Try connecting to simulator
+    try:
+        dev = BitboxSimulator('127.0.0.1', 35345)
+        res = dev.send_recv(b'{"device" : "info"}')
+        devices.append({'path': b'udp:127.0.0.1:35345', 'interface_number': 0})
+        dev.close()
+    except:
+        pass
+    for d in devices:
         if ('interface_number' in d and  d['interface_number'] == 0 \
         or ('usage_page' in d and d['usage_page'] == 0xffff)):
             d_data = {}
