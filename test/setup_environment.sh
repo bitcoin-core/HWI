@@ -76,6 +76,36 @@ fi
 make -j$(nproc)
 cd ../..
 
+# Clone digital bitbox firmware if it doesn't exist, or update it if it does
+dbb_setup_needed=false
+if [ ! -d "mcu" ]; then
+    git clone --recursive https://github.com/achow101/mcu.git -b simulator
+    cd mcu
+    dbb_setup_needed=true
+else
+    cd mcu
+    git fetch
+
+    # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+    UPSTREAM=${1:-'@{u}'}
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse "$UPSTREAM")
+    BASE=$(git merge-base @ "$UPSTREAM")
+
+    if [ $LOCAL = $REMOTE ]; then
+        echo "Up-to-date"
+    elif [ $LOCAL = $BASE ]; then
+        git pull
+        coldcard_setup_needed=true
+    fi
+fi
+
+# Build the simulator. This is cached, but it is also fast
+mkdir -p build && cd build
+cmake .. -DBUILD_TYPE=simulator
+make -j$(nproc)
+cd ../..
+
 # Clone keepkey firmware if it doesn't exist, or update it if it does
 keepkey_setup_needed=false
 if [ ! -d "keepkey-firmware" ]; then
