@@ -12,6 +12,13 @@ from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from hwilib.commands import process_commands
 from hwilib.serializations import PSBT
 
+# Class for emulator control
+class DeviceEmulator():
+    def start(self):
+        pass
+    def stop(self):
+        pass
+
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
     bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole'])
@@ -42,7 +49,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None, methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -52,19 +59,29 @@ class DeviceTestCase(unittest.TestCase):
         self.master_xpub = master_xpub
         self.password = password
         self.dev_args = ['-t', self.type, '-d', self.path]
+        if emulator:
+            self.emulator = emulator
+        else:
+            self.emulator = DeviceEmulator()
         if password:
             self.dev_args.extend(['-p', password])
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = ''):
+    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, emulator, name))
         return suite
 
 class TestDeviceConnect(DeviceTestCase):
+    def setUp(self):
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
+
     def test_enumerate(self):
         enum_res = process_commands(['-p', self.password, 'enumerate'])
         found = False
@@ -102,6 +119,10 @@ class TestGetKeypool(DeviceTestCase):
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
 
     def test_getkeypool_bad_args(self):
         result = process_commands(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
@@ -205,6 +226,10 @@ class TestSignTx(DeviceTestCase):
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
@@ -333,8 +358,8 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        supports_mixed = {'coldcard', 'trezor', 'digitalbitbox'}
-        supports_multisig = {'ledger', 'trezor', 'digitalbitbox'}
+        supports_mixed = {'coldcard', 'trezor', 'digitalbitbox', 'keepkey'}
+        supports_multisig = {'ledger', 'trezor', 'digitalbitbox', 'keepkey'}
         if self.type not in supports_mixed:
             self._test_signtx("legacy", self.type in supports_multisig)
             self._test_signtx("segwit", self.type in supports_multisig)
@@ -342,6 +367,11 @@ class TestSignTx(DeviceTestCase):
             self._test_signtx("all", self.type in supports_multisig)
 
 class TestDisplayAddress(DeviceTestCase):
+    def setUp(self):
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
 
     def test_display_address_bad_args(self):
         result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', 'm/49h/1h/0h/0/0'])
@@ -355,6 +385,11 @@ class TestDisplayAddress(DeviceTestCase):
         process_commands(self.dev_args + ['displayaddress', '--wpkh', 'm/84h/1h/0h/0/0'])
 
 class TestSignMessage(DeviceTestCase):
+    def setUp(self):
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
 
     def test_sign_msg(self):
         process_commands(self.dev_args + ['signmessage', 'Message signing test', 'm/44h/1h/0h/0/0'])

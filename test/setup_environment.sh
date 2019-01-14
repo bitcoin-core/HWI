@@ -76,6 +76,46 @@ fi
 make -j$(nproc)
 cd ../..
 
+# Clone keepkey firmware if it doesn't exist, or update it if it does
+keepkey_setup_needed=false
+if [ ! -d "keepkey-firmware" ]; then
+    git clone --recursive https://github.com/keepkey/keepkey-firmware.git
+    cd keepkey-firmware
+    keepkey_setup_needed=true
+else
+    cd keepkey-firmware
+    git fetch
+
+    # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+    UPSTREAM=${1:-'@{u}'}
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse "$UPSTREAM")
+    BASE=$(git merge-base @ "$UPSTREAM")
+
+    if [ $LOCAL = $REMOTE ]; then
+        echo "Up-to-date"
+    elif [ $LOCAL = $BASE ]; then
+        git pull
+        keepkey_setup_needed=true
+    fi
+fi
+
+# Build the simulator. This is cached, but it is also fast
+if [ "$keepkey_setup_needed" == true ] ; then
+    git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
+fi
+# This needs py2, so make a pipenv
+export PIPENV_IGNORE_VIRTUALENVS=1
+pipenv --python 2.7
+pipenv install protobuf
+cd nanopb/generator/proto
+pipenv run make
+cd ../../../
+export PATH=$PATH:`pwd`/nanopb/generator
+pipenv run cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
+pipenv run make -j$(nproc) kkemu
+cd ..
+
 # Clone bitcoind if it doesn't exist, or update it if it does
 bitcoind_setup_needed=false
 if [ ! -d "bitcoin" ]; then
