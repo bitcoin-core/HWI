@@ -97,6 +97,33 @@ $ make setup
 $ make
 ```
 
+## Bitbox Simulator
+
+### Dependencies
+
+In order to build the Bitbox simulator, the following packages will need to be installed:
+
+```
+build-essential git cmake
+```
+
+### Building
+
+Clone the repository:
+
+```
+$ git clone https://github.com/achow101/mcu -b simulator
+```
+
+Build the simulator:
+
+```
+$ cd mcu
+$ mkdir -p build && cd build
+$ cmake .. -DBUILD_TYPE=simulator
+$ make
+```
+
 ## Bitcoin Core
 
 In order to build `bitcoind`, see [Bitcoin Core's build documentation](https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md#linux-distribution-specific-instructions) to get all of the dependencies installed and for instructions on how to build.
