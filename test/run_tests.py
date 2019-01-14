@@ -26,10 +26,11 @@ ledger_group.add_argument('--ledger', help='Run physical Ledger Nano S/X tests.'
 keepkey_group = parser.add_mutually_exclusive_group()
 keepkey_group.add_argument('--no_keepkey', help='Do not run Keepkey test with emulator', action='store_true')
 keepkey_group.add_argument('--keepkey', help='Path to Keepkey emulator.', default='work/keepkey-firmware/bin/kkemu')
+dbb_group = parser.add_mutually_exclusive_group()
+dbb_group.add_argument('--no_bitbox', help='Do not run Digital Bitbox test with simulator', action='store_true')
+dbb_group.add_argument('--bitbox', help='Path to Digital bitbox simulator.', default='work/mcu/build/bin/simulator')
 
-parser.add_argument('--digitalbitbox', help='Run physical Digital Bitbox tests.', action='store_true')
 parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoin/src/bitcoind')
-parser.add_argument('--password', '-p', help='Device password')
 args = parser.parse_args()
 
 # Run tests
@@ -37,7 +38,7 @@ suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 
-if not args.no_trezor or not args.no_coldcard or args.ledger or args.digitalbitbox:
+if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -47,11 +48,8 @@ if not args.no_coldcard:
     suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass))
 if args.ledger:
     suite.addTest(ledger_test_suite(rpc, userpass))
-if args.digitalbitbox:
-    if args.password:
-        suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.password))
-    else:
-        print('Cannot run Digital Bitbox test without --password set')
+if not args.no_bitbox:
+    suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.bitbox))
 if not args.no_keepkey:
     suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass))
 result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
