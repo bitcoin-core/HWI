@@ -75,6 +75,12 @@ class DeviceTestCase(unittest.TestCase):
             suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, emulator, name))
         return suite
 
+    def __str__(self):
+        return '{}: {}'.format(self.type, super().__str__())
+
+    def __repr__(self):
+        return '{}: {}'.format(self.type, super().__repr__())
+
 class TestDeviceConnect(DeviceTestCase):
     def setUp(self):
         self.emulator.start()
