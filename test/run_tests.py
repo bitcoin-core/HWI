@@ -54,5 +54,5 @@ if args.digitalbitbox:
         print('Cannot run Digital Bitbox test without --password set')
 if not args.no_keepkey:
     suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass))
-result = unittest.TextTestRunner(stream=sys.stdout).run(suite)
+result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
 sys.exit(not result.wasSuccessful())

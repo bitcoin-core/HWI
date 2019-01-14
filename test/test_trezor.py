@@ -126,4 +126,4 @@ if __name__ == '__main__':
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     suite = trezor_test_suite(args.emulator, rpc, userpass)
-    unittest.TextTestRunner(stream=sys.stdout).run(suite)
+    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
