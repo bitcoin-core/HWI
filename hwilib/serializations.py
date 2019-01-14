@@ -187,14 +187,14 @@ def ser_sig_der(r, s):
     # Make r and s as short as possible
     ri = 0
     for b in r:
-        if b == "\x00":
+        if b == 0:
             ri += 1
         else:
             break
     r = r[ri:]
     si = 0
     for b in s:
-        if b == "\x00":
+        if b == 0:
             si += 1
         else:
             break;
