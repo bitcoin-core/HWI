@@ -70,6 +70,12 @@ class TrezorTestCase(unittest.TestCase):
             suite.addTest(testclass(emulator, name))
         return suite
 
+    def __str__(self):
+        return 'trezor: {}'.format(super().__str__())
+
+    def __repr__(self):
+        return 'trezor: {}'.format(super().__repr__())
+
 # Trezor specific getxpub test because this requires device specific thing to set xprvs
 class TestTrezorGetxpub(TrezorTestCase):
     def setUp(self):
@@ -126,4 +132,4 @@ if __name__ == '__main__':
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     suite = trezor_test_suite(args.emulator, rpc, userpass)
-    unittest.TextTestRunner(stream=sys.stdout).run(suite)
+    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

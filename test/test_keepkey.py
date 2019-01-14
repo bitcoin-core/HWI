@@ -73,6 +73,12 @@ class KeepkeyTestCase(unittest.TestCase):
             suite.addTest(testclass(emulator, name))
         return suite
 
+    def __str__(self):
+        return 'keepkey: {}'.format(super().__str__())
+
+    def __repr__(self):
+        return 'keepkey: {}'.format(super().__repr__())
+
 # Keepkey specific getxpub test because this requires device specific thing to set xprvs
 class TestKeepkeyGetxpub(KeepkeyTestCase):
     def setUp(self):
@@ -129,4 +135,4 @@ if __name__ == '__main__':
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     suite = keepkey_test_suite(args.emulator, rpc, userpass)
-    unittest.TextTestRunner(stream=sys.stdout).run(suite)
+    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

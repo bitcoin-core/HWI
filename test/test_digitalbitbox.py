@@ -39,4 +39,4 @@ if __name__ == '__main__':
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     suite = digitalbitbox_test_suite(rpc, userpass, args.password)
-    unittest.TextTestRunner().run(suite)
+    unittest.TextTestRunner(verbosity=2).run(suite)

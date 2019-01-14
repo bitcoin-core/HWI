@@ -63,4 +63,4 @@ if __name__ == '__main__':
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     suite = coldcard_test_suite(args.simulator, rpc, userpass)
-    unittest.TextTestRunner().run(suite)
+    unittest.TextTestRunner(verbosity=2).run(suite)
