@@ -11,6 +11,7 @@ import base64
 import json
 import hid
 import io
+import sys
 import time
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
@@ -77,7 +78,7 @@ class ColdcardClient(HardwareWalletClient):
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
-        print("Waiting for OK on the Coldcard...")
+        print("Waiting for OK on the Coldcard...", file=sys.stderr)
 
         while 1:
             time.sleep(0.250)

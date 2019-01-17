@@ -11,6 +11,7 @@ import os
 import binascii
 import logging
 import socket
+import sys
 import time
 
 from ..hwwclient import HardwareWalletClient, NoPasswordError, UnavailableActionError
@@ -358,7 +359,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         logging.debug(reply)
         if 'error' in reply:
             return reply
-        print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
+        print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
         reply = send_encrypt(to_send, self.password, self.device)
         logging.debug(reply)
         if 'error' in reply:
@@ -400,7 +401,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         logging.debug(reply)
         if 'error' in reply:
             return reply
-        print("Touch the device for 3 seconds to sign. Touch briefly to cancel")
+        print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
         reply = send_encrypt(to_send, self.password, self.device)
         logging.debug(reply)
         if 'error' in reply:
