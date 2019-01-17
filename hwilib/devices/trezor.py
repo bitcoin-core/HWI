@@ -1,10 +1,10 @@
 # Trezor interaction script
 
-from ..hwwclient import HardwareWalletClient, DeviceAlreadyInitError, UnavailableActionError
+from ..hwwclient import HardwareWalletClient, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
-from trezorlib.ui import ClickUI, mnemonic_words
+from trezorlib.ui import ClickUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
 from trezorlib import protobuf, tools, btc, device
 from trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
@@ -15,6 +15,7 @@ import base64
 import binascii
 import json
 import logging
+import sys
 import os
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
@@ -53,6 +54,17 @@ def parse_multisig(script):
     multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
 
+class TrezorNoInit(Trezor):
+    def __init__(self, transport, ui=None, state=None):
+        self.transport = transport
+        self.ui = ui
+        self.state = state
+
+        if ui is None:
+            warnings.warn("UI class not supplied. This will probably crash soon.")
+
+        self.session_counter = 0
+
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
@@ -63,7 +75,7 @@ class TrezorClient(HardwareWalletClient):
             transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
         else:
-            self.client = Trezor(transport=get_transport(path), ui=ClickUI())
+            self.client = TrezorNoInit(transport=get_transport(path), ui=ClickUI())
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
@@ -71,10 +83,17 @@ class TrezorClient(HardwareWalletClient):
 
         self.password = password
         os.environ['PASSPHRASE'] = password
+        self.client.open()
+
+    def _check_unlocked(self):
+        self.client.init_device()
+        if self.client.features.pin_protection and not self.client.features.pin_cached:
+            raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
+        self._check_unlocked()
         expanded_path = tools.parse_path(path)
         output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
@@ -85,6 +104,7 @@ class TrezorClient(HardwareWalletClient):
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
     def sign_tx(self, tx):
+        self._check_unlocked()
 
         # Get this devices master key fingerprint
         master_key = btc.get_public_node(self.client, [0])
@@ -262,12 +282,14 @@ class TrezorClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
+        self._check_unlocked()
         path = tools.parse_path(keypath)
         result = btc.sign_message(self.client, 'Bitcoin', path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        self._check_unlocked()
         expanded_path = tools.parse_path(keypath)
         address = btc.get_address(
             self.client,
@@ -290,6 +312,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Wipe this device
     def wipe_device(self):
+        self._check_unlocked()
         device.wipe(self.client)
         return {'success': True}
 
@@ -307,6 +330,33 @@ class TrezorClient(HardwareWalletClient):
     def close(self):
         self.client.close()
 
+    # Prompt for a pin on device
+    def prompt_pin(self):
+        self.client.init_device()
+        if not self.client.features.pin_protection:
+            raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+        if self.client.features.pin_cached:
+            raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+        print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
+        print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
+        self.client.call_raw(proto.Ping(message=b'ping', button_protection=False, pin_protection=True, passphrase_protection=False))
+        return {'success': True}
+
+    # Send the pin
+    def send_pin(self, pin):
+        self.client.features = self.client.call_raw(proto.GetFeatures())
+        if isinstance(self.client.features, proto.Features):
+            if not self.client.features.pin_protection:
+                raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+            if self.client.features.pin_cached:
+                raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+        if not pin.isdigit():
+            raise ValueError("Non-numeric PIN provided")
+        resp = self.client.call_raw(proto.PinMatrixAck(pin=pin))
+        if isinstance(resp, proto.Failure):
+            return {'success': False}
+        return {'success': True}
+
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
@@ -317,6 +367,7 @@ def enumerate(password=''):
 
         try:
             client = TrezorClient(d_data['path'], password)
+            client.client.init_device()
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)

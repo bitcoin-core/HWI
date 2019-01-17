@@ -54,6 +54,14 @@ class HardwareWalletClient(object):
         raise NotImplementedError('The HardwareWalletClient base class does not '
             'implement this method')
 
+    # Prompt pin
+    def prompt_pin(self):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
+    # Send pin
+    def send_pin(self):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
 class NoPasswordError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
@@ -63,5 +71,13 @@ class UnavailableActionError(Exception):
         Exception.__init__(self,*args,**kwargs)
 
 class DeviceAlreadyInitError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class DeviceNotReadyError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class DeviceAlreadyUnlockedError(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
