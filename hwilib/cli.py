@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
-    get_client, getmasterxpub, getxpub, getkeypool, restore_device, setup_device, \
+    get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
     signmessage, signtx, wipe_device, NO_DEVICE_PATH, DEVICE_CONN_ERROR, NO_PASSWORD, \
     UNKNWON_DEVICE_TYPE
 
@@ -43,6 +43,12 @@ def signtx_handler(args, client):
 
 def wipe_device_handler(args, client):
     return wipe_device(client)
+
+def prompt_pin_handler(args, client):
+    return prompt_pin(client)
+
+def send_pin_handler(args, client):
+    return send_pin(client, pin=args.pin)
 
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
@@ -110,6 +116,13 @@ def process_commands(args):
     backup_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     backup_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
     backup_parser.set_defaults(func=backup_device_handler)
+
+    promptpin_parser = subparsers.add_parser('promptpin', help='Have the device prompt for your PIN')
+    promptpin_parser.set_defaults(func=prompt_pin_handler)
+
+    sendpin_parser = subparsers.add_parser('sendpin', help='Send the numeric positions for your PIN to the device')
+    sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
+    sendpin_parser.set_defaults(func=send_pin_handler)
 
     args = parser.parse_args(args)
 

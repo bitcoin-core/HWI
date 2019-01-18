@@ -8,7 +8,7 @@ import importlib
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
-from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError
+from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError
 
 # Error codes
 NO_DEVICE_PATH = -1
@@ -21,6 +21,7 @@ BAD_ARGUMENT = -7
 NOT_IMPLEMENTED = -8
 UNAVAILABLE_ACTION = -9
 DEVICE_ALREADY_INIT = -10
+DEVICE_ALREADY_UNLOCKED = -11
 
 class UnknownDeviceError(Exception):
     def __init__(self,*args,**kwargs):
@@ -218,5 +219,19 @@ def backup_device(client, label='', backup_passphrase=''):
         return client.backup_device(label, backup_passphrase)
     except UnavailableActionError as e:
         return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    except ValueError as e:
+        return {'error': str(e), 'code': BAD_ARGUMENT}
+
+def prompt_pin(client):
+    try:
+        return client.prompt_pin()
+    except DeviceAlreadyUnlockedError as e:
+        return {'error': str(e), 'code': DEVICE_ALREADY_UNLOCKED}
+
+def send_pin(client, pin):
+    try:
+        return client.send_pin(pin)
+    except DeviceAlreadyUnlockedError as e:
+        return {'error': str(e), 'code': DEVICE_ALREADY_UNLOCKED}
     except ValueError as e:
         return {'error': str(e), 'code': BAD_ARGUMENT}
