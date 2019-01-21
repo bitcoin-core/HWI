@@ -2,11 +2,6 @@
 
 # Hardware wallet interaction script
 
-from hwilib.commands import process_commands
+from hwilib.cli import main
 
-import sys
-import json
-
-if __name__ == '__main__':
-    result = process_commands(sys.argv[1:])
-    print(json.dumps(result))
+main()

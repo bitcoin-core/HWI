@@ -12,7 +12,7 @@ import unittest
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignTx
 
-from hwilib.commands import process_commands
+from hwilib.cli import process_commands
 
 def ledger_test_suite(rpc, userpass):
     # Look for real ledger using HWI API(self-referential, but no other way)

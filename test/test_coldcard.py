@@ -7,7 +7,7 @@ import subprocess
 import time
 import unittest
 
-from hwilib.commands import process_commands
+from hwilib.cli import process_commands
 from ckcc.protocol import CCProtocolPacker
 from ckcc.client import ColdcardDevice
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
