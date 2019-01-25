@@ -124,6 +124,40 @@ $ cmake .. -DBUILD_TYPE=simulator
 $ make
 ```
 
+## KeepKey emulator
+
+### Dependencies
+
+In order to build the KeepKey emulator, the following packages will need to be installed:
+
+```
+build-essential git python2 python2-pip
+```
+
+The python packages can be installed with
+
+```
+pip install protobuf
+```
+
+### Building
+
+Clone the repository and dependencies:
+
+```
+$ git clone https://github.com/keepkey/keepkey-firmware.git
+$ cd keepkey-firmware
+$ git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
+```
+
+Build the emulator:
+
+```
+$ export PATH=$PATH:`pwd`/nanopb/generator
+$ cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
+$ make kkemu
+```
+
 ## Bitcoin Core
 
 In order to build `bitcoind`, see [Bitcoin Core's build documentation](https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md#linux-distribution-specific-instructions) to get all of the dependencies installed and for instructions on how to build.
