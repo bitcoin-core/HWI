@@ -17,13 +17,10 @@ setuptools.setup(
         'hidapi', # HID API needed in general
         'trezor>=0.11.0', # Trezor One
         'btchip-python', # Ledger Nano S
-        'keepkey==6.0.1', # KeepKey
+        'keepkey>=6.0.1', # KeepKey
         'ckcc-protocol[cli]', # Coldcard
         'pyaes',
         'ecdsa', # Needed for Ledger but their library does not install it
-    ],
-    dependency_links=[
-        'https://github.com/keepkey/python-keepkey/tarball/43fe80ae2e54b274c7b8641ff409bce4ebe04914#egg=keepkey-6.0.1' # The tags don't have the right version yet, so lock to a specific commit
     ],
     python_requires='>=3',
     classifiers=[
