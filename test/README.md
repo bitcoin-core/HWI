@@ -112,7 +112,7 @@ build-essential git cmake
 Clone the repository:
 
 ```
-$ git clone https://github.com/achow101/mcu -b simulator
+$ git clone https://github.com/digitalbitbox/mcu
 ```
 
 Build the simulator:
