@@ -112,7 +112,7 @@ build-essential git cmake
 Clone the repository:
 
 ```
-$ git clone https://github.com/achow101/mcu -b simulator
+$ git clone https://github.com/digitalbitbox/mcu
 ```
 
 Build the simulator:
@@ -122,6 +122,40 @@ $ cd mcu
 $ mkdir -p build && cd build
 $ cmake .. -DBUILD_TYPE=simulator
 $ make
+```
+
+## KeepKey emulator
+
+### Dependencies
+
+In order to build the KeepKey emulator, the following packages will need to be installed:
+
+```
+build-essential git python2 python2-pip
+```
+
+The python packages can be installed with
+
+```
+pip install protobuf
+```
+
+### Building
+
+Clone the repository and dependencies:
+
+```
+$ git clone https://github.com/keepkey/keepkey-firmware.git
+$ cd keepkey-firmware
+$ git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
+```
+
+Build the emulator:
+
+```
+$ export PATH=$PATH:`pwd`/nanopb/generator
+$ cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
+$ make kkemu
 ```
 
 ## Bitcoin Core

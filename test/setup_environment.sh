@@ -79,7 +79,7 @@ cd ../..
 # Clone digital bitbox firmware if it doesn't exist, or update it if it does
 dbb_setup_needed=false
 if [ ! -d "mcu" ]; then
-    git clone --recursive https://github.com/achow101/mcu.git -b simulator
+    git clone --recursive https://github.com/digitalbitbox/mcu.git
     cd mcu
     dbb_setup_needed=true
 else
