@@ -1,12 +1,11 @@
 # KeepKey interaction script
 
-from ..hwwclient import HardwareWalletClient, UnavailableActionError
+from ..hwwclient import DeviceAlreadyUnlockedError, HardwareWalletClient, UnavailableActionError, DeviceNotReadyError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
-from keepkeylib.client import KeepKeyClient as KeepKey
-from keepkeylib.client import KeepKeyDebugClient as KeepKeyDebug
+from keepkeylib.client import BaseClient, DebugWireMixin, DebugLinkMixin, ProtocolMixin, TextUIMixin
 from keepkeylib import tools
-from keepkeylib import messages_pb2, types_pb2 as proto
+from keepkeylib import messages_pb2 as messages, types_pb2 as proto
 from keepkeylib.tx_api import TxApi
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
@@ -16,11 +15,19 @@ import base64
 import binascii
 import json
 import os
+import sys
 
 KEEPKEY_VENDOR_ID = 0x2B24
 KEEPKEY_DEVICE_ID = 0x0001
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
+
+PIN_MATRIX_DESCRIPTION = """
+Use the numeric keypad to describe number positions. The layout is:
+    7 8 9
+    4 5 6
+    1 2 3
+""".strip()
 
 class TxAPIPSBT(TxApi):
 
@@ -100,6 +107,18 @@ def parse_multisig(script):
     multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
 
+# Doesn't init device
+class NoInitMixin(ProtocolMixin):
+    def __init__(self, *args, **kwargs):
+        super(ProtocolMixin, self).__init__(*args, **kwargs)
+        self.tx_api = None
+
+class KeepKey(NoInitMixin, TextUIMixin, BaseClient):
+    pass
+
+class KeepKeyDebug(NoInitMixin, DebugLinkMixin, DebugWireMixin, BaseClient):
+    pass
+
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class KeepkeyClient(HardwareWalletClient):
 
@@ -129,9 +148,15 @@ class KeepkeyClient(HardwareWalletClient):
         self.password = password
         os.environ['PASSPHRASE'] = password
 
+    def _check_unlocked(self):
+        self.client.init_device()
+        if self.client.features.pin_protection and not self.client.features.pin_cached:
+            raise DeviceNotReadyError('Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
+
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
+        self._check_unlocked()
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
         expanded_path = tools.parse_path(path)
@@ -144,6 +169,7 @@ class KeepkeyClient(HardwareWalletClient):
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
     def sign_tx(self, tx):
+        self._check_unlocked()
 
         # Get this devices master key fingerprint
         master_key = self.client.get_public_node([0])
@@ -295,6 +321,7 @@ class KeepkeyClient(HardwareWalletClient):
     # Must return a base64 encoded string with the signed message
     # The message can be any string
     def sign_message(self, message, keypath):
+        self._check_unlocked()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
         expanded_path = tools.parse_path(keypath)
@@ -303,6 +330,7 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        self._check_unlocked()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
         expanded_path = tools.parse_path(keypath)
@@ -323,6 +351,7 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Wipe this device
     def wipe_device(self):
+        self._check_unlocked()
         self.client.wipe_device()
         return {'success': True}
 
@@ -338,6 +367,33 @@ class KeepkeyClient(HardwareWalletClient):
     # Close the device
     def close(self):
         self.client.close()
+
+    # Prompt for a pin on device
+    def prompt_pin(self):
+        self.client.init_device()
+        if not self.client.features.pin_protection:
+            raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+        if self.client.features.pin_cached:
+            raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+        print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
+        print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
+        self.client.call_raw(messages.Ping(message=b'ping', button_protection=False, pin_protection=True, passphrase_protection=False))
+        return {'success': True}
+
+    # Send the pin
+    def send_pin(self, pin):
+        if not pin.isdigit():
+            raise ValueError("Non-numeric PIN provided")
+        resp = self.client.call_raw(messages.PinMatrixAck(pin=pin))
+        if isinstance(resp, messages.Failure):
+            self.client.features = self.client.call_raw(messages.GetFeatures())
+            if isinstance(self.client.features, messages.Features):
+                if not self.client.features.pin_protection:
+                    raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+                if self.client.features.pin_cached:
+                    raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+            return {'success': False}
+        return {'success': True}
 
 def enumerate(password=''):
     results = []
@@ -364,6 +420,7 @@ def enumerate(password=''):
 
         try:
             client = KeepkeyClient(path, password)
+            client.client.init_device()
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)

@@ -268,6 +268,14 @@ class LedgerClient(HardwareWalletClient):
     def close(self):
         self.dongle.close()
 
+    # Prompt pin
+    def prompt_pin(self):
+        raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
+
+    # Send pin
+    def send_pin(self):
+        raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
+
 def enumerate(password=''):
     results = []
     for d in hid.enumerate(LEDGER_VENDOR_ID, LEDGER_DEVICE_ID):
