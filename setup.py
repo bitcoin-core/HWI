@@ -11,7 +11,7 @@ setuptools.setup(
     description="A library for working with Bitcoin hardware wallets",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/achow101/hwi",
+    url="https://github.com/bitcoin-core/hwi",
     packages=setuptools.find_packages(exclude=['docs', 'test']),
     install_requires=[
         'hidapi', # HID API needed in general

@@ -30,7 +30,7 @@ $ ./configure
 $ make
 $ src/bitcoind -daemon -addresstype=bech32 -changetype=bech32
 $ cd ..
-$ git clone https://github.com/achow101/HWI.git
+$ git clone https://github.com/bitcoin-core/HWI.git
 $ cd HWI
 $ python3 setup.py install
 ```

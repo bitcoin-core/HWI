@@ -1,6 +1,6 @@
 # Bitcoin Hardware Wallet Interaction scripts
 
-[![Build Status](https://travis-ci.org/achow101/HWI.svg?branch=master)](https://travis-ci.org/achow101/HWI)
+[![Build Status](https://travis-ci.org/bitcoin-core/HWI.svg?branch=master)](https://travis-ci.org/bitcoin-core/HWI)
 
 This project contains several scripts for interacting with Bitcoin hardware wallets.
 
@@ -22,7 +22,7 @@ pip3 install pyaes # For digitalbitbox
 ## Install
 
 ```
-git clone https://github.com/achow101/HWI.git
+git clone https://github.com/bitcoin-core/HWI.git
 cd HWI
 ```
 
