@@ -14,26 +14,41 @@ DEVICE_ALREADY_INIT = -10
 DEVICE_ALREADY_UNLOCKED = -11
 
 # Exceptions
-class NoPasswordError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+class HWWError(Exception):
+    def __init__(self, msg, code):
+        Exception.__init__(self)
+        self.code = code
+        self.msg = msg
 
-class UnavailableActionError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def get_code(self):
+        return self.code
 
-class DeviceAlreadyInitError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def get_msg(self):
+        return self.msg
 
-class DeviceNotReadyError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def __str__(self):
+        return self.msg
 
-class DeviceAlreadyUnlockedError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+class NoPasswordError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, NO_PASSWORD)
 
-class UnknownDeviceError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+class UnavailableActionError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, UNAVAILABLE_ACTION)
+
+class DeviceAlreadyInitError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, DEVICE_ALREADY_INIT)
+
+class DeviceNotReadyError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, DEVICE_NOT_READY)
+
+class DeviceAlreadyUnlockedError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, DEVICE_ALREADY_UNLOCKED)
+
+class UnknownDeviceError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, UNKNWON_DEVICE_TYPE)
