@@ -95,7 +95,10 @@ class TrezorClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         self._check_unlocked()
-        expanded_path = tools.parse_path(path)
+        try:
+            expanded_path = tools.parse_path(path)
+        except ValueError as e:
+            raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
             return {'xpub':xpub_main_2_test(output.xpub)}
