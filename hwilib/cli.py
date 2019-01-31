@@ -4,6 +4,7 @@ from .commands import backup_device, displayaddress, enumerate, find_device, \
     get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
     signmessage, signtx, wipe_device
 from .errors import (
+    HWWError,
     NO_DEVICE_PATH,
     DEVICE_CONN_ERROR,
     NO_PASSWORD,

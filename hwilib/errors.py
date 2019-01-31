@@ -12,6 +12,8 @@ NOT_IMPLEMENTED = -8
 UNAVAILABLE_ACTION = -9
 DEVICE_ALREADY_INIT = -10
 DEVICE_ALREADY_UNLOCKED = -11
+DEVICE_NOT_READY = -12
+UNKNOWN_ERROR = -13
 
 # Exceptions
 class HWWError(Exception):
@@ -52,3 +54,19 @@ class DeviceAlreadyUnlockedError(HWWError):
 class UnknownDeviceError(HWWError):
     def __init__(self, msg):
         HWWError.__init__(self, msg, UNKNWON_DEVICE_TYPE)
+
+class NotImplementedError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, NOT_IMPLEMENTED)
+
+class PSBTSerializationError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, INVALID_TX)
+
+class BadArgumentError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, BAD_ARGUMENT)
+
+class DeviceFailureError(HWWError):
+    def __init__(self, msg):
+        HWWError.__init__(self, msg, UNKNOWN_ERROR)

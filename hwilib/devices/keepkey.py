@@ -1,7 +1,7 @@
 # KeepKey interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
+from ..errors import BadArgumentError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import BaseClient, DebugWireMixin, DebugLinkMixin, ProtocolMixin, TextUIMixin
@@ -70,7 +70,7 @@ class TxAPIPSBT(TxApi):
             o.amount = psbt_in.witness_utxo.nValue
             o.script_pubkey = psbt_in.witness_utxo.scriptPubKey
         else:
-            raise ValueError('{} is not an input in this transaction'.format(txhash))
+            raise BadArgumentError('{} is not an input in this transaction'.format(txhash))
 
         return t
 
@@ -293,7 +293,7 @@ class KeepkeyClient(HardwareWalletClient):
                     if wit:
                         txoutput.address = bech32.encode(bech32_hrp, ver, prog)
                     else:
-                        raise TypeError("Output is not an address")
+                        raise BadArgumentError("Output is not an address")
 
                 # append to outputs
                 outputs.append(txoutput)
@@ -384,7 +384,7 @@ class KeepkeyClient(HardwareWalletClient):
     # Send the pin
     def send_pin(self, pin):
         if not pin.isdigit():
-            raise ValueError("Non-numeric PIN provided")
+            raise BadArgumentError("Non-numeric PIN provided")
         resp = self.client.call_raw(messages.PinMatrixAck(pin=pin))
         if isinstance(resp, messages.Failure):
             self.client.features = self.client.call_raw(messages.GetFeatures())

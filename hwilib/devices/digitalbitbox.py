@@ -15,7 +15,7 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import NoPasswordError, UnavailableActionError
+from ..errors import BadArgumentError, NoPasswordError, UnavailableActionError, DeviceFailureError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -76,7 +76,7 @@ def to_string(x, enc):
     if isinstance(x, str):
         return x
     else:
-        raise TypeError("Not a string or bytes like object")
+        raise DeviceFailureError("Not a string or bytes like object")
 
 class BitboxSimulator():
     def __init__(self, ip, port):
@@ -223,7 +223,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         if '\'' not in path and 'h' not in path and 'H' not in path:
-            raise ValueError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
+            raise BadArgumentError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
         if 'error' in reply:
             return reply
@@ -430,7 +430,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Need a wallet name and backup passphrase
         if not label or not passphrase:
-            raise ValueError('THe label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
+            raise BadArgumentError('THe label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
 
         # Set password
         to_send = {'password': self.password}

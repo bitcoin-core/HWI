@@ -1,7 +1,7 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
+from ..errors import BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
@@ -226,7 +226,7 @@ class TrezorClient(HardwareWalletClient):
                     if wit:
                         txoutput.address = bech32.encode(bech32_hrp, ver, prog)
                     else:
-                        raise TypeError("Output is not an address")
+                        raise BadArgumentError("Output is not an address")
 
                 # append to outputs
                 outputs.append(txoutput)
@@ -352,7 +352,7 @@ class TrezorClient(HardwareWalletClient):
             if self.client.features.pin_cached:
                 raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
         if not pin.isdigit():
-            raise ValueError("Non-numeric PIN provided")
+            raise BadArgumentError("Non-numeric PIN provided")
         resp = self.client.call_raw(proto.PinMatrixAck(pin=pin))
         if isinstance(resp, proto.Failure):
             return {'success': False}

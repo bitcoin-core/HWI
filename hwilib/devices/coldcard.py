@@ -1,7 +1,7 @@
 # Coldcard interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import UnavailableActionError
+from ..errors import UnavailableActionError, DeviceFailureError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from ckcc.protocol import CCProtocolPacker, CCProtoError
 from ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
@@ -71,7 +71,7 @@ class ColdcardClient(HardwareWalletClient):
         result = self.device.send_recv(CCProtocolPacker.sha256())
         assert len(result) == 32
         if result != expect:
-            raise ValueError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
+            raise DeviceFailureError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
 
         # start the signing process
         ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
@@ -89,7 +89,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         result_len, result_sha = done
 
@@ -109,7 +109,7 @@ class ColdcardClient(HardwareWalletClient):
             if self.device.is_simulator:
                 self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         except CCProtoError as e:
-            raise ValueError(str(e))
+            raise DeviceFailureError(str(e))
 
         while 1:
             time.sleep(0.250)
@@ -120,7 +120,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         addr, raw = done
 
@@ -171,7 +171,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         result_len, result_sha = done
 
