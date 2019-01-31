@@ -32,11 +32,14 @@ def get_client(device_type, device_path, password=''):
     class_name = device_type.capitalize()
     module = device_type.lower()
 
+    client = None
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
         client_constructor = getattr(imported_dev, class_name + 'Client')
         client = client_constructor(device_path, password)
     except ImportError as e:
+        if client:
+            client.close()
         raise UnknownDeviceError('Unknown device type specified')
 
     return client
@@ -63,6 +66,7 @@ def find_device(device_path, password='', device_type=None, fingerprint=None):
     for d in devices:
         if device_type is not None and d['type'] != device_type:
             continue
+        client = None
         try:
             client = get_client(d['type'], d['path'], password)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
@@ -73,6 +77,8 @@ def find_device(device_path, password='', device_type=None, fingerprint=None):
             else:
                 return client
         except:
+            if client:
+                client.close()
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
