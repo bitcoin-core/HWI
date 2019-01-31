@@ -1,9 +1,10 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
+from trezorlib.exceptions import Cancelled
 from trezorlib.transport import enumerate_devices, get_transport
 from trezorlib.ui import ClickUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
 from trezorlib import protobuf, tools, btc, device
@@ -11,6 +12,7 @@ from trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
+from usb1 import USBErrorNoDevice
 
 import base64
 import binascii
@@ -66,6 +68,18 @@ class TrezorNoInit(Trezor):
 
         self.session_counter = 0
 
+def trezor_exception(f):
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except ValueError as e:
+            raise BadArgumentError(str(e))
+        except Cancelled as e:
+            raise ActionCanceledError('{} canceled'.format(f.__name__))
+        except USBErrorNoDevice as e:
+            raise DeviceConnectionError('Device disconnected')
+    return func
+
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
@@ -93,6 +107,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
+    @trezor_exception
     def get_pubkey_at_path(self, path):
         self._check_unlocked()
         try:
@@ -107,6 +122,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
+    @trezor_exception
     def sign_tx(self, tx):
         self._check_unlocked()
 
@@ -285,6 +301,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
+    @trezor_exception
     def sign_message(self, message, keypath):
         self._check_unlocked()
         path = tools.parse_path(keypath)
@@ -292,6 +309,7 @@ class TrezorClient(HardwareWalletClient):
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
+    @trezor_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         self._check_unlocked()
         expanded_path = tools.parse_path(keypath)
@@ -305,7 +323,9 @@ class TrezorClient(HardwareWalletClient):
         return {'address': address}
 
     # Setup a new device
+    @trezor_exception
     def setup_device(self, label='', passphrase=''):
+        self.client.init_device()
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         passphrase_enabled = False
@@ -315,12 +335,14 @@ class TrezorClient(HardwareWalletClient):
         return {'success': True}
 
     # Wipe this device
+    @trezor_exception
     def wipe_device(self):
         self._check_unlocked()
         device.wipe(self.client)
         return {'success': True}
 
     # Restore device from mnemonic or xprv
+    @trezor_exception
     def restore_device(self, label=''):
         passphrase_enabled = False
         device.recover(self.client, label=label, input_callback=mnemonic_words, passphrase_protection=bool(self.password))
@@ -331,10 +353,12 @@ class TrezorClient(HardwareWalletClient):
         raise UnavailableActionError('The Trezor does not support creating a backup via software')
 
     # Close the device
+    @trezor_exception
     def close(self):
         self.client.close()
 
     # Prompt for a pin on device
+    @trezor_exception
     def prompt_pin(self):
         self.client.init_device()
         if not self.client.features.pin_protection:
@@ -347,6 +371,7 @@ class TrezorClient(HardwareWalletClient):
         return {'success': True}
 
     # Send the pin
+    @trezor_exception
     def send_pin(self, pin):
         self.client.features = self.client.call_raw(proto.GetFeatures())
         if isinstance(self.client.features, proto.Features):
