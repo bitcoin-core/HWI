@@ -1,6 +1,7 @@
 # Coldcard interaction script
 
-from ..hwwclient import HardwareWalletClient, UnavailableActionError
+from ..hwwclient import HardwareWalletClient
+from ..errors import UnavailableActionError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from ckcc.protocol import CCProtocolPacker, CCProtoError
 from ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH

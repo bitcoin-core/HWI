@@ -8,24 +8,7 @@ import importlib
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
-from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError
-
-# Error codes
-NO_DEVICE_PATH = -1
-NO_DEVICE_TYPE = -2
-DEVICE_CONN_ERROR = -3
-UNKNWON_DEVICE_TYPE = -4
-INVALID_TX = -5
-NO_PASSWORD = -6
-BAD_ARGUMENT = -7
-NOT_IMPLEMENTED = -8
-UNAVAILABLE_ACTION = -9
-DEVICE_ALREADY_INIT = -10
-DEVICE_ALREADY_UNLOCKED = -11
-
-class UnknownDeviceError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):

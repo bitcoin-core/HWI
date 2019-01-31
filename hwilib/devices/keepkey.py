@@ -1,6 +1,7 @@
 # KeepKey interaction script
 
-from ..hwwclient import DeviceAlreadyUnlockedError, HardwareWalletClient, UnavailableActionError, DeviceNotReadyError
+from ..hwwclient import HardwareWalletClient
+from ..errors import DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import BaseClient, DebugWireMixin, DebugLinkMixin, ProtocolMixin, TextUIMixin

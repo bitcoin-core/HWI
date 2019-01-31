@@ -1,6 +1,7 @@
 # Ledger interaction script
 
-from ..hwwclient import HardwareWalletClient, UnavailableActionError
+from ..hwwclient import HardwareWalletClient
+from ..errors import UnavailableActionError
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64

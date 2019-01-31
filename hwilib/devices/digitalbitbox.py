@@ -14,7 +14,8 @@ import socket
 import sys
 import time
 
-from ..hwwclient import HardwareWalletClient, NoPasswordError, UnavailableActionError
+from ..hwwclient import HardwareWalletClient
+from ..errors import NoPasswordError, UnavailableActionError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 

@@ -1,6 +1,7 @@
 # Trezor interaction script
 
-from ..hwwclient import HardwareWalletClient, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
+from ..hwwclient import HardwareWalletClient
+from ..errors import DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnavailableActionError, DeviceNotReadyError
 from trezorlib.client import TrezorClient as Trezor
 from trezorlib.debuglink import TrezorClientDebugLink
 from trezorlib.transport import enumerate_devices, get_transport
