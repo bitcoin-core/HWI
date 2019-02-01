@@ -1,7 +1,7 @@
 # Ledger interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import UnavailableActionError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError
 from btchip.btchip import *
 from btchip.btchipUtils import *
 import base64
@@ -15,6 +15,37 @@ import logging
 
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_DEVICE_ID = 0x0001
+
+bad_args = [
+    0x6700, # BTCHIP_SW_INCORRECT_LENGTH
+    0x6A80, # BTCHIP_SW_INCORRECT_DATA
+    0x6B00, # BTCHIP_SW_INCORRECT_P1_P2
+    0x6D00, # BTCHIP_SW_INS_NOT_SUPPORTED
+]
+
+cancels = [
+    0x6982, # BTCHIP_SW_SECURITY_STATUS_NOT_SATISFIED
+    0x6985, # BTCHIP_SW_CONDITIONS_OF_USE_NOT_SATISFIED
+]
+
+def ledger_exception(f):
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except ValueError as e:
+            raise BadArgumentError(str(e))
+        except BTChipException as e:
+            if e.sw in bad_args:
+                raise BadArgumentError('Bad argument')
+            elif e.sw == 0x6F00: # BTCHIP_SW_TECHNICAL_PROBLEM
+                raise DeviceFailureError(e.message)
+            elif e.sw == 0x6FAA: # BTCHIP_SW_HALTED
+                raise DeviceConnectionError('Device is asleep')
+            elif e.sw in cancels:
+                raise ActionCanceledError('{} canceled'.format(f.__name__))
+            else:
+                raise e
+    return func
 
 # This class extends the HardwareWalletClient for Ledger Nano S specific things
 class LedgerClient(HardwareWalletClient):
@@ -30,6 +61,7 @@ class LedgerClient(HardwareWalletClient):
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
+    @ledger_exception
     def get_pubkey_at_path(self, path):
         path = path[2:]
         path = path.replace('h', '\'')
@@ -76,6 +108,7 @@ class LedgerClient(HardwareWalletClient):
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
     # Current only supports segwit signing
+    @ledger_exception
     def sign_tx(self, tx):
         c_tx = CTransaction(tx.tx)
         tx_bytes = c_tx.serialize_with_witness()
@@ -223,6 +256,7 @@ class LedgerClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
+    @ledger_exception
     def sign_message(self, message, keypath):
         message = bytearray(message, 'utf-8')
         keypath = keypath[2:]
@@ -245,6 +279,7 @@ class LedgerClient(HardwareWalletClient):
 
         return {"signature":base64.b64encode(sig).decode('utf-8')}
 
+    @ledger_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         output = self.app.getWalletPublicKey(keypath[2:], True, (p2sh_p2wpkh or bech32), bech32)
         return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
