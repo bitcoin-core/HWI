@@ -58,6 +58,7 @@ def find_device(device_path, password='', device_type=None, fingerprint=None):
                 client.close()
                 continue
             else:
+                client.fingerprint = master_fpr
                 return client
         except:
             if client:
