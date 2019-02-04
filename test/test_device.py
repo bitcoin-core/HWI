@@ -112,9 +112,19 @@ class TestDeviceConnect(DeviceTestCase):
         gmxp_res = process_commands(['-f', self.fingerprint, '-p', self.password, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
-    def test_type_only_autodetech(self):
+        # Nonexistent fingerprint
+        gmxp_res = process_commands(['-f', '0000ffff', '-p', self.password, 'getmasterxpub'])
+        self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint')
+        self.assertEqual(gmxp_res['code'], -3)
+
+    def test_type_only_autodetect(self):
         gmxp_res = process_commands(['-t', self.type, '-p', self.password, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+
+        # Unknown device type
+        gmxp_res = process_commands(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub'])
+        self.assertEqual(gmxp_res['error'], 'Unknown device type specified')
+        self.assertEqual(gmxp_res['code'], -4)
 
 class TestGetKeypool(DeviceTestCase):
     def setUp(self):
