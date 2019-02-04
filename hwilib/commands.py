@@ -6,7 +6,7 @@ import glob
 import importlib
 
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
+from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
 from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 

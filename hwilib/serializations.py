@@ -91,12 +91,6 @@ def uint256_from_str(s):
     return r
 
 
-def uint256_from_compact(c):
-    nbytes = (c >> 24) & 0xFF
-    v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
-    return v
-
-
 def deser_vector(f, c):
     nit = deser_compact_size(f)
     r = []
@@ -120,22 +114,6 @@ def ser_vector(l, ser_function_name=None):
     return r
 
 
-def deser_uint256_vector(f):
-    nit = deser_compact_size(f)
-    r = []
-    for i in range(nit):
-        t = deser_uint256(f)
-        r.append(t)
-    return r
-
-
-def ser_uint256_vector(l):
-    r = ser_compact_size(len(l))
-    for i in l:
-        r += ser_uint256(i)
-    return r
-
-
 def deser_string_vector(f):
     nit = deser_compact_size(f)
     r = []
@@ -150,31 +128,6 @@ def ser_string_vector(l):
     for sv in l:
         r += ser_string(sv)
     return r
-
-
-def deser_int_vector(f):
-    nit = deser_compact_size(f)
-    r = []
-    for i in range(nit):
-        t = struct.unpack("<i", f.read(4))[0]
-        r.append(t)
-    return r
-
-
-def ser_int_vector(l):
-    r = ser_compact_size(len(l))
-    for i in l:
-        r += struct.pack("<i", i)
-    return r
-
-# Deserialize from a hex string representation (eg from RPC)
-def FromHex(obj, hex_string):
-    obj.deserialize(BytesIO(hex_str_to_bytes(hex_string)))
-    return obj
-
-# Convert a binary-serializable object to hex (eg for submission via RPC)
-def ToHex(obj):
-    return bytes_to_hex_str(obj.serialize())
 
 def Base64ToHex(s):
     return binascii.hexlify(base64.b64decode(s))
@@ -477,13 +430,6 @@ class CTransaction(object):
         if self.sha256 is None:
             self.sha256 = uint256_from_str(hash256(self.serialize_without_witness()))
         self.hash = encode(hash256(self.serialize())[::-1], 'hex_codec').decode('ascii')
-
-    def is_valid(self):
-        self.calc_sha256()
-        for tout in self.vout:
-            if tout.nValue < 0 or tout.nValue > 21000000 * COIN:
-                return False
-        return True
 
     def is_null(self):
         return len(self.vin) == 0 and len(self.vout) == 0
