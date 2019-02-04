@@ -200,16 +200,20 @@ def enumerate(password=''):
         d_data['type'] = 'coldcard'
         d_data['path'] = path
 
+        client = None
         try:
             client = ColdcardClient(path)
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-            client.close()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 
+        if client:
+            client.close()
+
         results.append(d_data)
     # Check if the simulator is there
+    client = None
     try:
         client = ColdcardClient(CC_SIMULATOR_SOCK)
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
@@ -219,10 +223,11 @@ def enumerate(password=''):
         d_data['type'] = 'coldcard'
         d_data['path'] = CC_SIMULATOR_SOCK
         results.append(d_data)
-        client.close()
     except RuntimeError as e:
         if str(e) == 'Cannot connect to simulator. Is it running?':
             pass
         else:
             raise e
+    if client:
+        client.close()
     return results

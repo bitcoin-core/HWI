@@ -497,6 +497,7 @@ def enumerate(password=''):
             d_data['type'] = 'digitalbitbox'
             d_data['path'] = path
 
+            client = None
             try:
                 client = DigitalbitboxClient(path, password)
 
@@ -507,9 +508,11 @@ def enumerate(password=''):
                 else:
                     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-                client.close()
             except Exception as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+            if client:
+                client.close()
 
             results.append(d_data)
     return results

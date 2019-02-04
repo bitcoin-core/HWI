@@ -418,6 +418,7 @@ def enumerate(password=''):
         d_data['type'] = 'keepkey'
         d_data['path'] = path
 
+        client = None
         try:
             client = KeepkeyClient(path, password)
             client.client.init_device()
@@ -426,11 +427,13 @@ def enumerate(password=''):
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
-            client.close()
         except Exception as e:
             if str(e) == 'Unsupported device':
                 continue
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        if client:
+            client.close()
 
         results.append(d_data)
     return results

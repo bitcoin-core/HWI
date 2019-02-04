@@ -365,6 +365,7 @@ def enumerate(password=''):
         d_data['type'] = 'trezor'
         d_data['path'] = dev.get_path()
 
+        client = None
         try:
             client = TrezorClient(d_data['path'], password)
             client.client.init_device()
@@ -373,12 +374,14 @@ def enumerate(password=''):
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
-            client.close()
         except TypeError as e:
             if dev.get_path().startswith('udp:'):
                 continue
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+
+        if client:
+            client.close()
 
         results.append(d_data)
     return results
