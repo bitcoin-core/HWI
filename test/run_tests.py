@@ -38,7 +38,7 @@ suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 
-if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox:
+if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox or not args.no_keepkey:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 

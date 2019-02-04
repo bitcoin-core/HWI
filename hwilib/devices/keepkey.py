@@ -1,7 +1,7 @@
 # KeepKey interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import BadArgumentError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
+from ..errors import BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import BaseClient, DebugWireMixin, DebugLinkMixin, ProtocolMixin, TextUIMixin
@@ -111,8 +111,13 @@ def parse_multisig(script):
 # Doesn't init device
 class NoInitMixin(ProtocolMixin):
     def __init__(self, *args, **kwargs):
-        super(ProtocolMixin, self).__init__(*args, **kwargs)
-        self.tx_api = None
+        super().__init__(*args, **kwargs)
+
+    def init_device(self):
+        pass
+
+    def actual_init_device(self):
+        return super().init_device()
 
 class KeepKey(NoInitMixin, TextUIMixin, BaseClient):
     pass
@@ -160,7 +165,7 @@ class KeepkeyClient(HardwareWalletClient):
         os.environ['PASSPHRASE'] = password
 
     def _check_unlocked(self):
-        self.client.init_device()
+        self.client.actual_init_device()
         if self.client.features.pin_protection and not self.client.features.pin_cached:
             raise DeviceNotReadyError('Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
@@ -360,6 +365,7 @@ class KeepkeyClient(HardwareWalletClient):
     # Setup a new device
     @keepkey_exception
     def setup_device(self, label='', passphrase=''):
+        self.client.actual_init_device()
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         self.client.reset_device(False, 256, bool(self.password), True, label, 'english')
@@ -390,7 +396,7 @@ class KeepkeyClient(HardwareWalletClient):
     # Prompt for a pin on device
     @keepkey_exception
     def prompt_pin(self):
-        self.client.init_device()
+        self.client.actual_init_device()
         if not self.client.features.pin_protection:
             raise DeviceAlreadyUnlockedError('This device does not need a PIN')
         if self.client.features.pin_cached:
@@ -442,7 +448,7 @@ def enumerate(password=''):
         client = None
         try:
             client = KeepkeyClient(path, password)
-            client.client.init_device()
+            client.client.actual_init_device()
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
