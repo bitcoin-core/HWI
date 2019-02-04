@@ -13,11 +13,20 @@ import unittest
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from trezorlib.transport import enumerate_devices
 from trezorlib.transport.udp import UdpTransport
-from trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
-from trezorlib import device
-from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignTx
+from trezorlib.debuglink import DebugUI, TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from trezorlib import device, messages
+from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands
+from hwilib.devices.trezor import TrezorClient
+
+from types import MethodType
+
+def get_pin(self, code=None):
+    if self.pin:
+        return self.debuglink.encode_pin(self.pin)
+    else:
+        return self.debuglink.read_pin_encoded()
 
 class TrezorEmulator(DeviceEmulator):
     def __init__(self, path):
@@ -102,6 +111,92 @@ class TestTrezorGetxpub(TrezorTestCase):
                     gxp_res = process_commands(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
+# Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
+class TestTrezorManCommands(TrezorTestCase):
+    def setUp(self):
+        self.client = self.emulator.start()
+        self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
+
+    def tearDown(self):
+        self.emulator.stop()
+
+    def test_setup_wipe(self):
+        # Device is init, setup should fail
+        result = process_commands(self.dev_args + ['setup'])
+        self.assertEquals(result['code'], -10)
+        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+        # Wipe
+        result = process_commands(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        # Setup
+        t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device()
+        self.assertTrue(result['success'])
+
+        # Make sure device is init, setup should fail
+        result = process_commands(self.dev_args + ['setup'])
+        self.assertEquals(result['code'], -10)
+        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+    def test_backup(self):
+        result = process_commands(self.dev_args + ['backup'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Trezor does not support creating a backup via software')
+        self.assertEqual(result['code'], -9)
+
+    def test_pins(self):
+        # There's no PIN
+        result = process_commands(self.dev_args + ['--debug', 'promptpin'])
+        self.assertEqual(result['error'], 'This device does not need a PIN')
+        self.assertEqual(result['code'], -11)
+        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        self.assertEqual(result['error'], 'This device does not need a PIN')
+        self.assertEqual(result['code'], -11)
+
+        # Set a PIN
+        device.wipe(self.client)
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
+        self.client.call(messages.ClearSession())
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertTrue(result['success'])
+
+        # Invalid pins
+        result = process_commands(self.dev_args + ['sendpin', 'notnum'])
+        self.assertEqual(result['error'], 'Non-numeric PIN provided')
+        self.assertEqual(result['code'], -7)
+
+        result = process_commands(self.dev_args + ['sendpin', '00000'])
+        self.assertFalse(result['success'])
+
+        # Make sure we get a needs pin message
+        result = process_commands(self.dev_args + ['getxpub', 'm/0h'])
+        self.assertEqual(result['code'], -12)
+        self.assertEqual(result['error'], 'Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
+
+        # Prompt pin
+        self.client.call(messages.ClearSession())
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertTrue(result['success'])
+
+        # Send the PIN
+        self.client.open()
+        pin = self.client.debug.encode_pin('1234')
+        result = process_commands(self.dev_args + ['sendpin', pin])
+        self.assertTrue(result['success'])
+
+        # Sending PIN after unlock
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertEqual(result['error'], 'The PIN has already been sent to this device')
+        self.assertEqual(result['code'], -11)
+        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        self.assertEqual(result['error'], 'The PIN has already been sent to this device')
+        self.assertEqual(result['code'], -11)
+
 def trezor_test_suite(emulator, rpc, userpass):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
@@ -119,7 +214,9 @@ def trezor_test_suite(emulator, rpc, userpass):
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator))
     return suite
 
 if __name__ == '__main__':
