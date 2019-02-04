@@ -325,24 +325,25 @@ class TestSignTx(DeviceTestCase):
         sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti").popitem()[0]
         wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti").popitem()[0]
 
-        send_amount = 2
+        in_amt = 3
+        out_amt = in_amt // 3
         number_inputs = 0
         # Single-sig
         if input_type == 'segwit' or input_type == 'all':
-            self.wpk_rpc.sendtoaddress(sh_wpkh_addr, send_amount)
-            self.wpk_rpc.sendtoaddress(wpkh_addr, send_amount)
+            self.wpk_rpc.sendtoaddress(sh_wpkh_addr, in_amt)
+            self.wpk_rpc.sendtoaddress(wpkh_addr, in_amt)
             number_inputs += 2
         if input_type == 'legacy' or input_type == 'all':
-            self.wpk_rpc.sendtoaddress(pkh_addr, send_amount)
+            self.wpk_rpc.sendtoaddress(pkh_addr, in_amt)
             number_inputs += 1
         # Now do segwit/legacy multisig
         if multisig:
             if input_type == 'legacy' or input_type == 'all':
-                self.wpk_rpc.sendtoaddress(sh_multi_addr, send_amount)
+                self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
                 number_inputs += 1
             if input_type == 'segwit' or input_type == 'all':
-                self.wpk_rpc.sendtoaddress(wsh_multi_addr, send_amount)
-                self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, send_amount)
+                self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
+                self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
                 number_inputs += 2
 
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
@@ -351,8 +352,8 @@ class TestSignTx(DeviceTestCase):
         for i in range(number_inputs):
             # Create a psbt spending the above
             if i == number_inputs-1:
-                self.assertTrue((i+1)*send_amount == self.wrpc.getbalance("*", 0, True))
-            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress():(i+1)*send_amount}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0]}, True)
+                self.assertTrue((i+1)*in_amt == self.wrpc.getbalance("*", 0, True))
+            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress('', 'legacy'):(i+1)*out_amt}, {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'):(i+1)*out_amt}, {self.wpk_rpc.getnewaddress('', 'bech32'):(i+1)*out_amt}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0, 1, 2]}, True)
 
             # Sign with unknown inputs in two steps
             self._generate_and_finalize(True, psbt)
