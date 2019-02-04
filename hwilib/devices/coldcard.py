@@ -118,13 +118,10 @@ class ColdcardClient(HardwareWalletClient):
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
-        try:
-            ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
-            assert ok == None
-            if self.device.is_simulator:
-                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        except CCProtoError as e:
-            raise DeviceFailureError(str(e))
+        ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
+        assert ok == None
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         while 1:
             time.sleep(0.250)

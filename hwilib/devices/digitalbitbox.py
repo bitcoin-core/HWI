@@ -48,6 +48,7 @@ bad_args = [
     411, # Filenames limited to alphanumeric values, hyphens, and underscores.
     412, # Please provide an encryption key.
     112, # Device password matches reset password. Disabling reset password.
+    251, # Could not generate key.
 ]
 
 device_failures = [
@@ -55,7 +56,6 @@ device_failures = [
     107, # Output buffer overflow.
     200, # Seed creation requires an SD card for automatic encrypted backup of the seed.
     250, # Master key not present.
-    251, # Could not generate key.
     252, # Could not generate ECDH secret.
     303, # Could not sign.
     400, # Please insert SD card.
