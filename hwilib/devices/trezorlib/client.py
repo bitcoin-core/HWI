@@ -81,7 +81,6 @@ class TrezorClient:
             warnings.warn("UI class not supplied. This will probably crash soon.")
 
         self.session_counter = 0
-        self.init_device()
 
     def open(self):
         if self.session_counter == 0:
