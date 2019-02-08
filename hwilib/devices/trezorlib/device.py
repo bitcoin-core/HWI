@@ -156,9 +156,9 @@ def reset(
     pin_protection=True,
     label=None,
     language="english",
-    u2f_counter=0,
-    skip_backup=False,
-    no_backup=False,
+    # u2f_counter=0,
+    # skip_backup=False,
+    # no_backup=False,
 ):
     if client.features.initialized:
         raise RuntimeError(
@@ -179,9 +179,9 @@ def reset(
         pin_protection=bool(pin_protection),
         language=language,
         label=label,
-        u2f_counter=u2f_counter,
-        skip_backup=bool(skip_backup),
-        no_backup=bool(no_backup),
+        # u2f_counter=u2f_counter,
+        # skip_backup=bool(skip_backup),
+        # no_backup=bool(no_backup),
     )
 
     resp = client.call(msg)

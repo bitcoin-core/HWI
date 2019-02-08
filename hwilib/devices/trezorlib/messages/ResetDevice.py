@@ -14,9 +14,9 @@ class ResetDevice(p.MessageType):
         pin_protection: bool = None,
         language: str = None,
         label: str = None,
-        u2f_counter: int = None,
-        skip_backup: bool = None,
-        no_backup: bool = None,
+        # u2f_counter: int = None,
+        # skip_backup: bool = None,
+        # no_backup: bool = None,
     ) -> None:
         self.display_random = display_random
         self.strength = strength
@@ -24,9 +24,9 @@ class ResetDevice(p.MessageType):
         self.pin_protection = pin_protection
         self.language = language
         self.label = label
-        self.u2f_counter = u2f_counter
-        self.skip_backup = skip_backup
-        self.no_backup = no_backup
+        # self.u2f_counter = u2f_counter
+        # self.skip_backup = skip_backup
+        # self.no_backup = no_backup
 
     @classmethod
     def get_fields(cls):
@@ -37,7 +37,7 @@ class ResetDevice(p.MessageType):
             4: ('pin_protection', p.BoolType, 0),
             5: ('language', p.UnicodeType, 0),  # default=english
             6: ('label', p.UnicodeType, 0),
-            7: ('u2f_counter', p.UVarintType, 0),
-            8: ('skip_backup', p.BoolType, 0),
-            9: ('no_backup', p.BoolType, 0),
+            # 7: ('u2f_counter', p.UVarintType, 0),
+            # 8: ('skip_backup', p.BoolType, 0),
+            # 9: ('no_backup', p.BoolType, 0),
         }

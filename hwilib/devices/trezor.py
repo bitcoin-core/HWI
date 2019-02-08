@@ -86,12 +86,12 @@ class TrezorClient(HardwareWalletClient):
             raise IOError("no Device")
 
         self.password = password
-        self.client.open()
+        self.type = 'Trezor'
 
     def _check_unlocked(self):
         self.client.init_device()
         if self.client.features.pin_protection and not self.client.features.pin_cached:
-            raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
+            raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -338,7 +338,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Trezor does not support creating a backup via software')
+        raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
     @trezor_exception
@@ -348,6 +348,7 @@ class TrezorClient(HardwareWalletClient):
     # Prompt for a pin on device
     @trezor_exception
     def prompt_pin(self):
+        self.client.open()
         self.client.init_device()
         if not self.client.features.pin_protection:
             raise DeviceAlreadyUnlockedError('This device does not need a PIN')
@@ -361,16 +362,17 @@ class TrezorClient(HardwareWalletClient):
     # Send the pin
     @trezor_exception
     def send_pin(self, pin):
-        self.client.features = self.client.call_raw(proto.GetFeatures())
-        if isinstance(self.client.features, proto.Features):
-            if not self.client.features.pin_protection:
-                raise DeviceAlreadyUnlockedError('This device does not need a PIN')
-            if self.client.features.pin_cached:
-                raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+        self.client.open()
         if not pin.isdigit():
             raise BadArgumentError("Non-numeric PIN provided")
         resp = self.client.call_raw(proto.PinMatrixAck(pin=pin))
         if isinstance(resp, proto.Failure):
+            self.client.features = self.client.call_raw(proto.GetFeatures())
+            if isinstance(self.client.features, proto.Features):
+                if not self.client.features.pin_protection:
+                    raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+                if self.client.features.pin_cached:
+                    raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
             return {'success': False}
         return {'success': True}
 
@@ -386,14 +388,13 @@ def enumerate(password=''):
         try:
             client = TrezorClient(d_data['path'], password)
             client.client.init_device()
+            if not 'trezor' in client.client.features.vendor:
+                continue
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
-        except TypeError as e:
-            if dev.get_path().startswith('udp:'):
-                continue
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 

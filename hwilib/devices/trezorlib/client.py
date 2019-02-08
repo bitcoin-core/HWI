@@ -27,7 +27,7 @@ if sys.version_info.major < 3:
 
 LOG = logging.getLogger(__name__)
 
-VENDORS = ("bitcointrezor.com", "trezor.io")
+VENDORS = ("bitcointrezor.com", "trezor.io", "keepkey.com")
 MAX_PASSPHRASE_LENGTH = 50
 
 DEPRECATION_ERROR = """
