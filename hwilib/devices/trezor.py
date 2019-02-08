@@ -2,13 +2,13 @@
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
-from trezorlib.client import TrezorClient as Trezor
-from trezorlib.debuglink import DebugLink, DebugUI, TrezorClientDebugLink
-from trezorlib.exceptions import Cancelled
-from trezorlib.transport import enumerate_devices, get_transport
-from trezorlib.ui import ClickUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
-from trezorlib import protobuf, tools, btc, device
-from trezorlib import messages as proto
+from .trezorlib.client import TrezorClient as Trezor
+from .trezorlib.debuglink import DebugLink, DebugUI, TrezorClientDebugLink
+from .trezorlib.exceptions import Cancelled
+from .trezorlib.transport import enumerate_devices, get_transport
+from .trezorlib.ui import PassphraseUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
+from .trezorlib import protobuf, tools, btc, device
+from .trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
@@ -99,14 +99,13 @@ class TrezorClient(HardwareWalletClient):
             transport = get_transport(path)
             self.client = TrezorDebugNoInit(transport=transport)
         else:
-            self.client = TrezorNoInit(transport=get_transport(path), ui=ClickUI())
+            self.client = TrezorNoInit(transport=get_transport(path), ui=PassphraseUI(password))
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
 
         self.password = password
-        os.environ['PASSPHRASE'] = password
         self.client.open()
 
     def _check_unlocked(self):

@@ -15,12 +15,14 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['docs', 'test']),
     install_requires=[
         'hidapi', # HID API needed in general
-        'trezor>=0.11.0', # Trezor One
         'btchip-python', # Ledger Nano S
         'keepkey>=6.0.1', # KeepKey
         'ckcc-protocol[cli]', # Coldcard
         'pyaes',
         'ecdsa', # Needed for Ledger but their library does not install it
+        'typing_extensions>=3.7',
+        'mnemonic>=0.18.0',
+        'libusb1'
     ],
     python_requires='>=3',
     classifiers=[
