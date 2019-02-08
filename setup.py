@@ -16,7 +16,6 @@ setuptools.setup(
     install_requires=[
         'hidapi', # HID API needed in general
         'btchip-python', # Ledger Nano S
-        'ckcc-protocol[cli]', # Coldcard
         'pyaes',
         'ecdsa', # Needed for Ledger but their library does not install it
         'typing_extensions>=3.7',
