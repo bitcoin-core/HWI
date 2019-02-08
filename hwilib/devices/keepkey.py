@@ -1,6 +1,7 @@
 # KeepKey interaction script
 
-from ..hwwclient import DeviceAlreadyUnlockedError, HardwareWalletClient, UnavailableActionError, DeviceNotReadyError
+from ..hwwclient import HardwareWalletClient
+from ..errors import BadArgumentError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
 from keepkeylib.transport_hid import HidTransport
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import BaseClient, DebugWireMixin, DebugLinkMixin, ProtocolMixin, TextUIMixin
@@ -69,7 +70,7 @@ class TxAPIPSBT(TxApi):
             o.amount = psbt_in.witness_utxo.nValue
             o.script_pubkey = psbt_in.witness_utxo.scriptPubKey
         else:
-            raise ValueError('{} is not an input in this transaction'.format(txhash))
+            raise BadArgumentError('{} is not an input in this transaction'.format(txhash))
 
         return t
 
@@ -119,6 +120,16 @@ class KeepKey(NoInitMixin, TextUIMixin, BaseClient):
 class KeepKeyDebug(NoInitMixin, DebugLinkMixin, DebugWireMixin, BaseClient):
     pass
 
+def keepkey_exception(f):
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except ValueError as e:
+            raise BadArgumentError(str(e))
+        except OSError as e:
+            raise DeviceConnectionError(str(e))
+    return func
+
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class KeepkeyClient(HardwareWalletClient):
 
@@ -155,6 +166,7 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
+    @keepkey_exception
     def get_pubkey_at_path(self, path):
         self._check_unlocked()
         path = path.replace('h', '\'')
@@ -168,6 +180,7 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
+    @keepkey_exception
     def sign_tx(self, tx):
         self._check_unlocked()
 
@@ -292,7 +305,7 @@ class KeepkeyClient(HardwareWalletClient):
                     if wit:
                         txoutput.address = bech32.encode(bech32_hrp, ver, prog)
                     else:
-                        raise TypeError("Output is not an address")
+                        raise BadArgumentError("Output is not an address")
 
                 # append to outputs
                 outputs.append(txoutput)
@@ -320,6 +333,7 @@ class KeepkeyClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
+    @keepkey_exception
     def sign_message(self, message, keypath):
         self._check_unlocked()
         keypath = keypath.replace('h', '\'')
@@ -329,6 +343,7 @@ class KeepkeyClient(HardwareWalletClient):
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
+    @keepkey_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         self._check_unlocked()
         keypath = keypath.replace('h', '\'')
@@ -343,6 +358,7 @@ class KeepkeyClient(HardwareWalletClient):
         return {'address': address}
 
     # Setup a new device
+    @keepkey_exception
     def setup_device(self, label='', passphrase=''):
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
@@ -350,17 +366,20 @@ class KeepkeyClient(HardwareWalletClient):
         return {'success': True}
 
     # Wipe this device
+    @keepkey_exception
     def wipe_device(self):
         self._check_unlocked()
         self.client.wipe_device()
         return {'success': True}
 
     # Restore device from mnemonic or xprv
+    @keepkey_exception
     def restore_device(self, label=''):
         self.client.recovery_device(False, 24, bool(self.password), True, label, 'english')
         return {'success': True}
 
     # Begin backup process
+    @keepkey_exception
     def backup_device(self, label='', passphrase=''):
         raise UnavailableActionError('The Keepkey does not support creating a backup via software')
 
@@ -369,6 +388,7 @@ class KeepkeyClient(HardwareWalletClient):
         self.client.close()
 
     # Prompt for a pin on device
+    @keepkey_exception
     def prompt_pin(self):
         self.client.init_device()
         if not self.client.features.pin_protection:
@@ -381,9 +401,10 @@ class KeepkeyClient(HardwareWalletClient):
         return {'success': True}
 
     # Send the pin
+    @keepkey_exception
     def send_pin(self, pin):
         if not pin.isdigit():
-            raise ValueError("Non-numeric PIN provided")
+            raise BadArgumentError("Non-numeric PIN provided")
         resp = self.client.call_raw(messages.PinMatrixAck(pin=pin))
         if isinstance(resp, messages.Failure):
             self.client.features = self.client.call_raw(messages.GetFeatures())

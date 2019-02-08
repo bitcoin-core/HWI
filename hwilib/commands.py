@@ -8,24 +8,7 @@ import importlib
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import xpub_to_address, xpub_to_pub_hex, get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
 from os.path import dirname, basename, isfile
-from .hwwclient import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError
-
-# Error codes
-NO_DEVICE_PATH = -1
-NO_DEVICE_TYPE = -2
-DEVICE_CONN_ERROR = -3
-UNKNWON_DEVICE_TYPE = -4
-INVALID_TX = -5
-NO_PASSWORD = -6
-BAD_ARGUMENT = -7
-NOT_IMPLEMENTED = -8
-UNAVAILABLE_ACTION = -9
-DEVICE_ALREADY_INIT = -10
-DEVICE_ALREADY_UNLOCKED = -11
-
-class UnknownDeviceError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
@@ -83,37 +66,19 @@ def find_device(device_path, password='', device_type=None, fingerprint=None):
     return None
 
 def getmasterxpub(client):
-    try:
-        return client.get_master_xpub()
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+    return client.get_master_xpub()
 
 def signtx(client, psbt):
     # Deserialize the transaction
-    try:
-        tx = PSBT()
-        tx.deserialize(psbt)
-        return client.sign_tx(tx)
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
-    except IOError as e:
-        return {'error':'You must provide a PSBT','code':INVALID_TX}
-    except Exception as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    tx = PSBT()
+    tx.deserialize(psbt)
+    return client.sign_tx(tx)
 
 def getxpub(client, path):
-    try:
-        return client.get_pubkey_at_path(path)
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+    return client.get_pubkey_at_path(path)
 
 def signmessage(client, message, path):
-    try:
-        return client.sign_message(message, path)
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
-    except ValueError as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    return client.sign_message(message, path)
 
 def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
     if sh_wpkh == True and wpkh == True:
@@ -195,49 +160,19 @@ def displayaddress(client, path, sh_wpkh=False, wpkh=False):
     return client.display_address(path, sh_wpkh, wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):
-    try:
-        return client.setup_device(label, backup_passphrase)
-    except UnavailableActionError as e:
-        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
-    except DeviceAlreadyInitError as e:
-        return {'error': str(e), 'code': DEVICE_ALREADY_INIT}
-    except ValueError as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    return client.setup_device(label, backup_passphrase)
 
 def wipe_device(client):
-    try:
-        return client.wipe_device()
-    except UnavailableActionError as e:
-        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
+    return client.wipe_device()
 
 def restore_device(client, label):
-    try:
-        return client.restore_device(label)
-    except UnavailableActionError as e:
-        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
-    except DeviceAlreadyInitError as e:
-        return {'error': str(e), 'code': DEVICE_ALREADY_INIT}
-    except ValueError as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    return client.restore_device(label)
 
 def backup_device(client, label='', backup_passphrase=''):
-    try:
-        return client.backup_device(label, backup_passphrase)
-    except UnavailableActionError as e:
-        return {'error': str(e), 'code': UNAVAILABLE_ACTION}
-    except ValueError as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    return client.backup_device(label, backup_passphrase)
 
 def prompt_pin(client):
-    try:
-        return client.prompt_pin()
-    except DeviceAlreadyUnlockedError as e:
-        return {'error': str(e), 'code': DEVICE_ALREADY_UNLOCKED}
+    return client.prompt_pin()
 
 def send_pin(client, pin):
-    try:
-        return client.send_pin(pin)
-    except DeviceAlreadyUnlockedError as e:
-        return {'error': str(e), 'code': DEVICE_ALREADY_UNLOCKED}
-    except ValueError as e:
-        return {'error': str(e), 'code': BAD_ARGUMENT}
+    return client.send_pin(pin)

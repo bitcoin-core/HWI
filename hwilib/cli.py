@@ -2,8 +2,15 @@
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
     get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
-    signmessage, signtx, wipe_device, NO_DEVICE_PATH, DEVICE_CONN_ERROR, NO_PASSWORD, \
-    UNKNWON_DEVICE_TYPE
+    signmessage, signtx, wipe_device
+from .errors import (
+    HWWError,
+    NO_DEVICE_PATH,
+    DEVICE_CONN_ERROR,
+    NO_PASSWORD,
+    UNKNWON_DEVICE_TYPE,
+    UNKNOWN_ERROR
+)
 
 import argparse
 import getpass
@@ -151,10 +158,8 @@ def process_commands(args):
     elif args.device_type and args.device_path:
         try:
             client = get_client(device_type, device_path, password)
-        except NoPasswordError as e:
-            return {'error':str(e),'code':NO_PASSWORD}
-        except UnknownDeviceError as e:
-            return {'error':str(e),'code':UNKNWON_DEVICE_TYPE}
+        except HWWError as e:
+            return {'error': e.get_msg(), 'code': e.get_code()}
         except Exception as e:
             return {'error':str(e),'code':DEVICE_CONN_ERROR}
     else:
@@ -163,10 +168,26 @@ def process_commands(args):
     client.is_testnet = args.testnet
 
     # Do the commands
-    result = args.func(args, client)
+    try:
+        result = args.func(args, client)
+    except HWWError as e:
+        result = {'error': e.get_msg(), 'code': e.get_code()}
+    except Exception as e:
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        result = {'error': str(e), 'code': UNKNOWN_ERROR}
 
     # Close the device
-    client.close()
+    try:
+        client.close()
+    except HWWError as e:
+        result = {'error': e.get_msg(), 'code': e.get_code()}
+    except Exception as e:
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        result = {'error': str(e), 'code': UNKNOWN_ERROR}
 
     return result
 

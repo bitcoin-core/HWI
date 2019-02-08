@@ -1,8 +1,9 @@
 # Coldcard interaction script
 
-from ..hwwclient import HardwareWalletClient, UnavailableActionError
+from ..hwwclient import HardwareWalletClient
+from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, UnavailableActionError, DeviceFailureError
 from ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
-from ckcc.protocol import CCProtocolPacker, CCProtoError
+from ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
 from ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
 from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
 from hashlib import sha256
@@ -16,6 +17,18 @@ import time
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
+
+def coldcard_exception(f):
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except CCProtoError as e:
+            raise BadArgumentError(str(e))
+        except CCUserRefused as e:
+            raise ActionCanceledError('{} canceled'.format(f.__name__))
+        except CCBusyError as e:
+            raise DeviceBusyError(str(e))
+    return func
 
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
@@ -32,6 +45,7 @@ class ColdcardClient(HardwareWalletClient):
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
+    @coldcard_exception
     def get_pubkey_at_path(self, path):
         self.device.check_mitm()
         path = path.replace('h', '\'')
@@ -44,6 +58,7 @@ class ColdcardClient(HardwareWalletClient):
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
+    @coldcard_exception
     def sign_tx(self, tx):
         self.device.check_mitm()
 
@@ -70,7 +85,7 @@ class ColdcardClient(HardwareWalletClient):
         result = self.device.send_recv(CCProtocolPacker.sha256())
         assert len(result) == 32
         if result != expect:
-            raise ValueError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
+            raise DeviceFailureError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
 
         # start the signing process
         ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
@@ -88,7 +103,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         result_len, result_sha = done
 
@@ -97,6 +112,7 @@ class ColdcardClient(HardwareWalletClient):
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
+    @coldcard_exception
     def sign_message(self, message, keypath):
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
@@ -108,7 +124,7 @@ class ColdcardClient(HardwareWalletClient):
             if self.device.is_simulator:
                 self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         except CCProtoError as e:
-            raise ValueError(str(e))
+            raise DeviceFailureError(str(e))
 
         while 1:
             time.sleep(0.250)
@@ -119,7 +135,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         addr, raw = done
 
@@ -127,6 +143,7 @@ class ColdcardClient(HardwareWalletClient):
         return {"signature": sig}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
+    @coldcard_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
@@ -156,6 +173,7 @@ class ColdcardClient(HardwareWalletClient):
         raise UnavailableActionError('The Coldcard does not support restoring via software')
 
     # Begin backup process
+    @coldcard_exception
     def backup_device(self, label='', passphrase=''):
         self.device.check_mitm()
 
@@ -170,7 +188,7 @@ class ColdcardClient(HardwareWalletClient):
             break
 
         if len(done) != 2:
-            raise ValueError('Failed: %r' % done)
+            raise DeviceFailureError('Failed: %r' % done)
 
         result_len, result_sha = done
 

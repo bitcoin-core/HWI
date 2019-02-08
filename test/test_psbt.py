@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 from hwilib.serializations import PSBT
+from hwilib.errors import PSBTSerializationError
 import json
 import os
 import unittest
@@ -15,7 +16,7 @@ class TestPSBT(unittest.TestCase):
     def test_invalid_psbt(self):
         for invalid in self.data['invalid']:
             with self.subTest(invalid=invalid):
-                with self.assertRaises(IOError) as cm:
+                with self.assertRaises(PSBTSerializationError) as cm:
                     psbt = PSBT()
                     psbt.deserialize(invalid)
 
