@@ -8,7 +8,7 @@
 #
 #   - ec_mult, ec_setup, aes_setup, mitm_verify
 #
-import hid, sys, os
+import hid, sys, os, platform
 from binascii import b2a_hex, a2b_hex
 from hashlib import sha256
 from .protocol import CCProtocolPacker, CCProtocolUnpacker, CCProtoError, MAX_MSG_LEN, MAX_BLK_LEN
@@ -27,6 +27,8 @@ class ColdcardDevice:
         self.is_simulator = False
 
         if not dev and sn and '/' in sn:
+            if platform.system() == 'Windows':
+                raise RuntimeError("Cannot connect to simulator. Is it running?")
             dev = UnixSimulatorPipe(sn)
             found = 'simulator'
             self.is_simulator = True
