@@ -2,8 +2,8 @@
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError
-from btchip.btchip import *
-from btchip.btchipUtils import *
+from .btchip.btchip import *
+from .btchip.btchipUtils import *
 import base64
 import json
 import struct
