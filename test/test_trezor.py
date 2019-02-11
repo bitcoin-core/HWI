@@ -141,7 +141,7 @@ class TestTrezorManCommands(TrezorTestCase):
 
     def test_setup_wipe(self):
         # Device is init, setup should fail
-        result = self.do_command(self.dev_args + ['setup'])
+        result = self.do_command(self.dev_args + ['-i', 'setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
@@ -157,7 +157,7 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertTrue(result['success'])
 
         # Make sure device is init, setup should fail
-        result = self.do_command(self.dev_args + ['setup'])
+        result = self.do_command(self.dev_args + ['-i', 'setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
