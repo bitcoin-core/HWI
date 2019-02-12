@@ -13,9 +13,20 @@ import unittest
 
 from keepkeylib.transport_udp import UDPTransport
 from keepkeylib.client import KeepKeyDebugClient
-from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignTx
+from keepkeylib import messages_pb2 as messages
+from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands
+from hwilib.devices.keepkey import KeepkeyClient
+
+from types import MethodType
+
+def pin_matrix(self, code=None):
+    if self.pin:
+        pin = self.debug.encode_pin(self.pin)
+    else:
+        pin = self.debug.read_pin_encoded()
+    return messages.PinMatrixAck(pin=pin)
 
 class KeepkeyEmulator(DeviceEmulator):
     def __init__(self, emulator_path):
@@ -105,6 +116,91 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
                     gxp_res = process_commands(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
+# Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
+class TestKeepkeyManCommands(KeepkeyTestCase):
+    def setUp(self):
+        self.client = self.emulator.start()
+        self.dev_args = ['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324']
+
+    def tearDown(self):
+        self.emulator.stop()
+
+    def test_setup_wipe(self):
+        # Device is init, setup should fail
+        result = process_commands(self.dev_args + ['setup'])
+        self.assertEquals(result['code'], -10)
+        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+        # Wipe
+        result = process_commands(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        # Setup
+        k_client = KeepkeyClient('udp:127.0.0.1:21324', 'test')
+        k_client.client.callback_PinMatrixRequest = MethodType(pin_matrix, k_client.client)
+        k_client.client.pin = '1234'
+        result = k_client.setup_device()
+        self.assertTrue(result['success'])
+
+        # Make sure device is init, setup should fail
+        result = process_commands(self.dev_args + ['setup'])
+        self.assertEquals(result['code'], -10)
+        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+    def test_backup(self):
+        result = process_commands(self.dev_args + ['backup'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Keepkey does not support creating a backup via software')
+        self.assertEqual(result['code'], -9)
+
+    def test_pins(self):
+        # There's no PIN
+        result = process_commands(self.dev_args + ['--debug', 'promptpin'])
+        self.assertEqual(result['error'], 'This device does not need a PIN')
+        self.assertEqual(result['code'], -11)
+        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        self.assertEqual(result['error'], 'This device does not need a PIN')
+        self.assertEqual(result['code'], -11)
+
+        # Set a PIN
+        self.client.wipe_device()
+        self.client.load_device_by_mnemonic(mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test', language='english')
+        self.client.call(messages.ClearSession())
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertTrue(result['success'])
+
+        # Invalid pin
+        result = process_commands(self.dev_args + ['sendpin', 'notnum'])
+        self.assertEqual(result['error'], 'Non-numeric PIN provided')
+        self.assertEqual(result['code'], -7)
+
+        result = process_commands(self.dev_args + ['sendpin', '00000'])
+        self.assertFalse(result['success'])
+
+        # Make sure we get a needs pin message
+        result = process_commands(self.dev_args + ['getxpub', 'm/0h'])
+        self.assertEqual(result['code'], -12)
+        self.assertEqual(result['error'], 'Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
+
+        # Prompt pin
+        self.client.call(messages.ClearSession())
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertTrue(result['success'])
+
+        # Send the PIN
+        pin = self.client.debug.encode_pin('1234')
+        result = process_commands(self.dev_args + ['sendpin', pin])
+        self.assertTrue(result['success'])
+
+        # Sending PIN after unlock
+        result = process_commands(self.dev_args + ['promptpin'])
+        self.assertEqual(result['error'], 'The PIN has already been sent to this device')
+        self.assertEqual(result['code'], -11)
+        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        self.assertEqual(result['error'], 'The PIN has already been sent to this device')
+        self.assertEqual(result['code'], -11)
+
 def keepkey_test_suite(emulator, rpc, userpass):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
@@ -122,7 +218,9 @@ def keepkey_test_suite(emulator, rpc, userpass):
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
     suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyGetxpub, emulator=dev_emulator))
+    suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyManCommands, emulator=dev_emulator))
     return suite
 
 if __name__ == '__main__':

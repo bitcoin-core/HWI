@@ -15,7 +15,7 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceNotReadyError, NoPasswordError, UnavailableActionError, DeviceFailureError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, NoPasswordError, UnavailableActionError, DeviceFailureError
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -48,6 +48,7 @@ bad_args = [
     411, # Filenames limited to alphanumeric values, hyphens, and underscores.
     412, # Please provide an encryption key.
     112, # Device password matches reset password. Disabling reset password.
+    251, # Could not generate key.
 ]
 
 device_failures = [
@@ -55,7 +56,6 @@ device_failures = [
     107, # Output buffer overflow.
     200, # Seed creation requires an SD card for automatic encrypted backup of the seed.
     250, # Master key not present.
-    251, # Could not generate key.
     252, # Could not generate ECDH secret.
     303, # Could not sign.
     400, # Please insert SD card.
@@ -518,7 +518,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Need a wallet name and backup passphrase
         if not label or not passphrase:
-            raise BadArgumentError('THe label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
+            raise BadArgumentError('The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
 
         # Set password
         to_send = {'password': self.password}
@@ -548,12 +548,16 @@ class DigitalbitboxClient(HardwareWalletClient):
     # Begin backup process
     @digitalbitbox_exception
     def backup_device(self, label='', passphrase=''):
+        # Need a wallet name and backup passphrase
+        if not label or not passphrase:
+            raise BadArgumentError('The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
+
         key = stretch_backup_key(passphrase)
         backup_filename = format_backup_filename(label)
-        to_send = {'backup': {'source': 'HWW', 'key': key, 'filename': backup_filename}}
+        to_send = {'backup': {'source': 'all', 'key': key, 'filename': backup_filename}}
         reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
         if 'error' in reply:
-            return {'success': False, 'error': reply['error']['message']}
+            raise DBBError(reply)
         return {'success': True}
 
     # Close the device
@@ -562,10 +566,10 @@ class DigitalbitboxClient(HardwareWalletClient):
 
     # Prompt pin
     def prompt_pin(self):
-        raise UnavailableActionError('The Digtal Bitbox does not need a PIN sent from the host')
+        raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
     # Send pin
-    def send_pin(self):
+    def send_pin(self, pin):
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
 def enumerate(password=''):

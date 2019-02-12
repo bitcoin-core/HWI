@@ -27,8 +27,8 @@ def coldcard_test_suite(simulator, rpc, userpass):
         resp = dev.send_recv(CCProtocolPacker.logout())
     atexit.register(cleanup_simulator)
 
-    # Coldcard specific setup and wipe tests
-    class TestColdcardSetupWipe(DeviceTestCase):
+    # Coldcard specific management command tests
+    class TestColdcardManCommands(DeviceTestCase):
         def test_setup(self):
             result = process_commands(self.dev_args + ['setup'])
             self.assertIn('error', result)
@@ -43,9 +43,34 @@ def coldcard_test_suite(simulator, rpc, userpass):
             self.assertEqual(result['error'], 'The Coldcard does not support wiping via software')
             self.assertEqual(result['code'], -9)
 
+        def test_restore(self):
+            result = process_commands(self.dev_args + ['restore'])
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['error'], 'The Coldcard does not support restoring via software')
+            self.assertEqual(result['code'], -9)
+
+        def test_backup(self):
+            result = process_commands(self.dev_args + ['backup'])
+            self.assertTrue(result['success'])
+            self.assertIn('The backup has been written to', result['message'])
+
+        def test_pin(self):
+            result = process_commands(self.dev_args + ['promptpin'])
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['error'], 'The Coldcard does not need a PIN sent from the host')
+            self.assertEqual(result['code'], -9)
+
+            result = process_commands(self.dev_args + ['sendpin', '1234'])
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['error'], 'The Coldcard does not need a PIN sent from the host')
+            self.assertEqual(result['code'], -9)
+
     # Generic device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestColdcardSetupWipe, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', ''))
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', ''))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd'))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd'))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd'))

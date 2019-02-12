@@ -118,13 +118,10 @@ class ColdcardClient(HardwareWalletClient):
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
-        try:
-            ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
-            assert ok == None
-            if self.device.is_simulator:
-                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        except CCProtoError as e:
-            raise DeviceFailureError(str(e))
+        ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
+        assert ok == None
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         while 1:
             time.sleep(0.250)
@@ -179,8 +176,13 @@ class ColdcardClient(HardwareWalletClient):
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
         assert ok == None
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         while 1:
+            if self.device.is_simulator: # For the simulator, work through the password quiz. Eventually pressing 1 will work
+                self.device.send_recv(CCProtocolPacker.sim_keypress(b'1'))
+
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_backup_file(), timeout=None)
             if done == None:
@@ -195,7 +197,7 @@ class ColdcardClient(HardwareWalletClient):
         result = self.device.download_file(result_len, result_sha, file_number=0)
         filename = time.strftime('backup-%Y%m%d-%H%M.7z')
         open(filename, 'wb').write(result)
-        return {'success': True, 'message': 'The backup has be written to {}'.format(filename)}
+        return {'success': True, 'message': 'The backup has been written to {}'.format(filename)}
 
     # Close the device
     def close(self):
@@ -206,7 +208,7 @@ class ColdcardClient(HardwareWalletClient):
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
     # Send pin
-    def send_pin(self):
+    def send_pin(self, pin):
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
 def enumerate(password=''):

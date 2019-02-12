@@ -309,7 +309,7 @@ class LedgerClient(HardwareWalletClient):
         raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
 
     # Send pin
-    def send_pin(self):
+    def send_pin(self, pin):
         raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
 
 def enumerate(password=''):
