@@ -12,9 +12,24 @@ from ..base58 import get_xpub_fingerprint_hex
 from ..serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
 import binascii
 import logging
+import re
 
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_DEVICE_ID = 0x0001
+
+# minimal checking of string keypath
+def check_keypath(key_path):
+    parts = re.split("/", key_path)
+    if parts[0] != "m":
+        return False
+    # strip hardening chars
+    for index in parts[1:]:
+        index_int =  re.sub('[hH\']', '', index)
+        if not index_int.isdigit():
+            return False
+        if int(index_int) > 0x80000000:
+            return False
+    return True
 
 bad_args = [
     0x6700, # BTCHIP_SW_INCORRECT_LENGTH
@@ -258,6 +273,8 @@ class LedgerClient(HardwareWalletClient):
     # The message can be any string
     @ledger_exception
     def sign_message(self, message, keypath):
+        if not check_keypath(keypath):
+            raise BadArgumentError("Invalid keypath")
         message = bytearray(message, 'utf-8')
         keypath = keypath[2:]
         # First display on screen what address you're signing for
@@ -281,6 +298,8 @@ class LedgerClient(HardwareWalletClient):
 
     @ledger_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
+        if not check_keypath(keypath):
+            raise BadArgumentError("Invalid keypath")
         output = self.app.getWalletPublicKey(keypath[2:], True, (p2sh_p2wpkh or bech32), bech32)
         return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
