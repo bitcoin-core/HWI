@@ -6,9 +6,10 @@ import glob
 import importlib
 
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
-from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex
+from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, xpub_to_pub_hex
 from os.path import dirname, basename, isfile
 from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
+from .descriptor import Descriptor
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
@@ -155,10 +156,25 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     import_data.append(this_import)
     return import_data
 
-def displayaddress(client, path, sh_wpkh=False, wpkh=False):
-    if sh_wpkh == True and wpkh == True:
-        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
-    return client.display_address(path, sh_wpkh, wpkh)
+def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
+    if path is not None:
+        if sh_wpkh == True and wpkh == True:
+            return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
+        return client.display_address(path, sh_wpkh, wpkh)
+    elif desc is not None:
+        if sh_wpkh == True or wpkh == True:
+            return {'error':' `--wpkh` and `--sh_wpkh` can not be combined with --desc','code':BAD_ARGUMENT}
+        descriptor = Descriptor.parse(desc, client.is_testnet)
+        if descriptor is None:
+            return {'error':'Unable to parse descriptor: ' + desc,'code':BAD_ARGUMENT}
+        if descriptor.m_path is None:
+            return {'error':'Descriptor missing origin info: ' + desc,'code':BAD_ARGUMENT}
+        if descriptor.origin_fingerprint != client.fingerprint:
+            return {'error':'Descriptor fingerprint does not match device: ' + desc,'code':BAD_ARGUMENT}
+        xpub = client.get_pubkey_at_path(descriptor.m_path_base)['xpub']
+        if descriptor.base_key != xpub and descriptor.base_key != xpub_to_pub_hex(xpub):
+            return {'error':'Key in descriptor does not match device: ' + desc,'code':BAD_ARGUMENT}
+        return client.display_address(descriptor.m_path, descriptor.sh_wpkh, descriptor.wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)
