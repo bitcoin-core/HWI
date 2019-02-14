@@ -58,7 +58,7 @@ def prompt_pin_handler(args, client):
 def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
 
-def process_commands(args):
+def process_commands(cli_args):
     parser = argparse.ArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
@@ -68,6 +68,7 @@ def process_commands(args):
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
+    parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
@@ -135,7 +136,23 @@ def process_commands(args):
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
     sendpin_parser.set_defaults(func=send_pin_handler)
 
-    args = parser.parse_args(args)
+    if any(arg == '--stdin' for arg in cli_args):
+        blank_count = 0
+        while True:
+            try:
+                line = input()
+                # Exit loop when we see 2 consecutive newlines (i.e. an empty line)
+                if line == '':
+                    break
+                # Split the line and append it to the cli args
+                import shlex
+                cli_args.extend(shlex.split(line))
+            except EOFError:
+                # If we see EOF, stop taking input
+                break
+
+    # Parse arguments again for anything entered over stdin
+    args = parser.parse_args(cli_args)
 
     device_path = args.device_path
     device_type = args.device_type
