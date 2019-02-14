@@ -2,13 +2,13 @@
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
-from trezorlib.client import TrezorClient as Trezor
-from trezorlib.debuglink import DebugLink, DebugUI, TrezorClientDebugLink
-from trezorlib.exceptions import Cancelled
-from trezorlib.transport import enumerate_devices, get_transport
-from trezorlib.ui import ClickUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
-from trezorlib import protobuf, tools, btc, device
-from trezorlib import messages as proto
+from .trezorlib.client import TrezorClient as Trezor
+from .trezorlib.debuglink import TrezorClientDebugLink
+from .trezorlib.exceptions import Cancelled
+from .trezorlib.transport import enumerate_devices, get_transport
+from .trezorlib.ui import PassphraseUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
+from .trezorlib import protobuf, tools, btc, device
+from .trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
@@ -57,26 +57,6 @@ def parse_multisig(script):
     multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
 
-class TrezorNoInit(Trezor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def init_device(self):
-        pass
-
-    def actual_init_device(self):
-        return super().init_device()
-
-class TrezorDebugNoInit(TrezorClientDebugLink):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def init_device(self):
-        pass
-
-    def actual_init_device(self):
-        return super().init_device()
-
 def trezor_exception(f):
     def func(*args, **kwargs):
         try:
@@ -97,22 +77,21 @@ class TrezorClient(HardwareWalletClient):
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
             transport = get_transport(path)
-            self.client = TrezorDebugNoInit(transport=transport)
+            self.client = TrezorClientDebugLink(transport=transport)
         else:
-            self.client = TrezorNoInit(transport=get_transport(path), ui=ClickUI())
+            self.client = Trezor(transport=get_transport(path), ui=PassphraseUI(password))
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
 
         self.password = password
-        os.environ['PASSPHRASE'] = password
-        self.client.open()
+        self.type = 'Trezor'
 
     def _check_unlocked(self):
-        self.client.actual_init_device()
+        self.client.init_device()
         if self.client.features.pin_protection and not self.client.features.pin_cached:
-            raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
+            raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -334,7 +313,7 @@ class TrezorClient(HardwareWalletClient):
     # Setup a new device
     @trezor_exception
     def setup_device(self, label='', passphrase=''):
-        self.client.actual_init_device()
+        self.client.init_device()
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         passphrase_enabled = False
@@ -359,7 +338,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Trezor does not support creating a backup via software')
+        raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
     @trezor_exception
@@ -369,7 +348,8 @@ class TrezorClient(HardwareWalletClient):
     # Prompt for a pin on device
     @trezor_exception
     def prompt_pin(self):
-        self.client.actual_init_device()
+        self.client.open()
+        self.client.init_device()
         if not self.client.features.pin_protection:
             raise DeviceAlreadyUnlockedError('This device does not need a PIN')
         if self.client.features.pin_cached:
@@ -382,16 +362,17 @@ class TrezorClient(HardwareWalletClient):
     # Send the pin
     @trezor_exception
     def send_pin(self, pin):
-        self.client.features = self.client.call_raw(proto.GetFeatures())
-        if isinstance(self.client.features, proto.Features):
-            if not self.client.features.pin_protection:
-                raise DeviceAlreadyUnlockedError('This device does not need a PIN')
-            if self.client.features.pin_cached:
-                raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
+        self.client.open()
         if not pin.isdigit():
             raise BadArgumentError("Non-numeric PIN provided")
         resp = self.client.call_raw(proto.PinMatrixAck(pin=pin))
         if isinstance(resp, proto.Failure):
+            self.client.features = self.client.call_raw(proto.GetFeatures())
+            if isinstance(self.client.features, proto.Features):
+                if not self.client.features.pin_protection:
+                    raise DeviceAlreadyUnlockedError('This device does not need a PIN')
+                if self.client.features.pin_cached:
+                    raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
             return {'success': False}
         return {'success': True}
 
@@ -406,15 +387,14 @@ def enumerate(password=''):
         client = None
         try:
             client = TrezorClient(d_data['path'], password)
-            client.client.actual_init_device()
+            client.client.init_device()
+            if not 'trezor' in client.client.features.vendor:
+                continue
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
-        except TypeError as e:
-            if dev.get_path().startswith('udp:'):
-                continue
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 

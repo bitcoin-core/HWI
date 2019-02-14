@@ -11,10 +11,10 @@ import time
 import unittest
 
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-from trezorlib.transport import enumerate_devices
-from trezorlib.transport.udp import UdpTransport
-from trezorlib.debuglink import DebugUI, TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
-from trezorlib import device, messages
+from hwilib.devices.trezorlib.transport import enumerate_devices
+from hwilib.devices.trezorlib.transport.udp import UdpTransport
+from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands
@@ -57,6 +57,7 @@ class TrezorEmulator(DeviceEmulator):
                 wirelink = dev
                 break
         client = TrezorClientDebugLink(wirelink)
+        client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
         return client

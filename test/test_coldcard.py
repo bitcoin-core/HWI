@@ -8,8 +8,8 @@ import time
 import unittest
 
 from hwilib.cli import process_commands
-from ckcc.protocol import CCProtocolPacker
-from ckcc.client import ColdcardDevice
+from hwilib.devices.ckcc.protocol import CCProtocolPacker
+from hwilib.devices.ckcc.client import ColdcardDevice
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 def coldcard_test_suite(simulator, rpc, userpass):

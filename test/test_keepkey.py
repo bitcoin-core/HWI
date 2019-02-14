@@ -3,7 +3,6 @@
 import argparse
 import atexit
 import json
-import logging
 import os
 import socket
 import subprocess
@@ -11,9 +10,11 @@ import sys
 import time
 import unittest
 
-from keepkeylib.transport_udp import UDPTransport
-from keepkeylib.client import KeepKeyDebugClient
-from keepkeylib import messages_pb2 as messages
+from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from hwilib.devices.trezorlib.transport import enumerate_devices
+from hwilib.devices.trezorlib.transport.udp import UdpTransport
+from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands
@@ -21,17 +22,16 @@ from hwilib.devices.keepkey import KeepkeyClient
 
 from types import MethodType
 
-def pin_matrix(self, code=None):
+def get_pin(self, code=None):
     if self.pin:
-        pin = self.debug.encode_pin(self.pin)
+        return self.debuglink.encode_pin(self.pin)
     else:
-        pin = self.debug.read_pin_encoded()
-    return messages.PinMatrixAck(pin=pin)
+        return self.debuglink.read_pin_encoded()
 
 class KeepkeyEmulator(DeviceEmulator):
-    def __init__(self, emulator_path):
+    def __init__(self, path):
+        self.emulator_path = path
         self.emulator_proc = None
-        self.emulator_path = emulator_path
 
     def start(self):
         # Start the Keepkey emulator
@@ -50,25 +50,21 @@ class KeepkeyEmulator(DeviceEmulator):
             except Exception:
                 time.sleep(0.05)
 
-        # Redirect stdout to /dev/null as the keepkey lib kind of spammy
-        sys.stdout = open(os.devnull, 'w')
-
         # Setup the emulator
-        sim_dev = UDPTransport('127.0.0.1:21324')
-        sim_dev.buffer = b'' # HACK to work around a bug in the keepkey library
-        sim_dev_debug = UDPTransport('127.0.0.1:21325')
-        sim_dev_debug.buffer = b'' # HACK to work around a bug in the keepkey library
-        client = KeepKeyDebugClient(sim_dev)
-        client.set_debuglink(sim_dev_debug)
-        client.wipe_device()
-        client.load_device_by_mnemonic(mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test', language='english') # From Trezor device tests
+        for dev in enumerate_devices():
+            # Find the udp transport, that's the emulator
+            if isinstance(dev, UdpTransport):
+                wirelink = dev
+                break
+        client = TrezorClientDebugLink(wirelink)
+        client.init_device()
+        device.wipe(client)
+        load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
         return client
 
     def stop(self):
         self.emulator_proc.kill()
         self.emulator_proc.wait()
-        # Redirect stdout back to stdout
-        sys.stdout = sys.__stdout__
 
 class KeepkeyTestCase(unittest.TestCase):
     def __init__(self, emulator, methodName='runTest'):
@@ -97,15 +93,15 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
 
     def tearDown(self):
         self.emulator.stop()
-    
+
     def test_getxpub(self):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/bip32_vectors.json'), encoding='utf-8') as f:
             vectors = json.load(f)
         for vec in vectors:
             with self.subTest(vector=vec):
                 # Setup with xprv
-                self.client.wipe_device()
-                self.client.load_device_by_xprv(xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
+                device.wipe(self.client)
+                load_device_by_xprv(client=self.client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
                 gmxp_res = process_commands(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
@@ -116,7 +112,7 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
                     gxp_res = process_commands(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
-# Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
+# Keepkey specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
 class TestKeepkeyManCommands(KeepkeyTestCase):
     def setUp(self):
         self.client = self.emulator.start()
@@ -136,10 +132,10 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertTrue(result['success'])
 
         # Setup
-        k_client = KeepkeyClient('udp:127.0.0.1:21324', 'test')
-        k_client.client.callback_PinMatrixRequest = MethodType(pin_matrix, k_client.client)
-        k_client.client.pin = '1234'
-        result = k_client.setup_device()
+        t_client = KeepkeyClient('udp:127.0.0.1:21324', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device()
         self.assertTrue(result['success'])
 
         # Make sure device is init, setup should fail
@@ -164,13 +160,13 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertEqual(result['code'], -11)
 
         # Set a PIN
-        self.client.wipe_device()
-        self.client.load_device_by_mnemonic(mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test', language='english')
+        device.wipe(self.client)
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
         self.client.call(messages.ClearSession())
         result = process_commands(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
-        # Invalid pin
+        # Invalid pins
         result = process_commands(self.dev_args + ['sendpin', 'notnum'])
         self.assertEqual(result['error'], 'Non-numeric PIN provided')
         self.assertEqual(result['code'], -7)
@@ -189,6 +185,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertTrue(result['success'])
 
         # Send the PIN
+        self.client.open()
         pin = self.client.debug.encode_pin('1234')
         result = process_commands(self.dev_args + ['sendpin', pin])
         self.assertTrue(result['success'])
