@@ -9,6 +9,7 @@ import time
 import unittest
 
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from hwilib.base58 import xpub_to_pub_hex
 from hwilib.cli import process_commands
 from hwilib.serializations import PSBT
 
@@ -391,19 +392,54 @@ class TestDisplayAddress(DeviceTestCase):
         self.emulator.stop()
 
     def test_display_address_bad_args(self):
-        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', 'm/49h/1h/0h/0/0'])
+        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
-    def test_display_address(self):
-        process_commands(self.dev_args + ['displayaddress', 'm/44h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', 'm/49h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--wpkh', 'm/84h/1h/0h/0/0'])
+    def test_display_address_path(self):
+        process_commands(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        process_commands(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
 
-    def test_bad_path(self):
-        result = process_commands(self.dev_args + ['displayaddress', 'f'])
+    def test_display_address_bad_path(self):
+        result = process_commands(self.dev_args + ['displayaddress', '--path', 'f'])
         self.assertEquals(result['code'], -7)
+
+    def test_display_address_descriptor(self):
+        account_xpub = process_commands(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
+        p2sh_segwit_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
+        legacy_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
+
+        # Native SegWit address using xpub:
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + account_xpub + '/0/0)'])
+
+        # Native SegWit address using hex encoded pubkey:
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+
+        # P2SH wrapped SegWit address using xpub:
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h)]' + p2sh_segwit_account_xpub + '/0/0))'])
+
+        # Legacy address
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h)]' + legacy_account_xpub + '/0/0)'])
+
+        # Should check xpub
+        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['code'], -7)
+
+        # Should check hex pub
+        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['code'], -7)
+
+        # Should check fingerprint
+        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([00000000/84h/1h/0h)]' + account_xpub + '/0/0)'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['code'], -7)
 
 class TestSignMessage(DeviceTestCase):
     def setUp(self):

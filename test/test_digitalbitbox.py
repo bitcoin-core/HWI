@@ -64,7 +64,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator):
             self.assertEqual(result['code'], -9)
 
         def test_display(self):
-            result = process_commands(self.dev_args + ['displayaddress', 'm/0h'])
+            result = process_commands(self.dev_args + ['displayaddress', '--path', 'm/0h'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Digital Bitbox does not have a screen to display addresses on')
