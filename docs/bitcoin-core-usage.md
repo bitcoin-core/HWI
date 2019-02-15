@@ -14,9 +14,7 @@ We are not liable for any coins that may be lost through this method. The softwa
 
 This method of using hardware wallets uses Bitcoin Core as the wallet for monitoring the blockchain. It allows a user to use their own full node instead of relying on an SPV wallet or vendor provided software.
 
-However, Bitcoin Core needs a few changes for this work.
-PRs [#14565](https://github.com/bitcoin/bitcoin/pull/14565), [#14491](https://github.com/bitcoin/bitcoin/pull/14491), [#14021](https://github.com/bitcoin/bitcoin/pull/14021), and [#14075](https://github.com/bitcoin/bitcoin/pull/14075) are required in order for this to work.
-Since these PRs are still unmerged, A branch with them merged  is available [here](https://github.com/achow101/bitcoin/tree/hww).
+HWI works with Bitcoin Core as of commit [c576979b78b541bf3b4a7cbeee989b55d268e3e1](https://github.com/bitcoin/bitcoin/commit/c576979b78b541bf3b4a7cbeee989b55d268e3e1).
 
 ## Setup
 
