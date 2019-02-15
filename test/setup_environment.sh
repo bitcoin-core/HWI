@@ -149,7 +149,7 @@ cd ..
 # Clone bitcoind if it doesn't exist, or update it if it does
 bitcoind_setup_needed=false
 if [ ! -d "bitcoin" ]; then
-    git clone https://github.com/achow101/bitcoin.git -b hww
+    git clone https://github.com/bitcoin/bitcoin.git
     cd bitcoin
     bitcoind_setup_needed=true
 else
