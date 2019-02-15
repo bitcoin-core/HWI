@@ -90,6 +90,11 @@ class KeepkeyTestCase(unittest.TestCase):
             proc = subprocess.Popen(['../dist/hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
+        elif self.interface == 'stdin':
+            input_str = '\n'.join(args) + '\n'
+            proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            result = proc.communicate(input_str.encode())
+            return json.loads(result[0].decode())
         else:
             return process_commands(args)
 
