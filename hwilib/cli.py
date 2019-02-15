@@ -2,7 +2,7 @@
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
     get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
-    signmessage, signtx, wipe_device
+    signmessage, signtx, wipe_device, read_psbt, write_psbt
 from .errors import (
     HWWError,
     NO_DEVICE_PATH,
@@ -56,6 +56,12 @@ def prompt_pin_handler(args, client):
 
 def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
+
+def readpsbt_handler(args):
+    return read_psbt(args.file)
+
+def writepsbt_handler(args):
+    return write_psbt(args.psbt, args.file)
 
 def process_commands(args):
     parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
@@ -133,6 +139,15 @@ def process_commands(args):
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
     sendpin_parser.set_defaults(func=send_pin_handler)
 
+    read_parser = subparsers.add_parser('readpsbt', help='Read PSBT from binary file and output in base64')
+    read_parser.add_argument('file', help='The binary file to read from.')
+    read_parser.set_defaults(func=readpsbt_handler)
+
+    write_parser = subparsers.add_parser('writepsbt', help='Write base64 PSBT string to file in binary format')
+    write_parser.add_argument('psbt', help='The base64 PSBT string to write to file')
+    write_parser.add_argument('file', help='The binary file to write to')
+    write_parser.set_defaults(func=writepsbt_handler)
+
     args = parser.parse_args(args)
 
     device_path = args.device_path
@@ -148,8 +163,8 @@ def process_commands(args):
         password = getpass.getpass('Enter your device password: ')
         args.password = password
 
-    # List all available hardware wallet devices
-    if command == 'enumerate':
+    # List all available hardware wallet devices, or deal with PSBT file utilities
+    if command in ['enumerate', 'readpsbt', 'writepsbt']:
         return args.func(args)
 
     # Auto detect if we are using fingerprint or type to identify device

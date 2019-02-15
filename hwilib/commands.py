@@ -10,6 +10,7 @@ from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, xpub_t
 from os.path import dirname, basename, isfile
 from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 from .descriptor import Descriptor
+import base64
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
@@ -193,3 +194,20 @@ def prompt_pin(client):
 
 def send_pin(client, pin):
     return client.send_pin(pin)
+
+def read_psbt(filename):
+    try:
+        with open(filename, 'rb') as f:
+            return {'psbt':base64.b64encode(f.read()).decode("utf-8")}
+    except FileNotFoundError:
+        return {'error':'File not found', 'code':BAD_ARGUMENT}
+    except Exception:
+        return {'error':'Unable to read PSBT from file', 'code':UNKNOWN_ERROR}
+
+def write_psbt(psbt, filename):
+    try:
+        with open(filename, 'wb') as f:
+            f.write(base64.b64decode(psbt))
+    except Exception:
+        return {'error':'Could not write PSBT to file', 'code':UNKNOWN_ERROR}
+    return {'filename':filename}
