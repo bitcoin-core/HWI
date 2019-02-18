@@ -164,8 +164,8 @@ else
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
-    else
-        git reset --hard origin/hww
+    elif [ $LOCAL = $BASE ]; then
+        git pull
         bitcoind_setup_needed=true
     fi
 fi
