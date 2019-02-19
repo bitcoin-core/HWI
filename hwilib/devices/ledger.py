@@ -78,6 +78,8 @@ class LedgerClient(HardwareWalletClient):
     # Retrieves the public key at the specified BIP 32 derivation path
     @ledger_exception
     def get_pubkey_at_path(self, path):
+        if not check_keypath(path):
+            raise BadArgumentError("Invalid keypath")
         path = path[2:]
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
