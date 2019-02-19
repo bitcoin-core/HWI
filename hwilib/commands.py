@@ -139,15 +139,9 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     import_data = []
     this_import = {}
 
-    descriptor_open = 'pkh('
-    descriptor_close = ')'
-    if wpkh == True:
-          descriptor_open = 'wpkh('
-    elif sh_wpkh == True:
-          descriptor_open = 'sh(wpkh('
-          descriptor_close = '))'
+    desc = Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
 
-    this_import['desc'] = descriptor_open + '[' + master_fpr + path_base.replace('m', '') + ']' + base_key + path_suffix + descriptor_close
+    this_import['desc'] = desc.serialize()
     this_import['range'] = {'start': start, 'end': end}
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal

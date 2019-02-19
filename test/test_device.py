@@ -319,15 +319,20 @@ class TestSignTx(DeviceTestCase):
 
         # Get origin info/key pair so wallet doesn't forget how to
         # sign with keys post-import
-        pubkeys = [sh_wpkh_info['desc'][8:-2],\
-                wpkh_info['desc'][5:-1],\
-                pkh_info['desc'][4:-1]]
+        pubkeys = [sh_wpkh_info['desc'][8:-11],\
+                wpkh_info['desc'][5:-10],\
+                pkh_info['desc'][4:-10]]
 
-        sh_multi_desc = {'desc':'sh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+'))', "timestamp":"now", "label":"shmulti"}
-        sh_wsh_multi_desc = {'desc':'sh(wsh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+')))', "timestamp":"now", "label":"shwshmulti"}
+        # Get the descriptors with their checksums
+        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+'))')['descriptor']
+        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+')))')['descriptor']
+        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(multi(2,'+pubkeys[2]+','+pubkeys[1]+','+pubkeys[0]+'))')['descriptor']
+
+        sh_multi_import = {'desc': sh_multi_desc, "timestamp":"now", "label":"shmulti"}
+        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp":"now", "label":"shwshmulti"}
         # re-order pubkeys to allow import without "already have private keys" error
-        wsh_multi_desc = {'desc':'wsh(multi(2,'+pubkeys[2]+','+pubkeys[1]+','+pubkeys[0]+'))', "timestamp":"now", "label":"wshmulti"}
-        multi_result = self.wrpc.importmulti([sh_multi_desc, sh_wsh_multi_desc, wsh_multi_desc])
+        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp":"now", "label":"wshmulti"}
+        multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
         self.assertTrue(multi_result[0]['success'])
         self.assertTrue(multi_result[1]['success'])
         self.assertTrue(multi_result[2]['success'])
