@@ -32,6 +32,7 @@ dbb_group.add_argument('--no_bitbox', help='Do not run Digital Bitbox test with 
 dbb_group.add_argument('--bitbox', help='Path to Digital bitbox simulator.', default='work/mcu/build/bin/simulator')
 
 parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoin/src/bitcoind')
+parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli'], default='library')
 args = parser.parse_args()
 
 # Run tests
@@ -45,14 +46,14 @@ if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitb
     rpc, userpass = start_bitcoind(args.bitcoind)
 
 if not args.no_trezor:
-    suite.addTest(trezor_test_suite(args.trezor, rpc, userpass))
+    suite.addTest(trezor_test_suite(args.trezor, rpc, userpass, args.interface))
 if not args.no_coldcard:
-    suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass))
+    suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass, args.interface))
 if args.ledger:
-    suite.addTest(ledger_test_suite(rpc, userpass))
+    suite.addTest(ledger_test_suite(rpc, userpass, args.interface))
 if not args.no_bitbox:
-    suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.bitbox))
+    suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.bitbox, args.interface))
 if not args.no_keepkey:
-    suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass))
+    suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass, args.interface))
 result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
 sys.exit(not result.wasSuccessful())

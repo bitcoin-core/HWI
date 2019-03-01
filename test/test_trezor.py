@@ -67,18 +67,27 @@ class TrezorEmulator(DeviceEmulator):
         self.emulator_proc.wait()
 
 class TrezorTestCase(unittest.TestCase):
-    def __init__(self, emulator, methodName='runTest'):
+    def __init__(self, emulator, interface='library', methodName='runTest'):
         super(TrezorTestCase, self).__init__(methodName)
         self.emulator = emulator
+        self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, emulator):
+    def parameterize(testclass, emulator, interface='library'):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(emulator, name))
+            suite.addTest(testclass(emulator, interface, name))
         return suite
+
+    def do_command(self, args):
+        if self.interface == 'cli':
+            proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            result = proc.communicate()
+            return json.loads(result[0].decode())
+        else:
+            return process_commands(args)
 
     def __str__(self):
         return 'trezor: {}'.format(super().__str__())
@@ -104,12 +113,12 @@ class TestTrezorGetxpub(TrezorTestCase):
                 load_device_by_xprv(client=self.client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
-                gmxp_res = process_commands(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
+                gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs
                 for path_vec in vec['vectors']:
-                    gxp_res = process_commands(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
+                    gxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
 # Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
@@ -123,12 +132,12 @@ class TestTrezorManCommands(TrezorTestCase):
 
     def test_setup_wipe(self):
         # Device is init, setup should fail
-        result = process_commands(self.dev_args + ['setup'])
+        result = self.do_command(self.dev_args + ['setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
         # Wipe
-        result = process_commands(self.dev_args + ['wipe'])
+        result = self.do_command(self.dev_args + ['wipe'])
         self.assertTrue(result['success'])
 
         # Setup
@@ -139,12 +148,12 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertTrue(result['success'])
 
         # Make sure device is init, setup should fail
-        result = process_commands(self.dev_args + ['setup'])
+        result = self.do_command(self.dev_args + ['setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_backup(self):
-        result = process_commands(self.dev_args + ['backup'])
+        result = self.do_command(self.dev_args + ['backup'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['error'], 'The Trezor does not support creating a backup via software')
@@ -152,10 +161,10 @@ class TestTrezorManCommands(TrezorTestCase):
 
     def test_pins(self):
         # There's no PIN
-        result = process_commands(self.dev_args + ['--debug', 'promptpin'])
+        result = self.do_command(self.dev_args + ['--debug', 'promptpin'])
         self.assertEqual(result['error'], 'This device does not need a PIN')
         self.assertEqual(result['code'], -11)
-        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        result = self.do_command(self.dev_args + ['sendpin', '1234'])
         self.assertEqual(result['error'], 'This device does not need a PIN')
         self.assertEqual(result['code'], -11)
 
@@ -163,42 +172,42 @@ class TestTrezorManCommands(TrezorTestCase):
         device.wipe(self.client)
         load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
         self.client.call(messages.ClearSession())
-        result = process_commands(self.dev_args + ['promptpin'])
+        result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
         # Invalid pins
-        result = process_commands(self.dev_args + ['sendpin', 'notnum'])
+        result = self.do_command(self.dev_args + ['sendpin', 'notnum'])
         self.assertEqual(result['error'], 'Non-numeric PIN provided')
         self.assertEqual(result['code'], -7)
 
-        result = process_commands(self.dev_args + ['sendpin', '00000'])
+        result = self.do_command(self.dev_args + ['sendpin', '00000'])
         self.assertFalse(result['success'])
 
         # Make sure we get a needs pin message
-        result = process_commands(self.dev_args + ['getxpub', 'm/0h'])
+        result = self.do_command(self.dev_args + ['getxpub', 'm/0h'])
         self.assertEqual(result['code'], -12)
         self.assertEqual(result['error'], 'Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
         # Prompt pin
         self.client.call(messages.ClearSession())
-        result = process_commands(self.dev_args + ['promptpin'])
+        result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
         # Send the PIN
         self.client.open()
         pin = self.client.debug.encode_pin('1234')
-        result = process_commands(self.dev_args + ['sendpin', pin])
+        result = self.do_command(self.dev_args + ['sendpin', pin])
         self.assertTrue(result['success'])
 
         # Sending PIN after unlock
-        result = process_commands(self.dev_args + ['promptpin'])
+        result = self.do_command(self.dev_args + ['promptpin'])
         self.assertEqual(result['error'], 'The PIN has already been sent to this device')
         self.assertEqual(result['code'], -11)
-        result = process_commands(self.dev_args + ['sendpin', '1234'])
+        result = self.do_command(self.dev_args + ['sendpin', '1234'])
         self.assertEqual(result['error'], 'The PIN has already been sent to this device')
         self.assertEqual(result['code'], -11)
 
-def trezor_test_suite(emulator, rpc, userpass):
+def trezor_test_suite(emulator, rpc, userpass, interface):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
 
@@ -211,23 +220,24 @@ def trezor_test_suite(emulator, rpc, userpass):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     return suite
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Trezor implementation')
     parser.add_argument('emulator', help='Path to the Trezor emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
+    parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli'], default='library')
     args = parser.parse_args()
 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = trezor_test_suite(args.emulator, rpc, userpass)
+    suite = trezor_test_suite(args.emulator, rpc, userpass, args.interface)
     unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

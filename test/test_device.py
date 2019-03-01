@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import atexit
+import json
 import os
 import shutil
 import subprocess
@@ -50,7 +51,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None, methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -66,15 +67,29 @@ class DeviceTestCase(unittest.TestCase):
             self.emulator = DeviceEmulator()
         if password:
             self.dev_args.extend(['-p', password])
+        self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None):
+    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', interface='library', emulator=None):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, emulator, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, emulator, interface, name))
         return suite
+
+    def do_command(self, args):
+        if self.interface == 'cli':
+            proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            result = proc.communicate()
+            return json.loads(result[0].decode())
+        else:
+            return process_commands(args)
+
+    def get_password_args(self):
+        if self.password:
+            return ['-p', self.password]
+        return []
 
     def __str__(self):
         return '{}: {}'.format(self.type, super().__str__())
@@ -90,7 +105,7 @@ class TestDeviceConnect(DeviceTestCase):
         self.emulator.stop()
 
     def test_enumerate(self):
-        enum_res = process_commands(['-p', self.password, 'enumerate'])
+        enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
         for device in enum_res:
             if device['type'] == self.type and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
@@ -99,31 +114,31 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertTrue(found)
 
     def test_no_type(self):
-        gmxp_res = process_commands(['getmasterxpub'])
+        gmxp_res = self.do_command(['getmasterxpub'])
         self.assertIn('error', gmxp_res)
         self.assertEqual(gmxp_res['error'], 'You must specify a device type or fingerprint for all commands except enumerate')
         self.assertIn('code', gmxp_res)
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = process_commands(['-t', self.type, '-d', self.path, '-p', self.password, 'getmasterxpub'])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, '-d', self.path, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
     def test_fingerprint_autodetect(self):
-        gmxp_res = process_commands(['-f', self.fingerprint, '-p', self.password, 'getmasterxpub'])
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.fingerprint, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
         # Nonexistent fingerprint
-        gmxp_res = process_commands(['-f', '0000ffff', '-p', self.password, 'getmasterxpub'])
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', 'getmasterxpub'])
         self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint')
         self.assertEqual(gmxp_res['code'], -3)
 
     def test_type_only_autodetect(self):
-        gmxp_res = process_commands(['-t', self.type, '-p', self.password, 'getmasterxpub'])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, 'getmasterxpub'])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
         # Unknown device type
-        gmxp_res = process_commands(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub'])
+        gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub'])
         self.assertEqual(gmxp_res['error'], 'Unknown device type specified')
         self.assertEqual(gmxp_res['code'], -4)
 
@@ -142,17 +157,17 @@ class TestGetKeypool(DeviceTestCase):
         self.emulator.stop()
 
     def test_getkeypool_bad_args(self):
-        result = process_commands(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
+        result = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
     def test_getkeypool(self):
-        non_keypool_desc = process_commands(self.dev_args + ['getkeypool', '0', '20'])
+        non_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '0', '20'])
         import_result = self.wpk_rpc.importmulti(non_keypool_desc)
         self.assertTrue(import_result[0]['success'])
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '0', '20'])
         import_result = self.wpk_rpc.importmulti(keypool_desc)
         self.assertFalse(import_result[0]['success'])
 
@@ -162,75 +177,75 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/44'/1'/0'/0/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--internal', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--internal', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/44'/1'/0'/1/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/0/{}".format(i))
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/1/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/0/{}".format(i))
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--internal', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--internal', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/1/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/0/{}".format(i))
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/1/{}".format(i))
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/3'/0/{}".format(i))
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--internal', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--wpkh', '--internal', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/3'/1/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/0'/0'/4'/{}".format(i))
 
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--path', '/0h/0h/4h/*', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--path', '/0h/0h/4h/*', '0', '20'])
         self.assertEqual(keypool_desc['error'], 'Path must start with m/')
         self.assertEqual(keypool_desc['code'], -7)
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--path', 'm/0h/0h/4h/', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--path', 'm/0h/0h/4h/', '0', '20'])
         self.assertEqual(keypool_desc['error'], 'Path must end with /*')
         self.assertEqual(keypool_desc['code'], -7)
 
@@ -251,7 +266,7 @@ class TestSignTx(DeviceTestCase):
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
-            sign_res = process_commands(self.dev_args + ['signtx', psbt['psbt']])
+            sign_res = self.do_command(self.dev_args + ['signtx', psbt['psbt']])
             finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
         else:
             # Sign only input one on first pass
@@ -280,11 +295,11 @@ class TestSignTx(DeviceTestCase):
             second_psbt = second_psbt.serialize()
 
             # First will always have something to sign
-            first_sign_res = process_commands(self.dev_args + ['signtx', first_psbt])
+            first_sign_res = self.do_command(self.dev_args + ['signtx', first_psbt])
             self.assertTrue(single_input == self.wrpc.finalizepsbt(first_sign_res['psbt'])['complete'])
             # Second may have nothing to sign (1 input case)
             # and also may throw an error(e.g., ColdCard)
-            second_sign_res = process_commands(self.dev_args + ['signtx', second_psbt])
+            second_sign_res = self.do_command(self.dev_args + ['signtx', second_psbt])
             if 'psbt' in second_sign_res:
                 self.assertTrue(not self.wrpc.finalizepsbt(second_sign_res['psbt'])['complete'])
                 combined_psbt = self.wrpc.combinepsbt([first_sign_res['psbt'], second_sign_res['psbt']])
@@ -300,10 +315,10 @@ class TestSignTx(DeviceTestCase):
 
     def _test_signtx(self, input_type, multisig):
         # Import some keys to the watch only wallet and send coins to them
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '30', '40'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        keypool_desc = process_commands(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--keypool', '--sh_wpkh', '--internal', '30', '40'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
@@ -389,6 +404,35 @@ class TestSignTx(DeviceTestCase):
         else:
             self._test_signtx("all", self.type in supports_multisig)
 
+    # Make a huge transaction which might cause some problems with different interfaces
+    def test_big_tx(self):
+        # make a huge transaction that is unrelated to the hardware wallet
+        outputs = []
+        num_inputs = 60
+        for i in range(0, num_inputs):
+            outputs.append({self.wpk_rpc.getnewaddress('', 'legacy'): 0.001})
+        psbt = self.wpk_rpc.walletcreatefundedpsbt([], outputs, 0, {}, True)['psbt']
+        psbt = self.wpk_rpc.walletprocesspsbt(psbt)['psbt']
+        tx = self.wpk_rpc.finalizepsbt(psbt)['hex']
+        txid = self.wpk_rpc.sendrawtransaction(tx)
+        inputs = []
+        for i in range(0, num_inputs):
+            inputs.append({'txid': txid, 'vout': i})
+        psbt = self.wpk_rpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}], 0, {'subtractFeeFromOutputs': [0]}, True)['psbt']
+        # For cli, this should throw an exception
+        try:
+            result = self.do_command(self.dev_args + ['signtx', psbt])
+            if self.interface == 'cli':
+                self.fail('Big tx did not cause CLI to error')
+            if self.type == 'coldcard':
+                self.assertEqual(result['code'], -7)
+            else:
+                self.assertNotIn('code', result)
+                self.assertNotIn('error', result)
+        except OSError as e:
+            if self.interface == 'cli':
+                pass
+
 class TestDisplayAddress(DeviceTestCase):
     def setUp(self):
         self.emulator.start()
@@ -397,18 +441,18 @@ class TestDisplayAddress(DeviceTestCase):
         self.emulator.stop()
 
     def test_display_address_bad_args(self):
-        result = process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
     def test_display_address_path(self):
-        process_commands(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
-        process_commands(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        self.do_command(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
+        self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
 
     def test_display_address_bad_path(self):
-        result = process_commands(self.dev_args + ['displayaddress', '--path', 'f'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--path', 'f'])
         self.assertEquals(result['code'], -7)
 
     def test_display_address_descriptor(self):
@@ -454,8 +498,8 @@ class TestSignMessage(DeviceTestCase):
         self.emulator.stop()
 
     def test_sign_msg(self):
-        process_commands(self.dev_args + ['signmessage', 'Message signing test', 'm/44h/1h/0h/0/0'])
+        self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'm/44h/1h/0h/0/0'])
 
     def test_bad_path(self):
-        result = process_commands(self.dev_args + ['signmessage', 'Message signing test', 'f'])
+        result = self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'f'])
         self.assertEquals(result['code'], -7)

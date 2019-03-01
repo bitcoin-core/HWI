@@ -49,5 +49,9 @@ install:
     - cd test; ./setup_environment.sh; cd ..
     - pip uninstall -y trezor # Hack to get rid of master branch version of trezor that is installed for trezor-mcu build
     - python setup.py install
-script:
-    - cd test; ./run_tests.py
+jobs:
+    include:
+        -   name: With process_commands interface
+            script: cd test; ./run_tests.py --interface=library
+        -   name: With command line interface
+            script: cd test; ./run_tests.py --interface=cli
