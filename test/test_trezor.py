@@ -86,6 +86,10 @@ class TrezorTestCase(unittest.TestCase):
             proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
+        elif self.interface == 'bindist':
+            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            result = proc.communicate()
+            return json.loads(result[0].decode())
         else:
             return process_commands(args)
 
@@ -233,7 +237,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Trezor implementation')
     parser.add_argument('emulator', help='Path to the Trezor emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
-    parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli'], default='library')
+    parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
     args = parser.parse_args()
 
     # Start bitcoind

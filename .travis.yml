@@ -55,3 +55,26 @@ jobs:
             script: cd test; poetry run ./run_tests.py --interface=library
         -   name: With command line interface
             script: cd test; poetry run ./run_tests.py --interface=cli
+        -   name: With linux binary distribution command line interface
+            services: docker
+            before_script:
+                - docker build -t hwi-builder -f contrib/build.Dockerfile .
+            script:
+                - docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh"
+                - sudo chown -R `whoami`:`whoami` dist/
+                - cd test; poetry run ./run_tests.py --interface=bindist
+                - cd ..; sha256sum dist/*
+        -   name: macOS binary distribution (no tests)
+            os: osx
+            osx_image: xcode7.3
+            language: generic
+            addons:
+                artifacts:
+                    working_dir: dist
+            install:
+                - brew update && brew upgrade pyenv
+                - brew install libusb
+                - cat contrib/reproducible-python.diff | PYTHON_CONFIGURE_OPTS="--enable-framework" BUILD_DATE="Jan  1 2019" BUILD_TIME="00:00:00" pyenv install -kp 3.6.8
+            script:
+                - contrib/build_bin.sh
+                - shasum -a 256 dist/*

@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Digital Bitbox implementation')
     parser.add_argument('simulator', help='Path to simulator binary')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
-    parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli'], default='library')
+    parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
     args = parser.parse_args()
 
     # Start bitcoind
