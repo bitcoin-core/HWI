@@ -83,7 +83,7 @@ def getxpub(client, path):
 def signmessage(client, message, path):
     return client.sign_message(message, path)
 
-def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
+def getkeypool_inner(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
     if sh_wpkh == True and wpkh == True:
         return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
 
@@ -137,7 +137,6 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     # Get the key at the base
     base_key = client.get_pubkey_at_path(path_base)['xpub']
 
-    import_data = []
     this_import = {}
 
     desc = Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
@@ -148,8 +147,22 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     this_import['internal'] = internal
     this_import['keypool'] = keypool
     this_import['watchonly'] = True
-    import_data.append(this_import)
-    return import_data
+    return [this_import]
+
+# wrapper to allow both internal and external entries when path not given
+def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
+    if path is None and not internal:
+        internal_chain = getkeypool_inner(client, None, start, end, True, keypool, account, sh_wpkh, wpkh)
+        external_chain = getkeypool_inner(client, None, start, end, False, keypool, account, sh_wpkh, wpkh)
+        # Report the first error we encounter
+        for chain in [internal_chain, external_chain]:
+            if 'error' in chain:
+                return chain
+        # No errors, return pair
+        return internal_chain + external_chain
+    else:
+        return getkeypool_inner(client, path, start, end, internal, keypool, account, sh_wpkh, wpkh)
+
 
 def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
     if path is not None:
