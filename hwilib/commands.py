@@ -171,6 +171,30 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
         return getkeypool_inner(client, path, start, end, internal, keypool, account, sh_wpkh, wpkh)
 
 
+def getdescriptors(client, account=0):
+    try:
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+
+    result = {}
+
+    for internal in [False, True]:
+        descriptors = []
+        desc1 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=False, account=account)
+        desc2 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=True, wpkh=False, account=account)
+        desc3 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=True, account=account)
+        for desc in [desc1, desc2, desc3]:
+            if not isinstance(desc, Descriptor):
+                return desc
+            descriptors.append(desc.serialize())
+        if internal:
+            result["internal"] = descriptors
+        else:
+            result["receive"] = descriptors
+
+    return result
+
 def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
     if path is not None:
         if sh_wpkh == True and wpkh == True:

@@ -10,7 +10,7 @@ import time
 import unittest
 
 from authproxy import AuthServiceProxy, JSONRPCException
-from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
+from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands
 
@@ -76,6 +76,7 @@ def ledger_test_suite(device_model, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
