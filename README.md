@@ -8,9 +8,26 @@ Python software can use the provided library (`hwilib`). Software in other langu
 
 ## Prerequisites
 
-Python 3 is required. The libraries and udev rules for each device must also be installed.
+Python 3 is required. The libraries and udev rules for each device must also be installed. Some libraries will need to be installed
 
-Install all of the libraries using `pip` (in virtualenv or system):
+For Ubuntu/Debian:
+```
+sudo apt install libusb-1.0-0-dev libudev-dev
+```
+
+For macOS:
+```
+brew install libusb
+```
+
+This project uses the [Poetry](https://github.com/sdispater/poetry) dependency manager.
+Once HWI's source has been downloaded with git clone, it and its dependencies can be installed via poetry by execting the following in the root source directory:
+
+```
+poetry install
+```
+
+Pip can also be used to install all of the dependencies (in virtualenv or system):
 
 ```
 pip3 install hidapi # HID API needed in general
