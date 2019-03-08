@@ -1,6 +1,6 @@
 # Using Bitcoin Core with Hardware Wallets
 
-This approach is fairly manual, requires the command line, and requires a patched version of Bitcoin Core.
+This approach is fairly manual, requires the command line, and Bitcoin Core >=0.18.0.
 
 Note: For this guide, code lines prefixed with `$` means that the command is typed in the terminal. Lines without `$` are output of the commands.
 
@@ -14,14 +14,14 @@ We are not liable for any coins that may be lost through this method. The softwa
 
 This method of using hardware wallets uses Bitcoin Core as the wallet for monitoring the blockchain. It allows a user to use their own full node instead of relying on an SPV wallet or vendor provided software.
 
-HWI works with Bitcoin Core as of commit [c576979b78b541bf3b4a7cbeee989b55d268e3e1](https://github.com/bitcoin/bitcoin/commit/c576979b78b541bf3b4a7cbeee989b55d268e3e1).
+HWI works with Bitcoin Core as of commit [c576979b78b541bf3b4a7cbeee989b55d268e3e1](https://github.com/bitcoin/bitcoin/commit/c576979b78b541bf3b4a7cbeee989b55d268e3e1). It is usable with Bitcoin Core >=0.18.0.
 
 ## Setup
 
-Clone the modified Bitcoin Core and build it. Clone HWI.
+Clone Bitcoin Core and build it. Clone HWI.
 
 ```
-$ git clone https://github.com/achow101/bitcoin.git -b hww
+$ git clone https://github.com/bitcoin/bitcoin.git
 $ cd bitcoin
 $ ./autogen.sh
 $ ./configure
@@ -47,7 +47,7 @@ We will be fetching keys at the BIP 84 default.
 
 ```
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool 0 1000
-[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": {"start": 0, "end": 1000}, "timestamp": "now", "keypool": true, "watchonly": true}]
+[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]
 ```
 
 We now create a new Bitcoin Core wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
@@ -58,7 +58,7 @@ $ ../bitcoin/src/bitcoin-cli createwallet "coldcard" true
   "name": "coldcard",
   "warning": ""
 }
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)", "internal": false, "range": {"start": 0, "end": 1000}, "timestamp": "now", "keypool": true, "watchonly": true}]'
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84'/0'/0']xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]'
 
 [
   {
@@ -71,8 +71,8 @@ Now we repeat the `getkeypool` and `importmulti` steps but set a `--internal` fl
 
 ```
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 0 1000
-[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}}]
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]'
+[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": {"start": 0, "end": 1000}}]
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000], "watchonly": true}]'
 
 [
   {
@@ -90,8 +90,8 @@ Here are some examples (`<blockheight>` refers to a block height before the wall
 $ ../bitcoin/src/bitcoin-cli rescanblockchain <blockheight>
 $ ../bitcoin/src/bitcoin-cli rescanblockchain 500000 # Rescan from block 500000
 
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": <blockheight>, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]'
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": 500000, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": {"start": 0, "end": 1000}, "watchonly": true}]' # Imports and rescans from block 500000
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": <blockheight>, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": [0, 1000], "watchonly": true}]'
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": 500000, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": [0, 1000], "watchonly": true}]' # Imports and rescans from block 500000
 ```
 
 ## Usage
