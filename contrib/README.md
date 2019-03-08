@@ -19,3 +19,17 @@ Sets up Wine with Python and everything needed to build Windows binaries. Create
 ## `generate_setup.sh`
 
 Builds the source distribution and extracts the setup.py from it.
+
+## `build.Dockerfile`
+
+A Dockerfile for setting up the deterministic build environment.
+
+# Other files
+
+## `reproducible-python.diff`
+
+A path for python in order to do a deterministic build of Python for the deterministically built binaries.
+
+## `pyinstaller-hooks/hook-hwilib.devices.py`
+
+Pyinstaller hook so that the device drivers are actually included. Due to how the imports work, we need this hook.
