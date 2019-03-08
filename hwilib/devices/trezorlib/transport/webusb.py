@@ -126,7 +126,7 @@ class WebUsbTransport(ProtocolBasedTransport):
                 # non-functional.
                 dev.getProduct()
                 devices.append(WebUsbTransport(dev))
-            except usb1.USBErrorNotSupported:
+            except:
                 pass
         return devices
 

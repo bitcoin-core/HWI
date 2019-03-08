@@ -83,6 +83,10 @@ class DeviceTestCase(unittest.TestCase):
             proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
+        elif self.interface == 'bindist':
+            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            result = proc.communicate()
+            return json.loads(result[0].decode())
         else:
             return process_commands(args)
 

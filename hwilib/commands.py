@@ -2,14 +2,13 @@
 
 # Hardware wallet interaction script
 
-import glob
 import importlib
 
 from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
 from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, xpub_to_pub_hex
-from os.path import dirname, basename, isfile
 from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 from .descriptor import Descriptor
+from .devices import __all__ as all_devs
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
@@ -32,11 +31,7 @@ def get_client(device_type, device_path, password=''):
 def enumerate(password=''):
     result = []
 
-    # Gets the module names of all the files in devices/
-    files = glob.glob(dirname(__file__)+"/devices/*.py")
-    modules = [ basename(f)[:-3] for f in files if isfile(f) and not f.endswith('__init__.py')]
-
-    for module in modules:
+    for module in all_devs:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
             result.extend(imported_dev.enumerate(password))

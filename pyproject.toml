@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "hwi"
+version = "0.0.5"
+description = "A library for working with Bitcoin hardware wallets"
+authors = ["Andrew Chow <andrew@achow101.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/bitcoin-core/HWI"
+homepage = "https://github.com/bitcoin-core/HWI"
+exclude = ["docs/", "test/"]
+include = ["hwilib/**/*.py"]
+
+[tool.poetry.dependencies]
+python = ">=3.5.6"
+hidapi = "^0.7.99"
+ecdsa = "^0.13.0"
+pyaes = "^1.6"
+pywin32-ctypes = {version = "^0.2.0", optional = true}
+mnemonic = "^0.18.0"
+typing-extensions = "^3.7"
+libusb1 = "^1.7"
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^3.4"
+python-bitcoinrpc = "^1.0"
+
+[tool.poetry.extras]
+windist = ["pywin32-ctypes"]
+
+[tool.poetry.scripts]
+hwi = 'hwilib.cli:main'
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

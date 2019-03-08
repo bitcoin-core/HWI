@@ -32,7 +32,7 @@ dbb_group.add_argument('--no_bitbox', help='Do not run Digital Bitbox test with 
 dbb_group.add_argument('--bitbox', help='Path to Digital bitbox simulator.', default='work/mcu/build/bin/simulator')
 
 parser.add_argument('--bitcoind', help='Path to bitcoind.', default='work/bitcoin/src/bitcoind')
-parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli'], default='library')
+parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
 args = parser.parse_args()
 
 # Run tests
