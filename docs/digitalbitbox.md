@@ -12,6 +12,7 @@ Current implemented commands are:
 - `restore`
 - `backup`
 - `displayaddress`
+- `signmessage`
 
 ## Usage Notes
 
