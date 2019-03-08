@@ -91,7 +91,25 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
+
+    desc = getdescriptor(client, master_xpub, client.is_testnet, path, internal, sh_wpkh, wpkh, account, start, end)
+
+    if not isinstance(desc, Descriptor):
+        return desc
+
+    this_import = {}
+
+    this_import['desc'] = desc.serialize()
+    this_import['range'] = [start, end]
+    this_import['timestamp'] = 'now'
+    this_import['internal'] = internal
+    this_import['keypool'] = keypool
+    this_import['watchonly'] = True
+    return [this_import]
+
+def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False, sh_wpkh=False, wpkh=True, account=0, start=None, end=None):
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
+    testnet = client.is_testnet
 
     if not path:
       # Master key:
@@ -106,7 +124,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
         path += "44'/"
 
       # Coin type
-      if client.is_testnet == True:
+      if testnet == True:
         path += "1'/"
       else:
         path += "0'/"
@@ -136,18 +154,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
 
     # Get the key at the base
     base_key = client.get_pubkey_at_path(path_base)['xpub']
-
-    this_import = {}
-
-    desc = Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
-
-    this_import['desc'] = desc.serialize()
-    this_import['range'] = [start, end]
-    this_import['timestamp'] = 'now'
-    this_import['internal'] = internal
-    this_import['keypool'] = keypool
-    this_import['watchonly'] = True
-    return [this_import]
+    return Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
 
 # wrapper to allow both internal and external entries when path not given
 def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
