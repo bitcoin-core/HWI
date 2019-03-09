@@ -11,6 +11,7 @@ from .errors import (
     UNKNWON_DEVICE_TYPE,
     UNKNOWN_ERROR
 )
+from . import __version__
 
 import argparse
 import getpass
@@ -58,7 +59,7 @@ def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
 
 def process_commands(args):
-    parser = argparse.ArgumentParser(description='Access and send commands to a hardware wallet device. Responses are in JSON format')
+    parser = argparse.ArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
@@ -66,6 +67,7 @@ def process_commands(args):
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
+    parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
