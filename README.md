@@ -1,14 +1,33 @@
-# Bitcoin Hardware Wallet Interaction scripts
+# Bitcoin Hardware Wallet Interface
 
 [![Build Status](https://travis-ci.org/bitcoin-core/HWI.svg?branch=master)](https://travis-ci.org/bitcoin-core/HWI)
 
-This project contains several scripts for interacting with Bitcoin hardware wallets.
+The Bitcoin Hardware Wallet Interface is a Python library and command line tool for interacting with hardware wallets.
+It provides a standard way for software to work with hardware wallets without needing to implement device specific drivers.
+Python software can use the provided library (`hwilib`). Software in other languages can execute the `hwi` tool.
 
 ## Prerequisites
 
-Python 3 is required. The libraries and udev rules for each device must also be installed.
+Python 3 is required. The libraries and udev rules for each device must also be installed. Some libraries will need to be installed
 
-Install all of the libraries using `pip` (in virtualenv or system):
+For Ubuntu/Debian:
+```
+sudo apt install libusb-1.0-0-dev libudev-dev
+```
+
+For macOS:
+```
+brew install libusb
+```
+
+This project uses the [Poetry](https://github.com/sdispater/poetry) dependency manager.
+Once HWI's source has been downloaded with git clone, it and its dependencies can be installed via poetry by execting the following in the root source directory:
+
+```
+poetry install
+```
+
+Pip can also be used to install all of the dependencies (in virtualenv or system):
 
 ```
 pip3 install hidapi # HID API needed in general
