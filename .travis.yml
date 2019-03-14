@@ -55,6 +55,8 @@ jobs:
             script: cd test; poetry run ./run_tests.py --interface=library
         -   name: With command line interface
             script: cd test; poetry run ./run_tests.py --interface=cli
+        -   name: With stdin interface
+            script: cd test; ./run_tests.py --interface=stdin
         -   name: With linux binary distribution command line interface
             services: docker
             before_script:
