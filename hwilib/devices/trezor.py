@@ -3,16 +3,17 @@
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
 from .trezorlib.client import TrezorClient as Trezor
-from .trezorlib.debuglink import TrezorClientDebugLink
+from .trezorlib.debuglink import TrezorClientDebugLink, DebugUI
 from .trezorlib.exceptions import Cancelled
 from .trezorlib.transport import enumerate_devices, get_transport
-from .trezorlib.ui import PassphraseUI, mnemonic_words, PIN_MATRIX_DESCRIPTION
+from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
 from .trezorlib import protobuf, tools, btc, device
 from .trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 from ..serializations import ser_uint256, uint256_from_str
 from .. import bech32
 from usb1 import USBErrorNoDevice
+from types import MethodType
 
 import base64
 import binascii
@@ -69,15 +70,36 @@ def trezor_exception(f):
             raise DeviceConnectionError('Device disconnected')
     return func
 
+def interactive_get_pin(self, code=None):
+    if code == PIN_CURRENT:
+        desc = "current PIN"
+    elif code == PIN_NEW:
+        desc = "new PIN"
+    elif code == PIN_CONFIRM:
+        desc = "new PIN again"
+    else:
+        desc = "PIN"
+
+    echo(PIN_MATRIX_DESCRIPTION)
+
+    while True:
+        pin = prompt("Please enter {}".format(desc), hide_input=True)
+        if not pin.isdigit():
+            echo("Non-numerical PIN provided, please try again")
+        else:
+            return pin
+
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(TrezorClient, self).__init__(path, password)
+        self.simulator = False
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
             transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
+            self.simulator = True
         else:
             self.client = Trezor(transport=get_transport(path), ui=PassphraseUI(password))
 
@@ -314,6 +336,10 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def setup_device(self, label='', passphrase=''):
         self.client.init_device()
+        if not self.simulator:
+            # Use interactive_get_pin
+            self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
+
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         passphrase_enabled = False
@@ -332,8 +358,13 @@ class TrezorClient(HardwareWalletClient):
     # Restore device from mnemonic or xprv
     @trezor_exception
     def restore_device(self, label=''):
+        self.client.init_device()
+        if not self.simulator:
+            # Use interactive_get_pin
+            self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
+
         passphrase_enabled = False
-        device.recover(self.client, label=label, input_callback=mnemonic_words, passphrase_protection=bool(self.password))
+        device.recover(self.client, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
         return {'success': True}
 
     # Begin backup process

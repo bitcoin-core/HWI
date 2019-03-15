@@ -30,7 +30,7 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Coldcard specific management command tests
     class TestColdcardManCommands(DeviceTestCase):
         def test_setup(self):
-            result = self.do_command(self.dev_args + ['setup'])
+            result = self.do_command(self.dev_args + ['-i', 'setup'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Coldcard does not support software setup')
@@ -44,7 +44,7 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             self.assertEqual(result['code'], -9)
 
         def test_restore(self):
-            result = self.do_command(self.dev_args + ['restore'])
+            result = self.do_command(self.dev_args + ['-i', 'restore'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Coldcard does not support restoring via software')

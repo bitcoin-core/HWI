@@ -50,8 +50,12 @@ PIN_CONFIRM = PinMatrixRequestType.NewSecond
 def echo(msg):
     print(msg, file=sys.stderr)
 
-def prompt(msg):
-    return input(msg)
+def prompt(msg, hide_input=False):
+    if hide_input:
+        import getpass
+        return getpass.getpass(msg + ' :\n')
+    else:
+        return input(msg + ':\n')
 
 class PassphraseUI:
     def __init__(self, passphrase):

@@ -9,7 +9,8 @@ from .errors import (
     DEVICE_CONN_ERROR,
     NO_PASSWORD,
     UNKNWON_DEVICE_TYPE,
-    UNKNOWN_ERROR
+    UNKNOWN_ERROR,
+    UNAVAILABLE_ACTION
 )
 from . import __version__
 
@@ -38,10 +39,14 @@ def getkeypool_handler(args, client):
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh)
 
 def restore_device_handler(args, client):
-    return restore_device(client, label=args.label)
+    if args.interactive:
+        return restore_device(client, label=args.label)
+    return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
 def setup_device_handler(args, client):
-    return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
+    if args.interactive:
+        return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
+    return {'error': 'setup requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
 def signmessage_handler(args, client):
     return signmessage(client, message=args.message, path=args.path)
@@ -69,6 +74,7 @@ def process_commands(cli_args):
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
+    parser.add_argument('--interactive', '-i', help='Use some commands interactively. Currently required for all device configuration commands', action='store_true')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
@@ -112,7 +118,7 @@ def process_commands(cli_args):
     displayaddr_parser.add_argument('--wpkh', action='store_true', help='Display the bech32 version of the address associated with this key path')
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
-    setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p')
+    setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')
     setupdev_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     setupdev_parser.add_argument('--backup_passphrase', '-b', help='The passphrase to use for the backup, if applicable', default='')
     setupdev_parser.set_defaults(func=setup_device_handler)
@@ -120,7 +126,7 @@ def process_commands(cli_args):
     wipedev_parser = subparsers.add_parser('wipe', help='Wipe a device')
     wipedev_parser.set_defaults(func=wipe_device_handler)
 
-    restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process')
+    restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process. Requires interactive mode')
     restore_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     restore_parser.set_defaults(func=restore_device_handler)
 

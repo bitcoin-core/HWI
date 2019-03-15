@@ -44,7 +44,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
     # DigitalBitbox specific management command tests
     class TestDBBManCommands(DeviceTestCase):
         def test_restore(self):
-            result = self.do_command(self.dev_args + ['restore'])
+            result = self.do_command(self.dev_args + ['-i', 'restore'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Digital Bitbox does not support restoring via software')
@@ -72,7 +72,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
 
         def test_setup_wipe(self):
             # Device is init, setup should fail
-            result = self.do_command(self.dev_args + ['setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
             self.assertEquals(result['code'], -10)
             self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
@@ -81,15 +81,15 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
             self.assertTrue(result['success'])
 
             # Check arguments
-            result = self.do_command(self.dev_args + ['setup', '--label', 'setup_test'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test'])
             self.assertEquals(result['code'], -7)
             self.assertEquals(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
-            result = self.do_command(self.dev_args + ['setup', '--backup_passphrase', 'testpass'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--backup_passphrase', 'testpass'])
             self.assertEquals(result['code'], -7)
             self.assertEquals(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
 
             # Setup
-            result = self.do_command(self.dev_args + ['setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
             self.assertTrue(result['success'])
 
             # Reset back to original
@@ -99,7 +99,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
             send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)
 
             # Make sure device is init, setup should fail
-            result = self.do_command(self.dev_args + ['setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
             self.assertEquals(result['code'], -10)
             self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
@@ -117,7 +117,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
             self.assertTrue(result['success'])
 
             # Setup
-            result = self.do_command(self.dev_args + ['setup', '--label', 'backup_test', '--backup_passphrase', 'testpass'])
+            result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'backup_test', '--backup_passphrase', 'testpass'])
             self.assertTrue(result['success'])
 
             # make the backup

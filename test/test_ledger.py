@@ -44,7 +44,7 @@ def ledger_test_suite(rpc, userpass, interface):
             self.assertEqual(result['code'], -9)
 
         def test_setup(self):
-            result = self.do_command(self.dev_args + ['setup'])
+            result = self.do_command(self.dev_args + ['-i', 'setup'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Ledger Nano S does not support software setup')
@@ -58,7 +58,7 @@ def ledger_test_suite(rpc, userpass, interface):
             self.assertEqual(result['code'], -9)
 
         def test_restore(self):
-            result = self.do_command(self.dev_args + ['restore'])
+            result = self.do_command(self.dev_args + ['-i', 'restore'])
             self.assertIn('error', result)
             self.assertIn('code', result)
             self.assertEqual(result['error'], 'The Ledger Nano S does not support restoring via software')
