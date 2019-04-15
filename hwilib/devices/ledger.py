@@ -5,6 +5,7 @@ from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionErro
 from .btchip.btchip import *
 from .btchip.btchipUtils import *
 import base64
+import hid
 import json
 import struct
 from .. import base58
