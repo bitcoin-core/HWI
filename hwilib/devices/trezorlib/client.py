@@ -178,7 +178,10 @@ class TrezorClient:
 
     @tools.session
     def init_device(self):
-        resp = self.call_raw(messages.Initialize(state=self.state))
+        resp = self.call_raw(messages.GetFeatures())
+        # If GetFeatures fails, try initializing and clearing inconsistent state on the device
+        if isinstance(resp, messages.Failure):
+            resp = self.call_raw(messages.Initialize())
         if not isinstance(resp, messages.Features):
             raise exceptions.TrezorException("Unexpected initial response")
         else:
