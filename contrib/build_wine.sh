@@ -68,3 +68,9 @@ $POETRY install -E windist
 export PYTHONHASHSEED=42
 $POETRY run pyinstaller hwi.spec
 unset PYTHONHASHSEED
+
+# Make the final compressed package
+pushd dist
+VERSION=`$POETRY run hwi --version | cut -d " " -f 2 | dos2unix`
+zip "hwi-${VERSION}-windows-amd64.zip" hwi.exe
+popd
