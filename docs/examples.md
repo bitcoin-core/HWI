@@ -140,4 +140,6 @@ bitcoin-cli scantxoutset start '[{"desc":"wpkh(xpub6DP9afdc7qsz7s7mwAvciAR2dV6vP
 
 The input and output format supported by HWI is base64, which is prescribed by BIP174 as the string format. Note that the PSBT standard also allows for binary formatting when stored as a file. There is no direct support within HWI, but this can be easily accomplished using common utilities. A bash command-line example is detailed below, where the PSBT binary file is stored in `example.psbt` and only the common utilities `base64` and `jq` are required:
 
+```
 cat example.psbt | base64 --wrap=0 | ./hwi.py -t ledger --stdin signtx | jq .[] --raw-output | base64 -d > example_result.psbt
+```
