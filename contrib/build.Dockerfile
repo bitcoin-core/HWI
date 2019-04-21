@@ -25,7 +25,9 @@ RUN apt-get install -y \
     liblzma-dev \
     libusb-1.0-0-dev \
     libudev-dev \
-    faketime
+    faketime \
+    zip \
+    dos2unix
 
 RUN curl https://pyenv.run | bash
 ENV PATH="/root/.pyenv/bin:$PATH"

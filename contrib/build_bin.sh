@@ -24,3 +24,13 @@ TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" 
 export PYTHONHASHSEED=42
 poetry run pyinstaller hwi.spec
 unset PYTHONHASHSEED
+
+# Make the final compressed package
+pushd dist
+VERSION=`poetry run hwi --version | cut -d " " -f 2`
+OS=`uname | tr '[:upper:]' '[:lower:]'`
+if [[ $OS == "darwin" ]]; then
+    OS="mac"
+fi
+tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi
+popd
