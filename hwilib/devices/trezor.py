@@ -421,9 +421,13 @@ def enumerate(password=''):
             client.client.init_device()
             if not 'trezor' in client.client.features.vendor:
                 continue
+            d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection and not client.client.features.passphrase_cached
+            if d_data['needs_passphrase_sent'] and not password:
+                raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'
         except HWWError as e:

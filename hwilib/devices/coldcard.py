@@ -225,6 +225,7 @@ def enumerate(password=''):
         path = d['path'].decode()
         d_data['type'] = 'coldcard'
         d_data['path'] = path
+        d_data['needs_passphrase'] = False
 
         client = None
         try:
@@ -251,6 +252,7 @@ def enumerate(password=''):
         d_data['fingerprint'] = client._get_fingerprint_hex()
         d_data['type'] = 'coldcard'
         d_data['path'] = CC_SIMULATOR_SOCK
+        d_data['needs_passphrase_sent'] = False
         results.append(d_data)
     except RuntimeError as e:
         if str(e) == 'Cannot connect to simulator. Is it running?':
