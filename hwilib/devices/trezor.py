@@ -421,7 +421,10 @@ def enumerate(password=''):
             client.client.init_device()
             if not 'trezor' in client.client.features.vendor:
                 continue
+            d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.pin_cached
             d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection and not client.client.features.passphrase_cached
+            if d_data['needs_pin_sent']:
+                raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
             if d_data['needs_passphrase_sent'] and not password:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:

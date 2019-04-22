@@ -603,6 +603,7 @@ def enumerate(password=''):
                 else:
                     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                d_data['needs_pin_sent'] = False
                 d_data['needs_passphrase_sent'] = True
             except HWWError as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()

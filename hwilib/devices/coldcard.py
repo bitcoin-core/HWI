@@ -252,6 +252,7 @@ def enumerate(password=''):
         d_data['fingerprint'] = client._get_fingerprint_hex()
         d_data['type'] = 'coldcard'
         d_data['path'] = CC_SIMULATOR_SOCK
+        d_data['needs_pin_sent'] = False
         d_data['needs_passphrase_sent'] = False
         results.append(d_data)
     except RuntimeError as e:
