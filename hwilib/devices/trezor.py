@@ -100,6 +100,7 @@ class TrezorClient(HardwareWalletClient):
             transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
             self.simulator = True
+            self.client.set_passphrase(password)
         else:
             self.client = Trezor(transport=get_transport(path), ui=PassphraseUI(password))
 
