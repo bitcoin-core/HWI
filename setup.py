@@ -26,6 +26,7 @@ setup_kwargs = {
     'author_email': 'andrew@achow101.com',
     'url': 'https://github.com/bitcoin-core/HWI',
     'py_modules': modules,
+    'packages': [ 'hwilib', 'hwilib.devices', 'hwilib.devices.btchip', 'hwilib.devices.ckcc', 'hwilib.devices.trezorlib' ],
     'install_requires': install_requires,
     'extras_require': extras_require,
     'entry_points': entry_points,
