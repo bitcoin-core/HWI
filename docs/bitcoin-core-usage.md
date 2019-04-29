@@ -286,7 +286,7 @@ e51392c82e13bbfe714c73361aff14ac1a1637abf37587a562844ae5a4265adf
 When the keypools run out, they can be refilled by using the `getkeypool` commands as done in the beginning, but with different starting and ending indexes. For example, to refill my keypools, I would use the following `getkeypool` commands:
 
 ```
-$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 1000 2000
+$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool 1000 2000
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 1000 2000
 ```
 The output can be imported with `importmulti` as shown in the Setup steps.
