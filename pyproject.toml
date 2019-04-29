@@ -9,6 +9,10 @@ repository = "https://github.com/bitcoin-core/HWI"
 homepage = "https://github.com/bitcoin-core/HWI"
 exclude = ["docs/", "test/"]
 include = ["hwilib/**/*.py"]
+packages = [
+    { include = "hwi.py" },
+    { include = "hwilib" },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.5.6"
