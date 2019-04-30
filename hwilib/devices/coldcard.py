@@ -14,6 +14,8 @@ import hid
 import io
 import sys
 import time
+import struct
+from binascii import hexlify
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
@@ -55,6 +57,10 @@ class ColdcardClient(HardwareWalletClient):
             return {'xpub':xpub_main_2_test(xpub)}
         else:
             return {'xpub':xpub}
+
+    def _get_fingerprint_hex(self):
+        # quick method to get fingerprint of wallet
+        return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -223,8 +229,7 @@ def enumerate(password=''):
         client = None
         try:
             client = ColdcardClient(path)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            d_data['fingerprint'] = client._get_fingerprint_hex()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
 
@@ -232,14 +237,14 @@ def enumerate(password=''):
             client.close()
 
         results.append(d_data)
+
     # Check if the simulator is there
     client = None
     try:
         client = ColdcardClient(CC_SIMULATOR_SOCK)
-        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
 
         d_data = {}
-        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+        d_data['fingerprint'] = client._get_fingerprint_hex()
         d_data['type'] = 'coldcard'
         d_data['path'] = CC_SIMULATOR_SOCK
         results.append(d_data)
@@ -250,4 +255,5 @@ def enumerate(password=''):
             raise e
     if client:
         client.close()
+
     return results
