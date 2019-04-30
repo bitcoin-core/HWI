@@ -48,8 +48,12 @@ def find_device(device_path, password='', device_type=None, fingerprint=None):
         client = None
         try:
             client = get_client(d['type'], d['path'], password)
-            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-            master_fpr = get_xpub_fingerprint_hex(master_xpub)
+
+            master_fpr = d.get('fingerprint', None)
+            if master_fpr is None:
+                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                master_fpr = get_xpub_fingerprint_hex(master_xpub)
+
             if fingerprint and master_fpr != fingerprint:
                 client.close()
                 continue
