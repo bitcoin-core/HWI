@@ -53,7 +53,7 @@ popd
 $PYTHON -m pip install -U pip
 
 # Install Poetry and things needed for pyinstaller
-$PYTHON -m pip install poetry
+$PYTHON -m pip install poetry==0.12.12
 
 # We also need to change the timestamps of all of the base library files
 lib_dir=~/.wine/drive_c/python3/Lib

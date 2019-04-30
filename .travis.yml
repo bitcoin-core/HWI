@@ -40,7 +40,7 @@ addons:
             - cython3
             - ccache
 install:
-    - pip install pipenv pysdl2 python-bitcoinrpc protobuf poetry
+    - pip install pipenv pysdl2 python-bitcoinrpc protobuf poetry==0.12.12
     # From trezor-mcu to get the correct protobuf version
     - curl -LO "https://github.com/google/protobuf/releases/download/v3.4.0/protoc-3.4.0-linux-x86_64.zip"
     - unzip "protoc-3.4.0-linux-x86_64.zip" -d protoc
@@ -56,7 +56,7 @@ jobs:
         -   name: With command line interface
             script: cd test; poetry run ./run_tests.py --interface=cli
         -   name: With stdin interface
-            script: cd test; ./run_tests.py --interface=stdin
+            script: cd test; poetry run ./run_tests.py --interface=stdin
         -   name: With linux binary distribution command line interface
             services: docker
             before_script:

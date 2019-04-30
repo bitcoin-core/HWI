@@ -4,7 +4,7 @@
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 pip install -U pip
-pip install poetry
+pip install poetry==0.12.12
 
 # Setup poetry and install the dependencies
 poetry install
