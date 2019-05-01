@@ -39,6 +39,8 @@ if [ "$trezor_setup_needed" == true ] ; then
     pipenv install
 fi
 pipenv run script/cibuild
+# Delete any emulator.img file
+find . -name "emulator.img" -exec rm {} \;
 cd ..
 
 # Clone coldcard firmware if it doesn't exist, or update it if it does
@@ -144,6 +146,8 @@ cd ../../../
 export PATH=$PATH:`pwd`/nanopb/generator
 pipenv run cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
 pipenv run make -j$(nproc) kkemu
+# Delete any emulator.img file
+find . -name "emulator.img" -exec rm {} \;
 cd ..
 
 # Clone bitcoind if it doesn't exist, or update it if it does
