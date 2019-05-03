@@ -49,15 +49,15 @@ if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitb
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-if not args.no_trezor:
-    suite.addTest(trezor_test_suite(args.trezor, rpc, userpass, args.interface))
-if not args.no_coldcard:
-    suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass, args.interface))
-if args.ledger:
-    suite.addTest(ledger_test_suite(rpc, userpass, args.interface))
 if not args.no_bitbox:
     suite.addTest(digitalbitbox_test_suite(rpc, userpass, args.bitbox, args.interface))
+if not args.no_coldcard:
+    suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass, args.interface))
+if not args.no_trezor:
+    suite.addTest(trezor_test_suite(args.trezor, rpc, userpass, args.interface))
 if not args.no_keepkey:
     suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass, args.interface))
+if args.ledger:
+    suite.addTest(ledger_test_suite(rpc, userpass, args.interface))
 result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
 sys.exit(not result.wasSuccessful())
