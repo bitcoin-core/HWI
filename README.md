@@ -60,29 +60,29 @@ The below table lists what devices and features are supported for each device.
 
 Please also see [docs](docs/) for additional information about each device.
 
-| Feature \ Device | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | Yes | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Yes | Yes | Yes | Yes | Yes |
-| xpub retrieval | Yes | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | Yes | Yes | Yes | Yes | Yes |
-| Device Setup | N/A | Yes | Yes | Yes | Yes | N/A |
-| Device Wipe | N/A | Yes | Yes | Yes | Yes | N/A |
-| Device Recovery | N/A | Yes | Yes | N/A | Yes | N/A |
-| Device Backup | N/A | N/A | N/A | Yes | N/A | Yes |
-| P2PKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | No | Yes |
-| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| Bare Multisig Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary scriptPubKey Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary redeemScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary witnessScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | N/A | Yes | N/A | Yes | Yes | Yes |
-| Display on device screen | Yes | Yes | Yes | N/A | Yes | Yes |
+| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Support Planned | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Implemented | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| xpub retrieval | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Message Signing | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Device Setup | N/A | N/A | Yes | Yes | Yes | Yes | N/A |
+| Device Wipe | N/A | N/A | Yes | Yes | Yes | Yes | N/A |
+| Device Recovery | N/A | N/A | Yes | Yes | N/A | Yes | N/A |
+| Device Backup | N/A | N/A | N/A | N/A | Yes | N/A | Yes |
+| P2PKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | No | Yes |
+| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Bare Multisig Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
+| Arbitrary scriptPubKey Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
+| Arbitrary redeemScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
+| Arbitrary witnessScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
+| Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | N/A | Yes | Yes | Yes |
+| Display on device screen | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
 
 ## Using with Bitcoin Core
 
