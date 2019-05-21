@@ -469,36 +469,36 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEquals(result['code'], -7)
 
     def test_display_address_descriptor(self):
-        account_xpub = process_commands(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
-        p2sh_segwit_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
-        legacy_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
+        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
+        p2sh_segwit_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
+        legacy_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
 
         # Native SegWit address using xpub:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + account_xpub + '/0/0)'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + account_xpub + '/0/0)'])
 
         # Native SegWit address using hex encoded pubkey:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
 
         # P2SH wrapped SegWit address using xpub:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h)]' + p2sh_segwit_account_xpub + '/0/0))'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h)]' + p2sh_segwit_account_xpub + '/0/0))'])
 
         # Legacy address
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h)]' + legacy_account_xpub + '/0/0)'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h)]' + legacy_account_xpub + '/0/0)'])
 
         # Should check xpub
-        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check hex pub
-        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check fingerprint
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([00000000/84h/1h/0h)]' + account_xpub + '/0/0)'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([00000000/84h/1h/0h)]' + account_xpub + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
