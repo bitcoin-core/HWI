@@ -1,7 +1,7 @@
 # Coldcard interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, UnavailableActionError, DeviceFailureError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR
 from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
 from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
@@ -230,8 +230,12 @@ def enumerate(password=''):
         try:
             client = ColdcardClient(path)
             d_data['fingerprint'] = client._get_fingerprint_hex()
+        except HWWError as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
+            d_data['code'] = e.get_code()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+            d_data['code'] = UNKNOWN_ERROR
 
         if client:
             client.close()

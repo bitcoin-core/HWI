@@ -15,7 +15,7 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, NoPasswordError, UnavailableActionError, DeviceFailureError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -603,8 +603,12 @@ def enumerate(password=''):
                 else:
                     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+            except HWWError as e:
+                d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
+                d_data['code'] = e.get_code()
             except Exception as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+                d_data['code'] = UNKNOWN_ERROR
 
             if client:
                 client.close()

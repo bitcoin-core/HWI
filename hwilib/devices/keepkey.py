@@ -1,5 +1,6 @@
 # KeepKey interaction script
 
+from ..errors import HWWError, UNKNOWN_ERROR
 from .trezorlib.transport import enumerate_devices
 from .trezor import TrezorClient
 from ..base58 import get_xpub_fingerprint_hex
@@ -30,8 +31,12 @@ def enumerate(password=''):
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
+        except HWWError as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
+            d_data['code'] = e.get_code()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+            d_data['code'] = UNKNOWN_ERROR
 
         if client:
             client.close()
