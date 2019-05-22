@@ -5,6 +5,7 @@ import atexit
 import json
 import os
 import shlex
+import signal
 import socket
 import subprocess
 import sys
@@ -36,7 +37,7 @@ class TrezorEmulator(DeviceEmulator):
 
     def start(self):
         # Start the Trezor emulator
-        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path))
+        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, env={'SDL_VIDEODRIVER': 'dummy', 'PYOPT': '0'}, shell=True, preexec_fn=os.setsid)
         # Wait for emulator to be up
         # From https://github.com/trezor/trezor-mcu/blob/master/script/wait_for_emulator.py
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -64,8 +65,8 @@ class TrezorEmulator(DeviceEmulator):
         return client
 
     def stop(self):
-        self.emulator_proc.kill()
-        self.emulator_proc.wait()
+        os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGINT)
+        os.waitpid(self.emulator_proc.pid, 0)
 
 class TrezorTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
@@ -103,10 +104,10 @@ class TrezorTestCase(unittest.TestCase):
             return process_commands(args)
 
     def __str__(self):
-        return 'trezor: {}'.format(super().__str__())
+        return 'trezor 1: {}'.format(super().__str__())
 
     def __repr__(self):
-        return 'trezor: {}'.format(super().__repr__())
+        return 'trezor 1: {}'.format(super().__repr__())
 
 # Trezor specific getxpub test because this requires device specific thing to set xprvs
 class TestTrezorGetxpub(TrezorTestCase):
@@ -277,17 +278,21 @@ class TestTrezorManCommands(TrezorTestCase):
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertNotEqual(dev['fingerprint'], fpr)
 
-def trezor_test_suite(emulator, rpc, userpass, interface):
+def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
 
     # Device info for tests
     type = 'trezor'
-    full_type = 'trezor_1'
     path = 'udp:127.0.0.1:21324'
     fingerprint = '95d8f670'
     master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
     dev_emulator = TrezorEmulator(emulator)
+
+    if model_t:
+        full_type = 'trezor_t'
+    else:
+        full_type = 'trezor_1'
 
     # Generic Device tests
     suite = unittest.TestSuite()
@@ -296,8 +301,9 @@ def trezor_test_suite(emulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
+    if not model_t:
+        suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
+        suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     return suite
 
 if __name__ == '__main__':
@@ -305,10 +311,11 @@ if __name__ == '__main__':
     parser.add_argument('emulator', help='Path to the Trezor emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
+    parser.add_argument('--model_t', help='The emulator is for the Trezor T', action='store_true')
     args = parser.parse_args()
 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = trezor_test_suite(args.emulator, rpc, userpass, args.interface)
+    suite = trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t)
     unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

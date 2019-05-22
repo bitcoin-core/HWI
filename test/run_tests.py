@@ -20,6 +20,9 @@ parser = argparse.ArgumentParser(description='Setup the testing environment and 
 trezor_group = parser.add_mutually_exclusive_group()
 trezor_group.add_argument('--no_trezor', help='Do not run Trezor test with emulator', action='store_true')
 trezor_group.add_argument('--trezor', help='Path to Trezor emulator.', default='work/trezor-firmware/legacy/firmware/trezor.elf')
+trezor_t_group = parser.add_mutually_exclusive_group()
+trezor_t_group.add_argument('--no_trezor_t', help='Do not run Trezor T test with emulator', action='store_true')
+trezor_t_group.add_argument('--trezor_t', help='Path to Trezor T emulator.', default='work/trezor-firmware/core/emu.sh')
 coldcard_group = parser.add_mutually_exclusive_group()
 coldcard_group.add_argument('--no_coldcard', help='Do not run Coldcard test with simulator', action='store_true')
 coldcard_group.add_argument('--coldcard', help='Path to Coldcard simulator.', default='work/firmware/unix/headless.py')
@@ -45,7 +48,7 @@ if sys.platform.startswith("linux"):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
 
 
-if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox or not args.no_keepkey:
+if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox or not args.no_keepkey or not args.no_trezor_t:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -55,6 +58,8 @@ if not args.no_coldcard:
     suite.addTest(coldcard_test_suite(args.coldcard, rpc, userpass, args.interface))
 if not args.no_trezor:
     suite.addTest(trezor_test_suite(args.trezor, rpc, userpass, args.interface))
+if not args.no_trezor_t:
+    suite.addTest(trezor_test_suite(args.trezor_t, rpc, userpass, args.interface, True))
 if not args.no_keepkey:
     suite.addTest(keepkey_test_suite(args.keepkey, rpc, userpass, args.interface))
 if args.ledger:

@@ -42,6 +42,17 @@ fi
 pipenv run script/cibuild
 # Delete any emulator.img file
 find . -name "emulator.img" -exec rm {} \;
+cd ..
+
+# Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
+# But there should be some caching that makes this faster
+cd core
+if [ "$trezor_setup_needed" == true ] ; then
+    make vendor
+fi
+make build_unix
+# Delete any emulator.img file
+rm /var/tmp/trezor.flash
 cd ../..
 
 # Clone coldcard firmware if it doesn't exist, or update it if it does
