@@ -419,7 +419,7 @@ def enumerate(password=''):
         with handle_errors(common_err_msgs["enumerate"], d_data):
             client = TrezorClient(d_data['path'], password)
             client.client.init_device()
-            if not 'trezor' in client.client.features.vendor:
+            if 'trezor' not in client.client.features.vendor:
                 continue
             if client.client.features.initialized:
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
