@@ -1,7 +1,7 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, UnavailableActionError, DeviceNotReadyError
+from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DeviceNotReadyError, HWWError, UnavailableActionError, UNKNOWN_ERROR
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink, DebugUI
 from .trezorlib.exceptions import Cancelled
@@ -426,8 +426,12 @@ def enumerate(password=''):
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
             else:
                 d_data['error'] = 'Not initialized'
+        except HWWError as e:
+            d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
+            d_data['code'] = e.get_code()
         except Exception as e:
             d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
+            d_data['code'] = UNKNOWN_ERROR
 
         if client:
             client.close()
