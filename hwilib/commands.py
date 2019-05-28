@@ -155,6 +155,10 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
             return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
         return client.display_address(path, sh_wpkh, wpkh)
     elif desc is not None:
+        if client.fingerprint is None:
+            master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+            client.fingerprint = get_xpub_fingerprint_hex(master_xpub)
+
         if sh_wpkh == True or wpkh == True:
             return {'error':' `--wpkh` and `--sh_wpkh` can not be combined with --desc','code':BAD_ARGUMENT}
         descriptor = Descriptor.parse(desc, client.is_testnet)

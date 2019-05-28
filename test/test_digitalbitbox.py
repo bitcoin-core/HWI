@@ -93,7 +93,7 @@ def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
             self.assertTrue(result['success'])
 
             # Reset back to original
-            result = process_commands(self.dev_args + ['wipe'])
+            result = self.do_command(self.dev_args + ['wipe'])
             self.assertTrue(result['success'])
             send_plain(b'{"password":"0000"}', dev)
             send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)

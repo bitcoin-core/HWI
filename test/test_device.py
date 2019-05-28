@@ -3,6 +3,7 @@
 import atexit
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -79,12 +80,15 @@ class DeviceTestCase(unittest.TestCase):
         return suite
 
     def do_command(self, args):
+        cli_args = []
+        for arg in args:
+            cli_args.append(shlex.quote(arg))
         if self.interface == 'cli':
-            proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            proc = subprocess.Popen(['hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'bindist':
-            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'stdin':
@@ -456,45 +460,68 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
     def test_display_address_path(self):
-        self.do_command(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
-        self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
-        self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
+
+        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
+
+        result = self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
 
     def test_display_address_bad_path(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--path', 'f'])
         self.assertEquals(result['code'], -7)
 
     def test_display_address_descriptor(self):
-        account_xpub = process_commands(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
-        p2sh_segwit_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
-        legacy_account_xpub = process_commands(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
+        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
+        p2sh_segwit_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
+        legacy_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
 
         # Native SegWit address using xpub:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + account_xpub + '/0/0)'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
 
         # Native SegWit address using hex encoded pubkey:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
 
         # P2SH wrapped SegWit address using xpub:
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h)]' + p2sh_segwit_account_xpub + '/0/0))'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h]' + p2sh_segwit_account_xpub + '/0/0))'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
 
         # Legacy address
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h)]' + legacy_account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
 
         # Should check xpub
-        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check hex pub
-        result = process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h)]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check fingerprint
-        process_commands(self.dev_args + ['displayaddress', '--desc', 'wpkh([00000000/84h/1h/0h)]' + account_xpub + '/0/0)'])
+        self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([00000000/84h/1h/0h]' + account_xpub + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)

@@ -4,6 +4,7 @@ import argparse
 import atexit
 import json
 import os
+import shlex
 import socket
 import subprocess
 import sys
@@ -82,12 +83,15 @@ class KeepkeyTestCase(unittest.TestCase):
         return suite
 
     def do_command(self, args):
+        cli_args = []
+        for arg in args:
+            cli_args.append(shlex.quote(arg))
         if self.interface == 'cli':
-            proc = subprocess.Popen(['hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            proc = subprocess.Popen(['hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'bindist':
-            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'stdin':
