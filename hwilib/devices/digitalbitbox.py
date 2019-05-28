@@ -15,7 +15,7 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR
+from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -593,7 +593,7 @@ def enumerate(password=''):
             d_data['path'] = path
 
             client = None
-            try:
+            with handle_errors(common_err_msgs["enumerate"], d_data):
                 client = DigitalbitboxClient(path, password)
 
                 # Check initialized
@@ -605,12 +605,6 @@ def enumerate(password=''):
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
                 d_data['needs_pin_sent'] = False
                 d_data['needs_passphrase_sent'] = True
-            except HWWError as e:
-                d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
-                d_data['code'] = e.get_code()
-            except Exception as e:
-                d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
-                d_data['code'] = UNKNOWN_ERROR
 
             if client:
                 client.close()
