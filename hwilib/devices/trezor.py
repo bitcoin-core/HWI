@@ -64,9 +64,9 @@ def trezor_exception(f):
             return f(*args, **kwargs)
         except ValueError as e:
             raise BadArgumentError(str(e))
-        except Cancelled as e:
+        except Cancelled:
             raise ActionCanceledError('{} canceled'.format(f.__name__))
-        except USBErrorNoDevice as e:
+        except USBErrorNoDevice:
             raise DeviceConnectionError('Device disconnected')
     return func
 
