@@ -1,5 +1,7 @@
 # Defines errors and error codes
 
+from contextlib import contextmanager
+
 # Error codes
 NO_DEVICE_PATH = -1
 NO_DEVICE_TYPE = -2
@@ -84,3 +86,20 @@ class DeviceConnectionError(HWWError):
 class DeviceBusyError(HWWError):
     def __init__(self, msg):
         HWWError.__init__(self, msg, DEVICE_BUSY)
+
+@contextmanager
+def handle_errors(msg, res):
+    try:
+        yield
+    except HWWError as e:
+        res['error'] = msg + " " + e.get_msg()
+        res['code'] = e.get_code()
+    except Exception as e:
+        res['error'] = msg + " " + str(e)
+        res['code'] = UNKNOWN_ERROR
+    return res
+
+
+common_err_msgs = {
+    "enumerate": "Could not open client or get fingerprint information:"
+}
