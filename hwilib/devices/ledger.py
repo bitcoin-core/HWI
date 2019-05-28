@@ -1,7 +1,7 @@
 # Ledger interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR
+from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
 from .btchip.btchip import *
 from .btchip.btchipUtils import *
 import base64
@@ -346,16 +346,10 @@ def enumerate(password=''):
             d_data['path'] = path
 
             client = None
-            try:
+            with handle_errors(common_err_msgs["enumerate"], d_data):
                 client = LedgerClient(path, password)
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-            except HWWError as e:
-                d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
-                d_data['code'] = e.get_code()
-            except Exception as e:
-                d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
-                d_data['code'] = UNKNOWN_ERROR
 
             if client:
                 client.close()
