@@ -16,6 +16,7 @@ DEVICE_NOT_READY = -12
 UNKNOWN_ERROR = -13
 ACTION_CANCELED = -14
 DEVICE_BUSY = -15
+NEED_TO_BE_ROOT = -16
 
 # Exceptions
 class HWWError(Exception):

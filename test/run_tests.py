@@ -14,6 +14,7 @@ from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
 from test_digitalbitbox import digitalbitbox_test_suite
 from test_keepkey import keepkey_test_suite
+from test_udevrules import TestUdevRulesInstaller
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
 trezor_group = parser.add_mutually_exclusive_group()
@@ -40,6 +41,9 @@ suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
+if sys.platform.startswith("linux"):
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
+
 
 if not args.no_trezor or not args.no_coldcard or args.ledger or not args.no_bitbox or not args.no_keepkey:
     # Start bitcoind

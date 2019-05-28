@@ -25,6 +25,10 @@ a = Analysis(['hwi.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+
+if platform.system() == 'Linux':
+    a.datas += Tree('udev', prefix='udev')
+
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,

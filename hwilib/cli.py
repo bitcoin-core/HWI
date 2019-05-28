@@ -2,7 +2,7 @@
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
     get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
-    signmessage, signtx, wipe_device
+    signmessage, signtx, wipe_device, install_udev_rules
 from .errors import (
     HWWError,
     NO_DEVICE_PATH,
@@ -62,6 +62,9 @@ def prompt_pin_handler(args, client):
 
 def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
+
+def install_udev_rules_handler(args):
+    return install_udev_rules(args.source, args.location)
 
 def process_commands(cli_args):
     parser = argparse.ArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -142,6 +145,13 @@ def process_commands(cli_args):
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
     sendpin_parser.set_defaults(func=send_pin_handler)
 
+    if sys.platform.startswith("linux"):
+        udevrules_parser = subparsers.add_parser('installudevrules', help='Install and load the udev rule files for the hardware wallet devices')
+        udevrules_parser.add_argument('--source', help=argparse.SUPPRESS, default='udev')
+        udevrules_parser.add_argument('--location', help='The path where the udev rules files will be copied', default='/etc/udev/rules.d/')
+        udevrules_parser.set_defaults(func=install_udev_rules_handler)
+
+
     if any(arg == '--stdin' for arg in cli_args):
         blank_count = 0
         while True:
@@ -176,6 +186,17 @@ def process_commands(cli_args):
     # List all available hardware wallet devices
     if command == 'enumerate':
         return args.func(args)
+
+    # Install the devices udev rules for Linux
+    if command == 'installudevrules':
+        try:
+            result = args.func(args)
+        except Exception as e:
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            result = {'error': str(e), 'code': UNKNOWN_ERROR}
+        return result
 
     # Auto detect if we are using fingerprint or type to identify device
     if args.fingerprint or (args.device_type and not args.device_path):

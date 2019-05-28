@@ -9,6 +9,8 @@ from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, xpub_t
 from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 from .descriptor import Descriptor
 from .devices import __all__ as all_devs
+from .udevinstaller import UDevInstaller
+
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
@@ -190,3 +192,6 @@ def prompt_pin(client):
 
 def send_pin(client, pin):
     return client.send_pin(pin)
+
+def install_udev_rules(source, location):
+    return UDevInstaller.install(source, location);
