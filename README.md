@@ -77,9 +77,9 @@ Please also see [docs](docs/) for additional information about each device.
 | P2PKH Inputs | Yes | Yes | ? | Yes | Yes | Yes |
 | P2SH-P2WPKH Inputs | Yes | Yes | ? | Yes | Yes | Yes |
 | P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | ? | Yes | Yes | N/A |
-| P2SH-P2WSH Multisig Inputs | Yes | No | ? | Yes | No | N/A |
-| P2WSH Multisig Inputs | Yes | No | ? | Yes | Yes | N/A |
+| P2SH Multisig Inputs | Yes | Yes | ? | Yes | Yes | Yes |
+| P2SH-P2WSH Multisig Inputs | Yes | No | ? | Yes | No | Yes |
+| P2WSH Multisig Inputs | Yes | No | ? | Yes | Yes | Yes |
 | Bare Multisig Inputs | Yes | N/A | ? | Yes | N/A | N/A |
 | Aribtrary scriptPubKey Inputs | Yes | N/A | ? | Yes | N/A | N/A |
 | Aribtrary redeemScript Inputs | Yes | N/A | ? | Yes | N/A | N/A |
