@@ -18,7 +18,12 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Wait for simulator to be up
     while True:
         enum_res = process_commands(['enumerate'])
-        if len(enum_res) > 0 and 'error' not in enum_res[0]:
+        found = False
+        for dev in enum_res:
+            if dev['type'] == 'coldcard' and 'error' not in dev:
+                found = True
+                break
+        if found:
             break
         time.sleep(0.5)
     # Cleanup

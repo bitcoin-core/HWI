@@ -350,9 +350,8 @@ def enumerate(password=''):
                 client = LedgerClient(path, password)
                 master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                 d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-            except HWWError as e:
-                d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
-                d_data['code'] = e.get_code()
+                d_data['needs_pin_sent'] = False
+                d_data['needs_passphrase_sent'] = False
             except Exception as e:
                 d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
                 d_data['code'] = UNKNOWN_ERROR

@@ -180,11 +180,19 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ['sendpin', '1234'])
         self.assertEqual(result['error'], 'This device does not need a PIN')
         self.assertEqual(result['code'], -11)
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_pin_sent'])
 
         # Set a PIN
         device.wipe(self.client)
         load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
         self.client.call(messages.ClearSession())
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertTrue(dev['needs_pin_sent'])
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
@@ -212,6 +220,11 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ['sendpin', pin])
         self.assertTrue(result['success'])
 
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_pin_sent'])
+
         # Sending PIN after unlock
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertEqual(result['error'], 'The PIN has already been sent to this device')
@@ -219,6 +232,50 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ['sendpin', '1234'])
         self.assertEqual(result['error'], 'The PIN has already been sent to this device')
         self.assertEqual(result['code'], -11)
+
+    def test_passphrase(self):
+        # There's no passphrase
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertEquals(dev['fingerprint'], '95d8f670')
+        # Setting a passphrase won't change the fingerprint
+        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertEquals(dev['fingerprint'], '95d8f670')
+
+        # Set a passphrase
+        device.wipe(self.client)
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=True, label='test')
+        self.client.call(messages.ClearSession())
+
+        # A passphrase will need to be sent
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertTrue(dev['needs_passphrase_sent'])
+        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                fpr = dev['fingerprint']
+        # A different passphrase would not change the fingerprint
+        result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertEqual(dev['fingerprint'], fpr)
+
+        # Clearing the session and starting a new one with a new passphrase should change the passphrase
+        self.client.call(messages.Initialize())
+        result = self.do_command(self.dev_args + ['-p', 'pass3', 'enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertNotEqual(dev['fingerprint'], fpr)
 
 def trezor_test_suite(emulator, rpc, userpass, interface):
     # Redirect stderr to /dev/null as it's super spammy
