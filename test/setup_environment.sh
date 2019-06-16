@@ -9,12 +9,12 @@ cd work
 
 # Clone trezor-mcu if it doesn't exist, or update it if it does
 trezor_setup_needed=false
-if [ ! -d "trezor-mcu" ]; then
-    git clone --recursive https://github.com/trezor/trezor-mcu.git
-    cd trezor-mcu
+if [ ! -d "trezor-firmware" ]; then
+    git clone --recursive https://github.com/trezor/trezor-firmware.git
+    cd trezor-firmware
     trezor_setup_needed=true
 else
-    cd trezor-mcu
+    cd trezor-firmware
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -31,8 +31,9 @@ else
     fi
 fi
 
-# Build emulator. This is pretty fast, so rebuilding every time is ok
+# Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
 # But there should be some caching that makes this faster
+cd legacy
 export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
 if [ "$trezor_setup_needed" == true ] ; then
     script/setup
@@ -42,6 +43,17 @@ pipenv run script/cibuild
 # Delete any emulator.img file
 find . -name "emulator.img" -exec rm {} \;
 cd ..
+
+# Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
+# But there should be some caching that makes this faster
+cd core
+if [ "$trezor_setup_needed" == true ] ; then
+    make vendor
+fi
+make build_unix
+# Delete any emulator.img file
+rm /var/tmp/trezor.flash
+cd ../..
 
 # Clone coldcard firmware if it doesn't exist, or update it if it does
 coldcard_setup_needed=false

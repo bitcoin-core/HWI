@@ -52,11 +52,12 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password = '', emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
         self.type = type
+        self.full_type = full_type
         self.path = path
         self.fingerprint = fingerprint
         self.master_xpub = master_xpub
@@ -71,12 +72,12 @@ class DeviceTestCase(unittest.TestCase):
         self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, path, fingerprint, master_xpub, password = '', interface='library', emulator=None):
+    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password = '', interface='library', emulator=None):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, path, fingerprint, master_xpub, password, emulator, interface, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, name))
         return suite
 
     def do_command(self, args):
@@ -105,10 +106,10 @@ class DeviceTestCase(unittest.TestCase):
         return []
 
     def __str__(self):
-        return '{}: {}'.format(self.type, super().__str__())
+        return '{}: {}'.format(self.full_type, super().__str__())
 
     def __repr__(self):
-        return '{}: {}'.format(self.type, super().__repr__())
+        return '{}: {}'.format(self.full_type, super().__repr__())
 
 class TestDeviceConnect(DeviceTestCase):
     def setUp(self):
@@ -158,9 +159,9 @@ class TestDeviceConnect(DeviceTestCase):
 class TestGetKeypool(DeviceTestCase):
     def setUp(self):
         self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
-        if '{}_test'.format(self.type) not in self.rpc.listwallets():
-            self.rpc.createwallet('{}_test'.format(self.type), True)
-        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.type))
+        if '{}_test'.format(self.full_type) not in self.rpc.listwallets():
+            self.rpc.createwallet('{}_test'.format(self.full_type), True)
+        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.full_type))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
@@ -265,9 +266,9 @@ class TestGetKeypool(DeviceTestCase):
 class TestSignTx(DeviceTestCase):
     def setUp(self):
         self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
-        if '{}_test'.format(self.type) not in self.rpc.listwallets():
-            self.rpc.createwallet('{}_test'.format(self.type), True)
-        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.type))
+        if '{}_test'.format(self.full_type) not in self.rpc.listwallets():
+            self.rpc.createwallet('{}_test'.format(self.full_type), True)
+        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.full_type))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
@@ -409,13 +410,13 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        supports_mixed = {'coldcard', 'trezor', 'digitalbitbox', 'keepkey'}
-        supports_multisig = {'ledger', 'trezor', 'digitalbitbox', 'keepkey'}
-        if self.type not in supports_mixed:
-            self._test_signtx("legacy", self.type in supports_multisig)
-            self._test_signtx("segwit", self.type in supports_multisig)
+        supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey'}
+        supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey'}
+        if self.full_type not in supports_mixed:
+            self._test_signtx("legacy", self.full_type in supports_multisig)
+            self._test_signtx("segwit", self.full_type in supports_multisig)
         else:
-            self._test_signtx("all", self.type in supports_multisig)
+            self._test_signtx("all", self.full_type in supports_multisig)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):

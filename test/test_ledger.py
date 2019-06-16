@@ -73,12 +73,12 @@ def ledger_test_suite(rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, 'ledger', 'ledger', path, fingerprint, master_xpub, interface=interface))
     return suite
 
 if __name__ == '__main__':
