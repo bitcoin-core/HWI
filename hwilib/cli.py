@@ -4,6 +4,7 @@ from .commands import backup_device, displayaddress, enumerate, find_device, \
     get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
     signmessage, signtx, wipe_device, install_udev_rules
 from .errors import (
+    handle_errors,
     HWWError,
     NO_DEVICE_PATH,
     DEVICE_CONN_ERROR,
@@ -174,6 +175,7 @@ def process_commands(cli_args):
     device_type = args.device_type
     password = args.password
     command = args.command
+    result = {}
 
     # Setup debug logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
@@ -189,13 +191,8 @@ def process_commands(cli_args):
 
     # Install the devices udev rules for Linux
     if command == 'installudevrules':
-        try:
+        with handle_errors(msg="installudevrules failed:", result=result):
             result = args.func(args)
-        except Exception as e:
-            if args.debug:
-                import traceback
-                traceback.print_exc()
-            result = {'error': str(e), 'code': UNKNOWN_ERROR}
         return result
 
     # Auto detect if we are using fingerprint or type to identify device
@@ -204,38 +201,21 @@ def process_commands(cli_args):
         if not client:
             return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
-        try:
+        with handle_errors(result=result, code=DEVICE_CONN_ERROR):
             client = get_client(device_type, device_path, password)
-        except HWWError as e:
-            return {'error': e.get_msg(), 'code': e.get_code()}
-        except Exception as e:
-            return {'error':str(e),'code':DEVICE_CONN_ERROR}
+        if 'error' in result:
+            return result
     else:
         return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code':NO_DEVICE_PATH}
 
     client.is_testnet = args.testnet
 
     # Do the commands
-    try:
+    with handle_errors(result=result, debug=args.debug):
         result = args.func(args, client)
-    except HWWError as e:
-        result = {'error': e.get_msg(), 'code': e.get_code()}
-    except Exception as e:
-        if args.debug:
-            import traceback
-            traceback.print_exc()
-        result = {'error': str(e), 'code': UNKNOWN_ERROR}
 
-    # Close the device
-    try:
+    with handle_errors(result=result, debug=args.debug):
         client.close()
-    except HWWError as e:
-        result = {'error': e.get_msg(), 'code': e.get_code()}
-    except Exception as e:
-        if args.debug:
-            import traceback
-            traceback.print_exc()
-        result = {'error': str(e), 'code': UNKNOWN_ERROR}
 
     return result
 
