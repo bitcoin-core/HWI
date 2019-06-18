@@ -1,6 +1,6 @@
 # KeepKey interaction script
 
-from ..errors import HWWError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import DeviceNotReadyError, common_err_msgs, handle_errors
 from .trezorlib.transport import enumerate_devices
 from .trezor import TrezorClient
 from ..base58 import get_xpub_fingerprint_hex
