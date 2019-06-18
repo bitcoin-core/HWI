@@ -1,6 +1,6 @@
 # KeepKey interaction script
 
-from ..errors import HWWError, UNKNOWN_ERROR
+from ..errors import HWWError, UNKNOWN_ERROR, common_err_msgs, handle_errors
 from .trezorlib.transport import enumerate_devices
 from .trezor import TrezorClient
 from ..base58 import get_xpub_fingerprint_hex
@@ -21,7 +21,8 @@ def enumerate(password=''):
         d_data['path'] = dev.get_path()
 
         client = None
-        try:
+
+        with handle_errors(common_err_msgs["enumerate"], d_data):
             client = KeepkeyClient(d_data['path'], password)
             client.client.init_device()
             if not 'keepkey' in client.client.features.vendor:
@@ -38,12 +39,6 @@ def enumerate(password=''):
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'
-        except HWWError as e:
-            d_data['error'] = "Could not open client or get fingerprint information: " + e.get_msg()
-            d_data['code'] = e.get_code()
-        except Exception as e:
-            d_data['error'] = "Could not open client or get fingerprint information: " + str(e)
-            d_data['code'] = UNKNOWN_ERROR
 
         if client:
             client.close()
