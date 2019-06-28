@@ -64,9 +64,9 @@ def trezor_exception(f):
             return f(*args, **kwargs)
         except ValueError as e:
             raise BadArgumentError(str(e))
-        except Cancelled as e:
+        except Cancelled:
             raise ActionCanceledError('{} canceled'.format(f.__name__))
-        except USBErrorNoDevice as e:
+        except USBErrorNoDevice:
             raise DeviceConnectionError('Device disconnected')
     return func
 
@@ -343,9 +343,6 @@ class TrezorClient(HardwareWalletClient):
 
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
-        passphrase_enabled = False
-        if self.password:
-            passphrase_enabled = True
         device.reset(self.client, passphrase_protection=bool(self.password))
         return {'success': True}
 
@@ -364,7 +361,6 @@ class TrezorClient(HardwareWalletClient):
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
 
-        passphrase_enabled = False
         device.recover(self.client, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
         return {'success': True}
 
