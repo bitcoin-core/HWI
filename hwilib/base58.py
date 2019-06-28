@@ -28,11 +28,7 @@ def encode(b):
     res = ''.join(res[::-1])
 
     # Encode leading zeros as base58 zeros
-    import sys
-    czero = b'\x00'
-    if sys.version > '3':
-        # In Python3 indexing a bytes returns numbers, not characters.
-        czero = 0
+    czero = 0
     pad = 0
     for c in b:
         if c == czero:
