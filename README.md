@@ -81,8 +81,8 @@ Please also see [docs](docs/) for additional information about each device.
 | P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | No | Yes |
 | P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
 | Bare Multisig Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Aribtrary scriptPubKey Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Aribtrary redeemScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
+| Arbitrary scriptPubKey Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
+| Arbitrary redeemScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
 | Arbitrary witnessScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | Yes |
 | Mixed Segwit and Non-Segwit Inputs | N/A | Yes | N/A | Yes | Yes | Yes |
