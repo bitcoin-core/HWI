@@ -185,6 +185,11 @@ class TrezorClient:
         if not isinstance(resp, messages.Features):
             raise exceptions.TrezorException("Unexpected initial response")
         else:
+            # If this is a Trezor One or Keepkey, do Initialize
+            if resp.model == '1' or resp.model == 'K1-14AM':
+                resp = self.call_raw(messages.Initialize())
+                if not isinstance(resp, messages.Features):
+                    raise exceptions.TrezorException("Unexpected initial response")
             self.features = resp
         if self.features.vendor not in VENDORS:
             raise RuntimeError("Unsupported device")
