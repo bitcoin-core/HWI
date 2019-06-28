@@ -4,6 +4,7 @@ import argparse
 import sys
 import unittest
 
+from test_base58 import TestBase58
 from test_bech32 import TestSegwitAddress
 from test_coldcard import coldcard_test_suite
 from test_descriptor import TestDescriptor
@@ -60,6 +61,7 @@ suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
+suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
 if sys.platform.startswith("linux"):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
 
