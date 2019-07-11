@@ -13,7 +13,7 @@ from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestG
 from hwilib.cli import process_commands
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
 
-def digitalbitbox_test_suite(rpc, userpass, simulator, interface):
+def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     # Start the Digital bitbox simulator
     simulator_proc = subprocess.Popen(['./' + os.path.basename(simulator), '../../tests/sd_files/'], cwd=os.path.dirname(simulator), stderr=subprocess.DEVNULL)
     # Wait for simulator to be up
@@ -144,5 +144,5 @@ if __name__ == '__main__':
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = digitalbitbox_test_suite(rpc, userpass, args.simulator, args.interface)
+    suite = digitalbitbox_test_suite(args.simulator, rpc, userpass, args.interface)
     unittest.TextTestRunner(verbosity=2).run(suite)
