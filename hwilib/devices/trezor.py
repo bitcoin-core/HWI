@@ -10,7 +10,7 @@ from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_N
 from .trezorlib import protobuf, tools, btc, device
 from .trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
-from ..serializations import ser_uint256, uint256_from_str
+from ..serializations import CTxOut, ser_uint256, uint256_from_str
 from .. import bech32
 from usb1 import USBErrorNoDevice
 from types import MethodType
@@ -243,7 +243,7 @@ class TrezorClient(HardwareWalletClient):
 
             # prepare outputs
             outputs = []
-            for out in tx.tx.vout:
+            for i, out in py_enumerate(tx.tx.vout):
                 txoutput = proto.TxOutputType()
                 txoutput.amount = out.nValue
                 txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
@@ -257,6 +257,26 @@ class TrezorClient(HardwareWalletClient):
                         txoutput.address = bech32.encode(bech32_hrp, ver, prog)
                     else:
                         raise BadArgumentError("Output is not an address")
+
+                # Add the derivation path for change, but only if there is exactly one derivation path
+                psbt_out = tx.outputs[i]
+                if len(psbt_out.hd_keypaths) == 1:
+                    _, keypath = next(iter(psbt_out.hd_keypaths.items()))
+                    if keypath[0] == master_fp:
+                        wit, ver, prog = out.is_witness()
+                        if out.is_p2pkh():
+                            txoutput.address_n = keypath[1:]
+                            txoutput.address = None
+                        elif wit:
+                            txoutput.script_type = proto.OutputScriptType.PAYTOWITNESS
+                            txoutput.address_n = keypath[1:]
+                            txoutput.address = None
+                        elif out.is_p2sh() and psbt_out.redeem_script:
+                            wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
+                            if wit and len(prog) == 20:
+                                txoutput.script_type = proto.OutputScriptType.PAYTOP2SHWITNESS
+                                txoutput.address_n = keypath[1:]
+                                txoutput.address = None
 
                 # append to outputs
                 outputs.append(txoutput)
