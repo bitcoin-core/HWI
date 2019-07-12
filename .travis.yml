@@ -51,6 +51,8 @@ install:
     - poetry install
 jobs:
     include:
+        -   name: Run non-device tests only
+            script: cd test; poetry run ./run_tests.py
         -   name: With process_commands interface
             script: cd test; poetry run ./run_tests.py --all --interface=library
         -   name: With command line interface
