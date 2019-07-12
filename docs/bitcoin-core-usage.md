@@ -43,11 +43,12 @@ $ ./hwi.py enumerate
 ```
 
 For this example, we will use the Coldcard. As we can see, the device path is `0001:0005:00`. The fingerprint of the master key is `8038ecd9`. Now that we have the device, we can issue commands to it. So now we want to get some keys and import them into Core.
-We will be fetching keys at the BIP 84 default.
+We will be fetching keys at the BIP 84 default. If `--path` and `--internal` are not
+specified, both receiving and change address descriptors are generated.
 
 ```
 $ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool 0 1000
-[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]
+[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}, {"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#nl2rc26w", "internal": true, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]
 ```
 
 We now create a new Bitcoin Core wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
@@ -58,30 +59,19 @@ $ ../bitcoin/src/bitcoin-cli createwallet "coldcard" true
   "name": "coldcard",
   "warning": ""
 }
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84'/0'/0']xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]'
+$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}, {"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#nl2rc26w", "internal": true, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]'
 
 [
+  {
+    "success": true
+  },
   {
     "success": true
   }
 ]
 ```
 
-Now we repeat the `getkeypool` and `importmulti` steps but set a `--internal` flag and use the change keypath (`m/44h/0h/0h/1`) in `getkeypool` to generate change keys.
-
-```
-$ ./hwi.py -f 8038ecd9 getkeypool --wpkh --keypool --internal 0 1000
-[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": {"start": 0, "end": 1000}}]
-$ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": "now", "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)", "keypool": true, "range": [0, 1000], "watchonly": true}]'
-
-[
-  {
-    "success": true
-  }
-]
-```
-
-The Bitcoin Core wallet is now setup to watch a two thousand keys (1000 normal, 1000 change) from your hardware wallet and you can use it to track your balances and create transactions. The transactions will need to be signed through HWI.
+The Bitcoin Core wallet is now setup to watch two thousand keys (1000 normal, 1000 change) from your hardware wallet and you can use it to track your balances and create transactions. The transactions will need to be signed through HWI.
 
 If the wallet was previously used, you will need to rescan the blockchain. You can either do this using the `rescanblockchain` command or editing the `timestamp` in the `importmulti` command.
 Here are some examples (`<blockheight>` refers to a block height before the wallet was created).
