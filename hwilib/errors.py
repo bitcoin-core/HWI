@@ -3,8 +3,8 @@
 from contextlib import contextmanager
 
 # Error codes
-NO_DEVICE_PATH = -1
-NO_DEVICE_TYPE = -2
+NO_DEVICE_TYPE = -1
+UNUSED_ERROR_CODE = -2
 DEVICE_CONN_ERROR = -3
 UNKNWON_DEVICE_TYPE = -4
 INVALID_TX = -5

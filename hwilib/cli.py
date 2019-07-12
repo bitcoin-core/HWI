@@ -6,7 +6,7 @@ from .commands import backup_device, displayaddress, enumerate, find_device, \
 from .errors import (
     handle_errors,
     HWWError,
-    NO_DEVICE_PATH,
+    NO_DEVICE_TYPE,
     DEVICE_CONN_ERROR,
     NO_PASSWORD,
     UNKNWON_DEVICE_TYPE,
@@ -206,7 +206,7 @@ def process_commands(cli_args):
         if 'error' in result:
             return result
     else:
-        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code':NO_DEVICE_PATH}
+        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code': NO_DEVICE_TYPE}
 
     client.is_testnet = args.testnet
 
