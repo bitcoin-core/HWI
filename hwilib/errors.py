@@ -4,7 +4,7 @@ from contextlib import contextmanager
 
 # Error codes
 NO_DEVICE_TYPE = -1
-UNUSED_ERROR_CODE = -2
+MISSING_ARGUMENTS = -2
 DEVICE_CONN_ERROR = -3
 UNKNWON_DEVICE_TYPE = -4
 INVALID_TX = -5
@@ -19,6 +19,7 @@ UNKNOWN_ERROR = -13
 ACTION_CANCELED = -14
 DEVICE_BUSY = -15
 NEED_TO_BE_ROOT = -16
+HELP_TEXT = -17
 
 # Exceptions
 class HWWError(Exception):
