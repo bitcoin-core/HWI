@@ -51,12 +51,14 @@ install:
     - poetry install
 jobs:
     include:
+        -   name: Run non-device tests only
+            script: cd test; poetry run ./run_tests.py
         -   name: With process_commands interface
-            script: cd test; poetry run ./run_tests.py --interface=library
+            script: cd test; poetry run ./run_tests.py --all --interface=library
         -   name: With command line interface
-            script: cd test; poetry run ./run_tests.py --interface=cli
+            script: cd test; poetry run ./run_tests.py --all --interface=cli
         -   name: With stdin interface
-            script: cd test; poetry run ./run_tests.py --interface=stdin
+            script: cd test; poetry run ./run_tests.py --all --interface=stdin
         -   name: With linux binary distribution command line interface
             services: docker
             before_script:
@@ -64,7 +66,7 @@ jobs:
             script:
                 - docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_wine.sh && contrib/build_dist.sh"
                 - sudo chown -R `whoami`:`whoami` dist/
-                - cd test; poetry run ./run_tests.py --interface=bindist
+                - cd test; poetry run ./run_tests.py --all --interface=bindist
                 - cd ..; sha256sum dist/*
         -   name: macOS binary distribution (no tests)
             os: osx
