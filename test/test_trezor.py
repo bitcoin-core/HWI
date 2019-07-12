@@ -31,9 +31,10 @@ def get_pin(self, code=None):
         return self.debuglink.read_pin_encoded()
 
 class TrezorEmulator(DeviceEmulator):
-    def __init__(self, path):
+    def __init__(self, path, model_t):
         self.emulator_path = path
         self.emulator_proc = None
+        self.model_t = model_t
 
     def start(self):
         # Start the Trezor emulator
@@ -67,6 +68,15 @@ class TrezorEmulator(DeviceEmulator):
     def stop(self):
         os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGINT)
         os.waitpid(self.emulator_proc.pid, 0)
+
+        # Clean up emulator image
+        if self.model_t:
+            emulator_img = "/var/tmp/trezor.flash"
+        else:
+            emulator_img = os.path.dirname(self.emulator_path) + "/emulator.img"
+
+        if os.path.isfile(emulator_img):
+            os.unlink(emulator_img)
 
 class TrezorTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
@@ -287,7 +297,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     path = 'udp:127.0.0.1:21324'
     fingerprint = '95d8f670'
     master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
-    dev_emulator = TrezorEmulator(emulator)
+    dev_emulator = TrezorEmulator(emulator, model_t)
 
     if model_t:
         full_type = 'trezor_t'

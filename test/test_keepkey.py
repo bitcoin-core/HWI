@@ -67,6 +67,11 @@ class KeepkeyEmulator(DeviceEmulator):
         self.emulator_proc.kill()
         self.emulator_proc.wait()
 
+        # Clean up emulator image
+        emulator_img = os.path.dirname(self.emulator_path) + "/emulator.img"
+        if os.path.isfile(emulator_img):
+            os.unlink(emulator_img)
+
 class KeepkeyTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
         super(KeepkeyTestCase, self).__init__(methodName)
