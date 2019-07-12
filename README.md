@@ -58,6 +58,10 @@ Once the device type and device path is known, issue commands to it like so:
 ./hwi.py -t <type> -d <path> <command> <command args>
 ```
 
+All output will be in JSON form and sent to `stdout`.
+Additional information or prompts will be sent to `stderr` and will not necessarily be in JSON.
+This additional information is for debugging purposes.
+
 ## Device Support
 
 The below table lists what devices and features are supported for each device.
