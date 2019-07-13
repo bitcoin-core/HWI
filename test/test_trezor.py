@@ -273,12 +273,21 @@ class TestTrezorManCommands(TrezorTestCase):
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 fpr = dev['fingerprint']
-        # A different passphrase would not change the fingerprint
-        result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
-        for dev in result:
-            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEqual(dev['fingerprint'], fpr)
+
+        if self.emulator.model_t:
+            # Trezor T: A different passphrase would not change the fingerprint
+            result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
+            for dev in result:
+                if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                    self.assertFalse(dev['needs_passphrase_sent'])
+                    self.assertEqual(dev['fingerprint'], fpr)
+        else:
+            # Trezor 1: A different passphrase will change the fingerprint
+            result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
+            for dev in result:
+                if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                    self.assertFalse(dev['needs_passphrase_sent'])
+                    self.assertNotEqual(dev['fingerprint'], fpr)
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
         self.client.call(messages.Initialize())

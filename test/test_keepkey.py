@@ -268,12 +268,12 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 fpr = dev['fingerprint']
-        # A different passphrase would not change the fingerprint
+        # A different passphrase will change the fingerprint
         result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEqual(dev['fingerprint'], fpr)
+                self.assertNotEqual(dev['fingerprint'], fpr)
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
         self.client.call(messages.ClearSession())
