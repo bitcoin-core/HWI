@@ -5,13 +5,15 @@ from .commands import backup_device, displayaddress, enumerate, find_device, \
     signmessage, signtx, wipe_device, install_udev_rules
 from .errors import (
     handle_errors,
-    HWWError,
-    NO_DEVICE_PATH,
     DEVICE_CONN_ERROR,
+    HELP_TEXT,
+    HWWError,
+    MISSING_ARGUMENTS,
+    NO_DEVICE_TYPE,
     NO_PASSWORD,
+    UNAVAILABLE_ACTION,
     UNKNWON_DEVICE_TYPE,
-    UNKNOWN_ERROR,
-    UNAVAILABLE_ACTION
+    UNKNOWN_ERROR
 )
 from . import __version__
 
@@ -67,8 +69,28 @@ def send_pin_handler(args, client):
 def install_udev_rules_handler(args):
     return install_udev_rules(args.source, args.location)
 
+class HWIArgumentParser(argparse.ArgumentParser):
+    def print_usage(self, file=None):
+        if file is None:
+            file = sys.stderr
+        super().print_usage(file)
+
+    def print_help(self, file=None):
+        if file is None:
+            file = sys.stderr
+        super().print_help(file)
+        error = {'error': 'Help text requested', 'code': HELP_TEXT}
+        print(json.dumps(error))
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        args = {'prog': self.prog, 'message': message}
+        error = {'error': '%(prog)s: error: %(message)s' % args, 'code': MISSING_ARGUMENTS}
+        print(json.dumps(error))
+        self.exit(2)
+
 def process_commands(cli_args):
-    parser = argparse.ArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
@@ -206,7 +228,7 @@ def process_commands(cli_args):
         if 'error' in result:
             return result
     else:
-        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code':NO_DEVICE_PATH}
+        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code': NO_DEVICE_TYPE}
 
     client.is_testnet = args.testnet
 
