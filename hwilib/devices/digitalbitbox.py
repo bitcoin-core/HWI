@@ -15,7 +15,7 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
 from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
@@ -600,6 +600,7 @@ def enumerate(password=''):
                 reply = send_encrypt('{"device" : "info"}', password, client.device)
                 if 'error' in reply and reply['error']['code'] == 101:
                     d_data['error'] = 'Not initialized'
+                    d_data['code'] = DEVICE_NOT_INITIALIZED
                 else:
                     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
