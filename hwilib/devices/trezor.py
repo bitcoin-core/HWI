@@ -1,7 +1,7 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DeviceNotReadyError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink, DebugUI
 from .trezorlib.exceptions import Cancelled
@@ -433,6 +433,7 @@ def enumerate(password=''):
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'
+                d_data['code'] = DEVICE_NOT_INITIALIZED
 
         if client:
             client.close()

@@ -20,6 +20,7 @@ ACTION_CANCELED = -14
 DEVICE_BUSY = -15
 NEED_TO_BE_ROOT = -16
 HELP_TEXT = -17
+DEVICE_NOT_INITIALIZED = -18
 
 # Exceptions
 class HWWError(Exception):

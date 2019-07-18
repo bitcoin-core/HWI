@@ -1,6 +1,6 @@
 # KeepKey interaction script
 
-from ..errors import DeviceNotReadyError, common_err_msgs, handle_errors
+from ..errors import DEVICE_NOT_INITIALIZED, DeviceNotReadyError, common_err_msgs, handle_errors
 from .trezorlib.transport import enumerate_devices
 from .trezor import TrezorClient
 from ..base58 import get_xpub_fingerprint_hex
@@ -39,6 +39,7 @@ def enumerate(password=''):
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'
+                d_data['code'] = DEVICE_NOT_INITIALIZED
 
         if client:
             client.close()
