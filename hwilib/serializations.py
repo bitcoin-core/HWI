@@ -236,7 +236,7 @@ class CTxIn(object):
 
     def __repr__(self):
         return "CTxIn(prevout=%s scriptSig=%s nSequence=%i)" \
-            % (repr(self.prevout), bytes_to_hex_str(self.scriptSig),
+            % (repr(self.prevout), self.scriptSig.hex(),
                self.nSequence)
 
 
@@ -287,7 +287,7 @@ class CScriptWitness(object):
 
     def __repr__(self):
         return "CScriptWitness(%s)" % \
-               (",".join([bytes_to_hex_str(x) for x in self.stack]))
+               (",".join([x.hex() for x in self.stack]))
 
     def is_null(self):
         if self.stack:
