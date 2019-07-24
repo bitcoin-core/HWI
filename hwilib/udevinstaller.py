@@ -50,7 +50,7 @@ class UDevInstaller(object):
 
     def copy_udev_rule_files(self, source, location):
         src_dir_path = source
-        for rules_file_name in listdir(src_dir_path):
+        for rules_file_name in listdir(_resource_path(src_dir_path)):
             rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
             copy(rules_file_path, location)
     
