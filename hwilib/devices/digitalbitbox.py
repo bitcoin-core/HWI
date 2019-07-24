@@ -590,6 +590,9 @@ def enumerate(password=''):
 
             path = d['path'].decode()
             d_data['type'] = 'digitalbitbox'
+            d_data['model'] = 'digitalbitbox_01'
+            if path == 'udp:127.0.0.1:35345':
+                d_data['model'] += '_simulator'
             d_data['path'] = path
 
             client = None

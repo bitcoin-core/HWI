@@ -418,6 +418,11 @@ def enumerate(password=''):
             client.client.init_device()
             if not 'trezor' in client.client.features.vendor:
                 continue
+
+            d_data['model'] = 'trezor_' + client.client.features.model.lower()
+            if d_data['path'] == 'udp:127.0.0.1:21324':
+                d_data['model'] += '_simulator'
+
             d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.pin_cached
             if client.client.features.model == '1':
                 d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Trezor One if it has passphrase protection enabled

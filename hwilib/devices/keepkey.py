@@ -18,6 +18,7 @@ def enumerate(password=''):
         d_data = {}
 
         d_data['type'] = 'keepkey'
+        d_data['model'] = 'keepkey'
         d_data['path'] = dev.get_path()
 
         client = None
@@ -27,6 +28,10 @@ def enumerate(password=''):
             client.client.init_device()
             if not 'keepkey' in client.client.features.vendor:
                 continue
+
+            if d_data['path'] == 'udp:127.0.0.1:21324':
+                d_data['model'] += '_simulator'
+
             d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.pin_cached
             d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Keepkey if it has passphrase protection enabled
             if d_data['needs_pin_sent']:
