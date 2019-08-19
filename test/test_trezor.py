@@ -321,8 +321,11 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     if not model_t:
+        suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_1_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
         suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
+    else:
+        suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_t_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     return suite
 
 if __name__ == '__main__':

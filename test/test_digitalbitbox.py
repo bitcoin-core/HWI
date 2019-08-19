@@ -129,6 +129,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'digitalbitbox_01_simulator', full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
