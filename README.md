@@ -27,16 +27,8 @@ Once HWI's source has been downloaded with git clone, it and its dependencies ca
 poetry install
 ```
 
-Pip can also be used to install all of the dependencies (in virtualenv or system):
+Pip can also be used to install all of the dependencies (in virtualenv or system) required for operation and development. See `pyproject.toml` for all dependencies. Dependencies under `[tool.poetry.dependecies]` are user dependencies, and `[tool.poetry.dev-dependencies]` for development based dependencies.
 
-```
-pip3 install hidapi # HID API needed in general
-pip3 install ecdsa
-pip3 install pyaes
-pip3 install typing_extensions
-pip3 install mnemonic
-pip3 install libusb1
-```
 ## Install
 
 ```
