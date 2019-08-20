@@ -343,6 +343,7 @@ def enumerate(password=''):
 
             path = d['path'].decode()
             d_data['type'] = 'ledger'
+            d_data['model'] = 'ledger_nano_s'
             d_data['path'] = path
 
             client = None

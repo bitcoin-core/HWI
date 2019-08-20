@@ -13,6 +13,7 @@ from .devices import __all__ as all_devs
 
 # Get the client for the device
 def get_client(device_type, device_path, password=''):
+    device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
 
@@ -44,7 +45,7 @@ def enumerate(password=''):
 def find_device(device_path, password='', device_type=None, fingerprint=None):
     devices = enumerate(password)
     for d in devices:
-        if device_type is not None and d['type'] != device_type:
+        if device_type is not None and d['type'] != device_type and d['model'] != device_type:
             continue
         client = None
         try:

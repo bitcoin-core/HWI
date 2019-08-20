@@ -224,6 +224,7 @@ def enumerate(password=''):
 
         path = d['path'].decode()
         d_data['type'] = 'coldcard'
+        d_data['model'] = 'coldcard'
         d_data['path'] = path
         d_data['needs_passphrase'] = False
 
@@ -245,6 +246,7 @@ def enumerate(password=''):
         d_data = {}
         d_data['fingerprint'] = client._get_fingerprint_hex()
         d_data['type'] = 'coldcard'
+        d_data['model'] = 'coldcard_simulator'
         d_data['path'] = CC_SIMULATOR_SOCK
         d_data['needs_pin_sent'] = False
         d_data['needs_passphrase_sent'] = False
