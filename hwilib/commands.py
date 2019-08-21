@@ -153,8 +153,10 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
     path_base = path.rsplit(path_suffix)[0]
 
     # Get the key at the base
-    base_key = client.get_pubkey_at_path(path_base)['xpub']
-    return Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
+    if client.xpub_cache.get(path_base) is None:
+        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
+
+    return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, sh_wpkh, wpkh)
 
 # wrapper to allow both internal and external entries when path not given
 def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):

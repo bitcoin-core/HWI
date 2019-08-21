@@ -9,6 +9,7 @@ class HardwareWalletClient(object):
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
         self.is_testnet = False
         self.fingerprint = None
+        self.xpub_cache = {}
 
     # Get the master BIP 44 pubkey
     def get_master_xpub(self):
