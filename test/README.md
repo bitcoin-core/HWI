@@ -2,7 +2,7 @@
 
 ## Running the tests
 
-This folder contains test cases for HWI. To run these tests, `hwilib` will need to be installed to your python system. You can install it by doing `pip install -e .[tests]` in the root directory.
+This folder contains test cases for HWI. To run these tests, `hwilib` will need to be installed to your python system. You can install it by doing `pip install -e .[tests]` in the root directory. In addition install `pip install hidapi python-bitcoinrpc`.
 
 - `test_bech32.py` tests the bech32 serialization.
 This is taken directly from the [python reference implementation](https://github.com/sipa/bech32/blob/master/ref/python/tests.py).
@@ -18,8 +18,8 @@ It also tests usage with `bitcoind`.
 It uses the [Coldcard simulator](https://github.com/Coldcard/firmware/tree/master/unix#coldcard-desktop-simulator).
 It also tests usage with `bitcoind`.
 
-`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`.
-if run in the `test/` directory, these will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+There is a script to build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`. On Ubuntu / Debian first install: `sudo apt-get install libsdl2-dev`. On all systems: `pip install pipenv`
+From the `test/` directory, run `setup_environment.sh`. These will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively. Do not run this command from inside a virtual env.
 
 `run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
