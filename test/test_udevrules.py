@@ -8,7 +8,7 @@ from hwilib.cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
     INSTALLATION_FOLDER = 'rules.d'
-    SOURCE_FOLDER = '../udev'
+    SOURCE_FOLDER = '../hwilib/udev'
 
     @classmethod
     def setUpClass(cls):

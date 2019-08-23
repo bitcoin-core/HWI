@@ -27,7 +27,7 @@ a = Analysis(['hwi.py'],
              noarchive=False)
 
 if platform.system() == 'Linux':
-    a.datas += Tree('udev', prefix='udev')
+    a.datas += Tree('hwilib/udev', prefix='hwilib/udev')
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)

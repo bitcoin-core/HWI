@@ -8,7 +8,7 @@ Python software can use the provided library (`hwilib`). Software in other langu
 
 ## Prerequisites
 
-Python 3 is required. The libraries and [udev rules](udev/README.md) for each device must also be installed. Some libraries will need to be installed
+Python 3 is required. The libraries and [udev rules](hwilib/udev/README.md) for each device must also be installed. Some libraries will need to be installed
 
 For Ubuntu/Debian:
 ```
