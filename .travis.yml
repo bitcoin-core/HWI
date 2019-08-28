@@ -59,6 +59,24 @@ jobs:
             script: cd test; poetry run ./run_tests.py --all --interface=cli
         -   name: With stdin interface
             script: cd test; poetry run ./run_tests.py --all --interface=stdin
+        -   name: With wheel command line interface
+            services: docker
+            before_script:
+                - docker build -t hwi-builder -f contrib/build.Dockerfile .
+            script:
+                - docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_dist.sh"
+                - sudo chown -R `whoami`:`whoami` dist/
+                - pip install dist/*.whl
+                - cd test; ./run_tests.py --all --interface=cli
+        -   name: With sdist command line interface
+            services: docker
+            before_script:
+                - docker build -t hwi-builder -f contrib/build.Dockerfile .
+            script:
+                - docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_dist.sh"
+                - sudo chown -R `whoami`:`whoami` dist/
+                - pip install dist/*.tar.gz
+                - cd test; ./run_tests.py --all --interface=cli
         -   name: With linux binary distribution command line interface
             services: docker
             before_script:

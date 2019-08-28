@@ -8,7 +8,7 @@ from hwilib.cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
     INSTALLATION_FOLDER = 'rules.d'
-    SOURCE_FOLDER = '../udev'
+    SOURCE_FOLDER = '../hwilib/udev'
 
     @classmethod
     def setUpClass(cls):
@@ -23,7 +23,7 @@ class TestUdevRulesInstaller(unittest.TestCase):
         removedirs(self.INSTALLATION_FOLDER)
 
     def test_rules_file_are_copied(self):
-        result = process_commands( ['installudevrules', '--source', self.SOURCE_FOLDER, '--location', self.INSTALLATION_FOLDER])
+        result = process_commands( ['installudevrules', '--location', self.INSTALLATION_FOLDER])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['error'], 'Need to be root.')

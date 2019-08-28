@@ -67,7 +67,7 @@ def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
 
 def install_udev_rules_handler(args):
-    return install_udev_rules(args.source, args.location)
+    return install_udev_rules('udev', args.location)
 
 class HWIArgumentParser(argparse.ArgumentParser):
     def print_usage(self, file=None):
@@ -170,7 +170,6 @@ def process_commands(cli_args):
 
     if sys.platform.startswith("linux"):
         udevrules_parser = subparsers.add_parser('installudevrules', help='Install and load the udev rule files for the hardware wallet devices')
-        udevrules_parser.add_argument('--source', help=argparse.SUPPRESS, default='udev')
         udevrules_parser.add_argument('--location', help='The path where the udev rules files will be copied', default='/etc/udev/rules.d/')
         udevrules_parser.set_defaults(func=install_udev_rules_handler)
 

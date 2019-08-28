@@ -51,10 +51,9 @@ class UDevInstaller(object):
     def copy_udev_rule_files(self, source, location):
         src_dir_path = source
         for rules_file_name in listdir(_resource_path(src_dir_path)):
-            rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
-            copy(rules_file_path, location)
+            if '.rules' in rules_file_name:
+                rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
+                copy(rules_file_path, location)
     
 def _resource_path(relative_path):
-    if hasattr(sys, '_MEIPASS'):
-        return path.join(sys._MEIPASS, relative_path)
-    return path.join(relative_path)
+    return path.join(path.dirname(__file__), relative_path)
