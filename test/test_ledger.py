@@ -9,7 +9,7 @@ import subprocess
 import time
 import unittest
 
-from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from authproxy import AuthServiceProxy, JSONRPCException
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands

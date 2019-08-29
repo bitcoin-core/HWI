@@ -10,7 +10,7 @@ import tempfile
 import time
 import unittest
 
-from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib.base58 import xpub_to_pub_hex
 from hwilib.cli import process_commands
 from hwilib.serializations import PSBT
