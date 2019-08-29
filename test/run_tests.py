@@ -29,8 +29,11 @@ coldcard_group = parser.add_mutually_exclusive_group()
 coldcard_group.add_argument('--no-coldcard', dest='coldcard', help='Do not run Coldcard test with simulator', action='store_false')
 coldcard_group.add_argument('--coldcard', dest='coldcard', help='Run Coldcard test with simulator', action='store_true')
 
-ledger_group = parser.add_mutually_exclusive_group()
-ledger_group.add_argument('--ledger', help='Run physical Ledger Nano S/X tests.', action='store_true')
+ledger_s_group = parser.add_mutually_exclusive_group()
+ledger_s_group.add_argument('--ledger-s', help='Run physical Ledger Nano S tests.', action='store_true')
+
+ledger_x_group = parser.add_mutually_exclusive_group()
+ledger_x_group.add_argument('--ledger-x', help='Run physical Ledger Nano X tests.', action='store_true')
 
 keepkey_group = parser.add_mutually_exclusive_group()
 keepkey_group.add_argument('--no-keepkey', dest='keepkey', help='Do not run Keepkey test with emulator', action='store_false')
@@ -68,7 +71,7 @@ if args.all:
     args.keepkey = True
     args.bitbox = True
 
-if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox:
+if args.trezor or args.trezor_t or args.coldcard or args.ledger_s or args.ledger_x or args.keepkey or args.bitbox:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -82,9 +85,10 @@ if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey 
         suite.addTest(trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True))
     if args.keepkey:
         suite.addTest(keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface))
-
-    if args.ledger:
-        suite.addTest(ledger_test_suite(rpc, userpass, args.interface))
+    if args.ledger_s:
+        suite.addTest(ledger_test_suite("ledger_nano_s", rpc, userpass, args.interface))
+    if args.ledger_x:
+        suite.addTest(ledger_test_suite("ledger_nano_x", rpc, userpass, args.interface))
 
 result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
 sys.exit(not result.wasSuccessful())

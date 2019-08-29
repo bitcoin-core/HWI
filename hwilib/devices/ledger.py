@@ -16,7 +16,10 @@ import logging
 import re
 
 LEDGER_VENDOR_ID = 0x2c97
-LEDGER_DEVICE_ID = 0x0001
+LEDGER_DEVICE_IDS = [
+    0x0001, # Ledger Nano S
+    0x0004, # Ledger Nano X
+]
 
 # minimal checking of string keypath
 def check_keypath(key_path):
@@ -63,7 +66,7 @@ def ledger_exception(f):
                 raise e
     return func
 
-# This class extends the HardwareWalletClient for Ledger Nano S specific things
+# This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
@@ -308,19 +311,19 @@ class LedgerClient(HardwareWalletClient):
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S does not support software setup')
+        raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
 
     # Wipe this device
     def wipe_device(self):
-        raise UnavailableActionError('The Ledger Nano S does not support wiping via software')
+        raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label=''):
-        raise UnavailableActionError('The Ledger Nano S does not support restoring via software')
+        raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S does not support creating a backup via software')
+        raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
 
     # Close the device
     def close(self):
@@ -328,34 +331,35 @@ class LedgerClient(HardwareWalletClient):
 
     # Prompt pin
     def prompt_pin(self):
-        raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
+        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
     # Send pin
     def send_pin(self, pin):
-        raise UnavailableActionError('The Ledger Nano S does not need a PIN sent from the host')
+        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
 def enumerate(password=''):
     results = []
-    for d in hid.enumerate(LEDGER_VENDOR_ID, LEDGER_DEVICE_ID):
-        if ('interface_number' in d and  d['interface_number'] == 0 \
-        or ('usage_page' in d and d['usage_page'] == 0xffa0)):
-            d_data = {}
+    for device_id in LEDGER_DEVICE_IDS:
+        for d in hid.enumerate(LEDGER_VENDOR_ID, device_id):
+            if ('interface_number' in d and  d['interface_number'] == 0 \
+            or ('usage_page' in d and d['usage_page'] == 0xffa0)):
+                d_data = {}
 
-            path = d['path'].decode()
-            d_data['type'] = 'ledger'
-            d_data['model'] = 'ledger_nano_s'
-            d_data['path'] = path
+                path = d['path'].decode()
+                d_data['type'] = 'ledger'
+                d_data['model'] = 'ledger_nano_x' if device_id == 0x0004 else 'ledger_nano_s'
+                d_data['path'] = path
 
-            client = None
-            with handle_errors(common_err_msgs["enumerate"], d_data):
-                client = LedgerClient(path, password)
-                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
-                d_data['needs_pin_sent'] = False
-                d_data['needs_passphrase_sent'] = False
+                client = None
+                with handle_errors(common_err_msgs["enumerate"], d_data):
+                    client = LedgerClient(path, password)
+                    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+                    d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                    d_data['needs_pin_sent'] = False
+                    d_data['needs_passphrase_sent'] = False
 
-            if client:
-                client.close()
+                if client:
+                    client.close()
 
-            results.append(d_data)
+                results.append(d_data)
     return results

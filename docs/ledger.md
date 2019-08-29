@@ -1,3 +1,7 @@
+# Ledger Nano X
+
+Currently identical to Nano S.
+
 # Ledger Nano S
 
 The Ledger Nano S is supported by HWI.
@@ -17,7 +21,7 @@ Currently implemented commands:
 
 ## `signtx` Caveats
 
-Due to device limitiations, not all kinds of transactions can be signed by a Ledger. 
+Due to device limitations, not all kinds of transactions can be signed by a Ledger Nano S or X.
 
 * Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs will be signed in this case.
 

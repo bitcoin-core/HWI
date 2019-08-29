@@ -1,4 +1,4 @@
-# Ledger Nano S Library
+# Ledger Nano S and Nano X Library
 
 This is a stripped down and modified version of the official [btchip-python](https://github.com/LedgerHQ/btchip-python) library.
 
