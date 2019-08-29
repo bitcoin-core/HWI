@@ -62,27 +62,27 @@ Please also see [docs](docs/) for additional information about each device.
 
 | Feature \ Device | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | Yes | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Yes | Yes | Yes | Yes | Yes |
-| xpub retrieval | Yes | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | Yes | Yes | Yes | Yes | Yes |
-| Device Setup | N/A | Yes | Yes | Yes | Yes | N/A |
-| Device Wipe | N/A | Yes | Yes | Yes | Yes | N/A |
-| Device Recovery | N/A | Yes | Yes | N/A | Yes | N/A |
-| Device Backup | N/A | N/A | N/A | Yes | N/A | Yes |
-| P2PKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | No | Yes |
-| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| Bare Multisig Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary scriptPubKey Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary redeemScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Arbitrary witnessScript Inputs | Yes | N/A | N/A | Yes | N/A | N/A |
-| Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | N/A | Yes | N/A | Yes | Yes | Yes |
-| Display on device screen | Yes | Yes | Yes | N/A | Yes | Yes |
+| Support Planned | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Implemented | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| xpub retrieval | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Message Signing | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Device Setup | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A |
+| Device Wipe | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A |
+| Device Recovery | N/A | :white_check_mark: | :white_check_mark: | N/A | :white_check_mark: | N/A |
+| Device Backup | N/A | N/A | N/A | :white_check_mark: | N/A | :white_check_mark: |
+| P2PKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH-P2WPKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2WPKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH-P2WSH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| P2WSH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Bare Multisig Inputs | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary scriptPubKey Inputs | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary redeemScript Inputs | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary witnessScript Inputs | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Non-wallet inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Mixed Segwit and Non-Segwit Inputs | N/A | :white_check_mark: | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Display on device screen | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A | :white_check_mark: | :white_check_mark: |
 
 ## Using with Bitcoin Core
 
