@@ -26,7 +26,6 @@ libusb1 = "^1.7"
 
 [tool.poetry.dev-dependencies]
 pyinstaller = "^3.4"
-python-bitcoinrpc = "^1.0"
 
 [tool.poetry.extras]
 windist = ["pywin32-ctypes"]

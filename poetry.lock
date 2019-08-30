@@ -105,14 +105,6 @@ pefile = ">=2017.8.1"
 setuptools = "*"
 
 [[package]]
-category = "dev"
-description = "Enhanced version of python-jsonrpc for use with Bitcoin"
-name = "python-bitcoinrpc"
-optional = false
-python-versions = "*"
-version = "1.0"
-
-[[package]]
 category = "main"
 description = ""
 name = "pywin32-ctypes"
@@ -158,7 +150,6 @@ pbkdf2 = ["ac6397369f128212c43064a2b4878038dab78dab41875364554aaf2a684e6979"]
 pefile = ["4c5b7e2de0c8cb6c504592167acf83115cbbde01fe4a507c16a1422850e86cd6"]
 pyaes = ["02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f"]
 pyinstaller = ["a5a6e04a66abfcf8761e89a2ebad937919c6be33a7b8963e1a961b55cb35986b"]
-python-bitcoinrpc = ["a6a6f35672635163bc491c25fe29520bdd063dedbeda3b37bf5be97aa038c6e7"]
 pywin32-ctypes = ["24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942", "9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"]
 typing = ["4027c5f6127a6267a435201981ba156de91ad0d1d98e9ddc2aa173453453492d", "57dcf675a99b74d64dacf6fba08fb17cf7e3d5fdff53d4a30ea2a5e7e52543d4", "a4c8473ce11a65999c8f59cb093e70686b6c84c98df58c1dae9b3b196089858a"]
 typing-extensions = ["07b2c978670896022a43c4b915df8958bec4a6b84add7f2c87b2b728bda3ba64", "f3f0e67e1d42de47b5c67c32c9b26641642e9170fe7e292991793705cd5fef7c", "fb2cd053238d33a8ec939190f30cfd736c00653a85a2919415cecf7dc3d9da71"]

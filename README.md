@@ -60,29 +60,29 @@ The below table lists what devices and features are supported for each device.
 
 Please also see [docs](docs/) for additional information about each device.
 
-| Feature \ Device | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| Implemented | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| xpub retrieval | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| Message Signing | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| Device Setup | N/A | &#9745; | &#9745; | &#9745; | &#9745; | N/A |
-| Device Wipe | N/A | &#9745; | &#9745; | &#9745; | &#9745; | N/A |
-| Device Recovery | N/A | &#9745; | &#9745; | N/A | &#9745; | N/A |
-| Device Backup | N/A | N/A | N/A | &#9745; | N/A | &#9745; |
-| P2PKH Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| P2SH-P2WPKH Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| P2WPKH Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| P2SH Multisig Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| P2SH-P2WSH Multisig Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#10007; | &#9745; |
-| P2WSH Multisig Inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| Bare Multisig Inputs | &#9745; | N/A | N/A | &#9745; | N/A | N/A |
-| Arbitrary scriptPubKey Inputs | &#9745; | N/A | N/A | &#9745; | N/A | N/A |
-| Arbitrary redeemScript Inputs | &#9745; | N/A | N/A | &#9745; | N/A | N/A |
-| Arbitrary witnessScript Inputs | &#9745; | N/A | N/A | &#9745; | N/A | N/A |
-| Non-wallet inputs | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; | &#9745; |
-| Mixed Segwit and Non-Segwit Inputs | N/A | &#9745; | N/A | &#9745; | &#9745; | &#9745; |
-| Display on device screen | &#9745; | &#9745; | &#9745; | N/A | &#9745; | &#9745; |
+| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Support Planned | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Implemented | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| xpub retrieval | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Message Signing | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Device Setup | N/A | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A |
+| Device Wipe | N/A | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A |
+| Device Recovery | N/A | N/A | :white_check_mark: | :white_check_mark: | N/A | :white_check_mark: | N/A |
+| Device Backup | N/A | N/A | N/A | N/A | :white_check_mark: | N/A | :white_check_mark: |
+| P2PKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH-P2WPKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2WPKH Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| P2SH-P2WSH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| P2WSH Multisig Inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Bare Multisig Inputs | :white_check_mark: | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary scriptPubKey Inputs | :white_check_mark: | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary redeemScript Inputs | :white_check_mark: | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Arbitrary witnessScript Inputs | :white_check_mark: | :white_check_mark: | N/A | N/A | :white_check_mark: | N/A | N/A |
+| Non-wallet inputs | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | :white_check_mark: | N/A | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Display on device screen | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A | :white_check_mark: | :white_check_mark: |
 
 ## Using with Bitcoin Core
 
