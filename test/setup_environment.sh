@@ -189,6 +189,6 @@ fi
 # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.
 if [ "$bitcoind_setup_needed" == true ] ; then
     ./autogen.sh
-    ./configure --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
+    ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
 fi
 make -j$(nproc) src/bitcoind
