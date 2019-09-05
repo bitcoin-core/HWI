@@ -27,6 +27,28 @@ version = "0.13.2"
 
 [[package]]
 category = "dev"
+description = "Discover and load entry points from installed packages."
+name = "entrypoints"
+optional = false
+python-versions = ">=2.7"
+version = "0.3"
+
+[[package]]
+category = "dev"
+description = "the modular source code checker: pep8, pyflakes and co"
+name = "flake8"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "3.7.8"
+
+[package.dependencies]
+entrypoints = ">=0.3.0,<0.4.0"
+mccabe = ">=0.6.0,<0.7.0"
+pycodestyle = ">=2.5.0,<2.6.0"
+pyflakes = ">=2.1.0,<2.2.0"
+
+[[package]]
+category = "dev"
 description = "Clean single-source support for Python 3 and 2"
 marker = "sys_platform == \"win32\""
 name = "future"
@@ -64,6 +86,14 @@ version = "1.11"
 
 [package.dependencies]
 altgraph = ">=0.15"
+
+[[package]]
+category = "dev"
+description = "McCabe checker, plugin for flake8"
+name = "mccabe"
+optional = false
+python-versions = "*"
+version = "0.6.1"
 
 [[package]]
 category = "main"
@@ -114,6 +144,14 @@ version = "2.5.0"
 
 [[package]]
 category = "dev"
+description = "passive checker of Python programs"
+name = "pyflakes"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.1.1"
+
+[[package]]
+category = "dev"
 description = "PyInstaller bundles a Python application and all its dependencies into a single package."
 name = "pyinstaller"
 optional = false
@@ -153,22 +191,26 @@ version = "3.7.4"
 typing = ">=3.7.4"
 
 [metadata]
-content-hash = "f26f6b3c5084a3c24872b4cb91d0974a07360b5d2bb7223decb93045183aafc8"
+content-hash = "3998e63fd8e073e6a02c873da2f78130ae57935af702be30b2d1a8efd20475f9"
 python-versions = ">=3.5.6"
 
 [metadata.hashes]
 altgraph = ["d6814989f242b2b43025cba7161fc1b8fb487a62cd49c49245d6fd01c18ac997", "ddf5320017147ba7b810198e0b6619bd7b5563aa034da388cea8546b877f9b0c"]
 autopep8 = ["4d8eec30cc81bc5617dbf1218201d770dc35629363547f17577c61683ccfb3ee"]
 ecdsa = ["20c17e527e75acad8f402290e158a6ac178b91b881f941fc6ea305bfdfb9657c", "5c034ffa23413ac923541ceb3ac14ec15a0d2530690413bff58c12b80e56d884"]
+entrypoints = ["589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19", "c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"]
+flake8 = ["19241c1cbc971b9962473e4438a2ca19749a7dd002dd1a946eaba171b4114548", "8e9dfa3cecb2400b3738a42c54c3043e821682b9c840b0448c0503f781130696"]
 future = ["67045236dcfd6816dc439556d009594abf643e5eb48992e36beac09c2ca659b8"]
 hidapi = ["1ac170f4d601c340f2cd52fd06e85c5e77bad7ceac811a7bb54b529f7dc28c24", "6424ad75da0021ce8c1bcd78056a04adada303eff3c561f8d132b85d0a914cb3", "8d3be666f464347022e2b47caf9132287885d9eacc7895314fc8fefcb4e42946", "92878bad7324dee619b7832fbfc60b5360d378aa7c5addbfef0a410d8fd342c7", "b4b1f6aff0192e9be153fe07c1b7576cb7a1ff52e78e3f76d867be95301a8e87", "bf03f06f586ce7d8aeb697a94b7dba12dc9271aae92d7a8d4486360ff711a660", "c76de162937326fcd57aa399f94939ce726242323e65c15c67e183da1f6c26f7", "d4ad1e46aef98783a9e6274d523b8b1e766acfc3d72828cd44a337564d984cfa", "d4b5787a04613503357606bb10e59c3e2c1114fa00ee328b838dd257f41cbd7b", "e0be1aa6566979266a8fc845ab0e18613f4918cf2c977fe67050f5dc7e2a9a97", "edfb16b16a298717cf05b8c8a9ad1828b6ff3de5e93048ceccd74e6ae4ff0922"]
 libusb1 = ["adf64a4f3f5c94643a1286f8153bcf4bc787c348b38934aacd7fe17fbeebc571"]
 macholib = ["ac02d29898cf66f27510d8f39e9112ae00590adb4a48ec57b25028d6962b1ae1", "c4180ffc6f909bf8db6cd81cff4b6f601d575568f4d5dee148c830e9851eb9db"]
+mccabe = ["ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42", "dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"]
 mnemonic = ["02a7306a792370f4a0c106c2cf1ce5a0c84b9dbd7e71c6792fdb9ad88a727f1d"]
 pbkdf2 = ["ac6397369f128212c43064a2b4878038dab78dab41875364554aaf2a684e6979"]
 pefile = ["a5d6e8305c6b210849b47a6174ddf9c452b2888340b8177874b862ba6c207645"]
 pyaes = ["02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f"]
 pycodestyle = ["95a2219d12372f05704562a14ec30bc76b05a5b297b21a5dfe3f6fac3491ae56", "e40a936c9a450ad81df37f549d676d127b1b66000a6c500caa2b085bc0ca976c"]
+pyflakes = ["17dbeb2e3f4d772725c777fabc446d5634d1038f234e77343108ce445ea69ce0", "d976835886f8c5b31d47970ed689944a0262b5f3afa00a5a7b4dc81e5449f8a2"]
 pyinstaller = ["ee7504022d1332a3324250faf2135ea56ac71fdb6309cff8cd235de26b1d0a96"]
 pywin32-ctypes = ["24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942", "9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"]
 typing = ["91dfe6f3f706ee8cc32d38edbbf304e9b7583fb37108fef38229617f8b3eba23", "c8cabb5ab8945cd2f54917be357d134db9cc1eb039e59d1606dc1e60cb1d9d36", "f38d83c5a7a7086543a0f649564d661859c5146a85775ab90c0d2f93ffaa9714"]

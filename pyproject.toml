@@ -29,6 +29,7 @@ pywin32-ctypes = {version = "^0.2.0",platform = "win32"}
 pefile = {version = "^2019.4",platform = "win32"}
 macholib = {version = "^1.11",platform = "darwin"}
 autopep8 = "^1.4"
+flake8 = "^3.7"
 
 [tool.poetry.scripts]
 hwi = 'hwilib.cli:main'
