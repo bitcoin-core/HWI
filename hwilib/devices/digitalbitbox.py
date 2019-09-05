@@ -334,7 +334,6 @@ class DigitalbitboxClient(HardwareWalletClient):
         sighash_tuples = []
         for txin, psbt_in, i_num in zip(blank_tx.vin, tx.inputs, range(len(blank_tx.vin))):
             sighash = b""
-            pubkeys = []
             if psbt_in.non_witness_utxo:
                 utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
 
@@ -579,7 +578,7 @@ def enumerate(password=''):
     # Try connecting to simulator
     try:
         dev = BitboxSimulator('127.0.0.1', 35345)
-        res = dev.send_recv(b'{"device" : "info"}')
+        dev.send_recv(b'{"device" : "info"}')
         devices.append({'path': b'udp:127.0.0.1:35345', 'interface_number': 0})
         dev.close()
     except:

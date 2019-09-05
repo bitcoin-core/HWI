@@ -22,7 +22,7 @@ def get_client(device_type, device_path, password=''):
         imported_dev = importlib.import_module('.devices.' + module, __package__)
         client_constructor = getattr(imported_dev, class_name + 'Client')
         client = client_constructor(device_path, password)
-    except ImportError as e:
+    except ImportError:
         if client:
             client.close()
         raise UnknownDeviceError('Unknown device type specified')
@@ -37,7 +37,7 @@ def enumerate(password=''):
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
             result.extend(imported_dev.enumerate(password))
-        except ImportError as e:
+        except ImportError:
             pass # Ignore ImportErrors, the user may not have all device dependencies installed
     return result
 

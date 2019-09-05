@@ -45,7 +45,7 @@ def start_bitcoind(bitcoind_path):
         try:
             rpc.getblockchaininfo()
             ready = True
-        except JSONRPCException as e:
+        except JSONRPCException:
             time.sleep(0.5)
             pass
 
@@ -451,7 +451,7 @@ class TestSignTx(DeviceTestCase):
             else:
                 self.assertNotIn('code', result)
                 self.assertNotIn('error', result)
-        except OSError as e:
+        except OSError:
             if self.interface == 'cli':
                 pass
 

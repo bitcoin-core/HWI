@@ -181,7 +181,6 @@ def process_commands(cli_args):
         udevrules_parser.set_defaults(func=install_udev_rules_handler)
 
     if any(arg == '--stdin' for arg in cli_args):
-        blank_count = 0
         while True:
             try:
                 line = input()

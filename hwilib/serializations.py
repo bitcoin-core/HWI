@@ -726,9 +726,6 @@ class PSBT(object):
             raise PSBTSerializationError("invalid magic")
 
         # Read loop
-        separators = 0
-        psbt_input = PartiallySignedInput()
-        in_globals = True
         while True:
             # read the key
             try:

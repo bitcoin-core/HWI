@@ -13,7 +13,7 @@ class UDevInstaller(object):
             udev_installer.trigger()
             udev_installer.reload_rules()
             udev_installer.add_user_plugdev_group()
-        except CalledProcessError as e:
+        except CalledProcessError:
             if geteuid() != 0:
                 return {'error': 'Need to be root.', 'code': NEED_TO_BE_ROOT}
             raise

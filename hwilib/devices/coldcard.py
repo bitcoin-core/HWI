@@ -26,7 +26,7 @@ def coldcard_exception(f):
             return f(*args, **kwargs)
         except CCProtoError as e:
             raise BadArgumentError(str(e))
-        except CCUserRefused as e:
+        except CCUserRefused:
             raise ActionCanceledError('{} canceled'.format(f.__name__))
         except CCBusyError as e:
             raise DeviceBusyError(str(e))
@@ -72,7 +72,6 @@ class ColdcardClient(HardwareWalletClient):
         fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
         # learn size (portable way)
-        offset = 0
         sz = fd.seek(0, 2)
         fd.seek(0)
 
