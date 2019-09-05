@@ -3,7 +3,7 @@
 import unittest
 import json
 import filecmp
-from os import makedirs, remove, removedirs, walk, path 
+from os import makedirs, remove, removedirs, walk, path
 from hwilib.cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
