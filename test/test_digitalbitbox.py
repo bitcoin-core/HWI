@@ -10,7 +10,6 @@ import unittest
 
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestGetDescriptors, TestSignTx, TestSignMessage
 
-from hwilib.cli import process_commands
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
 
 def digitalbitbox_test_suite(simulator, rpc, userpass, interface):

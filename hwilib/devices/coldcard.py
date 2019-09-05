@@ -1,15 +1,14 @@
 # Coldcard interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
 from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
-from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
+from ..base58 import xpub_main_2_test
 from hashlib import sha256
 
 import base64
-import json
 import hid
 import io
 import sys

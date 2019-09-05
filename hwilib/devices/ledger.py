@@ -1,17 +1,15 @@
 # Ledger interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .btchip.btchip import *
 from .btchip.btchipUtils import *
 import base64
 import hid
-import json
 import struct
 from .. import base58
 from ..base58 import get_xpub_fingerprint_hex
-from ..serializations import hash256, hash160, ser_uint256, PSBT, CTransaction, HexToBase64
-import binascii
+from ..serializations import hash256, hash160, CTransaction
 import logging
 import re
 

@@ -8,7 +8,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #
 
-from .serializations import hash256, hash160
+from .serializations import hash256
 import struct
 from binascii import hexlify, unhexlify
 b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'

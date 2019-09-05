@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 
 import unittest
-import json
 import filecmp
 from os import makedirs, remove, removedirs, walk, path
 from hwilib.cli import process_commands

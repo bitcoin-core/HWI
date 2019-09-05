@@ -1,8 +1,7 @@
-import sys
 from subprocess import check_call, CalledProcessError, DEVNULL
 from .errors import NEED_TO_BE_ROOT
 from shutil import copy
-from os import path, environ, listdir, getlogin, geteuid
+from os import path, listdir, getlogin, geteuid
 
 class UDevInstaller(object):
     @staticmethod

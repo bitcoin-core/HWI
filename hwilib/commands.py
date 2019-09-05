@@ -5,9 +5,9 @@
 import importlib
 import platform
 
-from .serializations import PSBT, Base64ToHex, HexToBase64, hash160
+from .serializations import PSBT
 from .base58 import get_xpub_fingerprint_as_id, get_xpub_fingerprint_hex, xpub_to_pub_hex
-from .errors import NoPasswordError, UnavailableActionError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
+from .errors import UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 from .descriptor import Descriptor
 from .devices import __all__ as all_devs
 

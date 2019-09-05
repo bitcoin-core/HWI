@@ -15,9 +15,9 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, HWWError, NoPasswordError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
-from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, ser_sig_compact, ser_compact_size
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, NoPasswordError, UnavailableActionError, common_err_msgs, handle_errors
+from ..serializations import CTransaction, hash256, ser_sig_der, ser_sig_compact, ser_compact_size
+from ..base58 import get_xpub_fingerprint, xpub_main_2_test, get_xpub_fingerprint_hex
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512

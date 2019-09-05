@@ -7,13 +7,9 @@ from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
     HELP_TEXT,
-    HWWError,
     MISSING_ARGUMENTS,
     NO_DEVICE_TYPE,
-    NO_PASSWORD,
-    UNAVAILABLE_ACTION,
-    UNKNWON_DEVICE_TYPE,
-    UNKNOWN_ERROR
+    UNAVAILABLE_ACTION
 )
 from . import __version__
 
