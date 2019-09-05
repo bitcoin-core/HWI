@@ -96,7 +96,7 @@ class ColdcardClient(HardwareWalletClient):
 
         # start the signing process
         ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
@@ -105,7 +105,7 @@ class ColdcardClient(HardwareWalletClient):
         while 1:
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_signed_txn(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
             break
 
@@ -126,14 +126,14 @@ class ColdcardClient(HardwareWalletClient):
         keypath = keypath.replace('H', '\'')
 
         ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         while 1:
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_signed_msg(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
 
             break
@@ -182,7 +182,7 @@ class ColdcardClient(HardwareWalletClient):
         self.device.check_mitm()
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
@@ -192,7 +192,7 @@ class ColdcardClient(HardwareWalletClient):
 
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_backup_file(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
             break
 

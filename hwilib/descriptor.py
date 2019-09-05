@@ -113,7 +113,7 @@ class Descriptor:
             if path_suffix == ")":
                 path_suffix = None
         else:
-            if origin_match == None:
+            if origin_match is None:
                 return None
 
         return cls(origin_fingerprint, origin_path, base_key, path_suffix, testnet, sh_wpkh, wpkh)
@@ -124,9 +124,9 @@ class Descriptor:
         origin = ''
         path_suffix = ''
 
-        if self.wpkh == True:
+        if self.wpkh:
             descriptor_open = 'wpkh('
-        elif self.sh_wpkh == True:
+        elif self.sh_wpkh:
             descriptor_open = 'sh(wpkh('
             descriptor_close = '))'
 

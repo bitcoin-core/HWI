@@ -84,7 +84,7 @@ def signmessage(client, message, path):
     return client.sign_message(message, path)
 
 def getkeypool_inner(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
-    if sh_wpkh == True and wpkh == True:
+    if sh_wpkh and wpkh:
         return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
 
     try:
@@ -116,15 +116,15 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
         path = "m/"
 
         # Purpose
-        if wpkh == True:
+        if wpkh:
             path += "84'/"
-        elif sh_wpkh == True:
+        elif sh_wpkh:
             path += "49'/"
         else:
             path += "44'/"
 
         # Coin type
-        if testnet == True:
+        if testnet:
             path += "1'/"
         else:
             path += "0'/"
@@ -133,7 +133,7 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
         path += str(account) + '\'/'
 
         # Receive or change
-        if internal == True:
+        if internal:
             path += "1/*"
         else:
             path += "0/*"
@@ -199,7 +199,7 @@ def getdescriptors(client, account=0):
 
 def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
     if path is not None:
-        if sh_wpkh == True and wpkh == True:
+        if sh_wpkh and wpkh:
             return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
         return client.display_address(path, sh_wpkh, wpkh)
     elif desc is not None:
@@ -207,7 +207,7 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
             client.fingerprint = get_xpub_fingerprint_hex(master_xpub)
 
-        if sh_wpkh == True or wpkh == True:
+        if sh_wpkh or wpkh:
             return {'error': ' `--wpkh` and `--sh_wpkh` can not be combined with --desc', 'code': BAD_ARGUMENT}
         descriptor = Descriptor.parse(desc, client.is_testnet)
         if descriptor is None:
