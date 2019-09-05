@@ -80,7 +80,8 @@ class ColdcardClient(HardwareWalletClient):
         chk = sha256()
         for pos in range(0, sz, MAX_BLK_LEN):
             here = fd.read(min(MAX_BLK_LEN, left))
-            if not here: break
+            if not here:
+                break
             left -= len(here)
             result = self.device.send_recv(CCProtocolPacker.upload(pos, sz, here))
             assert result == pos

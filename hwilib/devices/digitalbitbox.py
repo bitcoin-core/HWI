@@ -146,7 +146,8 @@ def sha512(x):
     return hashlib.sha512(x).digest()
 
 def double_hash(x):
-    if type(x) is not bytearray: x = x.encode('utf-8')
+    if type(x) is not bytearray:
+        x = x.encode('utf-8')
     return sha256(sha256(x))
 
 def derive_keys(x):
@@ -184,8 +185,8 @@ class BitboxSimulator():
 def send_frame(data, device):
     data = bytearray(data)
     data_len = len(data)
-    seq = 0;
-    idx = 0;
+    seq = 0
+    idx = 0
     write = []
     while idx < data_len:
         if idx == 0:
@@ -207,7 +208,7 @@ def read_frame(device):
     cmd = read[4]
     data_len = read[5] * 256 + read[6]
     data = read[7:]
-    idx = len(read) - 7;
+    idx = len(read) - 7
     while idx < data_len:
         # CONT response
         read = bytearray(device.read(usb_report_size))

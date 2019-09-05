@@ -242,5 +242,5 @@ def send_pin(client, pin):
 def install_udev_rules(source, location):
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller
-        return UDevInstaller.install(source, location);
+        return UDevInstaller.install(source, location)
     return {'error': 'udev rules are not needed on your platform', 'code': NOT_IMPLEMENTED}

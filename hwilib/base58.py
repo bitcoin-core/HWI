@@ -35,8 +35,10 @@ def encode(b):
         czero = 0
     pad = 0
     for c in b:
-        if c == czero: pad += 1
-        else: break
+        if c == czero:
+            pad += 1
+        else:
+            break
     return b58_digits[0] * pad + res
 
 def decode(s):
@@ -62,8 +64,10 @@ def decode(s):
     # Add padding back.
     pad = 0
     for c in s[:-1]:
-        if c == b58_digits[0]: pad += 1
-        else: break
+        if c == b58_digits[0]:
+            pad += 1
+        else:
+            break
     return b'\x00' * pad + res
 
 def get_xpub_fingerprint(s):

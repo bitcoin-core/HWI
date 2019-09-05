@@ -151,7 +151,7 @@ def ser_sig_der(r, s):
         if b == 0:
             si += 1
         else:
-            break;
+            break
     s = s[si:]
 
     # Make positive of neg
@@ -524,7 +524,7 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
 
                 sig = deser_string(f)
-                self.partial_sigs[pubkey] = sig;
+                self.partial_sigs[pubkey] = sig
 
             elif key_type == 3:
                 if self.sighash > 0:
@@ -622,11 +622,14 @@ class PartiallySignedInput:
 
     def is_sane(self):
         # Cannot have both witness and non-witness utxos
-        if self.witness_utxo and self.non_witness_utxo: return False
+        if self.witness_utxo and self.non_witness_utxo:
+            return False
 
         # if we have witness script or scriptwitness, must have witness utxo
-        if len(self.witness_script) != 0 and not self.witness_utxo: return False
-        if not self.final_script_witness.is_null() and not self.witness_utxo: return False
+        if len(self.witness_script) != 0 and not self.witness_utxo:
+            return False
+        if not self.final_script_witness.is_null() and not self.witness_utxo:
+            return False
 
         return True
 
@@ -830,5 +833,6 @@ class PSBT(object):
 
     def is_sane(self):
         for input in self.inputs:
-            if not input.is_sane(): return False
+            if not input.is_sane():
+                return False
         return True
