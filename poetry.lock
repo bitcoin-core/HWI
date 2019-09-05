@@ -105,10 +105,11 @@ pefile = ">=2017.8.1"
 setuptools = "*"
 
 [[package]]
-category = "main"
+category = "dev"
 description = ""
+marker = "sys_platform == \"win32\""
 name = "pywin32-ctypes"
-optional = true
+optional = false
 python-versions = "*"
 version = "0.2.0"
 
@@ -132,10 +133,10 @@ version = "3.7.2"
 typing = ">=3.6.2"
 
 [extras]
-windist = ["pywin32-ctypes"]
+windist = []
 
 [metadata]
-content-hash = "f668b6352b31d2aa7cf5b0cf19b77d04b92821df3383c9105f75699bbe42aa2e"
+content-hash = "a305af93ca84b88dcbcf5e06d0616ddace5d550571973f6c7d7f659aa105b415"
 python-versions = ">=3.5.6"
 
 [metadata.hashes]
