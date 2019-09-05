@@ -27,6 +27,7 @@ libusb1 = "^1.7"
 pyinstaller = "^3.4"
 pywin32-ctypes = {version = "^0.2.0",platform = "win32"}
 pefile = {version = "^2019.4",platform = "win32"}
+macholib = {version = "^1.11",platform = "darwin"}
 
 [tool.poetry.extras]
 windist = ["pywin32-ctypes"]

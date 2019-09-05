@@ -136,7 +136,7 @@ typing = ">=3.6.2"
 windist = []
 
 [metadata]
-content-hash = "a96e4721e3c04fb08c37ae361fa6e6b1ebe18b2544662dfe13acaf7b56e2fd27"
+content-hash = "c44ae05e0b8353eafafabac6069fef2b48585ca2d9570d553694c982e6bb270d"
 python-versions = ">=3.5.6"
 
 [metadata.hashes]
