@@ -227,14 +227,14 @@ def process_commands(cli_args):
     if args.fingerprint or (args.device_type and not args.device_path):
         client = find_device(args.device_path, args.password, args.device_type, args.fingerprint)
         if not client:
-            return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
+            return {'error': 'Could not find device with specified fingerprint', 'code': DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
         with handle_errors(result=result, code=DEVICE_CONN_ERROR):
             client = get_client(device_type, device_path, password)
         if 'error' in result:
             return result
     else:
-        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code': NO_DEVICE_TYPE}
+        return {'error': 'You must specify a device type or fingerprint for all commands except enumerate', 'code': NO_DEVICE_TYPE}
 
     client.is_testnet = args.testnet
 

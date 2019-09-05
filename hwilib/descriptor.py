@@ -37,7 +37,7 @@ def DescriptorChecksum(desc):
             clscount = 0
     if clscount > 0:
         c = PolyMod(c, cls)
-    for j in range (0, 8):
+    for j in range(0, 8):
         c = PolyMod(c, 0)
     c ^= 1
 
@@ -65,7 +65,7 @@ class Descriptor:
             self.m_path = "m" + origin_path + (path_suffix or "")
 
     @classmethod
-    def parse(cls, desc, testnet = False):
+    def parse(cls, desc, testnet=False):
         sh_wpkh = None
         wpkh = None
         origin_fingerprint = None
@@ -97,7 +97,7 @@ class Descriptor:
         if origin_match:
             origin = origin_match.group(1)
             match = re.search(r"^([0-9a-fA-F]{8})(\/.*)", origin)
-            if  match:
+            if match:
                 origin_fingerprint = match.group(1)
                 origin_path = match.group(2)
                 # Replace h with '

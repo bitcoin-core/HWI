@@ -33,7 +33,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     atexit.register(cleanup_simulator)
 
     # Set password and load from backup
-    send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)
+    send_encrypt(json.dumps({"seed": {"source": "backup", "filename": "test_backup.pdf", "key": "key"}}), '0000', dev)
 
     # params
     type = 'digitalbitbox'
@@ -97,7 +97,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             result = self.do_command(self.dev_args + ['wipe'])
             self.assertTrue(result['success'])
             send_plain(b'{"password":"0000"}', dev)
-            send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)
+            send_encrypt(json.dumps({"seed": {"source": "backup", "filename": "test_backup.pdf", "key": "key"}}), '0000', dev)
 
             # Make sure device is init, setup should fail
             result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])

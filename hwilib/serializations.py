@@ -181,7 +181,7 @@ def ser_sig_der(r, s):
 
 def ser_sig_compact(r, s, recid):
     rec = struct.unpack("B", recid)[0]
-    prefix = struct.pack("B", 27 + 4 +rec)
+    prefix = struct.pack("B", 27 + 4 + rec)
 
     sig = b""
     sig += prefix
@@ -191,7 +191,7 @@ def ser_sig_compact(r, s, recid):
 
 # Objects that map to bitcoind objects, which can be serialized/deserialized
 
-MSG_WITNESS_FLAG = 1<<30
+MSG_WITNESS_FLAG = 1 << 30
 
 class COutPoint(object):
     def __init__(self, hash=0, n=0xffffffff):
@@ -702,7 +702,7 @@ class PartiallySignedOutput:
 
 class PSBT(object):
 
-    def __init__(self, tx = None):
+    def __init__(self, tx=None):
         if tx:
             self.tx = tx
         else:

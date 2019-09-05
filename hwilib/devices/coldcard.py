@@ -54,9 +54,9 @@ class ColdcardClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
         if self.is_testnet:
-            return {'xpub':xpub_main_2_test(xpub)}
+            return {'xpub': xpub_main_2_test(xpub)}
         else:
-            return {'xpub':xpub}
+            return {'xpub': xpub}
 
     def _get_fingerprint_hex(self):
         # quick method to get fingerprint of wallet
@@ -114,7 +114,7 @@ class ColdcardClient(HardwareWalletClient):
         result_len, result_sha = done
 
         result = self.device.download_file(result_len, result_sha, file_number=1)
-        return {'psbt':base64.b64encode(result).decode()}
+        return {'psbt': base64.b64encode(result).decode()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with

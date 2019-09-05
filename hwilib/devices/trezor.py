@@ -127,9 +127,9 @@ class TrezorClient(HardwareWalletClient):
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
-            return {'xpub':xpub_main_2_test(output.xpub)}
+            return {'xpub': xpub_main_2_test(output.xpub)}
         else:
-            return {'xpub':output.xpub}
+            return {'xpub': output.xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
@@ -328,7 +328,7 @@ class TrezorClient(HardwareWalletClient):
 
             p += 1
 
-        return {'psbt':tx.serialize()}
+        return {'psbt': tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string

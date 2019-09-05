@@ -20,7 +20,7 @@ from ..serializations import CTransaction, PSBT, hash256, hash160, ser_sig_der, 
 from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
 
 applen = 225280 # flash size minus bootloader length
-chunksize = 8*512
+chunksize = 8 * 512
 usb_report_size = 64 # firmware > v2.0
 report_buf_size = 4096 # firmware v2.0.0
 boot_buf_size_send = 4098
@@ -146,13 +146,13 @@ def sha512(x):
     return hashlib.sha512(x).digest()
 
 def double_hash(x):
-    if type(x) is not bytearray: x=x.encode('utf-8')
+    if type(x) is not bytearray: x = x.encode('utf-8')
     return sha256(sha256(x))
 
 def derive_keys(x):
     h = double_hash(x)
     h = sha512(h)
-    return (h[:len(h)//2], h[len(h)//2:])
+    return (h[:len(h) // 2], h[len(h) // 2:])
 
 def to_string(x, enc):
     if isinstance(x, (bytes, bytearray)):
@@ -190,11 +190,11 @@ def send_frame(data, device):
     while idx < data_len:
         if idx == 0:
             # INIT frame
-            write = data[idx : idx + min(data_len, usb_report_size - 7)]
-            device.write(b'\0' + struct.pack(">IBH",HWW_CID, HWW_CMD, data_len & 0xFFFF) + write + b'\xEE' * (usb_report_size - 7 - len(write)))
+            write = data[idx: idx + min(data_len, usb_report_size - 7)]
+            device.write(b'\0' + struct.pack(">IBH", HWW_CID, HWW_CMD, data_len & 0xFFFF) + write + b'\xEE' * (usb_report_size - 7 - len(write)))
         else:
             # CONT frame
-            write = data[idx : idx + min(data_len, usb_report_size - 5)]
+            write = data[idx: idx + min(data_len, usb_report_size - 5)]
             device.write(b'\0' + struct.pack(">IB", HWW_CID, seq) + write + b'\xEE' * (usb_report_size - 5 - len(write)))
             seq += 1
         idx += len(write)
@@ -276,7 +276,7 @@ def send_encrypt(msg, password, device):
         if 'error' in reply:
             password = None
     except Exception as e:
-        reply = {'error':'Exception caught while sending encrypted message to DigitalBitbox ' + str(e)}
+        reply = {'error': 'Exception caught while sending encrypted message to DigitalBitbox ' + str(e)}
     return reply
 
 def stretch_backup_key(password):
@@ -314,9 +314,9 @@ class DigitalbitboxClient(HardwareWalletClient):
             raise DBBError(reply)
 
         if self.is_testnet:
-            return {'xpub':xpub_main_2_test(reply['xpub'])}
+            return {'xpub': xpub_main_2_test(reply['xpub'])}
         else:
-            return {'xpub':reply['xpub']}
+            return {'xpub': reply['xpub']}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format
@@ -427,7 +427,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Return early if nothing to do
         if len(sighash_tuples) == 0:
-            return {'psbt':tx.serialize()}
+            return {'psbt': tx.serialize()}
 
         # Sign the sighashes
         to_send = '{"sign":{"data":['
@@ -466,7 +466,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return {'psbt':tx.serialize()}
+        return {'psbt': tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -502,7 +502,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         compact_sig = ser_sig_compact(r, s, recid)
         logging.debug(binascii.hexlify(compact_sig))
 
-        return {"signature":base64.b64encode(compact_sig).decode('utf-8')}
+        return {"signature": base64.b64encode(compact_sig).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
@@ -584,7 +584,7 @@ def enumerate(password=''):
     except:
         pass
     for d in devices:
-        if ('interface_number' in d and  d['interface_number'] == 0 \
+        if ('interface_number' in d and d['interface_number'] == 0 \
                 or ('usage_page' in d and d['usage_page'] == 0xffff)):
             d_data = {}
 

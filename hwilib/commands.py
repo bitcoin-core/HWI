@@ -85,7 +85,7 @@ def signmessage(client, message, path):
 
 def getkeypool_inner(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
     if sh_wpkh == True and wpkh == True:
-        return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
+        return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
 
     try:
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
@@ -139,12 +139,12 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
             path += "0/*"
     else:
         if path[0] != "m":
-            return {'error':'Path must start with m/','code':BAD_ARGUMENT}
+            return {'error': 'Path must start with m/', 'code': BAD_ARGUMENT}
         if path[-1] != "*":
-            return {'error':'Path must end with /*','code':BAD_ARGUMENT}
+            return {'error': 'Path must end with /*', 'code': BAD_ARGUMENT}
 
     # Find the last hardened derivation:
-    path = path.replace('\'','h')
+    path = path.replace('\'', 'h')
     path_suffix = ''
     for component in path.split("/")[::-1]:
         if component[-1] == 'h' or component[-1] == 'm':
@@ -200,7 +200,7 @@ def getdescriptors(client, account=0):
 def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
     if path is not None:
         if sh_wpkh == True and wpkh == True:
-            return {'error':'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.','code':BAD_ARGUMENT}
+            return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
         return client.display_address(path, sh_wpkh, wpkh)
     elif desc is not None:
         if client.fingerprint is None:
@@ -208,17 +208,17 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
             client.fingerprint = get_xpub_fingerprint_hex(master_xpub)
 
         if sh_wpkh == True or wpkh == True:
-            return {'error':' `--wpkh` and `--sh_wpkh` can not be combined with --desc','code':BAD_ARGUMENT}
+            return {'error': ' `--wpkh` and `--sh_wpkh` can not be combined with --desc', 'code': BAD_ARGUMENT}
         descriptor = Descriptor.parse(desc, client.is_testnet)
         if descriptor is None:
-            return {'error':'Unable to parse descriptor: ' + desc,'code':BAD_ARGUMENT}
+            return {'error': 'Unable to parse descriptor: ' + desc, 'code': BAD_ARGUMENT}
         if descriptor.m_path is None:
-            return {'error':'Descriptor missing origin info: ' + desc,'code':BAD_ARGUMENT}
+            return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
         if descriptor.origin_fingerprint != client.fingerprint:
-            return {'error':'Descriptor fingerprint does not match device: ' + desc,'code':BAD_ARGUMENT}
+            return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
         xpub = client.get_pubkey_at_path(descriptor.m_path_base)['xpub']
         if descriptor.base_key != xpub and descriptor.base_key != xpub_to_pub_hex(xpub):
-            return {'error':'Key in descriptor does not match device: ' + desc,'code':BAD_ARGUMENT}
+            return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
         return client.display_address(descriptor.m_path, descriptor.sh_wpkh, descriptor.wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):

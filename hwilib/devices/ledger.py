@@ -28,7 +28,7 @@ def check_keypath(key_path):
         return False
     # strip hardening chars
     for index in parts[1:]:
-        index_int =  re.sub('[hH\']', '', index)
+        index_int = re.sub('[hH\']', '', index)
         if not index_int.isdigit():
             return False
         if int(index_int) > 0x80000000:
@@ -92,7 +92,7 @@ class LedgerClient(HardwareWalletClient):
         if path != "":
             parent_path = ""
             for ind in path.split("/")[:-1]:
-                parent_path += ind+"/"
+                parent_path += ind + "/"
             parent_path = parent_path[:-1]
 
             # Get parent key fingerprint
@@ -105,7 +105,7 @@ class LedgerClient(HardwareWalletClient):
             if childstr[-1] == "'" or childstr[-1] == "h" or childstr[-1] == "H":
                 childstr = childstr[:-1]
                 hard = 0x80000000
-            child = struct.pack(">I", int(childstr)+hard)
+            child = struct.pack(">I", int(childstr) + hard)
         # Special case for m
         else:
             child = bytearray.fromhex("00000000")
@@ -121,10 +121,10 @@ class LedgerClient(HardwareWalletClient):
             version = bytearray.fromhex("043587CF")
         else:
             version = bytearray.fromhex("0488B21E")
-        extkey = version+depth+fpr+child+chainCode+publicKey
+        extkey = version + depth + fpr + child + chainCode + publicKey
         checksum = hash256(extkey)[:4]
 
-        return {"xpub":base58.encode(extkey+checksum)}
+        return {"xpub": base58.encode(extkey + checksum)}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
@@ -137,7 +137,7 @@ class LedgerClient(HardwareWalletClient):
         # Master key fingerprint
         master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey('')["publicKey"]))[:4]
         # An entry per input, each with 0 to many keys to sign with
-        all_signature_attempts = [[]]*len(c_tx.vin)
+        all_signature_attempts = [[]] * len(c_tx.vin)
 
         # NOTE: We only support signing Segwit inputs, where we can skip over non-segwit
         # inputs, or non-segwit inputs, where *all* inputs are non-segwit. This is due
@@ -149,7 +149,7 @@ class LedgerClient(HardwareWalletClient):
         has_segwit = False
         has_legacy = False
 
-        script_codes = [[]]*len(c_tx.vin)
+        script_codes = [[]] * len(c_tx.vin)
 
         # Detect changepath, (p2sh-)p2(w)pkh only
         change_path = ''
@@ -160,10 +160,10 @@ class LedgerClient(HardwareWalletClient):
             for pubkey, path in tx.outputs[i_num].hd_keypaths.items():
                 if struct.pack("<I", path[0]) == master_fpr and len(path) > 2 and path[-2] == 1:
                     # For possible matches, check if pubkey matches possible template
-                    if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014")+hash160(pubkey)) in txout.scriptPubKey:
+                    if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014") + hash160(pubkey)) in txout.scriptPubKey:
                         change_path = ''
                         for index in path[1:]:
-                            change_path += str(index)+"/"
+                            change_path += str(index) + "/"
                         change_path = change_path[:-1]
 
 
@@ -176,7 +176,7 @@ class LedgerClient(HardwareWalletClient):
             seq_hex = ''.join('{:02x}'.format(x) for x in seq)
 
             if psbt_in.non_witness_utxo:
-                segwit_inputs.append({"value":txin.prevout.serialize()+struct.pack("<Q", psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue), "witness":True, "sequence":seq_hex})
+                segwit_inputs.append({"value": txin.prevout.serialize() + struct.pack("<Q", psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue), "witness": True, "sequence": seq_hex})
                 # We only need legacy inputs in the case where all inputs are legacy, we check
                 # later
                 ledger_prevtx = bitcoinTransaction(psbt_in.non_witness_utxo.serialize())
@@ -184,7 +184,7 @@ class LedgerClient(HardwareWalletClient):
                 legacy_inputs[-1]["sequence"] = seq_hex
                 has_legacy = True
             else:
-                segwit_inputs.append({"value":txin.prevout.serialize()+struct.pack("<Q", psbt_in.witness_utxo.nValue), "witness":True, "sequence":seq_hex})
+                segwit_inputs.append({"value": txin.prevout.serialize() + struct.pack("<Q", psbt_in.witness_utxo.nValue), "witness": True, "sequence": seq_hex})
                 has_segwit = True
 
             pubkeys = []
@@ -248,7 +248,7 @@ class LedgerClient(HardwareWalletClient):
             # Process them up front with all scriptcodes blank
             blank_script_code = bytearray()
             for i in range(len(segwit_inputs)):
-                self.app.startUntrustedTransaction(i==0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
+                self.app.startUntrustedTransaction(i == 0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
 
             # Number of unused fields for Nano S, only changepath and transaction in bytes req
             outputData = self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
@@ -273,7 +273,7 @@ class LedgerClient(HardwareWalletClient):
                     first_input = False
 
         # Send PSBT back
-        return {'psbt':tx.serialize()}
+        return {'psbt': tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -290,7 +290,7 @@ class LedgerClient(HardwareWalletClient):
 
         # Make signature into standard bitcoin format
         rLength = signature[3]
-        r = signature[4 : 4 + rLength]
+        r = signature[4: 4 + rLength]
         sLength = signature[4 + rLength + 1]
         s = signature[4 + rLength + 2:]
         if rLength == 33:
@@ -300,7 +300,7 @@ class LedgerClient(HardwareWalletClient):
 
         sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return {"signature":base64.b64encode(sig).decode('utf-8')}
+        return {"signature": base64.b64encode(sig).decode('utf-8')}
 
     @ledger_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
@@ -341,7 +341,7 @@ def enumerate(password=''):
     results = []
     for device_id in LEDGER_DEVICE_IDS:
         for d in hid.enumerate(LEDGER_VENDOR_ID, device_id):
-            if ('interface_number' in d and  d['interface_number'] == 0 \
+            if ('interface_number' in d and d['interface_number'] == 0 \
                     or ('usage_page' in d and d['usage_page'] == 0xffa0)):
                 d_data = {}
 

@@ -23,7 +23,7 @@ def encode(b):
     # Divide that integer into bas58
     res = []
     while n > 0:
-        n, r = divmod (n, 58)
+        n, r = divmod(n, 58)
         res.append(b58_digits[r])
     res = ''.join(res[::-1])
 
