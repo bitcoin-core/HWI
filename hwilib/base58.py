@@ -51,7 +51,7 @@ def decode(s):
     for c in s:
         n *= 58
         if c not in b58_digits:
-            raise InvalidBase58Error('Character %r is not a valid base58 character' % c)
+            raise ValueError('Character %r is not a valid base58 character' % c)
         digit = b58_digits.index(c)
         n += digit
 

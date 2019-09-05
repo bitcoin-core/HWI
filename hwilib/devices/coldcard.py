@@ -1,5 +1,6 @@
 # Coldcard interaction script
 
+from binascii import b2a_hex
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID

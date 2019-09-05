@@ -237,7 +237,7 @@ def send_plain(msg, device):
                 device.write('\0' + msg + '\0' * (hidBufSize - len(msg)))
                 r = bytearray()
                 while len(r) < hidBufSize:
-                    r += bytearray(self.dbb_hid.read(hidBufSize))
+                    r += bytearray(device.read(hidBufSize))
             else:
                 send_frame(msg, device)
                 r = read_frame(device)
