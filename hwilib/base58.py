@@ -8,11 +8,11 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #
 
+from .serializations import hash256, hash160
+import struct
+from binascii import hexlify, unhexlify
 b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
-from binascii import hexlify, unhexlify
-import struct
-from .serializations import hash256, hash160
 
 def encode(b):
     """Encode bytes to a base58-encoded string"""
