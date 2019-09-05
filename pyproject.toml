@@ -29,9 +29,6 @@ pywin32-ctypes = {version = "^0.2.0",platform = "win32"}
 pefile = {version = "^2019.4",platform = "win32"}
 macholib = {version = "^1.11",platform = "darwin"}
 
-[tool.poetry.extras]
-windist = ["pywin32-ctypes"]
-
 [tool.poetry.scripts]
 hwi = 'hwilib.cli:main'
 

@@ -133,11 +133,8 @@ version = "3.7.4"
 [package.dependencies]
 typing = ">=3.7.4"
 
-[extras]
-windist = []
-
 [metadata]
-content-hash = "c44ae05e0b8353eafafabac6069fef2b48585ca2d9570d553694c982e6bb270d"
+content-hash = "01d47703b3c72339de7a3ea7e0bb684111dd852e722da2cd09f7e41625f34d20"
 python-versions = ">=3.5.6"
 
 [metadata.hashes]
