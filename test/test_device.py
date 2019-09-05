@@ -356,8 +356,8 @@ class TestSignTx(DeviceTestCase):
 
         # Get origin info/key pair so wallet doesn't forget how to
         # sign with keys post-import
-        pubkeys = [sh_wpkh_info['desc'][8:-11],\
-                   wpkh_info['desc'][5:-10],\
+        pubkeys = [sh_wpkh_info['desc'][8:-11],
+                   wpkh_info['desc'][5:-10],
                    pkh_info['desc'][4:-10]]
 
         # Get the descriptors with their checksums

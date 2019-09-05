@@ -340,7 +340,7 @@ def enumerate(password=''):
     results = []
     for device_id in LEDGER_DEVICE_IDS:
         for d in hid.enumerate(LEDGER_VENDOR_ID, device_id):
-            if ('interface_number' in d and d['interface_number'] == 0 \
+            if ('interface_number' in d and d['interface_number'] == 0
                     or ('usage_page' in d and d['usage_page'] == 0xffa0)):
                 d_data = {}
 
