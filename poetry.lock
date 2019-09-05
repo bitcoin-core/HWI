@@ -77,7 +77,7 @@ description = "Python PE parsing module"
 name = "pefile"
 optional = false
 python-versions = "*"
-version = "2018.8.8"
+version = "2019.4.18"
 
 [package.dependencies]
 future = "*"
@@ -136,7 +136,7 @@ typing = ">=3.6.2"
 windist = []
 
 [metadata]
-content-hash = "a305af93ca84b88dcbcf5e06d0616ddace5d550571973f6c7d7f659aa105b415"
+content-hash = "a96e4721e3c04fb08c37ae361fa6e6b1ebe18b2544662dfe13acaf7b56e2fd27"
 python-versions = ">=3.5.6"
 
 [metadata.hashes]
@@ -148,7 +148,7 @@ libusb1 = ["9d4f66d2ed699986b06bc3082cd262101cb26af7a76a34bd15b7eb56cba37e0f"]
 macholib = ["ac02d29898cf66f27510d8f39e9112ae00590adb4a48ec57b25028d6962b1ae1", "c4180ffc6f909bf8db6cd81cff4b6f601d575568f4d5dee148c830e9851eb9db"]
 mnemonic = ["02a7306a792370f4a0c106c2cf1ce5a0c84b9dbd7e71c6792fdb9ad88a727f1d"]
 pbkdf2 = ["ac6397369f128212c43064a2b4878038dab78dab41875364554aaf2a684e6979"]
-pefile = ["4c5b7e2de0c8cb6c504592167acf83115cbbde01fe4a507c16a1422850e86cd6"]
+pefile = ["a5d6e8305c6b210849b47a6174ddf9c452b2888340b8177874b862ba6c207645"]
 pyaes = ["02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f"]
 pyinstaller = ["a5a6e04a66abfcf8761e89a2ebad937919c6be33a7b8963e1a961b55cb35986b"]
 pywin32-ctypes = ["24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942", "9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"]
