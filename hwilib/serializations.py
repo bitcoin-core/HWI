@@ -787,7 +787,7 @@ class PSBT(object):
             output = PartiallySignedOutput()
             output.deserialize(f)
             self.outputs.append(output)
-        
+
         if len(self.outputs) != len(self.tx.vout):
             raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
 

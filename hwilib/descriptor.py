@@ -98,10 +98,10 @@ class Descriptor:
             origin = origin_match.group(1)
             match = re.search(r"^([0-9a-fA-F]{8})(\/.*)", origin)
             if  match:
-              origin_fingerprint = match.group(1)
-              origin_path = match.group(2)
-              # Replace h with '
-              origin_path = origin_path.replace('h', '\'')
+                origin_fingerprint = match.group(1)
+                origin_path = match.group(2)
+                # Replace h with '
+                origin_path = origin_path.replace('h', '\'')
 
             base_key_and_path_match = re.search(r"\[.*\](\w+)([\/\)][\d'\/\*]*)", desc)
         else:

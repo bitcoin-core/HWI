@@ -585,7 +585,7 @@ def enumerate(password=''):
         pass
     for d in devices:
         if ('interface_number' in d and  d['interface_number'] == 0 \
-        or ('usage_page' in d and d['usage_page'] == 0xffff)):
+                or ('usage_page' in d and d['usage_page'] == 0xffff)):
             d_data = {}
 
             path = d['path'].decode()

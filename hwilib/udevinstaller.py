@@ -33,7 +33,7 @@ class UDevInstaller(object):
 
     def reload_rules(self):
         self._execute(self._udevadm, 'control', '--reload-rules')
-    
+
     def add_user_plugdev_group(self):
         self._create_group('plugdev')
         self._add_user_to_group(getlogin(), 'plugdev')
@@ -54,6 +54,6 @@ class UDevInstaller(object):
             if '.rules' in rules_file_name:
                 rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
                 copy(rules_file_path, location)
-    
+
 def _resource_path(relative_path):
     return path.join(path.dirname(__file__), relative_path)

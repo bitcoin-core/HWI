@@ -307,7 +307,7 @@ class TestSignTx(DeviceTestCase):
                 for pubkey, path in psbt_input.hd_keypaths.items():
                     psbt_input.hd_keypaths[pubkey] = (0,)+path[1:]
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
-                    second_psbt.inputs[0].hd_keypaths[pubkey] = (0,)+path[1:]
+                second_psbt.inputs[0].hd_keypaths[pubkey] = (0,)+path[1:]
 
             single_input = len(first_psbt.inputs) == 1
 
@@ -356,8 +356,8 @@ class TestSignTx(DeviceTestCase):
         # Get origin info/key pair so wallet doesn't forget how to
         # sign with keys post-import
         pubkeys = [sh_wpkh_info['desc'][8:-11],\
-                wpkh_info['desc'][5:-10],\
-                pkh_info['desc'][4:-10]]
+                   wpkh_info['desc'][5:-10],\
+                   pkh_info['desc'][4:-10]]
 
         # Get the descriptors with their checksums
         sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+'))')['descriptor']

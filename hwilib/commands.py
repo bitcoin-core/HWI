@@ -112,44 +112,44 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
     testnet = client.is_testnet
 
     if not path:
-      # Master key:
-      path = "m/"
+        # Master key:
+        path = "m/"
 
-      # Purpose
-      if wpkh == True:
-        path += "84'/"
-      elif sh_wpkh == True:
-        path += "49'/"
-      else:
-        path += "44'/"
+        # Purpose
+        if wpkh == True:
+            path += "84'/"
+        elif sh_wpkh == True:
+            path += "49'/"
+        else:
+            path += "44'/"
 
-      # Coin type
-      if testnet == True:
-        path += "1'/"
-      else:
-        path += "0'/"
+        # Coin type
+        if testnet == True:
+            path += "1'/"
+        else:
+            path += "0'/"
 
-      # Account
-      path += str(account) + '\'/'
+        # Account
+        path += str(account) + '\'/'
 
-      # Receive or change
-      if internal == True:
-        path += "1/*"
-      else:
-        path += "0/*"
+        # Receive or change
+        if internal == True:
+            path += "1/*"
+        else:
+            path += "0/*"
     else:
-      if path[0] != "m":
-        return {'error':'Path must start with m/','code':BAD_ARGUMENT}
-      if path[-1] != "*":
-        return {'error':'Path must end with /*','code':BAD_ARGUMENT}
+        if path[0] != "m":
+            return {'error':'Path must start with m/','code':BAD_ARGUMENT}
+        if path[-1] != "*":
+            return {'error':'Path must end with /*','code':BAD_ARGUMENT}
 
     # Find the last hardened derivation:
     path = path.replace('\'','h')
     path_suffix = ''
     for component in path.split("/")[::-1]:
-      if component[-1] == 'h' or component[-1] == 'm':
-        break
-      path_suffix = '/' + component + path_suffix
+        if component[-1] == 'h' or component[-1] == 'm':
+            break
+        path_suffix = '/' + component + path_suffix
     path_base = path.rsplit(path_suffix)[0]
 
     # Get the key at the base
