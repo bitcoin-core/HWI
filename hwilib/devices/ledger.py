@@ -2,8 +2,11 @@
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
-from .btchip.btchip import *
-from .btchip.btchipUtils import *
+from .btchip.bitcoinTransaction import bitcoinTransaction
+from .btchip.btchip import btchip
+from .btchip.btchipComm import HIDDongleHIDAPI
+from .btchip.BTChipException import BTChipException
+from .btchip.btchipUtils import compress_public_key
 import base64
 import hid
 import struct
