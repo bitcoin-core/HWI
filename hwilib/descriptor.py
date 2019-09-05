@@ -118,7 +118,6 @@ class Descriptor:
 
         return cls(origin_fingerprint, origin_path, base_key, path_suffix, testnet, sh_wpkh, wpkh)
 
-
     def serialize(self):
         descriptor_open = 'pkh('
         descriptor_close = ')'

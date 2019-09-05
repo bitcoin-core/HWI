@@ -19,12 +19,14 @@ from hwilib.serializations import PSBT
 class DeviceEmulator():
     def start(self):
         pass
+
     def stop(self):
         pass
 
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
     bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole'])
+
     def cleanup_bitcoind():
         bitcoind_proc.kill()
         shutil.rmtree(datadir)
@@ -299,7 +301,6 @@ class TestSignTx(DeviceTestCase):
             first_psbt.deserialize(psbt['psbt'])
             second_psbt = PSBT()
             second_psbt.deserialize(psbt['psbt'])
-
 
             # Blank master fingerprint to make hww fail to sign
             # Single input PSBTs will be fully signed by first signer

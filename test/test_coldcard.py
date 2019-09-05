@@ -27,6 +27,7 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             break
         time.sleep(0.5)
     # Cleanup
+
     def cleanup_simulator():
         dev = ColdcardDevice(sn='/tmp/ckcc-simulator.sock')
         resp = dev.send_recv(CCProtocolPacker.logout())

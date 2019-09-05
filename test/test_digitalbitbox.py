@@ -27,6 +27,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             pass
         time.sleep(0.5)
     # Cleanup
+
     def cleanup_simulator():
         simulator_proc.kill()
         simulator_proc.wait()

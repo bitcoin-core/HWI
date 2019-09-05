@@ -166,7 +166,6 @@ class LedgerClient(HardwareWalletClient):
                             change_path += str(index) + "/"
                         change_path = change_path[:-1]
 
-
         for txin, psbt_in, i_num in zip(c_tx.vin, tx.inputs, range(len(c_tx.vin))):
 
             seq = format(txin.nSequence, 'x')

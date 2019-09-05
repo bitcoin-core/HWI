@@ -180,7 +180,6 @@ def process_commands(cli_args):
         udevrules_parser.add_argument('--location', help='The path where the udev rules files will be copied', default='/etc/udev/rules.d/')
         udevrules_parser.set_defaults(func=install_udev_rules_handler)
 
-
     if any(arg == '--stdin' for arg in cli_args):
         blank_count = 0
         while True:

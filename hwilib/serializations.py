@@ -260,6 +260,7 @@ class CTxOut(object):
 
     def is_p2pkh(self):
         return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
+
     def is_p2pk(self):
         return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
 
