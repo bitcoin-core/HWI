@@ -53,7 +53,7 @@ popd
 $PYTHON -m pip install -U pip
 
 # Install Poetry and things needed for pyinstaller
-$PYTHON -m pip install poetry==0.12.12
+$PYTHON -m pip install poetry
 
 # We also need to change the timestamps of all of the base library files
 lib_dir=~/.wine/drive_c/python3/Lib
@@ -62,7 +62,7 @@ TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" 
 # Install python dependencies
 POETRY="wine $PYHOME/Scripts/poetry.exe"
 sleep 5 # For some reason, pausing for a few seconds makes the next step work
-$POETRY install -E windist
+$POETRY install
 
 # Do the build
 export PYTHONHASHSEED=42
