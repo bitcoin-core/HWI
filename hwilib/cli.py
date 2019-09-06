@@ -125,7 +125,9 @@ def process_commands(cli_args):
     signmsg_parser.set_defaults(func=signmessage_handler)
 
     getkeypool_parser = subparsers.add_parser('getkeypool', help='Get JSON array of keys that can be imported to Bitcoin Core with importmulti')
-    getkeypool_parser.add_argument('--keypool', action='store_true', help='Indicates that the keys are to be imported to the keypool')
+    kparg_group = getkeypool_parser.add_mutually_exclusive_group()
+    kparg_group.add_argument('--keypool', action='store_true', dest='keypool', help='Indicates that the keys are to be imported to the keypool', default=True)
+    kparg_group.add_argument('--nokeypool', action='store_false', dest='keypool', help='Indicates that the keys are not to be imported to the keypool', default=False)
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypool_parser.add_argument('--sh_wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
     getkeypool_parser.add_argument('--wpkh', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
