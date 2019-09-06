@@ -8,7 +8,7 @@ import subprocess
 import time
 import unittest
 
-from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestSignTx, TestSignMessage
+from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestGetDescriptors, TestSignTx, TestSignMessage
 
 from hwilib.cli import process_commands
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
@@ -130,6 +130,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'digitalbitbox_01_simulator', full_type, path, fingerprint, master_xpub, '0000', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))

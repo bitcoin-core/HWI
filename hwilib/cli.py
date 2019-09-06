@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
-    get_client, getmasterxpub, getxpub, getkeypool, prompt_pin, restore_device, send_pin, setup_device, \
+    get_client, getmasterxpub, getxpub, getkeypool, getdescriptors, prompt_pin, restore_device, send_pin, setup_device, \
     signmessage, signtx, wipe_device, install_udev_rules
 from .errors import (
     handle_errors,
@@ -40,6 +40,9 @@ def getxpub_handler(args, client):
 
 def getkeypool_handler(args, client):
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh)
+
+def getdescriptors_handler(args, client):
+    return getdescriptors(client, account=args.account)
 
 def restore_device_handler(args, client):
     if args.interactive:
@@ -135,6 +138,10 @@ def process_commands(cli_args):
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
+
+    getdescriptors_parser = subparsers.add_parser('getdescriptors', help='Return receive and change descriptors for each supported address type, for import into a wallet.')
+    getdescriptors_parser.add_argument('--account', help='BIP43 account (default: 0)', type=int, default=0)
+    getdescriptors_parser.set_defaults(func=getdescriptors_handler)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)

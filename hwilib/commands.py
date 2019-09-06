@@ -91,7 +91,25 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
         master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
+
+    desc = getdescriptor(client, master_xpub, client.is_testnet, path, internal, sh_wpkh, wpkh, account, start, end)
+
+    if not isinstance(desc, Descriptor):
+        return desc
+
+    this_import = {}
+
+    this_import['desc'] = desc.serialize()
+    this_import['range'] = [start, end]
+    this_import['timestamp'] = 'now'
+    this_import['internal'] = internal
+    this_import['keypool'] = keypool
+    this_import['watchonly'] = True
+    return [this_import]
+
+def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False, sh_wpkh=False, wpkh=True, account=0, start=None, end=None):
     master_fpr = get_xpub_fingerprint_as_id(master_xpub)
+    testnet = client.is_testnet
 
     if not path:
       # Master key:
@@ -106,7 +124,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
         path += "44'/"
 
       # Coin type
-      if client.is_testnet == True:
+      if testnet == True:
         path += "1'/"
       else:
         path += "0'/"
@@ -135,19 +153,10 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=False, ac
     path_base = path.rsplit(path_suffix)[0]
 
     # Get the key at the base
-    base_key = client.get_pubkey_at_path(path_base)['xpub']
+    if client.xpub_cache.get(path_base) is None:
+        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
 
-    this_import = {}
-
-    desc = Descriptor(master_fpr, path_base.replace('m', ''), base_key, path_suffix, client.is_testnet, sh_wpkh, wpkh)
-
-    this_import['desc'] = desc.serialize()
-    this_import['range'] = [start, end]
-    this_import['timestamp'] = 'now'
-    this_import['internal'] = internal
-    this_import['keypool'] = keypool
-    this_import['watchonly'] = True
-    return [this_import]
+    return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, sh_wpkh, wpkh)
 
 # wrapper to allow both internal and external entries when path not given
 def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
@@ -163,6 +172,30 @@ def getkeypool(client, path, start, end, internal=False, keypool=False, account=
     else:
         return getkeypool_inner(client, path, start, end, internal, keypool, account, sh_wpkh, wpkh)
 
+
+def getdescriptors(client, account=0):
+    try:
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+    except NotImplementedError as e:
+        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+
+    result = {}
+
+    for internal in [False, True]:
+        descriptors = []
+        desc1 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=False, account=account)
+        desc2 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=True, wpkh=False, account=account)
+        desc3 = getdescriptor(client, master_xpub=master_xpub, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=True, account=account)
+        for desc in [desc1, desc2, desc3]:
+            if not isinstance(desc, Descriptor):
+                return desc
+            descriptors.append(desc.serialize())
+        if internal:
+            result["internal"] = descriptors
+        else:
+            result["receive"] = descriptors
+
+    return result
 
 def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
     if path is not None:

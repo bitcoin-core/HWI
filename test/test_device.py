@@ -242,6 +242,34 @@ class TestGetKeypool(DeviceTestCase):
         self.assertEqual(keypool_desc['error'], 'Path must end with /*')
         self.assertEqual(keypool_desc['code'], -7)
 
+class TestGetDescriptors(DeviceTestCase):
+    def setUp(self):
+        self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
+        if '--testnet' not in self.dev_args:
+            self.dev_args.append('--testnet')
+        self.emulator.start()
+
+    def tearDown(self):
+        self.emulator.stop()
+
+    def test_getdescriptors(self):
+        descriptors = self.do_command(self.dev_args + ['getdescriptors'])
+
+        self.assertIn('receive', descriptors)
+        self.assertIn('internal', descriptors)
+        self.assertEqual(len(descriptors['receive']), 3)
+        self.assertEqual(len(descriptors['internal']), 3)
+
+        for descriptor in descriptors['receive']:
+            info_result = self.rpc.getdescriptorinfo(descriptor)
+            self.assertTrue(info_result['isrange'])
+            self.assertTrue(info_result['issolvable'])
+
+        for descriptor in descriptors['internal']:
+            info_result = self.rpc.getdescriptorinfo(descriptor)
+            self.assertTrue(info_result['isrange'])
+            self.assertTrue(info_result['issolvable'])
+
 class TestSignTx(DeviceTestCase):
     def setUp(self):
         self.rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(self.rpc_userpass))
