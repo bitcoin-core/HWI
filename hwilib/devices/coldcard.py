@@ -1,15 +1,15 @@
 # Coldcard interaction script
 
+from binascii import b2a_hex
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
 from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
-from ..base58 import xpub_main_2_test, get_xpub_fingerprint_hex
+from ..base58 import xpub_main_2_test
 from hashlib import sha256
 
 import base64
-import json
 import hid
 import io
 import sys
@@ -26,7 +26,7 @@ def coldcard_exception(f):
             return f(*args, **kwargs)
         except CCProtoError as e:
             raise BadArgumentError(str(e))
-        except CCUserRefused as e:
+        except CCUserRefused:
             raise ActionCanceledError('{} canceled'.format(f.__name__))
         except CCBusyError as e:
             raise DeviceBusyError(str(e))
@@ -54,9 +54,9 @@ class ColdcardClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
         if self.is_testnet:
-            return {'xpub':xpub_main_2_test(xpub)}
+            return {'xpub': xpub_main_2_test(xpub)}
         else:
-            return {'xpub':xpub}
+            return {'xpub': xpub}
 
     def _get_fingerprint_hex(self):
         # quick method to get fingerprint of wallet
@@ -72,7 +72,6 @@ class ColdcardClient(HardwareWalletClient):
         fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
         # learn size (portable way)
-        offset = 0
         sz = fd.seek(0, 2)
         fd.seek(0)
 
@@ -80,7 +79,8 @@ class ColdcardClient(HardwareWalletClient):
         chk = sha256()
         for pos in range(0, sz, MAX_BLK_LEN):
             here = fd.read(min(MAX_BLK_LEN, left))
-            if not here: break
+            if not here:
+                break
             left -= len(here)
             result = self.device.send_recv(CCProtocolPacker.upload(pos, sz, here))
             assert result == pos
@@ -95,7 +95,7 @@ class ColdcardClient(HardwareWalletClient):
 
         # start the signing process
         ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
@@ -104,7 +104,7 @@ class ColdcardClient(HardwareWalletClient):
         while 1:
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_signed_txn(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
             break
 
@@ -114,7 +114,7 @@ class ColdcardClient(HardwareWalletClient):
         result_len, result_sha = done
 
         result = self.device.download_file(result_len, result_sha, file_number=1)
-        return {'psbt':base64.b64encode(result).decode()}
+        return {'psbt': base64.b64encode(result).decode()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
@@ -125,14 +125,14 @@ class ColdcardClient(HardwareWalletClient):
         keypath = keypath.replace('H', '\'')
 
         ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
         while 1:
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_signed_msg(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
 
             break
@@ -181,7 +181,7 @@ class ColdcardClient(HardwareWalletClient):
         self.device.check_mitm()
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
-        assert ok == None
+        assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
 
@@ -191,7 +191,7 @@ class ColdcardClient(HardwareWalletClient):
 
             time.sleep(0.250)
             done = self.device.send_recv(CCProtocolPacker.get_backup_file(), timeout=None)
-            if done == None:
+            if done is None:
                 continue
             break
 

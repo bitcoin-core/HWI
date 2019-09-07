@@ -1,15 +1,8 @@
 #! /usr/bin/env python3
 
 import argparse
-import atexit
-import json
-import os
-import socket
-import subprocess
-import time
 import unittest
 
-from authproxy import AuthServiceProxy, JSONRPCException
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 from hwilib.cli import process_commands

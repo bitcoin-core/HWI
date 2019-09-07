@@ -14,7 +14,7 @@ from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestD
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Start the Coldcard simulator
-    simulator_proc = subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL)
+    subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL)
     # Wait for simulator to be up
     while True:
         enum_res = process_commands(['enumerate'])
@@ -27,9 +27,10 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             break
         time.sleep(0.5)
     # Cleanup
+
     def cleanup_simulator():
         dev = ColdcardDevice(sn='/tmp/ckcc-simulator.sock')
-        resp = dev.send_recv(CCProtocolPacker.logout())
+        dev.send_recv(CCProtocolPacker.logout())
     atexit.register(cleanup_simulator)
 
     # Coldcard specific management command tests

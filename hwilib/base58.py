@@ -8,11 +8,11 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #
 
+from .serializations import hash256
+import struct
+from binascii import hexlify, unhexlify
 b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
-from binascii import hexlify, unhexlify
-import struct
-from .serializations import hash256, hash160
 
 def encode(b):
     """Encode bytes to a base58-encoded string"""
@@ -23,7 +23,7 @@ def encode(b):
     # Divide that integer into bas58
     res = []
     while n > 0:
-        n, r = divmod (n, 58)
+        n, r = divmod(n, 58)
         res.append(b58_digits[r])
     res = ''.join(res[::-1])
 
@@ -35,8 +35,10 @@ def encode(b):
         czero = 0
     pad = 0
     for c in b:
-        if c == czero: pad += 1
-        else: break
+        if c == czero:
+            pad += 1
+        else:
+            break
     return b58_digits[0] * pad + res
 
 def decode(s):
@@ -49,7 +51,7 @@ def decode(s):
     for c in s:
         n *= 58
         if c not in b58_digits:
-            raise InvalidBase58Error('Character %r is not a valid base58 character' % c)
+            raise ValueError('Character %r is not a valid base58 character' % c)
         digit = b58_digits.index(c)
         n += digit
 
@@ -62,8 +64,10 @@ def decode(s):
     # Add padding back.
     pad = 0
     for c in s[:-1]:
-        if c == b58_digits[0]: pad += 1
-        else: break
+        if c == b58_digits[0]:
+            pad += 1
+        else:
+            break
     return b'\x00' * pad + res
 
 def get_xpub_fingerprint(s):

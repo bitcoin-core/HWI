@@ -10,7 +10,6 @@ import unittest
 
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestGetDescriptors, TestSignTx, TestSignMessage
 
-from hwilib.cli import process_commands
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
 
 def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
@@ -27,13 +26,14 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             pass
         time.sleep(0.5)
     # Cleanup
+
     def cleanup_simulator():
         simulator_proc.kill()
         simulator_proc.wait()
     atexit.register(cleanup_simulator)
 
     # Set password and load from backup
-    send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)
+    send_encrypt(json.dumps({"seed": {"source": "backup", "filename": "test_backup.pdf", "key": "key"}}), '0000', dev)
 
     # params
     type = 'digitalbitbox'
@@ -97,7 +97,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             result = self.do_command(self.dev_args + ['wipe'])
             self.assertTrue(result['success'])
             send_plain(b'{"password":"0000"}', dev)
-            send_encrypt(json.dumps({"seed":{"source":"backup","filename":"test_backup.pdf","key":"key"}}), '0000', dev)
+            send_encrypt(json.dumps({"seed": {"source": "backup", "filename": "test_backup.pdf", "key": "key"}}), '0000', dev)
 
             # Make sure device is init, setup should fail
             result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])

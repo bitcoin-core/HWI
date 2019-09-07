@@ -19,29 +19,29 @@ class HardwareWalletClient(object):
     # Retrieves the public key at the specified BIP 32 derivation path
     def get_pubkey_at_path(self, path):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
     def sign_tx(self, tx):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
     def sign_message(self, message, keypath):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Wipe this device
     def wipe_device(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label=''):
@@ -54,7 +54,7 @@ class HardwareWalletClient(object):
     # Close the device
     def close(self):
         raise NotImplementedError('The HardwareWalletClient base class does not '
-            'implement this method')
+                                  'implement this method')
 
     # Prompt pin
     def prompt_pin(self):

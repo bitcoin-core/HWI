@@ -7,13 +7,9 @@ from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
     HELP_TEXT,
-    HWWError,
     MISSING_ARGUMENTS,
     NO_DEVICE_TYPE,
-    NO_PASSWORD,
-    UNAVAILABLE_ACTION,
-    UNKNWON_DEVICE_TYPE,
-    UNKNOWN_ERROR
+    UNAVAILABLE_ACTION
 )
 from . import __version__
 
@@ -180,9 +176,7 @@ def process_commands(cli_args):
         udevrules_parser.add_argument('--location', help='The path where the udev rules files will be copied', default='/etc/udev/rules.d/')
         udevrules_parser.set_defaults(func=install_udev_rules_handler)
 
-
     if any(arg == '--stdin' for arg in cli_args):
-        blank_count = 0
         while True:
             try:
                 line = input()
@@ -227,14 +221,14 @@ def process_commands(cli_args):
     if args.fingerprint or (args.device_type and not args.device_path):
         client = find_device(args.device_path, args.password, args.device_type, args.fingerprint)
         if not client:
-            return {'error':'Could not find device with specified fingerprint','code':DEVICE_CONN_ERROR}
+            return {'error': 'Could not find device with specified fingerprint', 'code': DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
         with handle_errors(result=result, code=DEVICE_CONN_ERROR):
             client = get_client(device_type, device_path, password)
         if 'error' in result:
             return result
     else:
-        return {'error':'You must specify a device type or fingerprint for all commands except enumerate','code': NO_DEVICE_TYPE}
+        return {'error': 'You must specify a device type or fingerprint for all commands except enumerate', 'code': NO_DEVICE_TYPE}
 
     client.is_testnet = args.testnet
 

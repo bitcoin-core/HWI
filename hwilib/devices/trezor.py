@@ -1,26 +1,23 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, HWWError, UnavailableActionError, UNKNOWN_ERROR, common_err_msgs, handle_errors
+from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, UnavailableActionError, common_err_msgs, handle_errors
 from .trezorlib.client import TrezorClient as Trezor
-from .trezorlib.debuglink import TrezorClientDebugLink, DebugUI
+from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled
 from .trezorlib.transport import enumerate_devices, get_transport
 from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
-from .trezorlib import protobuf, tools, btc, device
+from .trezorlib import tools, btc, device
 from .trezorlib import messages as proto
-from ..base58 import get_xpub_fingerprint, decode, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
-from ..serializations import CTxOut, ser_uint256, uint256_from_str
+from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..serializations import CTxOut, ser_uint256
 from .. import bech32
 from usb1 import USBErrorNoDevice
 from types import MethodType
 
 import base64
-import binascii
-import json
 import logging
 import sys
-import os
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
 
@@ -127,9 +124,9 @@ class TrezorClient(HardwareWalletClient):
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
-            return {'xpub':xpub_main_2_test(output.xpub)}
+            return {'xpub': xpub_main_2_test(output.xpub)}
         else:
-            return {'xpub':output.xpub}
+            return {'xpub': output.xpub}
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format
@@ -328,7 +325,7 @@ class TrezorClient(HardwareWalletClient):
 
             p += 1
 
-        return {'psbt':tx.serialize()}
+        return {'psbt': tx.serialize()}
 
     # Must return a base64 encoded string with the signed message
     # The message can be any string
@@ -436,7 +433,7 @@ def enumerate(password=''):
         with handle_errors(common_err_msgs["enumerate"], d_data):
             client = TrezorClient(d_data['path'], password)
             client.client.init_device()
-            if not 'trezor' in client.client.features.vendor:
+            if 'trezor' not in client.client.features.vendor:
                 continue
 
             d_data['model'] = 'trezor_' + client.client.features.model.lower()

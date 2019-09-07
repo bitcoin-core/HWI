@@ -51,15 +51,23 @@ install:
     - poetry install
 jobs:
     include:
+        -   name: lint
+            stage: lint
+            script: flake8
         -   name: Run non-device tests only
+            stage: test
             script: cd test; poetry run ./run_tests.py
         -   name: With process_commands interface
+            stage: test
             script: cd test; poetry run ./run_tests.py --all --interface=library
         -   name: With command line interface
+            stage: test
             script: cd test; poetry run ./run_tests.py --all --interface=cli
         -   name: With stdin interface
+            stage: test
             script: cd test; poetry run ./run_tests.py --all --interface=stdin
         -   name: With wheel command line interface
+            stage: test
             services: docker
             before_script:
                 - docker build -t hwi-builder -f contrib/build.Dockerfile .
@@ -69,6 +77,7 @@ jobs:
                 - pip install dist/*.whl
                 - cd test; ./run_tests.py --all --interface=cli
         -   name: With sdist command line interface
+            stage: test
             services: docker
             before_script:
                 - docker build -t hwi-builder -f contrib/build.Dockerfile .
@@ -78,6 +87,7 @@ jobs:
                 - pip install dist/*.tar.gz
                 - cd test; ./run_tests.py --all --interface=cli
         -   name: With linux binary distribution command line interface
+            stage: test
             services: docker
             before_script:
                 - docker build -t hwi-builder -f contrib/build.Dockerfile .
@@ -87,6 +97,7 @@ jobs:
                 - cd test; poetry run ./run_tests.py --all --interface=bindist
                 - cd ..; sha256sum dist/*
         -   name: macOS binary distribution (no tests)
+            stage: test
             os: osx
             osx_image: xcode7.3
             language: generic

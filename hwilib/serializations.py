@@ -151,7 +151,7 @@ def ser_sig_der(r, s):
         if b == 0:
             si += 1
         else:
-            break;
+            break
     s = s[si:]
 
     # Make positive of neg
@@ -181,7 +181,7 @@ def ser_sig_der(r, s):
 
 def ser_sig_compact(r, s, recid):
     rec = struct.unpack("B", recid)[0]
-    prefix = struct.pack("B", 27 + 4 +rec)
+    prefix = struct.pack("B", 27 + 4 + rec)
 
     sig = b""
     sig += prefix
@@ -191,7 +191,7 @@ def ser_sig_compact(r, s, recid):
 
 # Objects that map to bitcoind objects, which can be serialized/deserialized
 
-MSG_WITNESS_FLAG = 1<<30
+MSG_WITNESS_FLAG = 1 << 30
 
 class COutPoint(object):
     def __init__(self, hash=0, n=0xffffffff):
@@ -260,6 +260,7 @@ class CTxOut(object):
 
     def is_p2pkh(self):
         return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
+
     def is_p2pk(self):
         return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
 
@@ -523,7 +524,7 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
 
                 sig = deser_string(f)
-                self.partial_sigs[pubkey] = sig;
+                self.partial_sigs[pubkey] = sig
 
             elif key_type == 3:
                 if self.sighash > 0:
@@ -621,11 +622,14 @@ class PartiallySignedInput:
 
     def is_sane(self):
         # Cannot have both witness and non-witness utxos
-        if self.witness_utxo and self.non_witness_utxo: return False
+        if self.witness_utxo and self.non_witness_utxo:
+            return False
 
         # if we have witness script or scriptwitness, must have witness utxo
-        if len(self.witness_script) != 0 and not self.witness_utxo: return False
-        if not self.final_script_witness.is_null() and not self.witness_utxo: return False
+        if len(self.witness_script) != 0 and not self.witness_utxo:
+            return False
+        if not self.final_script_witness.is_null() and not self.witness_utxo:
+            return False
 
         return True
 
@@ -702,7 +706,7 @@ class PartiallySignedOutput:
 
 class PSBT(object):
 
-    def __init__(self, tx = None):
+    def __init__(self, tx=None):
         if tx:
             self.tx = tx
         else:
@@ -722,9 +726,6 @@ class PSBT(object):
             raise PSBTSerializationError("invalid magic")
 
         # Read loop
-        separators = 0
-        psbt_input = PartiallySignedInput()
-        in_globals = True
         while True:
             # read the key
             try:
@@ -787,7 +788,7 @@ class PSBT(object):
             output = PartiallySignedOutput()
             output.deserialize(f)
             self.outputs.append(output)
-        
+
         if len(self.outputs) != len(self.tx.vout):
             raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
 
@@ -829,5 +830,6 @@ class PSBT(object):
 
     def is_sane(self):
         for input in self.inputs:
-            if not input.is_sane(): return False
+            if not input.is_sane():
+                return False
         return True

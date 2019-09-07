@@ -19,12 +19,14 @@ from hwilib.serializations import PSBT
 class DeviceEmulator():
     def start(self):
         pass
+
     def stop(self):
         pass
 
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
     bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole'])
+
     def cleanup_bitcoind():
         bitcoind_proc.kill()
         shutil.rmtree(datadir)
@@ -43,7 +45,7 @@ def start_bitcoind(bitcoind_path):
         try:
             rpc.getblockchaininfo()
             ready = True
-        except JSONRPCException as e:
+        except JSONRPCException:
             time.sleep(0.5)
             pass
 
@@ -52,7 +54,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password = '', emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -72,7 +74,7 @@ class DeviceTestCase(unittest.TestCase):
         self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password = '', interface='library', emulator=None):
+    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
@@ -300,14 +302,13 @@ class TestSignTx(DeviceTestCase):
             second_psbt = PSBT()
             second_psbt.deserialize(psbt['psbt'])
 
-
             # Blank master fingerprint to make hww fail to sign
             # Single input PSBTs will be fully signed by first signer
             for psbt_input in first_psbt.inputs[1:]:
                 for pubkey, path in psbt_input.hd_keypaths.items():
-                    psbt_input.hd_keypaths[pubkey] = (0,)+path[1:]
+                    psbt_input.hd_keypaths[pubkey] = (0,) + path[1:]
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
-                    second_psbt.inputs[0].hd_keypaths[pubkey] = (0,)+path[1:]
+                second_psbt.inputs[0].hd_keypaths[pubkey] = (0,) + path[1:]
 
             single_input = len(first_psbt.inputs) == 1
 
@@ -355,19 +356,19 @@ class TestSignTx(DeviceTestCase):
 
         # Get origin info/key pair so wallet doesn't forget how to
         # sign with keys post-import
-        pubkeys = [sh_wpkh_info['desc'][8:-11],\
-                wpkh_info['desc'][5:-10],\
-                pkh_info['desc'][4:-10]]
+        pubkeys = [sh_wpkh_info['desc'][8:-11],
+                   wpkh_info['desc'][5:-10],
+                   pkh_info['desc'][4:-10]]
 
         # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+'))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(multi(2,'+pubkeys[0]+','+pubkeys[1]+','+pubkeys[2]+')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(multi(2,'+pubkeys[2]+','+pubkeys[1]+','+pubkeys[0]+'))')['descriptor']
+        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
+        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
+        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(multi(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
 
-        sh_multi_import = {'desc': sh_multi_desc, "timestamp":"now", "label":"shmulti"}
-        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp":"now", "label":"shwshmulti"}
+        sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
+        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
         # re-order pubkeys to allow import without "already have private keys" error
-        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp":"now", "label":"wshmulti"}
+        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
         multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
         self.assertTrue(multi_result[0]['success'])
         self.assertTrue(multi_result[1]['success'])
@@ -403,9 +404,9 @@ class TestSignTx(DeviceTestCase):
         # Spend different amounts, requiring 1 to 3 inputs
         for i in range(number_inputs):
             # Create a psbt spending the above
-            if i == number_inputs-1:
-                self.assertTrue((i+1)*in_amt == self.wrpc.getbalance("*", 0, True))
-            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress('', 'legacy'):(i+1)*out_amt}, {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'):(i+1)*out_amt}, {self.wpk_rpc.getnewaddress('', 'bech32'):(i+1)*out_amt}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0, 1, 2]}, True)
+            if i == number_inputs - 1:
+                self.assertTrue((i + 1) * in_amt == self.wrpc.getbalance("*", 0, True))
+            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress('', 'legacy'): (i + 1) * out_amt}, {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): (i + 1) * out_amt}, {self.wpk_rpc.getnewaddress('', 'bech32'): (i + 1) * out_amt}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0, 1, 2]}, True)
 
             # Sign with unknown inputs in two steps
             self._generate_and_finalize(True, psbt)
@@ -450,7 +451,7 @@ class TestSignTx(DeviceTestCase):
             else:
                 self.assertNotIn('code', result)
                 self.assertNotIn('error', result)
-        except OSError as e:
+        except OSError:
             if self.interface == 'cli':
                 pass
 

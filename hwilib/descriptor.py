@@ -18,8 +18,8 @@ def PolyMod(c, val):
     return c
 
 def DescriptorChecksum(desc):
-    INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ ";
-    CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
+    CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
     c = 1
     cls = 0
@@ -37,7 +37,7 @@ def DescriptorChecksum(desc):
             clscount = 0
     if clscount > 0:
         c = PolyMod(c, cls)
-    for j in range (0, 8):
+    for j in range(0, 8):
         c = PolyMod(c, 0)
     c ^= 1
 
@@ -65,7 +65,7 @@ class Descriptor:
             self.m_path = "m" + origin_path + (path_suffix or "")
 
     @classmethod
-    def parse(cls, desc, testnet = False):
+    def parse(cls, desc, testnet=False):
         sh_wpkh = None
         wpkh = None
         origin_fingerprint = None
@@ -97,11 +97,11 @@ class Descriptor:
         if origin_match:
             origin = origin_match.group(1)
             match = re.search(r"^([0-9a-fA-F]{8})(\/.*)", origin)
-            if  match:
-              origin_fingerprint = match.group(1)
-              origin_path = match.group(2)
-              # Replace h with '
-              origin_path = origin_path.replace('h', '\'')
+            if match:
+                origin_fingerprint = match.group(1)
+                origin_path = match.group(2)
+                # Replace h with '
+                origin_path = origin_path.replace('h', '\'')
 
             base_key_and_path_match = re.search(r"\[.*\](\w+)([\/\)][\d'\/\*]*)", desc)
         else:
@@ -113,11 +113,10 @@ class Descriptor:
             if path_suffix == ")":
                 path_suffix = None
         else:
-            if origin_match == None:
+            if origin_match is None:
                 return None
 
         return cls(origin_fingerprint, origin_path, base_key, path_suffix, testnet, sh_wpkh, wpkh)
-
 
     def serialize(self):
         descriptor_open = 'pkh('
@@ -125,9 +124,9 @@ class Descriptor:
         origin = ''
         path_suffix = ''
 
-        if self.wpkh == True:
+        if self.wpkh:
             descriptor_open = 'wpkh('
-        elif self.sh_wpkh == True:
+        elif self.sh_wpkh:
             descriptor_open = 'sh(wpkh('
             descriptor_close = '))'
 

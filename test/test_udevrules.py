@@ -1,9 +1,8 @@
 #! /usr/bin/env python3
 
 import unittest
-import json
 import filecmp
-from os import makedirs, remove, removedirs, walk, path 
+from os import makedirs, remove, removedirs, walk, path
 from hwilib.cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
@@ -23,7 +22,7 @@ class TestUdevRulesInstaller(unittest.TestCase):
         removedirs(self.INSTALLATION_FOLDER)
 
     def test_rules_file_are_copied(self):
-        result = process_commands( ['installudevrules', '--location', self.INSTALLATION_FOLDER])
+        result = process_commands(['installudevrules', '--location', self.INSTALLATION_FOLDER])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['error'], 'Need to be root.')

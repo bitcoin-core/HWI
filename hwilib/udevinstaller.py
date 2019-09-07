@@ -1,8 +1,7 @@
-import sys
 from subprocess import check_call, CalledProcessError, DEVNULL
 from .errors import NEED_TO_BE_ROOT
 from shutil import copy
-from os import path, environ, listdir, getlogin, geteuid
+from os import path, listdir, getlogin, geteuid
 
 class UDevInstaller(object):
     @staticmethod
@@ -13,9 +12,9 @@ class UDevInstaller(object):
             udev_installer.trigger()
             udev_installer.reload_rules()
             udev_installer.add_user_plugdev_group()
-        except CalledProcessError as e:
+        except CalledProcessError:
             if geteuid() != 0:
-                return {'error':'Need to be root.','code':NEED_TO_BE_ROOT}
+                return {'error': 'Need to be root.', 'code': NEED_TO_BE_ROOT}
             raise
         return {"success": True}
 
@@ -33,7 +32,7 @@ class UDevInstaller(object):
 
     def reload_rules(self):
         self._execute(self._udevadm, 'control', '--reload-rules')
-    
+
     def add_user_plugdev_group(self):
         self._create_group('plugdev')
         self._add_user_to_group(getlogin(), 'plugdev')
@@ -54,6 +53,6 @@ class UDevInstaller(object):
             if '.rules' in rules_file_name:
                 rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
                 copy(rules_file_path, location)
-    
+
 def _resource_path(relative_path):
     return path.join(path.dirname(__file__), relative_path)

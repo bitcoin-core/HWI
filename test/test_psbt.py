@@ -16,7 +16,7 @@ class TestPSBT(unittest.TestCase):
     def test_invalid_psbt(self):
         for invalid in self.data['invalid']:
             with self.subTest(invalid=invalid):
-                with self.assertRaises(PSBTSerializationError) as cm:
+                with self.assertRaises(PSBTSerializationError):
                     psbt = PSBT()
                     psbt.deserialize(invalid)
 
