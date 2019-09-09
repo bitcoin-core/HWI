@@ -5,7 +5,7 @@ from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionErro
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
 from .btchip.btchipComm import HIDDongleHIDAPI
-from .btchip.BTChipException import BTChipException
+from .btchip.btchipException import BTChipException
 from .btchip.btchipUtils import compress_public_key
 import base64
 import hid
