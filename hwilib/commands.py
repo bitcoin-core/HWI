@@ -83,7 +83,7 @@ def getxpub(client, path):
 def signmessage(client, message, path):
     return client.sign_message(message, path)
 
-def getkeypool_inner(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
+def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True):
     if sh_wpkh and wpkh:
         return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
 
@@ -159,7 +159,7 @@ def getdescriptor(client, master_xpub, testnet=False, path=None, internal=False,
     return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, sh_wpkh, wpkh)
 
 # wrapper to allow both internal and external entries when path not given
-def getkeypool(client, path, start, end, internal=False, keypool=False, account=0, sh_wpkh=False, wpkh=True):
+def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True):
     if path is None and not internal:
         internal_chain = getkeypool_inner(client, None, start, end, True, keypool, account, sh_wpkh, wpkh)
         external_chain = getkeypool_inner(client, None, start, end, False, keypool, account, sh_wpkh, wpkh)
