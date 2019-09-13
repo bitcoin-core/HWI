@@ -68,7 +68,14 @@ def send_pin_handler(args, client):
 def install_udev_rules_handler(args):
     return install_udev_rules('udev', args.location)
 
+class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    pass
+
 class HWIArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.formatter_class = HWIHelpFormatter
+
     def print_usage(self, file=None):
         if file is None:
             file = sys.stderr
@@ -89,7 +96,7 @@ class HWIArgumentParser(argparse.ArgumentParser):
         self.exit(2)
 
 def process_commands(cli_args):
-    parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
