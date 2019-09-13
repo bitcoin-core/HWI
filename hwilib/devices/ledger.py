@@ -12,7 +12,7 @@ import hid
 import struct
 from .. import base58
 from ..base58 import get_xpub_fingerprint_hex
-from ..serializations import hash256, hash160, CTransaction
+from ..serializations import hash256, hash160, CTransaction, sha256
 import logging
 import re
 
@@ -283,6 +283,7 @@ class LedgerClient(HardwareWalletClient):
             raise BadArgumentError("Invalid keypath")
         message = bytearray(message, 'utf-8')
         keypath = keypath[2:]
+        print("Message hash displayed on screen: "+sha256(message).hex())
         # First display on screen what address you're signing for
         self.app.getWalletPublicKey(keypath, True)
         self.app.signMessagePrepare(keypath, message)
