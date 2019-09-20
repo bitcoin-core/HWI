@@ -26,7 +26,7 @@ def displayaddress_handler(args, client):
     return displayaddress(client, desc=args.desc, path=args.path, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh)
 
 def enumerate_handler(args):
-    return enumerate(password=args.password)
+    return enumerate(password=args.password, device_type=args.device_type)
 
 def getmasterxpub_handler(args, client):
     return getmasterxpub(client)

@@ -3,6 +3,7 @@
 # Hardware wallet interaction script
 
 import importlib
+import logging
 import platform
 
 from .serializations import PSBT
@@ -30,14 +31,22 @@ def get_client(device_type, device_path, password=''):
     return client
 
 # Get a list of all available hardware wallets
-def enumerate(password=''):
+def enumerate(password='', device_type=None):
     result = []
 
-    for module in all_devs:
+    if device_type is None:
+        modules = all_devs
+    else:
+        modules = [device_type]
+
+    for module in modules:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
             result.extend(imported_dev.enumerate(password))
-        except ImportError:
+        except ImportError as e:
+            logging.info(module + ': ' + e.msg)
+            if __debug__:
+                raise
             pass # Ignore ImportErrors, the user may not have all device dependencies installed
     return result
 
