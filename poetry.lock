@@ -191,8 +191,8 @@ version = "3.7.4"
 typing = ">=3.7.4"
 
 [metadata]
-content-hash = "3998e63fd8e073e6a02c873da2f78130ae57935af702be30b2d1a8efd20475f9"
-python-versions = ">=3.5.6"
+content-hash = "efb94ab72596b3a8e2c057d24c9ff91efcbe40bfed6b7ca1ed3de909745a72c6"
+python-versions = "^3.6"
 
 [metadata.hashes]
 altgraph = ["d6814989f242b2b43025cba7161fc1b8fb487a62cd49c49245d6fd01c18ac997", "ddf5320017147ba7b810198e0b6619bd7b5563aa034da388cea8546b877f9b0c"]
