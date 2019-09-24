@@ -39,7 +39,7 @@ setup_kwargs = {
     'py_modules': modules,
     'install_requires': install_requires,
     'entry_points': entry_points,
-    'python_requires': '>=3.5.6',
+    'python_requires': '>=3.6,<4.0',
 }
 
 
