@@ -53,6 +53,8 @@ jobs:
     include:
         -   name: lint
             stage: lint
+            install:
+                - pip install flake8
             script: flake8
         -   name: Run non-device tests only
             stage: test
