@@ -6,3 +6,4 @@ hwi.egg-info/
 test/emulator.img
 test/work
 pip-wheel-metadata
+.mypy_cache/

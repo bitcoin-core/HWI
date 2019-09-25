@@ -56,6 +56,11 @@ jobs:
             install:
                 - pip install flake8
             script: flake8
+        -   name: Type annotation checking
+            stage: lint
+            install:
+                - pip install mypy
+            script: mypy hwilib/base58.py
         -   name: Run non-device tests only
             stage: test
             script: cd test; poetry run ./run_tests.py
