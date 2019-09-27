@@ -809,13 +809,13 @@ class PSBT(object):
         r += ser_compact_size(len(tx))
         r += tx
 
-        # separator
-        r += b"\x00"
-
         # unknowns
         for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
             r += ser_string(value)
+
+        # separator
+        r += b"\x00"
 
         # inputs
         for input in self.inputs:
