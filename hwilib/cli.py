@@ -136,14 +136,14 @@ def process_commands(cli_args):
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypool_parser.add_argument('--sh_wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
     getkeypool_parser.add_argument('--wpkh', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
-    getkeypool_parser.add_argument('--account', help='BIP43 account (default: 0)', type=int, default=0)
+    getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
 
     getdescriptors_parser = subparsers.add_parser('getdescriptors', help='Return receive and change descriptors for each supported address type, for import into a wallet.')
-    getdescriptors_parser.add_argument('--account', help='BIP43 account (default: 0)', type=int, default=0)
+    getdescriptors_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getdescriptors_parser.set_defaults(func=getdescriptors_handler)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
