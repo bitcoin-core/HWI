@@ -68,7 +68,14 @@ def send_pin_handler(args, client):
 def install_udev_rules_handler(args):
     return install_udev_rules('udev', args.location)
 
+class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    pass
+
 class HWIArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.formatter_class = HWIHelpFormatter
+
     def print_usage(self, file=None):
         if file is None:
             file = sys.stderr
@@ -89,7 +96,7 @@ class HWIArgumentParser(argparse.ArgumentParser):
         self.exit(2)
 
 def process_commands(cli_args):
-    parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
@@ -131,14 +138,14 @@ def process_commands(cli_args):
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     getkeypool_parser.add_argument('--sh_wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
     getkeypool_parser.add_argument('--wpkh', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
-    getkeypool_parser.add_argument('--account', help='BIP43 account (default: 0)', type=int, default=0)
+    getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
 
     getdescriptors_parser = subparsers.add_parser('getdescriptors', help='Return receive and change descriptors for each supported address type, for import into a wallet.')
-    getdescriptors_parser.add_argument('--account', help='BIP43 account (default: 0)', type=int, default=0)
+    getdescriptors_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getdescriptors_parser.set_defaults(func=getdescriptors_handler)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
