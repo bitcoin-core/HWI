@@ -9,8 +9,9 @@ PYTHON_FOLDER="python3"
 PYHOME="c:/$PYTHON_FOLDER"
 PYTHON="wine $PYHOME/python.exe -OO -B"
 
-LIBUSB_URL=https://github.com/libusb/libusb/releases/download/v1.0.22/libusb-1.0.22.7z
-LIBUSB_HASH="671f1a420757b4480e7fadc8313d6fb3cbb75ca00934c417c1efa6e77fb8779b"
+LIBUSB_VERSION=1.0.23
+LIBUSB_URL=https://github.com/libusb/libusb/releases/download/v1.0.23/libusb-1.0.23.tar.bz2
+LIBUSB_HASH="db11c06e958a82dac52cf3c65cb4dd2c3f339c8a988665110e0d24d19312ad8d"
 
 WINDOWS_SDK_URL=http://go.microsoft.com/fwlink/p/?LinkID=2033686
 WINDOWS_SDK_HASH="016981259708e1afcab666c7c1ff44d1c4d63b5e778af8bc41b4f6db3d27961a"
@@ -33,11 +34,15 @@ for msifile in core dev exe lib pip tools; do
     rm $msifile.msi*
 done
 
-# Get libusb
-wget -N -c -O libusb.7z "$LIBUSB_URL"
-echo "$LIBUSB_HASH  libusb.7z" | sha256sum -c
-7za x -olibusb libusb.7z -aoa
-cp libusb/MS64/dll/libusb-1.0.dll ~/.wine/drive_c/python3/
+# Get and build libusb
+wget -N -c -O libusb.tar.bz2 "$LIBUSB_URL"
+echo "$LIBUSB_HASH  libusb.tar.bz2" | sha256sum -c
+tar -xf libusb.tar.bz2
+pushd "libusb-$LIBUSB_VERSION"
+./configure --host=x86_64-w64-mingw32
+faketime -f "2019-01-01 00:00:00" make
+cp libusb/.libs/libusb-1.0.dll ~/.wine/drive_c/python3/
+popd
 rm -r libusb*
 
 # Get the Windows SDK
