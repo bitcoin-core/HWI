@@ -25,7 +25,7 @@ class DeviceEmulator():
 
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
-    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole'])
+    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole', '-fallbackfee=0.0002'])
 
     def cleanup_bitcoind():
         bitcoind_proc.kill()
