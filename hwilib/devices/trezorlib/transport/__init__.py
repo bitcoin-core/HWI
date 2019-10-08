@@ -67,6 +67,9 @@ class Transport:
     def get_path(self) -> str:
         raise NotImplementedError
 
+    def get_usb_vendor_id(self) -> int:
+        return -1
+
     def begin_session(self) -> None:
         raise NotImplementedError
 
