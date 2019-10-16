@@ -27,7 +27,8 @@ RUN apt-get install -y \
     libudev-dev \
     faketime \
     zip \
-    dos2unix
+    dos2unix \
+    g++-mingw-w64-x86-64
 
 RUN curl https://pyenv.run | bash
 ENV PATH="/root/.pyenv/bin:$PATH"
