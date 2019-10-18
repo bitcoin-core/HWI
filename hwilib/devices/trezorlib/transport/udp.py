@@ -85,7 +85,7 @@ class UdpTransport(ProtocolBasedTransport):
     def open(self) -> None:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.connect(self.device)
-        self.socket.settimeout(10)
+        self.socket.settimeout(1)
 
     def close(self) -> None:
         if self.socket is not None:
