@@ -5,7 +5,7 @@ from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitErr
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled
-from .trezorlib.transport import enumerate_devices, get_transport
+from .trezorlib.transport import enumerate_devices, get_transport, TREZOR_VENDOR_IDS
 from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
 from .trezorlib import tools, btc, device
 from .trezorlib import messages as proto
@@ -424,6 +424,10 @@ class TrezorClient(HardwareWalletClient):
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
+        # enumerate_devices filters to Trezors and Keepkeys.
+        # Only allow Trezors and unknowns. Unknown devices will reach the check for vendor later
+        if dev.get_usb_vendor_id() not in TREZOR_VENDOR_IDS | {-1}:
+            continue
         d_data = {}
 
         d_data['type'] = 'trezor'

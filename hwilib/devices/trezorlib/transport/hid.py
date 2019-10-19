@@ -125,6 +125,9 @@ class HidTransport(ProtocolBasedTransport):
     def get_path(self) -> str:
         return "%s:%s" % (self.PATH_PREFIX, self.device["path"].decode())
 
+    def get_usb_vendor_id(self) -> int:
+        return self.device["vendor_id"]
+
     @classmethod
     def enumerate(cls, debug: bool = False) -> Iterable["HidTransport"]:
         devices = []

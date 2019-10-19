@@ -105,6 +105,9 @@ class WebUsbTransport(ProtocolBasedTransport):
     def get_path(self) -> str:
         return "%s:%s" % (self.PATH_PREFIX, dev_to_str(self.device))
 
+    def get_usb_vendor_id(self) -> int:
+        return self.device.getVendorID()
+
     @classmethod
     def enumerate(cls) -> Iterable["WebUsbTransport"]:
         if cls.context is None:

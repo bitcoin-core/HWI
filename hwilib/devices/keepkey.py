@@ -1,7 +1,7 @@
 # KeepKey interaction script
 
 from ..errors import DEVICE_NOT_INITIALIZED, DeviceNotReadyError, common_err_msgs, handle_errors
-from .trezorlib.transport import enumerate_devices
+from .trezorlib.transport import enumerate_devices, KEEPKEY_VENDOR_IDS
 from .trezor import TrezorClient
 from ..base58 import get_xpub_fingerprint_hex
 
@@ -15,6 +15,10 @@ class KeepkeyClient(TrezorClient):
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
+        # enumerate_devices filters to Trezors and Keepkeys.
+        # Only allow Keepkeys and unknowns. Unknown devices will reach the check for vendor later
+        if dev.get_usb_vendor_id() not in KEEPKEY_VENDOR_IDS | {-1}:
+            continue
         d_data = {}
 
         d_data['type'] = 'keepkey'

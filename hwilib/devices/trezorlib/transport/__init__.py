@@ -30,6 +30,8 @@ DEV_KEEPKEY = (0x2B24, 0x0001)
 DEV_KEEPKEY_WEBUSB = (0x2B24, 0x0002)
 
 TREZORS = {DEV_TREZOR1, DEV_TREZOR2, DEV_TREZOR2_BL, DEV_KEEPKEY, DEV_KEEPKEY_WEBUSB}
+TREZOR_VENDOR_IDS = {0x534C, 0x1209}
+KEEPKEY_VENDOR_IDS = {0x2B24}
 
 UDEV_RULES_STR = """
 Do you have udev rules installed?
@@ -66,6 +68,9 @@ class Transport:
 
     def get_path(self) -> str:
         raise NotImplementedError
+
+    def get_usb_vendor_id(self) -> int:
+        return -1
 
     def begin_session(self) -> None:
         raise NotImplementedError
