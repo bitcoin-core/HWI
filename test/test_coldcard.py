@@ -3,34 +3,36 @@
 import argparse
 import atexit
 import os
+import signal
 import subprocess
 import time
 import unittest
 
 from hwilib.cli import process_commands
-from hwilib.devices.ckcc.protocol import CCProtocolPacker
-from hwilib.devices.ckcc.client import ColdcardDevice
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Start the Coldcard simulator
-    subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL)
+    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
     # Wait for simulator to be up
     while True:
-        enum_res = process_commands(['enumerate'])
-        found = False
-        for dev in enum_res:
-            if dev['type'] == 'coldcard' and 'error' not in dev:
-                found = True
+        try:
+            enum_res = process_commands(['enumerate'])
+            found = False
+            for dev in enum_res:
+                if dev['type'] == 'coldcard' and 'error' not in dev:
+                    found = True
+                    break
+            if found:
                 break
-        if found:
-            break
+        except:
+            pass
         time.sleep(0.5)
     # Cleanup
 
     def cleanup_simulator():
-        dev = ColdcardDevice(sn='/tmp/ckcc-simulator.sock')
-        dev.send_recv(CCProtocolPacker.logout())
+        os.killpg(os.getpgid(coldcard_proc.pid), signal.SIGTERM)
+        os.waitpid(os.getpgid(coldcard_proc.pid), 0)
     atexit.register(cleanup_simulator)
 
     # Coldcard specific management command tests

@@ -62,7 +62,7 @@ class KeepkeyEmulator(DeviceEmulator):
         return client
 
     def stop(self):
-        self.emulator_proc.kill()
+        self.emulator_proc.terminate()
         self.emulator_proc.wait()
 
         # Clean up emulator image
