@@ -51,6 +51,8 @@ bad_args = [
     251, # Could not generate key.
 ]
 
+bad_args.extend([str(x) for x in bad_args])
+
 device_failures = [
     101, # Please set a password.
     107, # Output buffer overflow.
@@ -78,10 +80,14 @@ device_failures = [
     903, # attempts remain before the device is reset. The next login requires holding the touch button.
 ]
 
+device_failures.extend([str(x) for x in device_failures])
+
 cancels = [
     600, # Aborted by user.
     601, # Touchbutton timed out.
 ]
+
+cancels.extend([str(x) for x in cancels])
 
 ERR_MEM_SETUP = 503 # Device initialization in progress.
 
@@ -110,7 +116,7 @@ def digitalbitbox_exception(f):
                 raise DeviceFailureError(e.get_error())
             elif e.get_code() in cancels:
                 raise ActionCanceledError(e.get_error())
-            elif e.get_code() == ERR_MEM_SETUP:
+            elif e.get_code() == ERR_MEM_SETUP or e.get_code() == str(ERR_MEM_SETUP):
                 raise DeviceNotReadyError(e.get_error())
 
     return func
@@ -513,7 +519,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     def setup_device(self, label='', passphrase=''):
         # Make sure this is not initialized
         reply = send_encrypt('{"device" : "info"}', self.password, self.device)
-        if 'error' not in reply or ('error' in reply and reply['error']['code'] != 101):
+        if 'error' not in reply or ('error' in reply and (reply['error']['code'] != 101 and reply['error']['code'] != '101')):
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
 
         # Need a wallet name and backup passphrase
@@ -601,7 +607,7 @@ def enumerate(password=''):
 
                 # Check initialized
                 reply = send_encrypt('{"device" : "info"}', password, client.device)
-                if 'error' in reply and reply['error']['code'] == 101:
+                if 'error' in reply and (reply['error']['code'] == 101 or reply['error']['code'] == '101'):
                     d_data['error'] = 'Not initialized'
                     d_data['code'] = DEVICE_NOT_INITIALIZED
                 else:
