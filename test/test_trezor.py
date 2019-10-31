@@ -64,7 +64,7 @@ class TrezorEmulator(DeviceEmulator):
         return client
 
     def stop(self):
-        os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGINT)
+        os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
         os.waitpid(self.emulator_proc.pid, 0)
 
         # Clean up emulator image

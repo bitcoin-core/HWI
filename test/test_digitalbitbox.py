@@ -28,7 +28,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     # Cleanup
 
     def cleanup_simulator():
-        simulator_proc.kill()
+        simulator_proc.terminate()
         simulator_proc.wait()
     atexit.register(cleanup_simulator)
 
