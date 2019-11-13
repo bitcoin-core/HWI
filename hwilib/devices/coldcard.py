@@ -1,11 +1,11 @@
 # Coldcard interaction script
 
-from binascii import b2a_hex
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
-from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
+from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH, AF_P2WSH, AF_P2SH, AF_P2WSH_P2SH
+from .ckcc.utils import str_to_int_path
 from ..base58 import xpub_main_2_test
 from hashlib import sha256
 
@@ -15,7 +15,9 @@ import io
 import sys
 import time
 import struct
-from binascii import hexlify
+from binascii import hexlify, a2b_hex, b2a_hex
+
+py_enumerate = enumerate  # Need to use the enumerate built-in but there's another function already named that
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
@@ -147,18 +149,43 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     @coldcard_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32):
-        self.device.check_mitm()
-        keypath = keypath.replace('h', '\'')
-        keypath = keypath.replace('H', '\'')
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=''):
+        # redeem_script means p2sh/multisig
+        if redeem_script:
+            keypaths = keypath.split(',')
+            script = a2b_hex(redeem_script)
 
-        if p2sh_p2wpkh:
-            format = AF_P2WPKH_P2SH
-        elif bech32:
-            format = AF_P2WPKH
+            min_signers = script[0] - 80
+
+            if p2sh_p2wpkh:
+                addr_fmt = AF_P2WSH_P2SH
+            elif bech32:
+                addr_fmt = AF_P2WSH
+            else:
+                addr_fmt = AF_P2SH
+
+            xfp_paths = []
+            for idx, xfp in py_enumerate(keypaths):
+                assert '/' in xfp, 'Needs a XFP/path: ' + xfp
+                xfp, p = xfp.split('/', 1)
+
+                xfp_paths.append(str_to_int_path(xfp, p))
+
+            payload = CCProtocolPacker.show_p2sh_address(min_signers, xfp_paths, script, addr_fmt=addr_fmt)
+            address = self.device.send_recv(payload, timeout=None)
+        # single-sig
         else:
-            format = AF_CLASSIC
-        address = self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
+            self.device.check_mitm()
+            keypath = keypath.replace('h', '\'')
+            keypath = keypath.replace('H', '\'')
+
+            if p2sh_p2wpkh:
+                format = AF_P2WPKH_P2SH
+            elif bech32:
+                format = AF_P2WPKH
+            else:
+                format = AF_CLASSIC
+            address = self.device.send_recv(CCProtocolPacker.show_address(keypath, format), timeout=None)
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return {'address': address}

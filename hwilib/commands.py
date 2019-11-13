@@ -197,11 +197,11 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
+def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, redeem_script=None):
     if path is not None:
         if sh_wpkh and wpkh:
             return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
-        return client.display_address(path, sh_wpkh, wpkh)
+        return client.display_address(path, sh_wpkh, wpkh, redeem_script=redeem_script)
     elif desc is not None:
         if client.fingerprint is None:
             master_xpub = client.get_pubkey_at_path('m/0h')['xpub']

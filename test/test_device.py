@@ -87,7 +87,7 @@ class DeviceTestCase(unittest.TestCase):
         for arg in args:
             cli_args.append(shlex.quote(arg))
         if self.interface == 'cli':
-            proc = subprocess.Popen(['hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
+            proc = subprocess.Popen(['../hwi.py ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'bindist':
@@ -534,6 +534,35 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
+
+    def test_display_address_multisig(self):
+        if 'trezor' in self.full_type:
+            derivation_path = 'm/1'
+            redeem_script = '522102ac9c599cdf2b9702f741fcd8d618da46629113f73cf91711a30e188864069742210338d78612e990f2eea0c426b5e48a8db70b9d7ed66282b3b26511e0b1c75515a652ae'
+
+            # native setwit
+            native_address = 'bc1qs4vzh23t6cxn9r74uhr4440dm5s9vkkmwd4kw04ph65kxcayzats6ag75r'
+            result = self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', derivation_path, '--redeem_script', redeem_script])
+            self.assertEqual(native_address, result['address'])
+
+            # wrapped segwit
+            wrapped_address = '3L2gQGY5HwitT2XpmhGwZr1DUHyBpVzY63'
+            result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', derivation_path, '--redeem_script', redeem_script])
+            self.assertEqual(wrapped_address, result['address'])
+
+            # legacy
+            legacy_address = '3EYGX7a12tazeFZU2TkBauidkr2T3vx1Rw'
+            result = self.do_command(self.dev_args + ['displayaddress', '--path', derivation_path, '--redeem_script', redeem_script])
+            self.assertEqual(legacy_address, result['address'])
+        elif 'coldcard' in self.full_type:
+            redeem_script = '522102292134f1de237a68c206d3d45f2f412e5d22d45c264472329359404f3112baa221023f36d1f7e51102947f9b56928beacf9f9a6a1f63823b41c2a6aed9f63f61e1da21027fc1b3d175943945a5b0a84c14ef5e4ffa78a3b738a5b0c37b076c63c1fdb04d2102e6640847a5acd85f5252bfd4e800adb95718fdeb734cceb33a80d42095618e5554ae'
+
+            # legacy
+            path = '747b698e/45h/0/0,7bb026be/45h/0/0,0f056943/45h/0/0,6ba6cfd0/45h/0/0'
+            legacy_address = '2NCjUaj1M9De7bLpVuAmeMAP1yUruR9K9ZC'
+            result = self.do_command(self.dev_args + ['displayaddress', '--path', path, '--redeem_script', redeem_script])
+            self.assertEqual(legacy_address, result['address'])
+
 
 class TestSignMessage(DeviceTestCase):
     def setUp(self):
