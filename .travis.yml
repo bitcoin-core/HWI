@@ -37,8 +37,11 @@ addons:
             - protobuf-compiler
             - cython3
             - ccache
+            - qemu-user-static
+            - gcc-arm-linux-gnueabihf
+            - libc6-dev-armhf-cross
 install:
-    - pip install pipenv pysdl2 protobuf poetry
+    - pip install pipenv pysdl2 protobuf poetry pyqt5 construct mnemonic pyelftools
     # From trezor-mcu to get the correct protobuf version
     - curl -LO "https://github.com/google/protobuf/releases/download/v3.4.0/protoc-3.4.0-linux-x86_64.zip"
     - unzip "protoc-3.4.0-linux-x86_64.zip" -d protoc
