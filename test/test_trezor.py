@@ -13,7 +13,7 @@ import unittest
 
 from hwilib.devices.trezorlib.transport import enumerate_devices
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
-from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
@@ -132,7 +132,7 @@ class TestTrezorGetxpub(TrezorTestCase):
             with self.subTest(vector=vec):
                 # Setup with xprv
                 device.wipe(self.client)
-                load_device_by_xprv(client=self.client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
+                load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
                 gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
@@ -319,9 +319,9 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
     if not model_t:
         suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_1_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-        suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     else:
         suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_t_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
