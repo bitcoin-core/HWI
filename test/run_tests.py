@@ -52,7 +52,7 @@ parser.add_argument('--all', help='Run tests on all existing simulators', defaul
 parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/src/bitcoind')
 parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist', 'stdin'], default='library')
 
-parser.set_defaults(trezor=False, trezor_t=False, coldcard=False, keepkey=False, bitbox=False, ledger=False)
+parser.set_defaults(trezor=None, trezor_t=None, coldcard=None, keepkey=None, bitbox=None, ledger=None)
 args = parser.parse_args()
 
 # Run tests
@@ -65,12 +65,21 @@ if sys.platform.startswith("linux"):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
 
 if args.all:
-    args.trezor = True
-    args.trezor_t = True
-    args.coldcard = True
-    args.keepkey = True
-    args.bitbox = True
-    args.ledger = True
+    # Default all true unless overridden
+    args.trezor = True if args.trezor is None else args.trezor
+    args.trezor_t = True if args.trezor_t is None else args.trezor_t
+    args.coldcard = True if args.coldcard is None else args.coldcard
+    args.keepkey = True if args.keepkey is None else args.keepkey
+    args.bitbox = True if args.bitbox is None else args.bitbox
+    args.ledger = True if args.ledger is None else args.ledger
+else:
+    # Default all false unless overridden
+    args.trezor = False if args.trezor is None else args.trezor
+    args.trezor_t = False if args.trezor_t is None else args.trezor_t
+    args.coldcard = False if args.coldcard is None else args.coldcard
+    args.keepkey = False if args.keepkey is None else args.keepkey
+    args.bitbox = False if args.bitbox is None else args.bitbox
+    args.ledger = False if args.ledger is None else args.ledger
 
 if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox:
     # Start bitcoind
