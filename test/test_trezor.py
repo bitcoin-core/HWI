@@ -210,7 +210,7 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertEqual(result['error'], 'Non-numeric PIN provided')
         self.assertEqual(result['code'], -7)
 
-        result = self.do_command(self.dev_args + ['sendpin', '00000'])
+        result = self.do_command(self.dev_args + ['sendpin', '1111'])
         self.assertFalse(result['success'])
 
         # Make sure we get a needs pin message
