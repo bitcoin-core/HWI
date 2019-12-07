@@ -10,11 +10,9 @@ cache:
         - test/work
 addons:
     apt:
-        sources:
-            - sourceline: 'ppa:bitcoin/bitcoin'
         packages:
-            - libdb4.8-dev
-            - libdb4.8++-dev
+            - libdb-dev
+            - libdb++-dev
             - build-essential
             - curl
             - git
