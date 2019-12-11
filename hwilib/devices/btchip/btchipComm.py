@@ -145,3 +145,35 @@ class HIDDongleHIDAPI(Dongle, DongleWait):
 			except:
 				pass
 		self.opened = False
+
+class DongleServer(Dongle):
+
+	def __init__(self, server, port, debug=False):
+		self.server = server
+		self.port = port
+		self.debug = debug
+		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		try:
+			self.socket.connect((self.server, self.port))
+		except:
+			raise BTChipException("Proxy connection failed")
+
+	def exchange(self, apdu, timeout=20000):
+		if self.debug:
+			print("=> %s" % hexlify(apdu))
+		self.socket.send(struct.pack(">I", len(apdu)))
+		self.socket.send(apdu)
+		size = struct.unpack(">I", self.socket.recv(4))[0]
+		response = self.socket.recv(size)
+		sw = struct.unpack(">H", self.socket.recv(2))[0]
+		if self.debug:
+			print("<= %s%.2x" % (hexlify(response), sw))
+		if sw != 0x9000:
+			raise BTChipException("Invalid status %04x" % sw, sw)
+		return bytearray(response)
+
+	def close(self):
+		try:
+			self.socket.close()
+		except:
+			pass

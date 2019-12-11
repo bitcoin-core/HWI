@@ -4,7 +4,7 @@ from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
-from .btchip.btchipComm import HIDDongleHIDAPI
+from .btchip.btchipComm import DongleServer, HIDDongleHIDAPI
 from .btchip.btchipException import BTChipException
 from .btchip.btchipUtils import compress_public_key
 import base64
@@ -15,6 +15,8 @@ from ..base58 import get_xpub_fingerprint_hex
 from ..serializations import hash256, hash160, CTransaction
 import logging
 import re
+
+SIMULATOR_PATH = 'tcp:127.0.0.1:9999'
 
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_DEVICE_IDS = [
@@ -72,11 +74,19 @@ class LedgerClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(LedgerClient, self).__init__(path, password)
-        device = hid.device()
-        device.open_path(path.encode())
-        device.set_nonblocking(True)
 
-        self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
+        if path.startswith('tcp'):
+            split_path = path.split(':')
+            server = split_path[1]
+            port = int(split_path[2])
+            self.dongle = DongleServer(server, port, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
+        else:
+            device = hid.device()
+            device.open_path(path.encode())
+            device.set_nonblocking(True)
+
+            self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
+
         self.app = btchip(self.dongle)
 
     # Must return a dict with the xpub
@@ -362,4 +372,29 @@ def enumerate(password=''):
                     client.close()
 
                 results.append(d_data)
+
+    # Check if the simulator is there
+    client = None
+    try:
+        client = LedgerClient(SIMULATOR_PATH, password)
+
+        d_data = {}
+        d_data['type'] = 'ledger'
+        d_data['model'] = 'ledger_nano_s_simulator'
+        d_data['path'] = SIMULATOR_PATH
+        d_data['needs_pin_sent'] = False
+        d_data['needs_passphrase_sent'] = False
+
+        master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
+        d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+        d_data['needs_pin_sent'] = False
+        d_data['needs_passphrase_sent'] = False
+
+        results.append(d_data)
+    except BTChipException:
+        pass
+
+    if client:
+        client.close()
+
     return results
