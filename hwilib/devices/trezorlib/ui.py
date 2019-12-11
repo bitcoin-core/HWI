@@ -63,6 +63,7 @@ class PassphraseUI:
         self.pinmatrix_shown = False
         self.prompt_shown = False
         self.always_prompt = False
+        self.return_passphrase = True
 
     def button_request(self, code):
         if not self.prompt_shown:
@@ -73,8 +74,13 @@ class PassphraseUI:
     def get_pin(self, code=None):
         raise NotImplementedError('get_pin is not needed')
 
+    def disallow_passphrase(self):
+        self.return_passphrase = False
+
     def get_passphrase(self):
-        return self.passphrase
+        if self.return_passphrase:
+            return self.passphrase
+        raise ValueError('Passphrase from Host is not allowed for Trezor T')
 
 def mnemonic_words(expand=False, language="english"):
     if expand:

@@ -110,6 +110,8 @@ class TrezorClient(HardwareWalletClient):
 
     def _check_unlocked(self):
         self.client.init_device()
+        if self.client.features.model == 'T':
+            self.client.ui.disallow_passphrase()
         if self.client.features.pin_protection and not self.client.features.pin_cached:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
