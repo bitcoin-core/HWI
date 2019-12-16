@@ -1,4 +1,4 @@
 [flake8]
-exclude = *.pyc,__pycache__,hwilib/devices/btchip/,hwilib/devices/ckcc/,hwilib/devices/trezorlib/,test/work/
+exclude = *.pyc,__pycache__,hwilib/devices/btchip/,hwilib/devices/ckcc/,hwilib/devices/trezorlib/,test/work/,hwilib/ui
 ignore = E261,E302,E305,E501,E722,W5
 per-file-ignores = setup.py:E122
