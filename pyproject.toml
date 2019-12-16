@@ -15,13 +15,14 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.6,<3.9"
 hidapi = "^0.7.99"
 ecdsa = "^0.13.0"
 pyaes = "^1.6"
 mnemonic = "^0.18.0"
 typing-extensions = "^3.7"
 libusb1 = "^1.7"
+pyside2 = "^5.14.0"
 
 [tool.poetry.dev-dependencies]
 pyinstaller = "^3.4"
