@@ -67,11 +67,20 @@ class HWIQt(QMainWindow):
 
     @Slot()
     def get_device_info(self, index):
+        self.ui.sendpin_button.setEnabled(False)
         if index == 0:
             return
+
         # Get the client
         dev = self.devices[index - 1]
         self.client = commands.get_client(dev['model'], dev['path'], self.passphrase)
+
+        # Enable the sendpin button if it's a trezor and it needs it
+        if dev['needs_pin_sent']:
+            self.ui.sendpin_button.setEnabled(True)
+            return
+        else:
+            self.ui.sendpin_button.setEnabled(False)
 
         # do getkeypool and getdescriptors
         keypool = commands.getkeypool(self.client, 'm/49h/0h/0h/*', 0, 1000, False, True, 0, False, True)

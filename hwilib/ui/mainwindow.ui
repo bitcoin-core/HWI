@@ -90,6 +90,9 @@
       <layout class="QGridLayout" name="gridLayout">
        <item row="1" column="1">
         <widget class="QPushButton" name="sendpin_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Send Pin</string>
          </property>
