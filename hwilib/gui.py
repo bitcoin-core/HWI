@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 
+import json
+
 from . import commands
 
 try:
@@ -36,9 +38,12 @@ class HWIQt(QMainWindow):
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
 
+        self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_device_info)
+
     @Slot()
     def refresh_clicked(self):
         self.devices = commands.enumerate(self.passphrase)
+        self.ui.enumerate_combobox.currentIndexChanged.disconnect()
         self.ui.enumerate_combobox.clear()
         self.ui.enumerate_combobox.addItem('')
         for dev in self.devices:
@@ -47,6 +52,7 @@ class HWIQt(QMainWindow):
                 fingerprint = dev['fingerprint']
             dev_str = '{} fingerprint:{} path:{}'.format(dev['model'], fingerprint, dev['path'])
             self.ui.enumerate_combobox.addItem(dev_str)
+        self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_device_info)
 
     @Slot()
     def show_setpassphrasedialog(self):
@@ -58,6 +64,21 @@ class HWIQt(QMainWindow):
     def setpassphrasedialog_accepted(self):
         self.passphrase = self.current_dialog.ui.passphrase_lineedit.text()
         self.current_dialog = None
+
+    @Slot()
+    def get_device_info(self, index):
+        if index == 0:
+            return
+        # Get the client
+        dev = self.devices[index - 1]
+        self.client = commands.get_client(dev['model'], dev['path'], self.passphrase)
+
+        # do getkeypool and getdescriptors
+        keypool = commands.getkeypool(self.client, 'm/49h/0h/0h/*', 0, 1000, False, True, 0, False, True)
+        descriptors = commands.getdescriptors(self.client, 0)
+
+        self.ui.keypool_textedit.setPlainText(json.dumps(keypool, indent=2))
+        self.ui.desc_textedit.setPlainText(json.dumps(descriptors, indent=2))
 
 def main():
     app = QApplication()
