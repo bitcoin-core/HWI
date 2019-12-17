@@ -63,7 +63,7 @@ if [ ! -d "firmware" ]; then
     coldcard_setup_needed=true
 else
     cd firmware
-    git reset --hard HEAD^ # Undo git-am for checking and updating
+    git reset --hard HEAD~2 # Undo git-am for checking and updating
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -81,6 +81,7 @@ else
 fi
 # Apply patch to make simulator work in linux environments
 git am ../../data/coldcard-linux-sock.patch
+git am ../../data/coldcard-multisig-setup.patch
 
 # Build the simulator. This is cached, but it is also fast
 cd unix
