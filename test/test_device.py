@@ -361,9 +361,9 @@ class TestSignTx(DeviceTestCase):
                    pkh_info['desc'][4:-10]]
 
         # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(multi(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
+        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
+        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
+        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(sortedmulti(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
 
         sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
         sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
