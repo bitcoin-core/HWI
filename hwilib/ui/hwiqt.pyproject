@@ -1,3 +1,3 @@
 {
-    "files": ["mainwindow.ui","setpassphrasedialog.ui","sendpindialog.ui","getxpubdialog.ui"]
+    "files": ["mainwindow.ui","setpassphrasedialog.ui","getxpubdialog.ui","sendpindialog.ui","signpsbtdialog.ui"]
 }

@@ -9,6 +9,7 @@ try:
     from .ui.ui_mainwindow import Ui_MainWindow
     from .ui.ui_sendpindialog import Ui_SendPinDialog
     from .ui.ui_setpassphrasedialog import Ui_SetPassphraseDialog
+    from .ui.ui_signpsbtdialog import Ui_SignPSBTDialog
 except ImportError:
     print('Could not import UI files, did you run contrib/generate-ui.sh')
     exit(-1)
@@ -89,6 +90,25 @@ class GetXpubDialog(QDialog):
         res = commands.getxpub(self.client, path)
         self.ui.xpub_lineedit.setText(res['xpub'])
 
+class SignPSBTDialog(QDialog):
+    def __init__(self, client):
+        super(SignPSBTDialog, self).__init__()
+        self.ui = Ui_SignPSBTDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Sign PSBT')
+        self.client = client
+
+        self.ui.psbt_in_textedit.setFocus()
+
+        self.ui.sign_psbt_button.clicked.connect(self.sign_psbt_button_clicked)
+        self.ui.buttonBox.clicked.connect(self.accept)
+
+    @Slot()
+    def sign_psbt_button_clicked(self):
+        psbt_str = self.ui.psbt_in_textedit.toPlainText()
+        res = commands.signtx(self.client, psbt_str)
+        self.ui.psbt_out_textedit.setPlainText(res['psbt'])
+
 class HWIQt(QMainWindow):
     def __init__(self):
         super(HWIQt, self).__init__()
@@ -106,6 +126,7 @@ class HWIQt(QMainWindow):
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
         self.ui.sendpin_button.clicked.connect(self.show_sendpindialog)
         self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
+        self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -181,6 +202,11 @@ class HWIQt(QMainWindow):
     @Slot()
     def show_getxpubdialog(self):
         self.current_dialog = GetXpubDialog(self.client)
+        self.current_dialog.exec_()
+
+    @Slot()
+    def show_signpsbtdialog(self):
+        self.current_dialog = SignPSBTDialog(self.client)
         self.current_dialog.exec_()
 
 def main():
