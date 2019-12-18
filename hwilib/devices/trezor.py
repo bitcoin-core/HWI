@@ -206,12 +206,16 @@ class TrezorClient(HardwareWalletClient):
                     continue
 
                 # Find key to sign with
-                found = False
+                found = False # Whether we have found a key to sign with
+                found_in_sigs = False # Whether we have found one of our keys in the signatures
                 our_keys = 0
                 for key in psbt_in.hd_keypaths.keys():
                     keypath = psbt_in.hd_keypaths[key]
-                    if keypath[0] == master_fp and key not in psbt_in.partial_sigs:
-                        if not found:
+                    if keypath[0] == master_fp:
+                        if key in psbt_in.partial_sigs: # This key already has a signature
+                            found_in_sigs = True
+                            continue
+                        if not found: # This key does not have a signature and we don't have a key to sign with yet
                             txinputtype.address_n = keypath[1:]
                             found = True
                         our_keys += 1
@@ -220,10 +224,12 @@ class TrezorClient(HardwareWalletClient):
                 if our_keys > passes:
                     passes = our_keys
 
-                if not found:
+                if not found and not found_in_sigs: # None of our keys were in hd_keypaths or in partial_sigs
                     # This input is not one of ours
                     ignore_input()
                     continue
+                elif not found and found_in_sigs: # All of our keys are in partial_sigs, ignore whatever signature is produced for this input
+                    to_ignore.append(input_num)
 
                 # append to inputs
                 inputs.append(txinputtype)
