@@ -5,6 +5,7 @@ import json
 from . import commands
 
 try:
+    from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
     from .ui.ui_getxpubdialog import Ui_GetXpubDialog
     from .ui.ui_mainwindow import Ui_MainWindow
     from .ui.ui_sendpindialog import Ui_SendPinDialog
@@ -131,6 +132,26 @@ class SignMessageDialog(QDialog):
         res = commands.signmessage(self.client, msg_str, path)
         self.ui.sig_textedit.setPlainText(res['signature'])
 
+class DisplayAddressDialog(QDialog):
+    def __init__(self, client):
+        super(DisplayAddressDialog, self).__init__()
+        self.ui = Ui_DisplayAddressDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Display Address')
+        self.client = client
+
+        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setFocus()
+
+        self.ui.go_button.clicked.connect(self.go_button_clicked)
+        self.ui.buttonBox.clicked.connect(self.accept)
+
+    @Slot()
+    def go_button_clicked(self):
+        path = self.ui.path_lineedit.text()
+        res = commands.displayaddress(self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
+        self.ui.address_lineedit.setText(res['address'])
+
 class HWIQt(QMainWindow):
     def __init__(self):
         super(HWIQt, self).__init__()
@@ -150,6 +171,7 @@ class HWIQt(QMainWindow):
         self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
         self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
         self.ui.signmsg_button.clicked.connect(self.show_signmessagedialog)
+        self.ui.display_addr_button.clicked.connect(self.show_displayaddressdialog)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -235,6 +257,11 @@ class HWIQt(QMainWindow):
     @Slot()
     def show_signmessagedialog(self):
         self.current_dialog = SignMessageDialog(self.client)
+        self.current_dialog.exec_()
+
+    @Slot()
+    def show_displayaddressdialog(self):
+        self.current_dialog = DisplayAddressDialog(self.client)
         self.current_dialog.exec_()
 
 def main():
