@@ -9,6 +9,7 @@ try:
     from .ui.ui_mainwindow import Ui_MainWindow
     from .ui.ui_sendpindialog import Ui_SendPinDialog
     from .ui.ui_setpassphrasedialog import Ui_SetPassphraseDialog
+    from .ui.ui_signmessagedialog import Ui_SignMessageDialog
     from .ui.ui_signpsbtdialog import Ui_SignPSBTDialog
 except ImportError:
     print('Could not import UI files, did you run contrib/generate-ui.sh')
@@ -109,6 +110,27 @@ class SignPSBTDialog(QDialog):
         res = commands.signtx(self.client, psbt_str)
         self.ui.psbt_out_textedit.setPlainText(res['psbt'])
 
+class SignMessageDialog(QDialog):
+    def __init__(self, client):
+        super(SignMessageDialog, self).__init__()
+        self.ui = Ui_SignMessageDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Sign Message')
+        self.client = client
+
+        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.msg_textedit.setFocus()
+
+        self.ui.signmsg_button.clicked.connect(self.signmsg_button_clicked)
+        self.ui.buttonBox.clicked.connect(self.accept)
+
+    @Slot()
+    def signmsg_button_clicked(self):
+        msg_str = self.ui.msg_textedit.toPlainText()
+        path = self.ui.path_lineedit.text()
+        res = commands.signmessage(self.client, msg_str, path)
+        self.ui.sig_textedit.setPlainText(res['signature'])
+
 class HWIQt(QMainWindow):
     def __init__(self):
         super(HWIQt, self).__init__()
@@ -127,6 +149,7 @@ class HWIQt(QMainWindow):
         self.ui.sendpin_button.clicked.connect(self.show_sendpindialog)
         self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
         self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
+        self.ui.signmsg_button.clicked.connect(self.show_signmessagedialog)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -207,6 +230,11 @@ class HWIQt(QMainWindow):
     @Slot()
     def show_signpsbtdialog(self):
         self.current_dialog = SignPSBTDialog(self.client)
+        self.current_dialog.exec_()
+
+    @Slot()
+    def show_signmessagedialog(self):
+        self.current_dialog = SignMessageDialog(self.client)
         self.current_dialog.exec_()
 
 def main():
