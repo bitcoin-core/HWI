@@ -7,6 +7,7 @@ from . import commands
 try:
     from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
     from .ui.ui_getxpubdialog import Ui_GetXpubDialog
+    from .ui.ui_getkeypooloptionsdialog import Ui_GetKeypoolOptionsDialog
     from .ui.ui_mainwindow import Ui_MainWindow
     from .ui.ui_sendpindialog import Ui_SendPinDialog
     from .ui.ui_setpassphrasedialog import Ui_SetPassphraseDialog
@@ -152,6 +153,45 @@ class DisplayAddressDialog(QDialog):
         res = commands.displayaddress(self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
         self.ui.address_lineedit.setText(res['address'])
 
+class GetKeypoolOptionsDialog(QDialog):
+    def __init__(self, opts):
+        super(GetKeypoolOptionsDialog, self).__init__()
+        self.ui = Ui_GetKeypoolOptionsDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Set getkeypool options')
+
+        self.ui.start_spinbox.setValue(opts['start'])
+        self.ui.end_spinbox.setValue(opts['end'])
+        self.ui.internal_checkbox.setChecked(opts['internal'])
+        self.ui.keypool_checkbox.setChecked(opts['keypool'])
+        self.ui.account_spinbox.setValue(opts['account'])
+        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        if opts['account_used']:
+            self.ui.account_radio.setChecked(True)
+            self.ui.path_radio.setChecked(False)
+            self.ui.path_lineedit.setEnabled(False)
+            self.ui.account_spinbox.setEnabled(True)
+            self.ui.account_spinbox.setValue(opts['account'])
+        else:
+            self.ui.account_radio.setChecked(False)
+            self.ui.path_radio.setChecked(True)
+            self.ui.path_lineedit.setEnabled(True)
+            self.ui.account_spinbox.setEnabled(False)
+            self.ui.path_lineedit.setText(opts['path'])
+        self.ui.sh_wpkh_radio.setChecked(opts['sh_wpkh'])
+        self.ui.wpkh_radio.setChecked(opts['wpkh'])
+
+        self.ui.account_radio.toggled.connect(self.toggle_account)
+
+    @Slot()
+    def toggle_account(self, checked):
+        if checked:
+            self.ui.path_lineedit.setEnabled(False)
+            self.ui.account_spinbox.setEnabled(True)
+        else:
+            self.ui.path_lineedit.setEnabled(True)
+            self.ui.account_spinbox.setEnabled(False)
+
 class HWIQt(QMainWindow):
     def __init__(self):
         super(HWIQt, self).__init__()
@@ -164,6 +204,17 @@ class HWIQt(QMainWindow):
         self.device_info = {}
         self.passphrase = ''
         self.current_dialog = None
+        self.getkeypool_opts = {
+            'start': 0,
+            'end': 1000,
+            'account': 0,
+            'internal': False,
+            'keypool': True,
+            'sh_wpkh': True,
+            'wpkh': False,
+            'path': None,
+            'account_used': True
+        }
 
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
@@ -172,6 +223,7 @@ class HWIQt(QMainWindow):
         self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
         self.ui.signmsg_button.clicked.connect(self.show_signmessagedialog)
         self.ui.display_addr_button.clicked.connect(self.show_displayaddressdialog)
+        self.ui.getkeypool_opts_button.clicked.connect(self.show_getkeypooloptionsdialog)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -224,7 +276,15 @@ class HWIQt(QMainWindow):
             self.ui.sendpin_button.setEnabled(False)
 
         # do getkeypool and getdescriptors
-        keypool = commands.getkeypool(self.client, 'm/49h/0h/0h/*', 0, 1000, False, True, 0, False, True)
+        keypool = commands.getkeypool(self.client,
+                                      None if self.getkeypool_opts['account_used'] else self.getkeypool_opts['path'],
+                                      self.getkeypool_opts['start'],
+                                      self.getkeypool_opts['end'],
+                                      self.getkeypool_opts['internal'],
+                                      self.getkeypool_opts['keypool'],
+                                      self.getkeypool_opts['account'],
+                                      self.getkeypool_opts['sh_wpkh'],
+                                      self.getkeypool_opts['wpkh'])
         descriptors = commands.getdescriptors(self.client, 0)
 
         self.ui.keypool_textedit.setPlainText(json.dumps(keypool, indent=2))
@@ -263,6 +323,29 @@ class HWIQt(QMainWindow):
     def show_displayaddressdialog(self):
         self.current_dialog = DisplayAddressDialog(self.client)
         self.current_dialog.exec_()
+
+    @Slot()
+    def show_getkeypooloptionsdialog(self):
+        self.current_dialog = GetKeypoolOptionsDialog(self.getkeypool_opts)
+        self.current_dialog.accepted.connect(self.getkeypooloptionsdialog_accepted)
+        self.current_dialog.exec_()
+
+    @Slot()
+    def getkeypooloptionsdialog_accepted(self):
+        self.getkeypool_opts['start'] = self.current_dialog.ui.start_spinbox.value()
+        self.getkeypool_opts['end'] = self.current_dialog.ui.end_spinbox.value()
+        self.getkeypool_opts['internal'] = self.current_dialog.ui.internal_checkbox.isChecked()
+        self.getkeypool_opts['keypool'] = self.current_dialog.ui.keypool_checkbox.isChecked()
+        self.getkeypool_opts['sh_wpkh'] = self.current_dialog.ui.sh_wpkh_radio.isChecked()
+        self.getkeypool_opts['wpkh'] = self.current_dialog.ui.wpkh_radio.isChecked()
+        if self.current_dialog.ui.account_radio.isChecked():
+            self.getkeypool_opts['account'] = self.current_dialog.ui.account_spinbox.value()
+            self.getkeypool_opts['account_used'] = True
+        else:
+            self.getkeypool_opts['path'] = self.current_dialog.ui.path_lineedit.text()
+            self.getkeypool_opts['account_used'] = False
+        self.current_dialog = None
+        self.get_device_info()
 
 def main():
     app = QApplication()
