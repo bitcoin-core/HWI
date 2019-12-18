@@ -5,6 +5,7 @@ import json
 from . import commands
 
 try:
+    from .ui.ui_getxpubdialog import Ui_GetXpubDialog
     from .ui.ui_mainwindow import Ui_MainWindow
     from .ui.ui_sendpindialog import Ui_SendPinDialog
     from .ui.ui_setpassphrasedialog import Ui_SetPassphraseDialog
@@ -13,7 +14,7 @@ except ImportError:
     exit(-1)
 
 from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QMainWindow
+from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMainWindow
 from PySide2.QtCore import QRegExp, Signal, Slot
 
 class SetPassphraseDialog(QDialog):
@@ -67,6 +68,27 @@ class SendPinDialog(QDialog):
         self.client = None
         self.pin_sent_success.emit()
 
+class GetXpubDialog(QDialog):
+    def __init__(self, client):
+        super(GetXpubDialog, self).__init__()
+        self.ui = Ui_GetXpubDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Get xpub')
+        self.client = client
+
+        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setFocus()
+        self.ui.buttonBox.button(QDialogButtonBox.Close).setAutoDefault(False)
+
+        self.ui.getxpub_button.clicked.connect(self.getxpub_button_clicked)
+        self.ui.buttonBox.clicked.connect(self.accept)
+
+    @Slot()
+    def getxpub_button_clicked(self):
+        path = self.ui.path_lineedit.text()
+        res = commands.getxpub(self.client, path)
+        self.ui.xpub_lineedit.setText(res['xpub'])
+
 class HWIQt(QMainWindow):
     def __init__(self):
         super(HWIQt, self).__init__()
@@ -83,6 +105,7 @@ class HWIQt(QMainWindow):
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
         self.ui.sendpin_button.clicked.connect(self.show_sendpindialog)
+        self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -154,6 +177,11 @@ class HWIQt(QMainWindow):
         curr_index = self.ui.enumerate_combobox.currentIndex()
         self.refresh_clicked()
         self.ui.enumerate_combobox.setCurrentIndex(curr_index)
+
+    @Slot()
+    def show_getxpubdialog(self):
+        self.current_dialog = GetXpubDialog(self.client)
+        self.current_dialog.exec_()
 
 def main():
     app = QApplication()
