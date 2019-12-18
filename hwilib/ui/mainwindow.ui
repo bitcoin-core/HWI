@@ -107,6 +107,9 @@
        </item>
        <item row="2" column="1">
         <widget class="QPushButton" name="signtx_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Sign PSBT</string>
          </property>
@@ -114,6 +117,9 @@
        </item>
        <item row="2" column="0">
         <widget class="QPushButton" name="getxpub_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Get an xpub</string>
          </property>
@@ -121,6 +127,9 @@
        </item>
        <item row="2" column="2">
         <widget class="QPushButton" name="signmsg_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Sign Message</string>
          </property>
@@ -147,6 +156,9 @@
        </item>
        <item row="1" column="2">
         <widget class="QPushButton" name="getkeypool_opts_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="toolTip">
           <string>Change the options used for getkeypool</string>
          </property>
@@ -157,6 +169,9 @@
        </item>
        <item row="3" column="0">
         <widget class="QPushButton" name="display_addr_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Display Address</string>
          </property>

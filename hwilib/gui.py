@@ -227,6 +227,15 @@ class HWIQt(QMainWindow):
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
+    def clear_info(self):
+        self.ui.getxpub_button.setEnabled(False)
+        self.ui.signtx_button.setEnabled(False)
+        self.ui.signmsg_button.setEnabled(False)
+        self.ui.display_addr_button.setEnabled(False)
+        self.ui.getkeypool_opts_button.setEnabled(False)
+        self.ui.keypool_textedit.clear()
+        self.ui.desc_textedit.clear()
+
     @Slot()
     def refresh_clicked(self):
         if self.client:
@@ -244,6 +253,7 @@ class HWIQt(QMainWindow):
             dev_str = '{} fingerprint:{} path:{}'.format(dev['model'], fingerprint, dev['path'])
             self.ui.enumerate_combobox.addItem(dev_str)
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
+        self.clear_info()
 
     @Slot()
     def show_setpassphrasedialog(self):
@@ -260,7 +270,14 @@ class HWIQt(QMainWindow):
     def get_client_and_device_info(self, index):
         self.ui.sendpin_button.setEnabled(False)
         if index == 0:
+            self.clear_info()
             return
+
+        self.ui.getxpub_button.setEnabled(True)
+        self.ui.signtx_button.setEnabled(True)
+        self.ui.signmsg_button.setEnabled(True)
+        self.ui.display_addr_button.setEnabled(True)
+        self.ui.getkeypool_opts_button.setEnabled(True)
 
         # Get the client
         self.device_info = self.devices[index - 1]
@@ -271,6 +288,7 @@ class HWIQt(QMainWindow):
         # Enable the sendpin button if it's a trezor and it needs it
         if self.device_info['needs_pin_sent']:
             self.ui.sendpin_button.setEnabled(True)
+            self.clear_info()
             return
         else:
             self.ui.sendpin_button.setEnabled(False)
