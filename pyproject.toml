@@ -11,6 +11,7 @@ exclude = ["docs/", "test/"]
 include = ["hwilib/**/*.py", "udev/"]
 packages = [
     { include = "hwi.py" },
+    { include = "hwi-qt.py" },
     { include = "hwilib" },
 ]
 
@@ -34,6 +35,7 @@ flake8 = "^3.7"
 
 [tool.poetry.scripts]
 hwi = 'hwilib.cli:main'
+hwi-qt = 'hwilib.gui:main'
 
 [build-system]
 requires = ["poetry>=0.12"]

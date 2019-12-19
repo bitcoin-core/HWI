@@ -11,20 +11,21 @@ packages = \
  'hwilib.devices.trezorlib.transport']
 
 package_data = \
-{'': ['*'], 'hwilib': ['udev/*']}
+{'': ['*'], 'hwilib': ['udev/*', 'ui/*']}
 
 modules = \
-['hwi']
+['hwi', 'hwi-qt']
 install_requires = \
 ['ecdsa>=0.13.0,<0.14.0',
  'hidapi>=0.7.99,<0.8.0',
  'libusb1>=1.7,<2.0',
  'mnemonic>=0.18.0,<0.19.0',
  'pyaes>=1.6,<2.0',
+ 'pyside2>=5.14.0,<6.0.0',
  'typing-extensions>=3.7,<4.0']
 
 entry_points = \
-{'console_scripts': ['hwi = hwilib.cli:main']}
+{'console_scripts': ['hwi = hwilib.cli:main', 'hwi-qt = hwilib.gui:main']}
 
 setup_kwargs = {
     'name': 'hwi',
@@ -41,7 +42,7 @@ setup_kwargs = {
     'py_modules': modules,
     'install_requires': install_requires,
     'entry_points': entry_points,
-    'python_requires': '>=3.6,<4.0',
+    'python_requires': '>=3.6,<3.9',
 }
 
 
