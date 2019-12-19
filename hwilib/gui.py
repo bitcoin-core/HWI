@@ -3,6 +3,7 @@
 import json
 
 from . import commands
+from .errors import handle_errors
 
 try:
     from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
@@ -18,8 +19,18 @@ except ImportError:
     exit(-1)
 
 from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMainWindow
+from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QMainWindow
 from PySide2.QtCore import QRegExp, Signal, Slot
+
+def do_command(f, *args, **kwargs):
+    result = {}
+    with handle_errors(result=result):
+        result = f(*args, **kwargs)
+    if 'error' in result:
+        msg = 'Error: {}\nCode:{}'.format(result['error'], result['code'])
+        QMessageBox.critical(None, "An Error Occurred", msg)
+        return None
+    return result
 
 class SetPassphraseDialog(QDialog):
     def __init__(self):
@@ -54,7 +65,7 @@ class SendPinDialog(QDialog):
         self.ui.p9_button.clicked.connect(self.button_clicked(9))
 
         self.accepted.connect(self.sendpindialog_accepted)
-        commands.prompt_pin(self.client)
+        do_command(commands.prompt_pin, self.client)
 
     def button_clicked(self, number):
         @Slot()
@@ -67,7 +78,7 @@ class SendPinDialog(QDialog):
         pin = self.ui.pin_lineedit.text()
 
         # Send the pin
-        commands.send_pin(self.client, pin)
+        do_command(commands.send_pin, self.client, pin)
         self.client.close()
         self.client = None
         self.pin_sent_success.emit()
@@ -90,7 +101,7 @@ class GetXpubDialog(QDialog):
     @Slot()
     def getxpub_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        res = commands.getxpub(self.client, path)
+        res = do_command(commands.getxpub, self.client, path)
         self.ui.xpub_lineedit.setText(res['xpub'])
 
 class SignPSBTDialog(QDialog):
@@ -109,7 +120,7 @@ class SignPSBTDialog(QDialog):
     @Slot()
     def sign_psbt_button_clicked(self):
         psbt_str = self.ui.psbt_in_textedit.toPlainText()
-        res = commands.signtx(self.client, psbt_str)
+        res = do_command(commands.signtx, self.client, psbt_str)
         self.ui.psbt_out_textedit.setPlainText(res['psbt'])
 
 class SignMessageDialog(QDialog):
@@ -130,7 +141,7 @@ class SignMessageDialog(QDialog):
     def signmsg_button_clicked(self):
         msg_str = self.ui.msg_textedit.toPlainText()
         path = self.ui.path_lineedit.text()
-        res = commands.signmessage(self.client, msg_str, path)
+        res = do_command(commands.signmessage, self.client, msg_str, path)
         self.ui.sig_textedit.setPlainText(res['signature'])
 
 class DisplayAddressDialog(QDialog):
@@ -150,7 +161,7 @@ class DisplayAddressDialog(QDialog):
     @Slot()
     def go_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        res = commands.displayaddress(self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
+        res = do_command(commands.displayaddress, self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
         self.ui.address_lineedit.setText(res['address'])
 
 class GetKeypoolOptionsDialog(QDialog):
@@ -294,16 +305,16 @@ class HWIQt(QMainWindow):
             self.ui.sendpin_button.setEnabled(False)
 
         # do getkeypool and getdescriptors
-        keypool = commands.getkeypool(self.client,
-                                      None if self.getkeypool_opts['account_used'] else self.getkeypool_opts['path'],
-                                      self.getkeypool_opts['start'],
-                                      self.getkeypool_opts['end'],
-                                      self.getkeypool_opts['internal'],
-                                      self.getkeypool_opts['keypool'],
-                                      self.getkeypool_opts['account'],
-                                      self.getkeypool_opts['sh_wpkh'],
-                                      self.getkeypool_opts['wpkh'])
-        descriptors = commands.getdescriptors(self.client, self.getkeypool_opts['account'])
+        keypool = do_command(commands.getkeypool, self.client,
+                             None if self.getkeypool_opts['account_used'] else self.getkeypool_opts['path'],
+                             self.getkeypool_opts['start'],
+                             self.getkeypool_opts['end'],
+                             self.getkeypool_opts['internal'],
+                             self.getkeypool_opts['keypool'],
+                             self.getkeypool_opts['account'],
+                             self.getkeypool_opts['sh_wpkh'],
+                             self.getkeypool_opts['wpkh'])
+        descriptors = do_command(commands.getdescriptors, self.client, self.getkeypool_opts['account'])
 
         self.ui.keypool_textedit.setPlainText(json.dumps(keypool, indent=2))
         self.ui.desc_textedit.setPlainText(json.dumps(descriptors, indent=2))
