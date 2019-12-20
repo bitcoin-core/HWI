@@ -62,6 +62,8 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             result = self.do_command(self.dev_args + ['backup'])
             self.assertTrue(result['success'])
             self.assertIn('The backup has been written to', result['message'])
+            backup_filename = result['message'].split(' ')[-1]
+            os.remove(backup_filename)
 
         def test_pin(self):
             result = self.do_command(self.dev_args + ['promptpin'])
