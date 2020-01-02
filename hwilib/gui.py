@@ -3,7 +3,7 @@
 import json
 
 from . import commands
-from .errors import handle_errors
+from .errors import handle_errors, DEVICE_NOT_INITIALIZED
 
 try:
     from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
@@ -303,6 +303,12 @@ class HWIQt(QMainWindow):
             return
         else:
             self.ui.sendpin_button.setEnabled(False)
+
+        # If it isn't initialized, show an error but don't do anything
+        if 'code' in self.device_info and self.device_info['code'] == DEVICE_NOT_INITIALIZED:
+            self.clear_info()
+            QMessageBox.information(None, "Not initialized yet", 'Device is not initalized yet')
+            return
 
         # do getkeypool and getdescriptors
         keypool = do_command(commands.getkeypool, self.client,
