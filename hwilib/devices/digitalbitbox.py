@@ -617,6 +617,11 @@ class DigitalbitboxClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
+class Digitalbitbox01Client(DigitalbitboxClient):
+    def __init__(self, path, password='', expert=False):
+        super(Digitalbitbox01Client, self).__init__(path, password, expert)
+        self.type = 'Digital BitBox01'
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)

@@ -44,14 +44,17 @@ class AddressType(Enum):
     SH_WPKH = 3
 
 def get_client_class(device_type):
-    device_type = device_type.split('_')[0]
-    class_name = device_type.capitalize()
-    module = device_type.lower()
+    device_type_split = device_type.split('_')
+    if device_type_split[-1].lower() == 'simulator':
+        del device_type_split[-1]
+    device_type_split = [x.capitalize() for x in device_type_split]
+    device_model = ''.join(device_type_split)
+    module = device_type_split[0].lower()
 
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
-        client_constructor = getattr(imported_dev, class_name + 'Client')
-    except ImportError:
+        client_constructor = getattr(imported_dev, device_model + 'Client')
+    except (ImportError, AttributeError):
         raise UnknownDeviceError('Unknown device type specified')
 
     return client_constructor
@@ -89,7 +92,7 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
             continue
         client = None
         try:
-            client = get_client(d['type'], d['path'], password, expert)
+            client = get_client(d['model'], d['path'], password, expert)
 
             if fingerprint:
                 master_fpr = d.get('fingerprint', None)

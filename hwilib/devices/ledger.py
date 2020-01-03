@@ -102,6 +102,7 @@ class LedgerClient(HardwareWalletClient):
 
     def __init__(self, path, password='', expert=False):
         super(LedgerClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano S and X'
 
         if path.startswith('tcp'):
             split_path = path.split(':')
@@ -385,6 +386,16 @@ class LedgerClient(HardwareWalletClient):
     # Toggle passphrase
     def toggle_passphrase(self):
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
+
+class LedgerNanoSClient(LedgerClient):
+    def __init__(self, path, password='', expert=False):
+        super(LedgerNanoSClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano S'
+
+class LedgerNanoXClient(LedgerClient):
+    def __init__(self, path, password='', expert=False):
+        super(LedgerNanoXClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano X'
 
 def enumerate(password=''):
     results = []

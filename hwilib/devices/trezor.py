@@ -551,6 +551,16 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return {'success': True}
 
+class Trezor1Client(TrezorClient):
+    def __init__(self, path, password='', expert=False):
+        super(Trezor1Client, self).__init__(path, password, expert)
+        self.type = 'Trezor 1'
+
+class TrezorTClient(TrezorClient):
+    def __init__(self, path, password='', expert=False):
+        super(TrezorTClient, self).__init__(path, password, expert)
+        self.type = 'Trezor T'
+
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
