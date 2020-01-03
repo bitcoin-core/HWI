@@ -357,19 +357,19 @@ class LedgerClient(HardwareWalletClient):
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
+        raise UnavailableActionError('The {} does not support software setup'.format(self.type))
 
     # Wipe this device
     def wipe_device(self):
-        raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
+        raise UnavailableActionError('The {} does not support wiping via software'.format(self.type))
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label='', word_count=24):
-        raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
+        raise UnavailableActionError('The {} does not support restoring via software'.format(self.type))
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
+        raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
     def close(self):
@@ -377,11 +377,11 @@ class LedgerClient(HardwareWalletClient):
 
     # Prompt pin
     def prompt_pin(self):
-        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
+        raise UnavailableActionError('The {} does not need a PIN sent from the host'.format(self.type))
 
     # Send pin
     def send_pin(self, pin):
-        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
+        raise UnavailableActionError('The {} does not need a PIN sent from the host'.format(self.type))
 
     # Toggle passphrase
     def toggle_passphrase(self):
