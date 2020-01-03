@@ -43,21 +43,29 @@ class AddressType(Enum):
     WPKH = 2
     SH_WPKH = 3
 
-# Get the client for the device
-def get_client(device_type, device_path, password='', expert=False):
+def get_client_class(device_type):
     device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
 
-    client = None
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
         client_constructor = getattr(imported_dev, class_name + 'Client')
-        client = client_constructor(device_path, password, expert)
     except ImportError:
+        raise UnknownDeviceError('Unknown device type specified')
+
+    return client_constructor
+
+# Get the client for the device
+def get_client(device_type, device_path, password='', expert=False):
+    client = None
+    try:
+        client_constructor = get_client_class(device_type)
+        client = client_constructor(device_path, password, expert)
+    except:
         if client:
             client.close()
-        raise UnknownDeviceError('Unknown device type specified')
+        raise
 
     return client
 
