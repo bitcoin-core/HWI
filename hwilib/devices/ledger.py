@@ -2,7 +2,11 @@
 
 from typing import Dict, Union
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import (
+    DeviceFeature,
+    HardwareWalletClient,
+    SupportedFeatures,
+)
 from ..errors import (
     ActionCanceledError,
     BadArgumentError,
@@ -99,6 +103,29 @@ def ledger_exception(f):
 
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
+
+    # Setup features
+    features = SupportedFeatures()
+    features.getxpub = DeviceFeature.SUPPORTED
+    features.signmessage = DeviceFeature.SUPPORTED
+    features.setup = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.wipe = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.recover = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.backup = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_p2pkh = DeviceFeature.SUPPORTED
+    features.sign_p2sh_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_coinjoin = DeviceFeature.SUPPORTED
+    features.sign_mixed_segwit = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.display_address = DeviceFeature.SUPPORTED
 
     def __init__(self, path, password='', expert=False):
         super(LedgerClient, self).__init__(path, password, expert)
@@ -390,7 +417,7 @@ class LedgerClient(HardwareWalletClient):
     # Get HWI features for this device
     @classmethod
     def get_features(self):
-        raise NotImplementedError('The Ledger Nano S and X does not implement this method')
+        return self.features.get_printable_dict()
 
 class LedgerNanoSClient(LedgerClient):
     def __init__(self, path, password='', expert=False):
