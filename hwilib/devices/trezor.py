@@ -10,7 +10,7 @@ from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_N
 from .trezorlib import tools, btc, device
 from .trezorlib import messages as proto
 from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
-from ..serializations import CTxOut, ser_uint256
+from ..serializations import CTxOut, ExtendedKey, ser_uint256
 from .. import bech32
 from usb1 import USBErrorNoDevice
 from types import MethodType
@@ -126,9 +126,14 @@ class TrezorClient(HardwareWalletClient):
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path)
         if self.is_testnet:
-            return {'xpub': xpub_main_2_test(output.xpub)}
+            result = {'xpub': xpub_main_2_test(output.xpub)}
         else:
-            return {'xpub': output.xpub}
+            result = {'xpub': output.xpub}
+        if self.expert:
+            xpub_obj = ExtendedKey()
+            xpub_obj.deserialize(output.xpub)
+            result.update(xpub_obj.get_printable_dict())
+        return result
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format

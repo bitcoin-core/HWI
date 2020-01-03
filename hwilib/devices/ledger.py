@@ -12,7 +12,7 @@ import hid
 import struct
 from .. import base58
 from ..base58 import get_xpub_fingerprint_hex
-from ..serializations import hash256, hash160, CTransaction
+from ..serializations import ExtendedKey, hash256, hash160, CTransaction
 import logging
 import re
 
@@ -135,7 +135,14 @@ class LedgerClient(HardwareWalletClient):
         extkey = version + depth + fpr + child + chainCode + publicKey
         checksum = hash256(extkey)[:4]
 
-        return {"xpub": base58.encode(extkey + checksum)}
+        xpub = base58.encode(extkey + checksum)
+        result = {"xpub": xpub}
+
+        if self.expert:
+            xpub_obj = ExtendedKey()
+            xpub_obj.deserialize(xpub)
+            result.update(xpub_obj.get_printable_dict())
+        return result
 
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
