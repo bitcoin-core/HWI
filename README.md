@@ -15,6 +15,11 @@ For Ubuntu/Debian:
 sudo apt install libusb-1.0-0-dev libudev-dev python3-dev
 ```
 
+For Centos:
+```
+sudo yum -y install python3-devel libusbx-devel systemd-devel
+```
+
 For macOS:
 ```
 brew install libusb
