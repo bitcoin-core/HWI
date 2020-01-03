@@ -4,6 +4,60 @@ from .base58 import get_xpub_fingerprint_hex
 from .descriptor import Descriptor
 from .serializations import PSBT
 
+from enum import IntEnum
+
+class DeviceFeature(IntEnum):
+    SUPPORTED = 1 # The device supports the feature and so does HWI
+    NOT_SUPPORTED = 2 # The device supports the feature but HWI has not implemented it yet
+    FIRMWARE_NOT_SUPPORTED = 3 # The firmware does not support the feature so HWI cannot
+
+class SupportedFeatures(object):
+
+    def __init__(self) -> None:
+        self.getxpub = DeviceFeature.NOT_SUPPORTED
+        self.signmessage = DeviceFeature.NOT_SUPPORTED
+        self.setup = DeviceFeature.NOT_SUPPORTED
+        self.wipe = DeviceFeature.NOT_SUPPORTED
+        self.recover = DeviceFeature.NOT_SUPPORTED
+        self.backup = DeviceFeature.NOT_SUPPORTED
+        self.sign_p2pkh = DeviceFeature.NOT_SUPPORTED
+        self.sign_p2sh_p2wpkh = DeviceFeature.NOT_SUPPORTED
+        self.sign_p2wpkh = DeviceFeature.NOT_SUPPORTED
+        self.sign_multi_p2sh = DeviceFeature.NOT_SUPPORTED
+        self.sign_multi_p2sh_p2wsh = DeviceFeature.NOT_SUPPORTED
+        self.sign_multi_p2wsh = DeviceFeature.NOT_SUPPORTED
+        self.sign_multi_bare = DeviceFeature.NOT_SUPPORTED
+        self.sign_arbitrary_bare = DeviceFeature.NOT_SUPPORTED
+        self.sign_arbitrary_p2sh = DeviceFeature.NOT_SUPPORTED
+        self.sign_arbitrary_p2sh_p2wsh = DeviceFeature.NOT_SUPPORTED
+        self.sign_arbitrary_p2wsh = DeviceFeature.NOT_SUPPORTED
+        self.sign_coinjoin = DeviceFeature.NOT_SUPPORTED
+        self.sign_mixed_segwit = DeviceFeature.NOT_SUPPORTED
+        self.display_address = DeviceFeature.NOT_SUPPORTED
+
+    def get_printable_dict(self) -> Dict[str, DeviceFeature]:
+        d = {}
+        d['getxpub'] = self.getxpub
+        d['signmessage'] = self.signmessage
+        d['setup'] = self.setup
+        d['wipe'] = self.wipe
+        d['recover'] = self.recover
+        d['backup'] = self.backup
+        d['sign_p2pkh'] = self.sign_p2pkh
+        d['sign_p2sh_p2wpkh'] = self.sign_p2sh_p2wpkh
+        d['sign_p2wpkh'] = self.sign_p2wpkh
+        d['sign_multi_p2sh'] = self.sign_multi_p2sh
+        d['sign_multi_p2sh_p2wsh'] = self.sign_multi_p2sh_p2wsh
+        d['sign_multi_p2wsh'] = self.sign_multi_p2wsh
+        d['sign_multi_bare'] = self.sign_multi_bare
+        d['sign_arbitrary_bare'] = self.sign_arbitrary_bare
+        d['sign_arbitrary_p2sh'] = self.sign_arbitrary_p2sh
+        d['sign_arbitrary_p2sh_p2wsh'] = self.sign_arbitrary_p2sh_p2wsh
+        d['sign_arbitrary_p2wsh'] = self.sign_arbitrary_p2wsh
+        d['sign_coinjoin'] = self.sign_coinjoin
+        d['sign_mixed_segwit'] = self.sign_mixed_segwit
+        d['display_address'] = self.display_address
+        return d
 
 class HardwareWalletClient(object):
     """Create a client for a HID device that has already been opened.
@@ -182,6 +236,16 @@ class HardwareWalletClient(object):
         {"success": bool, "error": srt, "code": int}.
 
         Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    @classmethod
+    def get_features(self) -> 'SupportedFeatures':
+        """
+        Get features.
+
+        Returns an object with a listing of the features supported by this device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

@@ -617,6 +617,11 @@ class DigitalbitboxClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        raise NotImplementedError('The Digital Bitbox does not implement this method')
+
 class Digitalbitbox01Client(DigitalbitboxClient):
     def __init__(self, path, password='', expert=False):
         super(Digitalbitbox01Client, self).__init__(path, password, expert)

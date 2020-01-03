@@ -551,6 +551,11 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return {'success': True}
 
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        raise NotImplementedError('The {} does not implement this method'.format(self.type))
+
 class Trezor1Client(TrezorClient):
     def __init__(self, path, password='', expert=False):
         super(Trezor1Client, self).__init__(path, password, expert)

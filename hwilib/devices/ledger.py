@@ -387,6 +387,11 @@ class LedgerClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        raise NotImplementedError('The Ledger Nano S and X does not implement this method')
+
 class LedgerNanoSClient(LedgerClient):
     def __init__(self, path, password='', expert=False):
         super(LedgerNanoSClient, self).__init__(path, password, expert)

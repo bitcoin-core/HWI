@@ -340,6 +340,11 @@ class ColdcardClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        raise NotImplementedError('The Coldcard does not implement this method')
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
