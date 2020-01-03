@@ -30,3 +30,4 @@ tar -xf $tarball $toextract
 mv $toextract .
 dir=`echo $toextract | cut -f1 -d"/"`
 rm -r $dir
+sed -i 's/distutils.core/setuptools/g' setup.py

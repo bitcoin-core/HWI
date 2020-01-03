@@ -12,7 +12,7 @@ Python 3 is required. The libraries and [udev rules](hwilib/udev/README.md) for 
 
 For Ubuntu/Debian:
 ```
-sudo apt install libusb-1.0-0-dev libudev-dev
+sudo apt install libusb-1.0-0-dev libudev-dev python3-dev
 ```
 
 For macOS:
@@ -20,21 +20,36 @@ For macOS:
 brew install libusb
 ```
 
-This project uses the [Poetry](https://github.com/sdispater/poetry) dependency manager.
-Once HWI's source has been downloaded with git clone, it and its dependencies can be installed via poetry by execting the following in the root source directory:
-
-```
-poetry install
-```
-
-Pip can also be used to install all of the dependencies (in virtualenv or system) required for operation and development. See `pyproject.toml` for all dependencies. Dependencies under `[tool.poetry.dependecies]` are user dependencies, and `[tool.poetry.dev-dependencies]` for development based dependencies.
-
 ## Install
 
 ```
 git clone https://github.com/bitcoin-core/HWI.git
 cd HWI
+poetry install # or 'pip3 install .' or 'python3 setup.py install'
 ```
+
+This project uses the [Poetry](https://github.com/sdispater/poetry) dependency manager. HWI and its dependencies can be installed via poetry by executing the following in the root source directory:
+
+```
+poetry install
+```
+
+Pip can also be used to automatically install HWI and its dependencies using the `setup.py` file (which is usually in sync with `pyproject.toml`):
+
+```
+pip3 install .
+```
+
+The `setup.py` file can be used to install HWI and its dependencies so long as `setuptools` is also installed:
+
+```
+pip3 install -U setuptools
+python3 setup.py install
+```
+
+## Dependencies
+
+See `pyproject.toml` for all dependencies. Dependencies under `[tool.poetry.dependecies]` are user dependencies, and `[tool.poetry.dev-dependencies]` for development based dependencies. These dependencies will be installed with any of the three above installation methods.
 
 ## Usage
 
