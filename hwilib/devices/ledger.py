@@ -72,8 +72,8 @@ def ledger_exception(f):
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
-    def __init__(self, path, password=''):
-        super(LedgerClient, self).__init__(path, password)
+    def __init__(self, path, password='', expert=False):
+        super(LedgerClient, self).__init__(path, password, expert)
 
         if path.startswith('tcp'):
             split_path = path.split(':')

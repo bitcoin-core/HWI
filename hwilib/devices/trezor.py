@@ -89,8 +89,8 @@ def interactive_get_pin(self, code=None):
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
-    def __init__(self, path, password=''):
-        super(TrezorClient, self).__init__(path, password)
+    def __init__(self, path, password='', expert=False):
+        super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')

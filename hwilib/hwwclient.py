@@ -3,13 +3,14 @@
 class HardwareWalletClient(object):
 
     # device is an HID device that has already been opened.
-    def __init__(self, path, password):
+    def __init__(self, path, password, expert):
         self.path = path
         self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
         self.is_testnet = False
         self.fingerprint = None
         self.xpub_cache = {}
+        self.expert = expert
 
     # Get the master BIP 44 pubkey
     def get_master_xpub(self):

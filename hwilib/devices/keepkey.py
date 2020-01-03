@@ -8,8 +8,8 @@ from ..base58 import get_xpub_fingerprint_hex
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
 
 class KeepkeyClient(TrezorClient):
-    def __init__(self, path, password=''):
-        super(KeepkeyClient, self).__init__(path, password)
+    def __init__(self, path, password='', expert=False):
+        super(KeepkeyClient, self).__init__(path, password, expert)
         self.type = 'Keepkey'
 
 def enumerate(password=''):

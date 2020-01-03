@@ -296,8 +296,8 @@ def format_backup_filename(name):
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
-    def __init__(self, path, password):
-        super(DigitalbitboxClient, self).__init__(path, password)
+    def __init__(self, path, password, expert=False):
+        super(DigitalbitboxClient, self).__init__(path, password, expert)
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
         if path.startswith('udp:'):
