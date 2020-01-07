@@ -239,7 +239,9 @@ class ColdcardClient(HardwareWalletClient):
 
 def enumerate(password=''):
     results = []
-    for d in hid.enumerate(COINKITE_VID, CKCC_PID):
+    devices = hid.enumerate(COINKITE_VID, CKCC_PID)
+    devices.append({'path': CC_SIMULATOR_SOCK.encode()})
+    for d in devices:
         d_data = {}
 
         path = d['path'].decode()
@@ -249,35 +251,24 @@ def enumerate(password=''):
         d_data['needs_pin_sent'] = False
         d_data['needs_passphrase_sent'] = False
 
+        if path == CC_SIMULATOR_SOCK:
+            d_data['model'] += '_simulator'
+
         client = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
-            client = ColdcardClient(path)
-            d_data['fingerprint'] = client._get_fingerprint_hex()
+            try:
+                client = ColdcardClient(path)
+                d_data['fingerprint'] = client._get_fingerprint_hex()
+            except RuntimeError as e:
+                # Skip the simulator if it's not there
+                if str(e) == 'Cannot connect to simulator. Is it running?':
+                    continue
+                else:
+                    raise e
 
         if client:
             client.close()
 
         results.append(d_data)
-
-    # Check if the simulator is there
-    client = None
-    try:
-        client = ColdcardClient(CC_SIMULATOR_SOCK)
-
-        d_data = {}
-        d_data['fingerprint'] = client._get_fingerprint_hex()
-        d_data['type'] = 'coldcard'
-        d_data['model'] = 'coldcard_simulator'
-        d_data['path'] = CC_SIMULATOR_SOCK
-        d_data['needs_pin_sent'] = False
-        d_data['needs_passphrase_sent'] = False
-        results.append(d_data)
-    except RuntimeError as e:
-        if str(e) == 'Cannot connect to simulator. Is it running?':
-            pass
-        else:
-            raise e
-    if client:
-        client.close()
 
     return results
