@@ -125,7 +125,13 @@ class TestDeviceConnect(DeviceTestCase):
         found = False
         for device in enum_res:
             if (device['type'] == self.type or device['model'] == self.type) and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
+                self.assertIn('type', device)
+                self.assertIn('model', device)
+                self.assertIn('path', device)
+                self.assertIn('needs_pin_sent', device)
+                self.assertIn('needs_passphrase_sent', device)
                 self.assertNotIn('error', device)
+                self.assertNotIn('code', device)
                 found = True
         self.assertTrue(found)
 
