@@ -246,7 +246,8 @@ def enumerate(password=''):
         d_data['type'] = 'coldcard'
         d_data['model'] = 'coldcard'
         d_data['path'] = path
-        d_data['needs_passphrase'] = False
+        d_data['needs_pin_sent'] = False
+        d_data['needs_passphrase_sent'] = False
 
         client = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
