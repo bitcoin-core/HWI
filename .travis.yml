@@ -46,7 +46,7 @@ before_install:
     mv travis-wait-enhanced /home/travis/bin/
     travis-wait-enhanced --version
 install:
-    - pip install pipenv pysdl2 protobuf poetry pyqt5 construct mnemonic pyelftools
+    - pip install pipenv pysdl2 protobuf poetry construct mnemonic pyelftools
     # From trezor-mcu to get the correct protobuf version
     - curl -LO "https://github.com/google/protobuf/releases/download/v3.4.0/protoc-3.4.0-linux-x86_64.zip"
     - unzip "protoc-3.4.0-linux-x86_64.zip" -d protoc
