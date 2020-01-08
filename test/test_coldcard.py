@@ -13,7 +13,7 @@ from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestD
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Start the Coldcard simulator
-    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
+    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), '-m'], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
     # Wait for simulator to be up
     while True:
         try:

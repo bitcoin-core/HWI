@@ -335,7 +335,7 @@ class TestSignTx(DeviceTestCase):
             self.assertTrue(self.wrpc.testmempoolaccept([finalize_res['hex']])[0]["allowed"])
         return finalize_res['hex']
 
-    def _test_signtx(self, input_type, multisig):
+    def _test_signtx(self, input_type, multisig, external):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '40'])
         import_result = self.wrpc.importmulti(keypool_desc)
@@ -361,9 +361,9 @@ class TestSignTx(DeviceTestCase):
                    pkh_info['desc'][4:-10]]
 
         # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(multi(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(multi(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
+        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
+        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
+        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(sortedmulti(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
 
         sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
         sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
@@ -408,8 +408,9 @@ class TestSignTx(DeviceTestCase):
                 self.assertTrue((i + 1) * in_amt == self.wrpc.getbalance("*", 0, True))
             psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress('', 'legacy'): (i + 1) * out_amt}, {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): (i + 1) * out_amt}, {self.wpk_rpc.getnewaddress('', 'bech32'): (i + 1) * out_amt}], 0, {'includeWatching': True, 'subtractFeeFromOutputs': [0, 1, 2]}, True)
 
-            # Sign with unknown inputs in two steps
-            self._generate_and_finalize(True, psbt)
+            if external:
+                # Sign with unknown inputs in two steps
+                self._generate_and_finalize(True, psbt)
             # Sign all inputs all at once
             final_tx = self._generate_and_finalize(False, psbt)
 
@@ -419,12 +420,13 @@ class TestSignTx(DeviceTestCase):
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey'}
-        supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey'}
+        supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
+        supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard'}
         if self.full_type not in supports_mixed:
-            self._test_signtx("legacy", self.full_type in supports_multisig)
-            self._test_signtx("segwit", self.full_type in supports_multisig)
+            self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
+            self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
         else:
-            self._test_signtx("all", self.full_type in supports_multisig)
+            self._test_signtx("all", self.full_type in supports_multisig, self.full_type in supports_external)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):

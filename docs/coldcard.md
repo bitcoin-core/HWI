@@ -24,4 +24,6 @@ The `backup` command will create a backup file in the current working directory.
 
 ## Caveat for `signtx`
 
-The Coldcard firmware only supports signing single key transactions. It cannot sign multisig or arbitrary scripts yet.
+- The Coldcard firmware only supports signing single key and multisig transactions. It cannot sign arbitrary scripts.
+- Multsigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
+- Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
