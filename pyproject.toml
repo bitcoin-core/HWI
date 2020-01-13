@@ -26,6 +26,8 @@ libusb1 = "^1.7"
 pyside2 = { version = "^5.14.0", optional = true }
 bitbox02 = ">=4.1.0"
 construct = "^2.9.47"
+feedparser = {version = "^5.2.1", extras = ["firmwaredl"]}
+requests = {version = "^2.22.0", extras = ["firmwaredl"]}
 
 [tool.poetry.extras]
 qt = ["pyside2"]
