@@ -42,6 +42,7 @@ mypy = "^0.790"
 [tool.poetry.scripts]
 hwi = 'hwilib.cli:main'
 hwi-qt = 'hwilib.gui:main'
+firmwaredl = 'hwilib.firmware:main'
 
 [build-system]
 requires = ["poetry>=0.12"]
