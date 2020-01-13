@@ -8,8 +8,18 @@ from . import __version__
 from .cli import HWIArgumentParser
 from .errors import handle_errors
 
-def download_firmware(model, version, bitcoinonly):
-    return {}
+def format_success(model, fw_version, filepath):
+    return {'success': True, 'message': '{} firmware version {} downloaded to {}'.format(model, fw_version, filepath), 'filepath': filepath}
+
+def download_firmware(model, version, bitcoinonly=False):
+    dev_model = model.lower()
+    func_name = dev_model + '_download'
+
+    try:
+        dl_func = globals()[func_name]
+        return dl_func(version, bitcoinonly)
+    except KeyError:
+        raise UnknownDeviceError('No Download function for {}'.format(dev_model))
 
 def process_commands(cli_args):
     parser = HWIArgumentParser(description='Hardware Wallet Interface Firmware Updater and Downloader, version {}.\nDownload and update firmware for harware wallets. Responses are in JSON format.'.format(__version__))
