@@ -185,3 +185,16 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        """
+        Update firmware
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')

@@ -617,6 +617,10 @@ class DigitalbitboxClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        raise NotImplementedError('The Digital Bitbox does not implement this method yet')
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)

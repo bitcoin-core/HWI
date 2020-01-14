@@ -329,3 +329,6 @@ def install_udev_rules(source, location):
         from .udevinstaller import UDevInstaller
         return UDevInstaller.install(source, location)
     return {'error': 'udev rules are not needed on your platform', 'code': NOT_IMPLEMENTED}
+
+def update_firmware(client, file):
+    return client.update_firmware(file)

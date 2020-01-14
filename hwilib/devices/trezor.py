@@ -551,6 +551,10 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return {'success': True}
 
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        raise NotImplementedError('The {} does not implement this method yet'.format(self.type))
+
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():

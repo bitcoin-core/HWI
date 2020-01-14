@@ -340,6 +340,10 @@ class ColdcardClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        raise NotImplementedError('The Coldcard does not implement this method yet')
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)

@@ -386,6 +386,10 @@ class LedgerClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        raise UnavailableActionError('The Ledger Nano S and X do not support firmware updates from 3rd party software.')
+
 def enumerate(password=''):
     results = []
     devices = []
