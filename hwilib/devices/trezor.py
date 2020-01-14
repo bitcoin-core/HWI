@@ -15,6 +15,7 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
+from .trezorlib import firmware
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled
@@ -130,6 +131,40 @@ def interactive_get_pin(self, code=None):
             echo("Non-numerical PIN provided, please try again")
         else:
             return pin
+
+ALLOWED_FIRMWARE_FORMATS = {
+    1: (firmware.FirmwareFormat.TREZOR_ONE, firmware.FirmwareFormat.TREZOR_ONE_V2),
+    2: (firmware.FirmwareFormat.TREZOR_T,),
+}
+
+def _print_version(version):
+    vstr = "Firmware version {major}.{minor}.{patch} build {build}".format(**version)
+    print(vstr, file=sys.stderr)
+
+def validate_firmware(version, fw, expected_fingerprint=None):
+    if version == firmware.FirmwareFormat.TREZOR_ONE:
+        if fw.embedded_onev2:
+            print("Trezor One firmware with embedded v2 image (1.8.0 or later)", file=sys.stderr)
+            _print_version(fw.embedded_onev2.firmware_header.version)
+        else:
+            print("Trezor One firmware image.", file=sys.stderr)
+    elif version == firmware.FirmwareFormat.TREZOR_ONE_V2:
+        print("Trezor One v2 firmware (1.8.0 or later)", file=sys.stderr)
+        _print_version(fw.firmware_header.version)
+    elif version == firmware.FirmwareFormat.TREZOR_T:
+        print("Trezor T firmware image.", file=sys.stderr)
+        vendor = fw.vendor_header.vendor_string
+        vendor_version = "{major}.{minor}".format(**fw.vendor_header.version)
+        print("Vendor header from {}, version {}".format(vendor, vendor_version), file=sys.stderr)
+        _print_version(fw.firmware_header.version)
+
+    firmware.validate(version, fw, allow_unsigned=False)
+    print("Signatures are valid.", file=sys.stderr)
+
+    fingerprint = firmware.digest(version, fw).hex()
+    print("Firmware fingerprint: {}".format(fingerprint), file=sys.stderr)
+    if expected_fingerprint and fingerprint != expected_fingerprint:
+        raise BadArgumentError('Expected firmware fingerprint {} does not match computed fingerprint {}.'.format(expected_fingerprint, fingerprint))
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -552,8 +587,39 @@ class TrezorClient(HardwareWalletClient):
         return {'success': True}
 
     # Verify firmware file then load it onto device
+    @trezor_exception
     def update_firmware(self, filename: str) -> Dict[str, bool]:
-        raise NotImplementedError('The {} does not implement this method yet'.format(self.type))
+        self.client.init_device(True)
+        if not self.client.features.bootloader_mode:
+            raise DeviceConnectionError('Device needs to be in bootloader mode')
+
+        bootloader_onev2 = self.client.features.major_version == 1 and self.client.features.minor_version >= 8
+
+        data = open(filename, "rb").read()
+        version, fw = firmware.parse(data)
+        validate_firmware(version, fw)
+
+        if bootloader_onev2 and version == firmware.FirmwareFormat.TREZOR_ONE and not fw.embedded_onev2:
+            raise BadArgumentError('Firmware is too old for your device')
+        elif not bootloader_onev2 and version == firmware.FirmwareFormat.TREZOR_ONE_V2:
+            raise BadArgumentError('You need to upgrade to bootloader 1.8.0 first.')
+
+        if self.client.features.major_version not in ALLOWED_FIRMWARE_FORMATS:
+            raise BadArgumentError('Device has unknown version, unable to upgrade firmware')
+        elif version not in ALLOWED_FIRMWARE_FORMATS[self.client.features.major_version]:
+            raise BadArgumentError('Firmware does not match your device')
+
+        # special handling for embedded-OneV2 format:
+        # for bootloader < 1.8, keep the embedding
+        # for bootloader 1.8.0 and up, strip the old OneV1 header
+        if bootloader_onev2 and data[:4] == b"TRZR" and data[256:256 + 4] == b"TRZF":
+            data = data[256:]
+
+        if self.client.features.major_version == 1 and self.client.features.firmware_present is not False:
+            # Trezor One does not send ButtonRequest
+            print("Please confirm the action on your device", file=sys.stderr)
+        firmware.update(self.client, data)
+        return {'success': True}
 
 def enumerate(password=''):
     results = []
@@ -570,7 +636,7 @@ def enumerate(password=''):
         client = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
             client = TrezorClient(d_data['path'], password)
-            client.client.init_device()
+            client.client.init_device(True)
             if 'trezor' not in client.client.features.vendor:
                 continue
 
