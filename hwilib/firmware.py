@@ -1,5 +1,7 @@
 # Firmware download things
 
+import datetime
+import feedparser
 import json
 import logging
 import os
@@ -69,6 +71,37 @@ def trezor_1_download(version=None, bitcoinonly=False):
 
 def trezor_t_download(version=None, bitcoinonly=False):
     return _trezor_download(version, bitcoinonly, 2)
+
+def coldcard_download(version=None, bitcoinonly=False):
+    versions = feedparser.parse('https://github.com/Coldcard/firmware/tags.atom')
+    releases = versions.entries
+
+    def coldcard_version_formatted(ver_str):
+        try:
+            return bool(datetime.datetime.strptime(ver_str[:15], '%Y-%m-%dT%H%M'))
+        except:
+            return False
+
+    releases = [r for r in releases if coldcard_version_formatted(r['title'])]
+    releases.sort(key=lambda r: r["updated_parsed"], reverse=True)
+
+    version_info = {}
+    if version is None:
+        version_info = releases[0]
+        version = version_info['title'][17:]
+    else:
+        for r in releases:
+            if r['title'][15:] == '-v{}'.format(version):
+                version_info = r
+                break
+        else:
+            raise BadArgumentError('{} is not available'.format(version))
+
+    filename = '{}-coldcard.dfu'.format(version_info['title'])
+    url = 'https://github.com/Coldcard/firmware/blob/master/releases/{}?raw=true'.format(filename)
+    downloaded_file = _download_file(url)
+
+    return format_success('Coldcard', version, downloaded_file)
 
 def download_firmware(model, version, bitcoinonly=False):
     dev_model = model.lower()
