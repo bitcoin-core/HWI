@@ -5,6 +5,7 @@ import feedparser
 import json
 import logging
 import os
+import re
 import requests
 import sys
 
@@ -102,6 +103,35 @@ def coldcard_download(version=None, bitcoinonly=False):
     downloaded_file = _download_file(url)
 
     return format_success('Coldcard', version, downloaded_file)
+
+def keepkey_download(version=None, bitcoinonly=False):
+    versions = feedparser.parse('https://github.com/keepkey/keepkey-firmware/tags.atom')
+    releases = versions.entries
+
+    def keepkey_id_formatted(id_str):
+        tag = id_str.split('/')[-1]
+        p = re.compile(r'^v\d+.\d+.\d$')
+        return bool(p.match(tag))
+
+    releases = [r for r in releases if keepkey_id_formatted(r['id'])]
+    releases.sort(key=lambda r: r["updated_parsed"], reverse=True)
+
+    version_info = {}
+    if version is None:
+        version_info = releases[0]
+        version = version_info['id'].split('/')[-1][1:]
+    else:
+        for r in releases:
+            if r['id'].split('/')[-1][1:] == version:
+                version_info = r
+                break
+        else:
+            raise BadArgumentError('{} is not available'.format(version))
+
+    url = 'https://github.com/keepkey/keepkey-firmware/releases/download/v{}/firmware.keepkey.bin'.format(version)
+    downloaded_file = _download_file(url)
+
+    return format_success('Keepkey', version, downloaded_file)
 
 def download_firmware(model, version, bitcoinonly=False):
     dev_model = model.lower()
