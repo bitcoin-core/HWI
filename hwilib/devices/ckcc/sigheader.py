@@ -30,9 +30,9 @@ FW_MIN_LENGTH = (256*1024)
 FW_MAX_LENGTH = (0x100000 - 0x8000)
 
 # Arguments to be used w/ python's struct module.
-FWH_PY_FORMAT = "<I8s8sII36s64s"
-FWH_PY_VALUES = "magic_value timestamp version_string pubkey_num firmware_length future signature"
-FWH_NUM_FUTURE = 9
+FWH_PY_FORMAT = "<I8s8sIIII28s64s"
+FWH_PY_VALUES = "magic_value timestamp version_string pubkey_num firmware_length install_flags hw_compat future signature"
+FWH_NUM_FUTURE = 7
 FWH_PK_NUM_OFFSET = 20
 
 # There is a copy of the header at this location in RAM, copied by bootloader

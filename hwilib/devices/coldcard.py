@@ -32,6 +32,13 @@ from .ckcc.constants import (
     AF_P2SH,
     AF_P2WSH_P2SH,
 )
+from .ckcc.utils import dfu_parse
+from .ckcc.sigheader import (
+    FW_HEADER_SIZE,
+    FW_HEADER_OFFSET,
+    FW_HEADER_MAGIC,
+    FWH_PY_FORMAT,
+)
 from ..base58 import (
     get_xpub_fingerprint,
     xpub_main_2_test,
@@ -45,6 +52,7 @@ from ..serializations import (
 from hashlib import sha256
 
 import base64
+import ecdsa
 import hid
 import io
 import sys
@@ -77,6 +85,62 @@ def str_to_int_path(xfp, path):
         rv.append(here)
 
     return rv
+
+
+FIRMWARE_KEYS = [
+    bytearray([0xb4, 0xcb, 0x41, 0x26, 0xf7, 0xe1, 0x6c, 0xf3, 0x8f, 0xf2, 0xb4,
+               0x71, 0x1d, 0xfb, 0x23, 0x01, 0x0d, 0x76, 0xd6, 0x66, 0xa7, 0x8a,
+               0xa3, 0x6c, 0x9b, 0x53, 0xf9, 0xf6, 0x7b, 0x58, 0x18, 0x05, 0x58,
+               0x0b, 0x3b, 0xe9, 0x31, 0xc4, 0x9f, 0xb8, 0x44, 0x04, 0x3c, 0x11,
+               0x96, 0x08, 0x0f, 0x47, 0x81, 0x25, 0xed, 0x37, 0x7a, 0x23, 0x9e,
+               0x4a, 0xaf, 0xb7, 0x18, 0x38, 0xba, 0x38, 0x04, 0xda]),
+    bytearray([0xd6, 0xa2, 0xc8, 0x1d, 0x1c, 0x81, 0x5e, 0xdf, 0xa6, 0x0c, 0x29,
+               0x6d, 0xb8, 0x57, 0x8f, 0x8d, 0x5e, 0x29, 0x69, 0x92, 0xce, 0xd1,
+               0x78, 0xc1, 0x7b, 0x20, 0xd7, 0x31, 0x7b, 0xa1, 0x96, 0xb5, 0x3d,
+               0xef, 0x1b, 0x0c, 0xaa, 0x79, 0x1a, 0xc3, 0x45, 0x58, 0xc4, 0xc8,
+               0x8a, 0x2d, 0xeb, 0xff, 0xfe, 0x9b, 0x82, 0x01, 0x87, 0x5f, 0x5e,
+               0xbc, 0x96, 0xa5, 0xe5, 0x4f, 0xc7, 0x68, 0xfe, 0x9f]),
+    bytearray([0x42, 0xef, 0x66, 0x01, 0x56, 0xc4, 0xcf, 0x95, 0xf4, 0xb5, 0xf0,
+               0x38, 0x64, 0x11, 0x26, 0xc5, 0x99, 0x39, 0xc1, 0x66, 0x32, 0x06,
+               0x12, 0x14, 0x4c, 0x25, 0x9c, 0x68, 0x35, 0x8c, 0xd3, 0xba, 0x24,
+               0x78, 0xde, 0x8c, 0x52, 0xab, 0xdf, 0x6c, 0xb8, 0xbf, 0x09, 0x78,
+               0x03, 0xbb, 0x63, 0x3a, 0x11, 0x01, 0xd9, 0x0e, 0xa4, 0x7a, 0x73,
+               0x8f, 0xbf, 0x18, 0x3b, 0x7f, 0xf0, 0x0a, 0x7b, 0xc8]),
+    bytearray([0x67, 0x60, 0x54, 0x56, 0x82, 0x0c, 0xec, 0xc5, 0x1d, 0xbc, 0x82,
+               0x08, 0x16, 0xc1, 0x39, 0xef, 0xf5, 0xbf, 0xba, 0x32, 0x7c, 0xce,
+               0x5f, 0xe3, 0x74, 0x1e, 0x62, 0xd7, 0xe9, 0xfc, 0xc5, 0x4c, 0x8a,
+               0xe8, 0x11, 0x8d, 0xc3, 0xad, 0xc2, 0x13, 0x92, 0x29, 0x4f, 0x2a,
+               0xea, 0xd2, 0xf8, 0xa4, 0xc4, 0xd5, 0x7c, 0xfe, 0x12, 0x05, 0x45,
+               0x3b, 0x54, 0x89, 0x59, 0x07, 0xda, 0xd6, 0xd7, 0x88]),
+    bytearray([0x43, 0xb1, 0xcf, 0x37, 0xd2, 0x7c, 0x89, 0x1f, 0x5b, 0xfe, 0xac,
+               0xf3, 0xba, 0x33, 0xfc, 0x95, 0x81, 0xd9, 0xe7, 0xdd, 0x25, 0x95,
+               0xef, 0x14, 0xdd, 0xef, 0x97, 0xbb, 0x33, 0xf3, 0xd8, 0xa7, 0x34,
+               0x2b, 0x7a, 0x97, 0xba, 0xb3, 0xaa, 0x73, 0xe7, 0x9d, 0x41, 0x32,
+               0xd8, 0xfc, 0xa1, 0x17, 0x66, 0xb5, 0x0b, 0xfe, 0x63, 0x40, 0x21,
+               0x89, 0xc9, 0x92, 0x7b, 0x8e, 0x72, 0xdf, 0x0b, 0x59])
+]
+DEV_KEY = FIRMWARE_KEYS[0] # Warn when this key is used for signing as it is publicly known key for development only
+
+
+def verify_firmware(firmware_data):
+    # Skip DFU header
+    firmware_data = firmware_data[293:]
+
+    header = firmware_data[FW_HEADER_OFFSET:FW_HEADER_OFFSET + FW_HEADER_SIZE]
+    magic, _, _, pubkey_num, firmware_length, _, _, _, signature = struct.unpack(FWH_PY_FORMAT, header)
+    assert magic == FW_HEADER_MAGIC
+    msg = sha256(firmware_data[0:FW_HEADER_OFFSET + FW_HEADER_SIZE - 64])
+    msg.update(firmware_data[FW_HEADER_OFFSET + FW_HEADER_SIZE:firmware_length])
+    digest = sha256(msg.digest()).digest()
+
+    if pubkey_num == 0:
+        print("Warning: This firmware was signed using the publicly available dev key and not a Coinkite official key", file=sys.stderr)
+
+    key = ecdsa.VerifyingKey.from_string(FIRMWARE_KEYS[pubkey_num], curve=ecdsa.curves.SECP256k1)
+    try:
+        return key.verify_digest(signature, digest)
+    except ecdsa.BadSignatureError:
+        return False
 
 
 def coldcard_exception(f):
@@ -341,8 +405,75 @@ class ColdcardClient(HardwareWalletClient):
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
     # Verify firmware file then load it onto device
+    @coldcard_exception
     def update_firmware(self, filename: str) -> Dict[str, bool]:
-        raise NotImplementedError('The Coldcard does not implement this method yet')
+        with open(filename, 'rb') as fd:
+            # learn size (portable way)
+            offset = 0
+            sz = fd.seek(0, 2)
+            fd.seek(0)
+
+            # Unwrap DFU contents, if needed. Also handles raw binary file.
+            try:
+                if fd.read(5) == b'DfuSe':
+                    # expecting a DFU-wrapped file.
+                    fd.seek(0)
+                    offset, sz, *_ = dfu_parse(fd)
+                else:
+                    # assume raw binary
+                    pass
+
+                assert sz % 256 == 0, "un-aligned size: %s" % sz
+                fd.seek(offset + FW_HEADER_OFFSET)
+                hdr = fd.read(FW_HEADER_SIZE)
+
+                magic = struct.unpack_from("<I", hdr)[0]
+            except Exception:
+                magic = None
+
+            if magic != FW_HEADER_MAGIC:
+                raise BadArgumentError('{} has an invalid magic header for a firmware file.'.format(filename))
+
+            # Read the whole firmware to verify the signature
+            fd.seek(0)
+            data = fd.read()
+            if not verify_firmware(data):
+                raise BadArgumentError('Firmware signature is invalid')
+
+            fd.seek(offset)
+
+            left = sz
+            chk = sha256()
+            for pos in range(0, sz, MAX_BLK_LEN):
+                here = fd.read(min(MAX_BLK_LEN, left))
+                if not here:
+                    break
+                left -= len(here)
+                result = self.device.send_recv(CCProtocolPacker.upload(pos, sz, here))
+                assert result == pos, "Got back: %r" % result
+                chk.update(here)
+
+        # do a verify
+        expect = chk.digest()
+        result = self.device.send_recv(CCProtocolPacker.sha256())
+        assert len(result) == 32
+        if result != expect:
+            raise DeviceFailureError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
+
+        # AFTER fully uploaded and verified, write a copy of the signature header
+        # onto the end of flash. Bootrom uses this to check entire file uploaded.
+        result = self.device.send_recv(CCProtocolPacker.upload(sz, sz + FW_HEADER_SIZE, hdr))
+        assert result == sz, "failed to write trailer"
+
+        # check also SHA after that!
+        chk.update(hdr)
+        expect = chk.digest()
+        final_chk = self.device.send_recv(CCProtocolPacker.sha256())
+        assert expect == final_chk, "Checksum mismatch after all that?"
+
+        self.device.send_recv(CCProtocolPacker.reboot())
+
+        return {'success': True}
 
 def enumerate(password=''):
     results = []
