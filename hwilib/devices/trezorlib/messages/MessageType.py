@@ -32,6 +32,7 @@ WordAck = 47
 GetFeatures = 55
 FirmwareErase = 6
 FirmwareUpload = 7
+FirmwareUploadKeepkey = 7
 FirmwareRequest = 8
 SelfTest = 32
 GetPublicKey = 11

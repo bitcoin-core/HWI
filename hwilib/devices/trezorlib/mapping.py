@@ -41,7 +41,8 @@ def build_map():
 
 
 def register_message(msg_class):
-    if msg_class.MESSAGE_WIRE_TYPE in map_type_to_class:
+    # Ignore this error for FirmwareUploadKeepkey
+    if msg_class.MESSAGE_WIRE_TYPE in map_type_to_class and not messages.FirmwareUploadKeepkey:
         raise Exception(
             "Message for wire type %s is already registered by %s"
             % (msg_class.MESSAGE_WIRE_TYPE, get_class(msg_class.MESSAGE_WIRE_TYPE))

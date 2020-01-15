@@ -37,6 +37,13 @@ V1_BOOTLOADER_KEYS = {
     4: "04877c39fd7c62237e038235e9c075dab261630f78eeb8edb92487159fffedfdf6046c6f8b881fa407c4a4ce6c28de0b19c1f4e29f1fcbc5a58ffd1432a3e0938a",
     5: "047384c51ae81add0a523adbb186c91b906ffb64c2c765802bf26dbd13bdf12c319e80c2213a136c8ee03d7874fd22b70d68e7dee469decfbbb510ee9a460cda45",
 }
+KEEPKEY_BOOTLOADER_KEYS = {
+    1: "04a33cec36d6d011af09e0c498d17c3ba7ab907abfbb64caba16ad9077caacd3e198a32362c32d0ef0a7269259abbbcd8a688a0c8f54a6dbc405459566cd65141d",
+    2: "04ab291f6bd33d0e3974f27e50070be933695a0fab7b8b3654e7c9dce74f7f98fd739b1ed86eb0be26f026e4dc6519fd2884955fa174f8a783fe455ac43f944c70",
+    3: "04a9c29f4e053b35ffd3b9a37b073188b624c07c3a92622c131edf1a2b2c712216a8c06c9ddfdcaa39b81d9a86f0459480b0277eab0e30a34f1d26b326b8995a33",
+    4: "04f228448eaf05171ccb68a04a0724ac586b846c54c5fd0a526f9d7c3396c98dd47aef6b2faf47b54ffa8c2861c54920ce6c2aa5607c496869023724db285495c6",
+    5: "0418a90b536e9ffb0ec320293c33754af89b145475c4d921f818e2062c92b01be526047ccfa042b4711fb5603fe6bd7980693100b71ee766d86116a3694873f314",
+}
 
 V2_BOOTLOADER_KEYS = [
     bytes.fromhex("c2c87a49c5a3460977fbb2ec9dfe60f06bd694db8244bd4981fe3b7a26307f3f"),
@@ -220,6 +227,21 @@ FirmwareOne = c.Struct(
     "embedded_onev2" / c.RestreamData(c.this.code, c.Optional(FirmwareOneV2)),
 )
 
+
+FirmwareKeepkey = c.Struct(
+    "magic" / c.Const(b"KPKY"),
+    "code_length" / c.Rebuild(c.Int32ul, c.len_(c.this.code)),
+    "key_indexes" / c.Int8ul[V1_SIGNATURE_SLOTS],  # pylint: disable=E1136
+    "flags" / c.BitStruct(
+        c.Padding(7),
+        "restore_storage" / c.Flag,
+    ),
+    "reserved" / c.Padding(52),
+    "signatures" / c.Bytes(64)[V1_SIGNATURE_SLOTS],
+    "code" / c.Bytes(c.this.code_length),
+    c.Terminated,
+)
+
 # fmt: on
 
 
@@ -227,6 +249,7 @@ class FirmwareFormat(Enum):
     TREZOR_ONE = 1
     TREZOR_T = 2
     TREZOR_ONE_V2 = 3
+    KEEPKEY = 4
 
 
 FirmwareType = NewType("FirmwareType", c.Container)
@@ -243,6 +266,9 @@ def parse(data: bytes) -> ParsedFirmware:
     elif data[:4] == b"TRZF":
         version = FirmwareFormat.TREZOR_ONE_V2
         cls = FirmwareOneV2
+    elif data[:4] == b'KPKY':
+        version = FirmwareFormat.KEEPKEY
+        cls = FirmwareKeepkey
     else:
         raise ValueError("Unrecognized firmware image type")
 
@@ -258,7 +284,7 @@ def digest_onev1(fw: FirmwareType) -> bytes:
 
 
 def check_sig_v1(
-    digest: bytes, key_indexes: List[int], signatures: List[bytes]
+    digest: bytes, key_indexes: List[int], signatures: List[bytes], is_keepkey: bool = False 
 ) -> None:
     distinct_key_indexes = set(i for i in key_indexes if i != 0)
     if not distinct_key_indexes:
@@ -271,15 +297,17 @@ def check_sig_v1(
             )
         )
 
+    bootloader_keys = KEEPKEY_BOOTLOADER_KEYS if is_keepkey else V1_BOOTLOADER_KEYS
+
     for i in range(len(key_indexes)):
         key_idx = key_indexes[i]
         signature = signatures[i]
 
-        if key_idx not in V1_BOOTLOADER_KEYS:
+        if key_idx not in bootloader_keys:
             # unknown pubkey
             raise InvalidSignatureError("Unknown key in slot {}".format(i))
 
-        pubkey = bytes.fromhex(V1_BOOTLOADER_KEYS[key_idx])[1:]
+        pubkey = bytes.fromhex(bootloader_keys[key_idx])[1:]
         verify = ecdsa.VerifyingKey.from_string(pubkey, curve=ecdsa.curves.SECP256k1)
         try:
             verify.verify_digest(signature, digest)
@@ -362,6 +390,14 @@ def validate_onev1(fw: FirmwareType, allow_unsigned: bool = False) -> None:
         validate_onev2(fw.embedded_onev2, allow_unsigned)
 
 
+def validate_keepkey(fw: FirmwareType, allow_unsigned: bool = False) -> None:
+    try:
+        check_sig_v1(digest_onev1(fw), fw.key_indexes, fw.signatures, True)
+    except Unsigned:
+        if not allow_unsigned:
+            raise
+
+
 def validate_v2(fw: FirmwareType, skip_vendor_header: bool = False) -> None:
     vendor_fingerprint = _header_digest(fw.vendor_header, VendorHeader)
     fingerprint = digest_v2(fw)
@@ -405,7 +441,7 @@ def validate_v2(fw: FirmwareType, skip_vendor_header: bool = False) -> None:
 
 
 def digest(version: FirmwareFormat, fw: FirmwareType) -> bytes:
-    if version == FirmwareFormat.TREZOR_ONE:
+    if version == FirmwareFormat.TREZOR_ONE or version == FirmwareFormat.KEEPKEY:
         return digest_onev1(fw)
     elif version == FirmwareFormat.TREZOR_ONE_V2:
         return digest_onev2(fw)
@@ -420,6 +456,8 @@ def validate(
 ) -> None:
     if version == FirmwareFormat.TREZOR_ONE:
         return validate_onev1(fw, allow_unsigned)
+    elif version == FirmwareFormat.KEEPKEY:
+        return validate_keepkey(fw, allow_unsigned)
     elif version == FirmwareFormat.TREZOR_ONE_V2:
         return validate_onev2(fw, allow_unsigned)
     elif version == FirmwareFormat.TREZOR_T:
@@ -432,7 +470,7 @@ def validate(
 
 
 @tools.session
-def update(client, data):
+def update(client, data, fw_version):
     if client.features.bootloader_mode is False:
         raise RuntimeError("Device must be in bootloader mode")
 
@@ -440,7 +478,11 @@ def update(client, data):
 
     # TREZORv1 method
     if isinstance(resp, messages.Success):
-        resp = client.call(messages.FirmwareUpload(payload=data))
+        if fw_version == FirmwareFormat.KEEPKEY:
+            data_hash = hashlib.sha256(data).digest()
+            resp = client.call(messages.FirmwareUploadKeepkey(payload=data, hash=data_hash))
+        else:
+            resp = client.call(messages.FirmwareUpload(payload=data))
         if isinstance(resp, messages.Success):
             return
         else:

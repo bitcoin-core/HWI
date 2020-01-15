@@ -133,8 +133,8 @@ def interactive_get_pin(self, code=None):
             return pin
 
 ALLOWED_FIRMWARE_FORMATS = {
-    1: (firmware.FirmwareFormat.TREZOR_ONE, firmware.FirmwareFormat.TREZOR_ONE_V2),
-    2: (firmware.FirmwareFormat.TREZOR_T,),
+    1: (firmware.FirmwareFormat.TREZOR_ONE, firmware.FirmwareFormat.TREZOR_ONE_V2, firmware.FirmwareFormat.KEEPKEY),
+    2: (firmware.FirmwareFormat.TREZOR_T, firmware.FirmwareFormat.KEEPKEY),
 }
 
 def _print_version(version):
@@ -148,6 +148,8 @@ def validate_firmware(version, fw, expected_fingerprint=None):
             _print_version(fw.embedded_onev2.firmware_header.version)
         else:
             print("Trezor One firmware image.", file=sys.stderr)
+    elif version == firmware.FirmwareFormat.TREZOR_ONE_V2:
+        print('Keepkey firmware image', file=sys.stderr)
     elif version == firmware.FirmwareFormat.TREZOR_ONE_V2:
         print("Trezor One v2 firmware (1.8.0 or later)", file=sys.stderr)
         _print_version(fw.firmware_header.version)
@@ -618,7 +620,7 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.major_version == 1 and self.client.features.firmware_present is not False:
             # Trezor One does not send ButtonRequest
             print("Please confirm the action on your device", file=sys.stderr)
-        firmware.update(self.client, data)
+        firmware.update(self.client, data, version)
         return {'success': True}
 
 def enumerate(password=''):

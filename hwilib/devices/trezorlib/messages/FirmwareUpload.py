@@ -20,3 +20,21 @@ class FirmwareUpload(p.MessageType):
             1: ('payload', p.BytesType, 0),  # required
             2: ('hash', p.BytesType, 0),
         }
+
+class FirmwareUploadKeepkey(p.MessageType):
+    MESSAGE_WIRE_TYPE = 7
+
+    def __init__(
+        self,
+        payload: bytes = None,
+        hash: bytes = None,
+    ) -> None:
+        self.payload = payload
+        self.hash = hash
+
+    @classmethod
+    def get_fields(cls):
+        return {
+            1: ('hash', p.BytesType, 0),
+            2: ('payload', p.BytesType, 0),
+        }

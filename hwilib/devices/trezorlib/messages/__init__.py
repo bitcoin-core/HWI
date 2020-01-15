@@ -26,7 +26,7 @@ from .Failure import Failure
 from .Features import Features
 from .FirmwareErase import FirmwareErase
 from .FirmwareRequest import FirmwareRequest
-from .FirmwareUpload import FirmwareUpload
+from .FirmwareUpload import FirmwareUpload, FirmwareUploadKeepkey
 from .GetAddress import GetAddress
 from .GetEntropy import GetEntropy
 from .GetFeatures import GetFeatures
