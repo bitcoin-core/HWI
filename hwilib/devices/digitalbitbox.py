@@ -1,6 +1,8 @@
 # Digital Bitbox interaction script
 
+import ecdsa
 import hid
+import io
 import struct
 import json
 import base64
@@ -18,9 +20,11 @@ from typing import Dict, Union
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
+    BAD_ARGUMENT,
     BadArgumentError,
     DeviceFailureError,
     DeviceAlreadyInitError,
+    DEVICE_CONN_ERROR,
     DEVICE_NOT_INITIALIZED,
     DeviceNotReadyError,
     NoPasswordError,
@@ -121,6 +125,18 @@ cancels.extend([str(x) for x in cancels])
 
 ERR_MEM_SETUP = 503 # Device initialization in progress.
 
+BITBOX01_FIRMWARE_KEYS = [
+    "02a1137c6bdd497358537df77d1375a741ed75461b706a612a3717d32748e5acf1",
+    "0256201125b958864de4bb00560a247ad246182866b6fe7ac29d7a12e7718ebb7d",
+    "03d2185d70fb29a36691d8470e65d02adfab2ec00caad91887da23e5ad20a25163",
+    "0263b742d9873405c609814da884324ab0f4c1597a5fd152b388899857f4d041df",
+    "02b95dc22d293376222ef896f74a8436a8b6672e7e416299f3c4e23b49c38ad366",
+    "03ef4c48dc308ace971c025db3edd4bc5d5110e28e14bdd925fffafd4d21002800",
+    "030d8b0b86fca70bfd3a8d842cdb3ff8362c02f455fd092b080f1bb137dfc1d25f",
+]
+
+EMPTY_SIG = b'\x00' * 64
+
 class DBBError(Exception):
     def __init__(self, error):
         Exception.__init__(self)
@@ -199,6 +215,23 @@ def to_string(x, enc):
     else:
         raise DeviceFailureError("Not a string or bytes like object")
 
+def verify_firmware(sig_blob, firmware):
+    sigs = []
+    for i in range(0, 448, 64):
+        sigs.append(sig_blob[i:i + 64])
+    fw_hash = hash256(firmware)
+    print('Hashed firmware (without signatures) {}'.format(binascii.hexlify(fw_hash).decode()), file=sys.stderr)
+    for i in range(0, 6):
+        sig = sigs[i]
+        pubkey_str = bytearray.fromhex(BITBOX01_FIRMWARE_KEYS[i])
+        if sig == EMPTY_SIG:
+            continue
+        key = ecdsa.VerifyingKey.from_string(pubkey_str, curve=ecdsa.curves.SECP256k1)
+        try:
+            key.verify_digest(sig, fw_hash)
+        except ecdsa.BadSignatureError:
+            raise BadArgumentError("Invalid firmware signature at index {}".format(i))
+
 class BitboxSimulator():
     def __init__(self, ip, port):
         self.ip = ip
@@ -217,6 +250,9 @@ class BitboxSimulator():
 
     def get_serial_number_string(self):
         return 'dbb_fw:v5.0.0'
+
+    def get_product_string(self):
+        return 'Digital Bitbox firmware'
 
 def send_frame(data, device):
     data = bytearray(data)
@@ -323,6 +359,45 @@ def stretch_backup_key(password):
 def format_backup_filename(name):
     return '{}-{}.pdf'.format(name, time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime()))
 
+# ----------------------------------------------------------------------------------
+# Bootloader io
+#
+
+def sendBoot(msg, dev):
+    msg = bytearray(msg) + b'\0' * (boot_buf_size_send - len(msg))
+    serial_number = dev.get_serial_number_string()
+    if 'v1.' in serial_number or 'v2.' in serial_number:
+        dev.write(b'\0' + msg)
+    else:
+        # Split `msg` into 64-byte packets
+        n = 0
+        while n < len(msg):
+            dev.write(b'\0' + msg[n:n + usb_report_size])
+            n = n + usb_report_size
+
+def sendPlainBoot(msg, dev):
+    if type(msg) == str:
+        msg = msg.encode()
+    sendBoot(msg, dev)
+    reply = []
+    while len(reply) < boot_buf_size_reply:
+        reply = reply + dev.read(boot_buf_size_reply)
+
+    reply = bytearray(reply).rstrip(b' \t\r\n\0')
+    reply = ''.join(chr(e) for e in reply)
+    return reply
+
+def sendChunk(chunknum, data, dev):
+    b = bytearray(b"\x77\x00")
+    b[1] = chunknum % 0xFF
+    b.extend(data)
+    sendBoot(b, dev)
+    reply = []
+    while len(reply) < boot_buf_size_reply:
+        reply = reply + dev.read(boot_buf_size_reply)
+    reply = bytearray(reply).rstrip(b' \t\r\n\0')
+    reply = ''.join(chr(e) for e in reply)
+
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
@@ -339,6 +414,21 @@ class DigitalbitboxClient(HardwareWalletClient):
             self.device = hid.device()
             self.device.open_path(path.encode())
         self.password = password
+
+        # Always lock the bootloader
+        if self.device.get_product_string() != 'bootloader':
+            reply = send_encrypt('{"device":"info"}', self.password, self.device)
+            if 'error' not in reply:
+                if not reply['device']['bootlock']:
+                    reply = send_encrypt('{"bootloader":"lock"}', self.password, self.device)
+                    if 'error' in reply:
+                        raise DBBError(reply)
+            else:
+                # Check it isn't initialized
+                if reply['error']['code'] == 101 or reply['error']['code'] == '101':
+                    pass
+                else:
+                    raise DBBError(reply)
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -618,8 +708,53 @@ class DigitalbitboxClient(HardwareWalletClient):
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
     # Verify firmware file then load it onto device
+    @digitalbitbox_exception
     def update_firmware(self, filename: str) -> Dict[str, bool]:
-        raise NotImplementedError('The Digital Bitbox does not implement this method yet')
+        if self.device.get_product_string() != 'bootloader':
+            print('Device is not in bootloader mode. Unlocking bootloader, replugging will be required', file=sys.stderr)
+            print("Touch the device for 3 seconds to unlock bootloaderr. Touch briefly to cancel", file=sys.stderr)
+            reply = send_encrypt('{"bootloader":"unlock"}', self.password, self.device)
+            if 'error' in reply:
+                raise DBBError(reply)
+            return {'error': 'Digital Bitbox needs to be in bootloader mode. Unplug and replug the device and briefly touch the button within 3 seconds. Then try this command again', 'code': DEVICE_CONN_ERROR}
+
+        with open(filename, "rb") as f:
+            data = bytearray()
+            while True:
+                d = f.read(chunksize)
+                if len(d) == 0:
+                    break
+                data = data + bytearray(d)
+        data = data + b'\xFF' * (applen - len(data))
+        firmware = data[448:]
+        sig = data[:448]
+        verify_firmware(sig, firmware)
+
+        sendPlainBoot("b", self.device) # blink led
+        sendPlainBoot("v", self.device) # bootloader version
+        sendPlainBoot("e", self.device) # erase existing firmware (required)
+
+        # Send firmware
+        f = io.BytesIO(firmware)
+        cnt = 0
+        while True:
+            chunk = f.read(chunksize)
+            if len(chunk) == 0:
+                break
+            sendChunk(cnt, chunk, self.device)
+            cnt += 1
+
+        # upload sigs and verify new firmware
+        load_result = sendPlainBoot("s" + "0" + binascii.hexlify(sig).decode(), self.device)
+        if load_result[1] == 'V':
+            latest_version, = struct.unpack('>I', binascii.unhexlify(load_result[2 + 64:][:8]))
+            app_version, = struct.unpack('>I', binascii.unhexlify(load_result[2 + 64 + 8:][:8]))
+            return {'error': 'firmware downgrade not allowed. Got version %d, but must be equal or higher to %d' % (app_version, latest_version), 'code': BAD_ARGUMENT}
+        elif load_result[1] != '0':
+            return {'error': 'invalid firmware signature', 'code': BAD_ARGUMENT}
+
+        print('Please unplug and replug your device. The bootloader will be locked next time you use HWI with it.', file=sys.stderr)
+        return {'success': True}
 
 def enumerate(password=''):
     results = []
