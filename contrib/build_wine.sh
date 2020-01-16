@@ -83,10 +83,11 @@ popd
 export PYTHONHASHSEED=42
 $POETRY run pyinstaller hwi.spec
 $POETRY run pyinstaller hwi-qt.spec
+$POETRY run pyinstaller firmwaredl.spec
 unset PYTHONHASHSEED
 
 # Make the final compressed package
 pushd dist
 VERSION=`$POETRY run hwi --version | cut -d " " -f 2 | dos2unix`
-zip "hwi-${VERSION}-windows-amd64.zip" hwi.exe hwi-qt.exe
+zip "hwi-${VERSION}-windows-amd64.zip" hwi.exe hwi-qt.exe firmwaredl.exe
 popd

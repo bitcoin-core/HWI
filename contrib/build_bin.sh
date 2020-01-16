@@ -27,6 +27,7 @@ export PYTHONHASHSEED=42
 poetry run pyinstaller hwi.spec
 poetry run contrib/generate-ui.sh
 poetry run pyinstaller hwi-qt.spec
+poetry run pyinstaller firmwaredl.spec
 unset PYTHONHASHSEED
 
 # Make the final compressed package
@@ -36,5 +37,5 @@ OS=`uname | tr '[:upper:]' '[:lower:]'`
 if [[ $OS == "darwin" ]]; then
     OS="mac"
 fi
-tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi hwi-qt
+tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi hwi-qt firmwaredl
 popd
