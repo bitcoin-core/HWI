@@ -1,8 +1,11 @@
 #! /usr/bin/env python3
 
 import json
+import logging
+import sys
 
-from . import commands
+from . import commands, __version__
+from .cli import HWIArgumentParser
 from .errors import handle_errors, DEVICE_NOT_INITIALIZED
 
 try:
@@ -382,7 +385,22 @@ class HWIQt(QMainWindow):
         self.current_dialog = None
         self.get_device_info()
 
-def main():
+def process_gui_commands(cli_args):
+    parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))
+    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
+    parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
+    parser.add_argument('--debug', help='Print debug statements', action='store_true')
+    parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
+
+    # Parse arguments again for anything entered over stdin
+    args = parser.parse_args(cli_args)
+
+    result = {}
+
+    # Setup debug logging
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+
+    # Qt setup
     app = QApplication()
 
     window = HWIQt()
@@ -390,4 +408,11 @@ def main():
     window.refresh_clicked()
 
     window.show()
-    app.exec_()
+    ret = app.exec_()
+    result = {'success': ret == 0}
+
+    return result
+
+def main():
+    result = process_gui_commands(sys.argv[1:])
+    print(json.dumps(result))
