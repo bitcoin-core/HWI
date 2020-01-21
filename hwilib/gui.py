@@ -207,7 +207,7 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.account_spinbox.setEnabled(False)
 
 class HWIQt(QMainWindow):
-    def __init__(self):
+    def __init__(self, passphrase='', testnet=False):
         super(HWIQt, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -216,7 +216,8 @@ class HWIQt(QMainWindow):
         self.devices = []
         self.client = None
         self.device_info = {}
-        self.passphrase = ''
+        self.passphrase = passphrase
+        self.testnet = testnet
         self.current_dialog = None
         self.getkeypool_opts = {
             'start': 0,
@@ -296,6 +297,7 @@ class HWIQt(QMainWindow):
         # Get the client
         self.device_info = self.devices[index - 1]
         self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase)
+        self.client.is_testnet = self.testnet
         self.get_device_info()
 
     def get_device_info(self):
@@ -403,7 +405,7 @@ def process_gui_commands(cli_args):
     # Qt setup
     app = QApplication()
 
-    window = HWIQt()
+    window = HWIQt(args.password, args.testnet)
 
     window.refresh_clicked()
 
