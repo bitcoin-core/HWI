@@ -228,7 +228,7 @@ def process_commands(cli_args):
 
     # Auto detect if we are using fingerprint or type to identify device
     if args.fingerprint or (args.device_type and not args.device_path):
-        client = find_device(args.device_path, args.password, args.device_type, args.fingerprint)
+        client = find_device(args.password, args.device_type, args.fingerprint)
         if not client:
             return {'error': 'Could not find device with specified fingerprint', 'code': DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
