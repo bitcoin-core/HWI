@@ -14,13 +14,20 @@ elif platform.system() == 'Darwin':
     libusb_path = find_brew_libusb_proc.communicate()[0]
     binaries = [(libusb_path.rstrip().decode() + "/lib/libusb-1.0.dylib", ".")]
 
+excludes = [
+    'zlib',
+    'bz2',
+    'lzma',
+    'readline'
+]
+
 a = Analysis(['hwi.py'],
              binaries=binaries,
              datas=[],
              hiddenimports=[],
              hookspath=['contrib/pyinstaller-hooks/'],
              runtime_hooks=[],
-             excludes=[],
+             excludes=excludes,
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
