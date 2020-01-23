@@ -22,6 +22,7 @@ pyaes = "^1.6"
 mnemonic = "^0.18.0"
 typing-extensions = "^3.7"
 libusb1 = "^1.7"
+cython = "^0.29.14"
 
 [tool.poetry.dev-dependencies]
 pyinstaller = "^3.4"
