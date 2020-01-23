@@ -125,9 +125,22 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             result = self.do_command(self.dev_args + ['backup', '--label', 'backup_test_backup', '--backup_passphrase', 'testpass'])
             self.assertTrue(result['success'])
 
+    class TestBitboxGetXpub(DeviceTestCase):
+        def test_getxpub(self):
+            result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
+            self.assertEqual(result['xpub'], 'xpub6Du9e5Cz1NZWz3dvsvM21tsj4xEdbAb7AcbysFL42Y3yr8PLMnsaxhetHxurTpX5Rp5RbnFFwP1wct8K3gErCUSwcxFhxThsMBSxdmkhTNf')
+            self.assertFalse(result['testnet'])
+            self.assertFalse(result['private'])
+            self.assertEqual(result['depth'], 4)
+            self.assertEqual(result['parent_fingerprint'], '31d5e5ea')
+            self.assertEqual(result['child_num'], 3)
+            self.assertEqual(result['chaincode'], '7062818c752f878bf96ca668f77630452c3fa033b7415eed3ff568e04ada8104')
+            self.assertEqual(result['pubkey'], '029078c9ad8421afd958d7bc054a0952874923e2586fc9375604f0479a354ea193')
+
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestBitboxGetXpub, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'digitalbitbox_01_simulator', full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
