@@ -64,7 +64,7 @@ class ColdcardClient(HardwareWalletClient):
             result.update(xpub_obj.get_printable_dict())
         return result
 
-    def _get_fingerprint_hex(self):
+    def get_master_fingerprint_hex(self):
         # quick method to get fingerprint of wallet
         return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
 
@@ -263,7 +263,7 @@ def enumerate(password=''):
         with handle_errors(common_err_msgs["enumerate"], d_data):
             try:
                 client = ColdcardClient(path)
-                d_data['fingerprint'] = client._get_fingerprint_hex()
+                d_data['fingerprint'] = client.get_master_fingerprint_hex()
             except RuntimeError as e:
                 # Skip the simulator if it's not there
                 if str(e) == 'Cannot connect to simulator. Is it running?':

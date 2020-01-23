@@ -17,7 +17,7 @@ import time
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, NoPasswordError, UnavailableActionError, common_err_msgs, handle_errors
 from ..serializations import CTransaction, ExtendedKey, hash256, ser_sig_der, ser_sig_compact, ser_compact_size
-from ..base58 import get_xpub_fingerprint, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..base58 import get_xpub_fingerprint, xpub_main_2_test
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512
@@ -616,8 +616,7 @@ def enumerate(password=''):
                     d_data['error'] = 'Not initialized'
                     d_data['code'] = DEVICE_NOT_INITIALIZED
                 else:
-                    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                    d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                    d_data['fingerprint'] = client.get_master_fingerprint_hex()
                 d_data['needs_pin_sent'] = False
                 d_data['needs_passphrase_sent'] = True
 

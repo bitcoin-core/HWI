@@ -1,3 +1,5 @@
+from .base58 import get_xpub_fingerprint_hex
+
 # This is an abstract class that defines all of the methods that each Hardware
 # wallet subclass must implement.
 class HardwareWalletClient(object):
@@ -15,6 +17,11 @@ class HardwareWalletClient(object):
     # Get the master BIP 44 pubkey
     def get_master_xpub(self):
         return self.get_pubkey_at_path('m/44\'/0\'/0\'')
+
+    # Get the master fingerprint
+    def get_master_fingerprint_hex(self):
+        master_xpub = self.get_pubkey_at_path('m/0h')['xpub']
+        return get_xpub_fingerprint_hex(master_xpub)
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path

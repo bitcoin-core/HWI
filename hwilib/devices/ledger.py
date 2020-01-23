@@ -11,7 +11,6 @@ import base64
 import hid
 import struct
 from .. import base58
-from ..base58 import get_xpub_fingerprint_hex
 from ..serializations import ExtendedKey, hash256, hash160, CTransaction
 import logging
 import re
@@ -378,8 +377,7 @@ def enumerate(password=''):
             with handle_errors(common_err_msgs["enumerate"], d_data):
                 try:
                     client = LedgerClient(path, password)
-                    master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                    d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                    d_data['fingerprint'] = client.get_master_fingerprint_hex()
                     d_data['needs_pin_sent'] = False
                     d_data['needs_passphrase_sent'] = False
                 except BTChipException:
