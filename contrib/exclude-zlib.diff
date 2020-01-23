@@ -1,0 +1,13 @@
+# Don't include zlib
+
+--- setup.py
++++ setup.py
+@@ -1479,7 +1479,7 @@ class PyBuildExt(build_ext):
+ 
+         # Helper module for various ascii-encoders.  Uses zlib for an optimized
+         # crc32 if we have it.  Otherwise binascii uses its own.
+-        if have_zlib:
++        if False:
+             extra_compile_args = ['-DUSE_ZLIB_CRC32']
+             libraries = ['z']
+             extra_link_args = zlib_extra_link_args

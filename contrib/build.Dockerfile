@@ -33,10 +33,11 @@ RUN apt-get install -y \
 RUN curl https://pyenv.run | bash
 ENV PATH="/root/.pyenv/bin:$PATH"
 COPY contrib/reproducible-python.diff /opt/reproducible-python.diff
+COPY contrib/exclude-zlib.diff /opt/exclude-zlib.diff
 ENV PYTHON_CONFIGURE_OPTS="--enable-shared"
 ENV BUILD_DATE="Jan  1 2019"
 ENV BUILD_TIME="00:00:00"
-RUN eval "$(pyenv init -)" && eval "$(pyenv virtualenv-init -)" && cat /opt/reproducible-python.diff | pyenv install -kp 3.6.8
+RUN eval "$(pyenv init -)" && eval "$(pyenv virtualenv-init -)" && cat /opt/reproducible-python.diff /opt/exclude-zlib.diff | pyenv install -kp 3.6.8
 
 RUN dpkg --add-architecture i386 
 RUN wget -nc https://dl.winehq.org/wine-builds/winehq.key
