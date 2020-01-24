@@ -107,6 +107,7 @@ def process_commands(cli_args):
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
     parser.add_argument('--interactive', '-i', help='Use some commands interactively. Currently required for all device configuration commands', action='store_true')
+    parser.add_argument('--expert', help='Do advanced things and get more detailed information returned from some commands. Use at your own risk.', action='store_true')
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
@@ -228,12 +229,12 @@ def process_commands(cli_args):
 
     # Auto detect if we are using fingerprint or type to identify device
     if args.fingerprint or (args.device_type and not args.device_path):
-        client = find_device(args.password, args.device_type, args.fingerprint)
+        client = find_device(args.password, args.device_type, args.fingerprint, args.expert)
         if not client:
             return {'error': 'Could not find device with specified fingerprint', 'code': DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
         with handle_errors(result=result, code=DEVICE_CONN_ERROR):
-            client = get_client(device_type, device_path, password)
+            client = get_client(device_type, device_path, password, args.expert)
         if 'error' in result:
             return result
     else:

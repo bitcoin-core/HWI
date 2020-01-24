@@ -12,7 +12,7 @@ from .descriptor import Descriptor
 from .devices import __all__ as all_devs
 
 # Get the client for the device
-def get_client(device_type, device_path, password=''):
+def get_client(device_type, device_path, password='', expert=False):
     device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
@@ -21,7 +21,7 @@ def get_client(device_type, device_path, password=''):
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
         client_constructor = getattr(imported_dev, class_name + 'Client')
-        client = client_constructor(device_path, password)
+        client = client_constructor(device_path, password, expert)
     except ImportError:
         if client:
             client.close()
@@ -42,14 +42,14 @@ def enumerate(password=''):
     return result
 
 # Fingerprint or device type required
-def find_device(password='', device_type=None, fingerprint=None):
+def find_device(password='', device_type=None, fingerprint=None, expert=False):
     devices = enumerate(password)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
             continue
         client = None
         try:
-            client = get_client(d['type'], d['path'], password)
+            client = get_client(d['type'], d['path'], password, expert)
 
             master_fpr = d.get('fingerprint', None)
             if master_fpr is None:

@@ -7,7 +7,7 @@ from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
 from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
 from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
 from ..base58 import get_xpub_fingerprint, xpub_main_2_test
-from ..serializations import PSBT
+from ..serializations import ExtendedKey, PSBT
 from hashlib import sha256
 
 import base64
@@ -36,8 +36,8 @@ def coldcard_exception(f):
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
 
-    def __init__(self, path, password=''):
-        super(ColdcardClient, self).__init__(path, password)
+    def __init__(self, path, password='', expert=False):
+        super(ColdcardClient, self).__init__(path, password, expert)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
             self.device = ColdcardDevice(sn=path)
@@ -55,9 +55,14 @@ class ColdcardClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
         if self.is_testnet:
-            return {'xpub': xpub_main_2_test(xpub)}
+            result = {'xpub': xpub_main_2_test(xpub)}
         else:
-            return {'xpub': xpub}
+            result = {'xpub': xpub}
+        if self.expert:
+            xpub_obj = ExtendedKey()
+            xpub_obj.deserialize(xpub)
+            result.update(xpub_obj.get_printable_dict())
+        return result
 
     def _get_fingerprint_hex(self):
         # quick method to get fingerprint of wallet

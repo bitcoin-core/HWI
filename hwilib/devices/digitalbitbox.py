@@ -16,7 +16,7 @@ import time
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, NoPasswordError, UnavailableActionError, common_err_msgs, handle_errors
-from ..serializations import CTransaction, hash256, ser_sig_der, ser_sig_compact, ser_compact_size
+from ..serializations import CTransaction, ExtendedKey, hash256, ser_sig_der, ser_sig_compact, ser_compact_size
 from ..base58 import get_xpub_fingerprint, xpub_main_2_test, get_xpub_fingerprint_hex
 
 applen = 225280 # flash size minus bootloader length
@@ -296,8 +296,8 @@ def format_backup_filename(name):
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
-    def __init__(self, path, password):
-        super(DigitalbitboxClient, self).__init__(path, password)
+    def __init__(self, path, password, expert=False):
+        super(DigitalbitboxClient, self).__init__(path, password, expert)
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
         if path.startswith('udp:'):
@@ -321,9 +321,14 @@ class DigitalbitboxClient(HardwareWalletClient):
             raise DBBError(reply)
 
         if self.is_testnet:
-            return {'xpub': xpub_main_2_test(reply['xpub'])}
+            result = {'xpub': xpub_main_2_test(reply['xpub'])}
         else:
-            return {'xpub': reply['xpub']}
+            result = {'xpub': reply['xpub']}
+        if self.expert:
+            xpub_obj = ExtendedKey()
+            xpub_obj.deserialize(reply['xpub'])
+            result.update(xpub_obj.get_printable_dict())
+        return result
 
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format
