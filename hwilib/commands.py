@@ -104,6 +104,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal
     this_import['keypool'] = keypool
+    this_import['active'] = keypool
     this_import['watchonly'] = True
     return [this_import]
 
