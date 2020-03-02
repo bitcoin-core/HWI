@@ -36,8 +36,8 @@ fi
 cd legacy
 export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
 if [ "$trezor_setup_needed" == true ] ; then
-    script/setup
-    pipenv install
+    pipenv sync
+    pipenv run script/setup
 fi
 pipenv run script/cibuild
 # Delete any emulator.img file
