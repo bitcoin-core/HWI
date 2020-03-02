@@ -12,6 +12,7 @@ trezor_setup_needed=false
 if [ ! -d "trezor-firmware" ]; then
     git clone --recursive https://github.com/trezor/trezor-firmware.git
     cd trezor-firmware
+    git checkout core/v2.2.0
     trezor_setup_needed=true
 else
     cd trezor-firmware
