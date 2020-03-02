@@ -109,7 +109,7 @@ class LedgerEmulator(DeviceEmulator):
 
     def start(self):
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '-bn', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', '--button-port', '1235', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setsid)
         # Wait for simulator to be up
         while True:
             try:
