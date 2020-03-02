@@ -147,18 +147,14 @@ fi
 
 # Build the simulator. This is cached, but it is also fast
 if [ "$keepkey_setup_needed" == true ] ; then
-    git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
+    git clone https://github.com/nanopb/nanopb.git -b nanopb-0.3.9.4
 fi
-# This needs py2, so make a pipenv
-export PIPENV_IGNORE_VIRTUALENVS=1
-pipenv --python 2.7
-pipenv install protobuf
 cd nanopb/generator/proto
-pipenv run make
+make
 cd ../../../
 export PATH=$PATH:`pwd`/nanopb/generator
-pipenv run cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
-pipenv run make -j$(nproc) kkemu
+cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
+make -j$(nproc) kkemu
 # Delete any emulator.img file
 find . -name "emulator.img" -exec rm {} \;
 cd ..
