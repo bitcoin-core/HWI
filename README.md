@@ -74,6 +74,14 @@ All output will be in JSON form and sent to `stdout`.
 Additional information or prompts will be sent to `stderr` and will not necessarily be in JSON.
 This additional information is for debugging purposes.
 
+To see a complete list of available commands and global parameters, run
+`./hwi.py --help`.  To see options specific to a particular command,
+pass the `--help` parameter after the command name; for example:
+
+```
+./hwi.py getdescriptors --help
+```
+
 ## Device Support
 
 The below table lists what devices and features are supported for each device.
