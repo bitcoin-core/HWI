@@ -112,7 +112,6 @@ jobs:
         -   name: macOS binary distribution (no tests)
             stage: test
             os: osx
-            osx_image: xcode7.3
             language: generic
             addons:
                 artifacts:
