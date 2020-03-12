@@ -1,106 +1,15 @@
 #! /usr/bin/env python3
 
 import argparse
-import json
 import os
 import subprocess
 import signal
-import socket
 import time
 import unittest
 
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
-from threading import Thread
 
 from hwilib.cli import process_commands
-
-SCREEN_TEXT_SOCKET = '/tmp/ledger-screen.sock'
-KEYBOARD_PORT = 1235
-
-
-class ScreenTextThread(Thread):
-    def get_screen_text(self, use_timeout=False):
-        if use_timeout:
-            self.sock.settimeout(5)
-        else:
-            self.sock.settimeout(None)
-        data_str = self.sock.recv(200)
-        if len(data_str) == 0:
-            return ''
-        data = json.loads(data_str.decode())
-
-        text = ''
-        if data['y'] == 12: # Upper line
-            text = data['text']
-            text += self.get_screen_text() # Get next line
-        elif data['y'] == 26 or data['y'] == 28: # lower line or single line
-            text = data['text']
-        return text
-
-    def run(self):
-        self.running = True
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        while True:
-            try:
-                self.sock.bind(SCREEN_TEXT_SOCKET)
-                break
-            except:
-                os.remove(SCREEN_TEXT_SOCKET)
-
-        self.key_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.key_sock.connect(('127.0.0.1', KEYBOARD_PORT))
-
-        seen_msg_hash = False
-        while True:
-            try:
-                text = self.get_screen_text(False)
-                break
-            except:
-                continue
-        while self.running:
-            just_wait = False
-            if text.startswith('Address') or text.startswith('Message hash') or text.startswith("Reviewoutput") or text.startswith("Amount") or text.startswith("Fees") or text == 'Confirmtransaction':
-                time.sleep(0.05)
-                self.key_sock.send(b'Rr')
-                if text.startswith('Message hash'):
-                    seen_msg_hash = True
-            elif text == 'Approve' or text.startswith('Accept'):
-                time.sleep(0.05)
-                self.key_sock.send(b'LRlr')
-            elif text == 'Signmessage':
-                time.sleep(0.05)
-                if seen_msg_hash:
-                    self.key_sock.send(b'LRlr')
-                    seen_msg_hash = False
-                else:
-                    self.key_sock.send(b'Rr')
-            elif text == 'Cancel' or text == 'Reject':
-                time.sleep(0.05)
-                self.key_sock.send(b'Ll')
-            else:
-                # For everything else, do nothing and wait for next text
-                just_wait = True
-
-            try:
-                if just_wait:
-                    # Main screen, don't do anything
-                    new_text = self.get_screen_text(False)
-                else:
-                    # Try to fetch the next text
-                    # If it times out, maybe our input didn't make it, so try processing text again
-                    new_text = self.get_screen_text(True)
-                text = new_text
-            except:
-                continue
-
-        self.sock.close()
-
-    def stop(self):
-        self.running = False
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
-        self.key_sock.close()
-        os.remove(SCREEN_TEXT_SOCKET)
 
 class LedgerEmulator(DeviceEmulator):
     def __init__(self, path):
@@ -109,7 +18,7 @@ class LedgerEmulator(DeviceEmulator):
 
     def start(self):
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', '--button-port', '1235', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setsid)
         # Wait for simulator to be up
         while True:
             try:
@@ -126,14 +35,9 @@ class LedgerEmulator(DeviceEmulator):
                 pass
             time.sleep(0.5)
 
-        self.kp_thread = ScreenTextThread()
-        self.kp_thread.start()
-
     def stop(self):
-        self.kp_thread.stop()
         os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
         os.waitpid(self.emulator_proc.pid, 0)
-        self.kp_thread.join()
 
 def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
 

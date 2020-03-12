@@ -1,0 +1,64 @@
+From bd251085fa85ad20e90fa055e7487b5c73d3dc7d Mon Sep 17 00:00:00 2001
+From: Andrew Chow <achow101-github@achow101.com>
+Date: Thu, 12 Mar 2020 17:25:09 -0400
+Subject: [PATCH] Do button presses within seproxyhal
+
+---
+ mcu/seproxyhal.py | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/mcu/seproxyhal.py b/mcu/seproxyhal.py
+index 8ed3fec..1a6bfb6 100644
+--- a/mcu/seproxyhal.py
++++ b/mcu/seproxyhal.py
+@@ -2,6 +2,7 @@ import binascii
+ import logging
+ import os
+ import select
++import struct
+ import sys
+ import time
+ import threading
+@@ -144,6 +145,39 @@ class SeProxyHal:
+                 #self.logger.debug(f"DISPLAY_STATUS {data!r}")
+                 screen.display_status(data)
+                 self._queue_event_packet(SephTag.DISPLAY_PROCESSED_EVENT)
++                data_type, _, x, y, = struct.unpack('bbhh', data[:6])
++                if data_type == 7:
++                    if y == 12 or y ==28:
++                        self.line = data[28:].decode()
++                    elif y == 26:
++                        self.line += data[28:].decode()
++
++                    if y == 26 or y == 28:
++                        if self.line.startswith('Address') or self.line.startswith('Message hash') or self.line.startswith('Reviewoutput') or self.line.startswith('Amount') or self.line.startswith('Fees') or self.line.startswith('Confirmtransaction'):
++                            self.handle_button(2, True)
++                            self.handle_button(2, False)
++                            if self.line.startswith('Message hash'):
++                                self.seen_msg_hash = True
++                        elif self.line == 'Approve' or self.line.startswith('Accept'):
++                            self.handle_button(1, True)
++                            self.handle_button(2, True)
++                            self.handle_button(1, False)
++                            self.handle_button(2, False)
++                        elif self.line == 'Signmessage':
++                            if self.seen_msg_hash:
++                                self.handle_button(1, True)
++                                self.handle_button(2, True)
++                                self.handle_button(1, False)
++                                self.handle_button(2, False)
++                                self.seen_msg_hash = False
++                            else:
++                                self.handle_button(2, True)
++                                self.handle_button(2, False)
++                                self.handle_button(2, True)
++                                self.handle_button(2, False)
++                        elif self.line == 'Cancel' or self.line == 'Reject':
++                            self.handle_button(1, True)
++                            self.handle_button(1, False)
+ 
+             elif tag == SephTag.SCREEN_DISPLAY_RAW_STATUS:
+                 self.logger.debug("SephTag.SCREEN_DISPLAY_RAW_STATUS")
+-- 
+2.25.2
+
