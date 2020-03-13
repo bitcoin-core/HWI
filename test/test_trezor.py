@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import atexit
 import json
 import os
 import shlex
@@ -61,6 +62,7 @@ class TrezorEmulator(DeviceEmulator):
         client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
+        atexit.register(self.stop)
         return client
 
     def stop(self):
@@ -75,6 +77,8 @@ class TrezorEmulator(DeviceEmulator):
 
         if os.path.isfile(emulator_img):
             os.unlink(emulator_img)
+
+        atexit.unregister(self.stop)
 
 class TrezorTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
@@ -333,7 +337,10 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     else:
         suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_t_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    return suite
+
+    result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.stderr = sys.__stderr__
+    return result.wasSuccessful()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Trezor implementation')
@@ -346,5 +353,4 @@ if __name__ == '__main__':
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t)
-    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.exit(not trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t))

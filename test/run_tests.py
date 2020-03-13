@@ -56,6 +56,7 @@ parser.set_defaults(trezor=None, trezor_t=None, coldcard=None, keepkey=None, bit
 args = parser.parse_args()
 
 # Run tests
+success = True
 suite = unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
@@ -63,6 +64,7 @@ suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
 if sys.platform.startswith("linux"):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
+success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
 
 if args.all:
     # Default all true unless overridden
@@ -86,17 +88,16 @@ if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey 
     rpc, userpass = start_bitcoind(args.bitcoind)
 
     if args.bitbox:
-        suite.addTest(digitalbitbox_test_suite(args.bitbox_path, rpc, userpass, args.interface))
+        success &= digitalbitbox_test_suite(args.bitbox_path, rpc, userpass, args.interface)
     if args.coldcard:
-        suite.addTest(coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface))
+        success &= coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface)
     if args.trezor:
-        suite.addTest(trezor_test_suite(args.trezor_path, rpc, userpass, args.interface))
+        success &= trezor_test_suite(args.trezor_path, rpc, userpass, args.interface)
     if args.trezor_t:
-        suite.addTest(trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True))
+        success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True)
     if args.keepkey:
-        suite.addTest(keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface))
+        success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
     if args.ledger:
-        suite.addTest(ledger_test_suite(args.ledger_path, rpc, userpass, args.interface))
+        success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
 
-result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
-sys.exit(not result.wasSuccessful())
+sys.exit(not success)
