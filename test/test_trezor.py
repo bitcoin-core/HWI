@@ -112,10 +112,10 @@ class TrezorTestCase(unittest.TestCase):
             return process_commands(args)
 
     def __str__(self):
-        return 'trezor 1: {}'.format(super().__str__())
+        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__str__())
 
     def __repr__(self):
-        return 'trezor 1: {}'.format(super().__repr__())
+        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__repr__())
 
     def setUp(self):
         self.client = self.emulator.start()
