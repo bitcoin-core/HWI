@@ -43,12 +43,6 @@ def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
 
     # Ledger specific disabled command tests
     class TestLedgerDisabledCommands(DeviceTestCase):
-        def setUp(self):
-            self.emulator.start()
-
-        def tearDown(self):
-            self.emulator.stop()
-
         def test_pin(self):
             result = self.do_command(self.dev_args + ['promptpin'])
             self.assertIn('error', result)
@@ -91,12 +85,6 @@ def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
             self.assertEqual(result['code'], -9)
 
     class TestLedgerGetXpub(DeviceTestCase):
-        def setUp(self):
-            self.emulator.start()
-
-        def tearDown(self):
-            self.emulator.stop()
-
         def test_getxpub(self):
             result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
             self.assertEqual(result['xpub'], 'xpub6DqTtMuqBiBsSPb5UxB1qgJ3ViXuhoyZYhw3zTK4MywLB6psioW4PN1SAbhxVVirKQojnTBsjG5gXiiueRBgWmUuN43dpbMSgMCQHVqx2bR')

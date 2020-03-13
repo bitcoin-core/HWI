@@ -117,14 +117,14 @@ class TrezorTestCase(unittest.TestCase):
     def __repr__(self):
         return 'trezor 1: {}'.format(super().__repr__())
 
-# Trezor specific getxpub test because this requires device specific thing to set xprvs
-class TestTrezorGetxpub(TrezorTestCase):
     def setUp(self):
         self.client = self.emulator.start()
 
     def tearDown(self):
         self.emulator.stop()
 
+# Trezor specific getxpub test because this requires device specific thing to set xprvs
+class TestTrezorGetxpub(TrezorTestCase):
     def test_getxpub(self):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/bip32_vectors.json'), encoding='utf-8') as f:
             vectors = json.load(f)
@@ -159,9 +159,6 @@ class TestTrezorManCommands(TrezorTestCase):
     def setUp(self):
         self.client = self.emulator.start()
         self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def test_setup_wipe(self):
         # Device is init, setup should fail

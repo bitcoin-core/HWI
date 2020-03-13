@@ -113,13 +113,13 @@ class DeviceTestCase(unittest.TestCase):
     def __repr__(self):
         return '{}: {}'.format(self.full_type, super().__repr__())
 
-class TestDeviceConnect(DeviceTestCase):
     def setUp(self):
         self.emulator.start()
 
     def tearDown(self):
         self.emulator.stop()
 
+class TestDeviceConnect(DeviceTestCase):
     def test_enumerate(self):
         enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
@@ -174,9 +174,6 @@ class TestGetKeypool(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
         self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def test_getkeypool_bad_args(self):
         result = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
@@ -288,9 +285,6 @@ class TestSignTx(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
         self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
@@ -464,12 +458,6 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
-    def setUp(self):
-        self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
-
     def test_display_address_bad_args(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
@@ -544,12 +532,6 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
 class TestSignMessage(DeviceTestCase):
-    def setUp(self):
-        self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
-
     def test_sign_msg(self):
         self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'm/44h/1h/0h/0/0'])
 
