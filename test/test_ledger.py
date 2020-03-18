@@ -38,8 +38,9 @@ class LedgerEmulator(DeviceEmulator):
             time.sleep(0.5)
 
     def stop(self):
-        os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
-        os.waitpid(self.emulator_proc.pid, 0)
+        if self.emulator_proc.poll() is None:
+            os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
+            os.waitpid(self.emulator_proc.pid, 0)
 
 def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
 

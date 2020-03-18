@@ -32,8 +32,9 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Cleanup
 
     def cleanup_simulator():
-        os.killpg(os.getpgid(coldcard_proc.pid), signal.SIGTERM)
-        os.waitpid(os.getpgid(coldcard_proc.pid), 0)
+        if coldcard_proc.poll() is None:
+            os.killpg(os.getpgid(coldcard_proc.pid), signal.SIGTERM)
+            os.waitpid(os.getpgid(coldcard_proc.pid), 0)
     atexit.register(cleanup_simulator)
 
     # Coldcard specific management command tests
