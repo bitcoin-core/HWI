@@ -12,6 +12,7 @@ trezor_setup_needed=false
 if [ ! -d "trezor-firmware" ]; then
     git clone --recursive https://github.com/trezor/trezor-firmware.git
     cd trezor-firmware
+    git checkout core/v2.2.0
     trezor_setup_needed=true
 else
     cd trezor-firmware
@@ -36,8 +37,8 @@ fi
 cd legacy
 export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
 if [ "$trezor_setup_needed" == true ] ; then
-    script/setup
-    pipenv install
+    pipenv sync
+    pipenv run script/setup
 fi
 pipenv run script/cibuild
 # Delete any emulator.img file
@@ -147,18 +148,14 @@ fi
 
 # Build the simulator. This is cached, but it is also fast
 if [ "$keepkey_setup_needed" == true ] ; then
-    git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
+    git clone https://github.com/nanopb/nanopb.git -b nanopb-0.3.9.4
 fi
-# This needs py2, so make a pipenv
-export PIPENV_IGNORE_VIRTUALENVS=1
-pipenv --python 2.7
-pipenv install protobuf
 cd nanopb/generator/proto
-pipenv run make
+make
 cd ../../../
 export PATH=$PATH:`pwd`/nanopb/generator
-pipenv run cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
-pipenv run make -j$(nproc) kkemu
+cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
+make -j$(nproc) kkemu
 # Delete any emulator.img file
 find . -name "emulator.img" -exec rm {} \;
 cd ..
@@ -187,7 +184,7 @@ else
     fi
 fi
 # Apply patch to get screen info
-git am ../../data/speculos-screen-text.patch
+git am ../../data/speculos-auto-button.patch
 
 # Build the simulator. This is cached, but it is also fast
 mkdir -p build

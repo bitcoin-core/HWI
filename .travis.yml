@@ -69,6 +69,9 @@ jobs:
             script: mypy hwilib/base58.py
         -   name: Run non-device tests only
             stage: test
+            install:
+                - pip install poetry
+                - poetry install
             script: cd test; poetry run ./run_tests.py
         -   name: With process_commands interface
             stage: test
@@ -112,7 +115,6 @@ jobs:
         -   name: macOS binary distribution (no tests)
             stage: test
             os: osx
-            osx_image: xcode7.3
             language: generic
             addons:
                 artifacts:

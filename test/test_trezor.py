@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import atexit
 import json
 import os
 import shlex
@@ -61,11 +62,13 @@ class TrezorEmulator(DeviceEmulator):
         client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
+        atexit.register(self.stop)
         return client
 
     def stop(self):
-        os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
-        os.waitpid(self.emulator_proc.pid, 0)
+        if self.emulator_proc.poll() is None:
+            os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
+            os.waitpid(self.emulator_proc.pid, 0)
 
         # Clean up emulator image
         if self.model_t:
@@ -75,6 +78,8 @@ class TrezorEmulator(DeviceEmulator):
 
         if os.path.isfile(emulator_img):
             os.unlink(emulator_img)
+
+        atexit.unregister(self.stop)
 
 class TrezorTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
@@ -112,19 +117,19 @@ class TrezorTestCase(unittest.TestCase):
             return process_commands(args)
 
     def __str__(self):
-        return 'trezor 1: {}'.format(super().__str__())
+        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__str__())
 
     def __repr__(self):
-        return 'trezor 1: {}'.format(super().__repr__())
+        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__repr__())
 
-# Trezor specific getxpub test because this requires device specific thing to set xprvs
-class TestTrezorGetxpub(TrezorTestCase):
     def setUp(self):
         self.client = self.emulator.start()
 
     def tearDown(self):
         self.emulator.stop()
 
+# Trezor specific getxpub test because this requires device specific thing to set xprvs
+class TestTrezorGetxpub(TrezorTestCase):
     def test_getxpub(self):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/bip32_vectors.json'), encoding='utf-8') as f:
             vectors = json.load(f)
@@ -159,9 +164,6 @@ class TestTrezorManCommands(TrezorTestCase):
     def setUp(self):
         self.client = self.emulator.start()
         self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def test_setup_wipe(self):
         # Device is init, setup should fail
@@ -336,7 +338,10 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     else:
         suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_t_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    return suite
+
+    result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.stderr = sys.__stderr__
+    return result.wasSuccessful()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Trezor implementation')
@@ -349,5 +354,4 @@ if __name__ == '__main__':
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t)
-    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.exit(not trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t))

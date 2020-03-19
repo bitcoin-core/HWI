@@ -113,13 +113,13 @@ class DeviceTestCase(unittest.TestCase):
     def __repr__(self):
         return '{}: {}'.format(self.full_type, super().__repr__())
 
-class TestDeviceConnect(DeviceTestCase):
     def setUp(self):
         self.emulator.start()
 
     def tearDown(self):
         self.emulator.stop()
 
+class TestDeviceConnect(DeviceTestCase):
     def test_enumerate(self):
         enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
@@ -175,9 +175,6 @@ class TestGetKeypool(DeviceTestCase):
             self.dev_args.append('--testnet')
         self.emulator.start()
 
-    def tearDown(self):
-        self.emulator.stop()
-
     def test_getkeypool_bad_args(self):
         result = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
         self.assertIn('error', result)
@@ -205,9 +202,9 @@ class TestGetKeypool(DeviceTestCase):
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/0/{}".format(i))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/1/{}".format(i))
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '0', '20'])
@@ -223,9 +220,9 @@ class TestGetKeypool(DeviceTestCase):
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/0/{}".format(i))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/1/{}".format(i))
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
@@ -288,9 +285,6 @@ class TestSignTx(DeviceTestCase):
         if '--testnet' not in self.dev_args:
             self.dev_args.append('--testnet')
         self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
@@ -464,12 +458,6 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
-    def setUp(self):
-        self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
-
     def test_display_address_bad_args(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
@@ -544,12 +532,6 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
 class TestSignMessage(DeviceTestCase):
-    def setUp(self):
-        self.emulator.start()
-
-    def tearDown(self):
-        self.emulator.stop()
-
     def test_sign_msg(self):
         self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'm/44h/1h/0h/0/0'])
 

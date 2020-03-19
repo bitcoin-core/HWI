@@ -5,6 +5,7 @@ import atexit
 import json
 import os
 import subprocess
+import sys
 import time
 import unittest
 
@@ -147,7 +148,11 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
-    return suite
+
+    result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    cleanup_simulator()
+    atexit.unregister(cleanup_simulator)
+    return result.wasSuccessful()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Digital Bitbox implementation')
@@ -159,5 +164,4 @@ if __name__ == '__main__':
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = digitalbitbox_test_suite(args.simulator, rpc, userpass, args.interface)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    sys.exit(not digitalbitbox_test_suite(args.simulator, rpc, userpass, args.interface))

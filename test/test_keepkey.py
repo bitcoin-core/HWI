@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import atexit
 import json
 import os
 import shlex
@@ -59,6 +60,7 @@ class KeepkeyEmulator(DeviceEmulator):
         client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
+        atexit.register(self.stop)
         return client
 
     def stop(self):
@@ -69,6 +71,8 @@ class KeepkeyEmulator(DeviceEmulator):
         emulator_img = os.path.dirname(self.emulator_path) + "/emulator.img"
         if os.path.isfile(emulator_img):
             os.unlink(emulator_img)
+
+        atexit.unregister(self.stop)
 
 class KeepkeyTestCase(unittest.TestCase):
     def __init__(self, emulator, interface='library', methodName='runTest'):
@@ -111,14 +115,14 @@ class KeepkeyTestCase(unittest.TestCase):
     def __repr__(self):
         return 'keepkey: {}'.format(super().__repr__())
 
-# Keepkey specific getxpub test because this requires device specific thing to set xprvs
-class TestKeepkeyGetxpub(KeepkeyTestCase):
     def setUp(self):
         self.client = self.emulator.start()
 
     def tearDown(self):
         self.emulator.stop()
 
+# Keepkey specific getxpub test because this requires device specific thing to set xprvs
+class TestKeepkeyGetxpub(KeepkeyTestCase):
     def test_getxpub(self):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/bip32_vectors.json'), encoding='utf-8') as f:
             vectors = json.load(f)
@@ -153,9 +157,6 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
     def setUp(self):
         self.client = self.emulator.start()
         self.dev_args = ['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324']
-
-    def tearDown(self):
-        self.emulator.stop()
 
     def test_setup_wipe(self):
         # Device is init, setup should fail
@@ -315,7 +316,10 @@ def keepkey_test_suite(emulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyGetxpub, emulator=dev_emulator, interface=interface))
     suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyManCommands, emulator=dev_emulator, interface=interface))
-    return suite
+
+    result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.stderr = sys.__stderr__
+    return result.wasSuccessful()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Keepkey implementation')
@@ -327,5 +331,4 @@ if __name__ == '__main__':
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    suite = keepkey_test_suite(args.emulator, rpc, userpass, args.interface)
-    unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
+    sys.exit(not keepkey_test_suite(args.emulator, rpc, userpass, args.interface))
