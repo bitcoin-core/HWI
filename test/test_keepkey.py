@@ -32,10 +32,16 @@ class KeepkeyEmulator(DeviceEmulator):
     def __init__(self, path):
         self.emulator_path = path
         self.emulator_proc = None
+        self.keepkey_log = None
+        try:
+            os.unlink('keepkey-emulator.stdout')
+        except FileNotFoundError:
+            pass
 
     def start(self):
+        self.keepkey_log = open('keepkey-emulator.stdout', 'a')
         # Start the Keepkey emulator
-        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL)
+        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=self.keepkey_log)
         # Wait for emulator to be up
         # From https://github.com/trezor/trezor-mcu/blob/master/script/wait_for_emulator.py
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -71,6 +77,9 @@ class KeepkeyEmulator(DeviceEmulator):
         emulator_img = os.path.dirname(self.emulator_path) + "/emulator.img"
         if os.path.isfile(emulator_img):
             os.unlink(emulator_img)
+
+        if self.keepkey_log is not None:
+            self.keepkey_log.close()
 
         atexit.unregister(self.stop)
 

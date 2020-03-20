@@ -34,10 +34,16 @@ class TrezorEmulator(DeviceEmulator):
         self.emulator_path = path
         self.emulator_proc = None
         self.model_t = model_t
+        self.emulator_log = None
+        try:
+            os.unlink('trezor-{}-emulator.stdout'.format('t' if model_t else '1'))
+        except FileNotFoundError:
+            pass
 
     def start(self):
+        self.emulator_log = open('trezor-{}-emulator.stdout'.format('t' if self.model_t else '1'), 'a')
         # Start the Trezor emulator
-        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, env={'SDL_VIDEODRIVER': 'dummy', 'PYOPT': '0'}, shell=True, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=self.emulator_log, env={'SDL_VIDEODRIVER': 'dummy', 'PYOPT': '0'}, shell=True, preexec_fn=os.setsid)
         # Wait for emulator to be up
         # From https://github.com/trezor/trezor-mcu/blob/master/script/wait_for_emulator.py
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -78,6 +84,10 @@ class TrezorEmulator(DeviceEmulator):
 
         if os.path.isfile(emulator_img):
             os.unlink(emulator_img)
+
+        if self.emulator_log is not None:
+            self.emulator_log.close()
+            self.emulator_log = None
 
         atexit.unregister(self.stop)
 

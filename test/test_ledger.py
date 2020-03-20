@@ -17,10 +17,17 @@ class LedgerEmulator(DeviceEmulator):
     def __init__(self, path):
         self.emulator_path = path
         self.emulator_proc = None
+        self.emulator_stderr = None
+        self.emulator_stdout = None
+        try:
+            os.unlink('ledger-emulator.stderr')
+        except FileNotFoundError:
+            pass
 
     def start(self):
+        self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
         # Wait for simulator to be up
         while True:
             try:
@@ -41,6 +48,10 @@ class LedgerEmulator(DeviceEmulator):
         if self.emulator_proc.poll() is None:
             os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
             os.waitpid(self.emulator_proc.pid, 0)
+        if self.emulator_stderr is not None:
+            self.emulator_stderr.close()
+        if self.emulator_stdout is not None:
+            self.emulator_stdout.close()
 
 def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
 
