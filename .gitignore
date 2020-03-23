@@ -7,3 +7,7 @@ test/emulator.img
 test/work
 pip-wheel-metadata
 .mypy_cache/
+
+# Qt stuff
+hwiqt.pyproject.user
+hwilib/ui/ui_*.py

@@ -11,9 +11,9 @@ poetry install
 
 # We now need to remove debugging symbols and build id from the hidapi SO file
 so_dir=`dirname $(dirname $(poetry run which python))`/lib/python3.6/site-packages
-find ${so_dir} -name '*.so' -type f -execdir strip '{}' \;
+strip ${so_dir}/hid*.so
 if [[ $OSTYPE != *"darwin"* ]]; then
-    find ${so_dir} -name '*.so' -type f -execdir strip -R .note.gnu.build-id '{}' \;
+    strip -R .note.gnu.build-id ${so_dir}/hid*.so
 fi
 
 # We also need to change the timestamps of all of the base library files
@@ -23,6 +23,8 @@ TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" 
 # Make the standalone binary
 export PYTHONHASHSEED=42
 poetry run pyinstaller hwi.spec
+poetry run contrib/generate-ui.sh
+poetry run pyinstaller hwi-qt.spec
 unset PYTHONHASHSEED
 
 # Make the final compressed package
@@ -32,5 +34,5 @@ OS=`uname | tr '[:upper:]' '[:lower:]'`
 if [[ $OS == "darwin" ]]; then
     OS="mac"
 fi
-tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi
+tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi hwi-qt
 popd

@@ -1,0 +1,3 @@
+{
+    "files": ["signpsbtdialog.ui","mainwindow.ui","sendpindialog.ui","getxpubdialog.ui","signmessagedialog.ui","displayaddressdialog.ui","setpassphrasedialog.ui","getkeypooloptionsdialog.ui"]
+}
