@@ -1,4 +1,4 @@
-From 5622600c3cd28b4eb1fc7b6bb29e5b906674339e Mon Sep 17 00:00:00 2001
+From b3156bb4705a55dd03fe40465bd5574c472ba335 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Thu, 12 Mar 2020 17:25:09 -0400
 Subject: [PATCH] Do button presses within seproxyhal
@@ -8,7 +8,7 @@ Subject: [PATCH] Do button presses within seproxyhal
  1 file changed, 35 insertions(+)
 
 diff --git a/mcu/seproxyhal.py b/mcu/seproxyhal.py
-index 8ed3fec..77d3ede 100644
+index fffba52..462456a 100644
 --- a/mcu/seproxyhal.py
 +++ b/mcu/seproxyhal.py
 @@ -2,6 +2,7 @@ import binascii
@@ -19,18 +19,18 @@ index 8ed3fec..77d3ede 100644
  import sys
  import time
  import threading
-@@ -58,6 +59,7 @@ class SeProxyHal:
-         self.status_received = True
-         self.usb = usb.USB(self._queue_event_packet)
-         self.logger = logging.getLogger("seproxyhal")
+@@ -129,6 +130,7 @@ class SeProxyHal:
+                                               daemon=True)
+         self.ticker_thread.start()
+         self.usb = usb.USB(self.packet_thread.queue_packet)
 +        self.seen_msg_hash = False
  
      def _recvall(self, size):
          data = b''
-@@ -144,6 +146,39 @@ class SeProxyHal:
+@@ -168,6 +170,39 @@ class SeProxyHal:
                  #self.logger.debug(f"DISPLAY_STATUS {data!r}")
                  screen.display_status(data)
-                 self._queue_event_packet(SephTag.DISPLAY_PROCESSED_EVENT)
+                 self.packet_thread.queue_packet(SephTag.DISPLAY_PROCESSED_EVENT, priority=True)
 +                data_type, _, x, y, = struct.unpack('bbhh', data[:6])
 +                if data_type == 7:
 +                    if y == 12 or y ==28:
