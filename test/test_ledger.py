@@ -53,7 +53,7 @@ class LedgerEmulator(DeviceEmulator):
         if self.emulator_stdout is not None:
             self.emulator_stdout.close()
 
-def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
+def ledger_test_suite(emulator, rpc, userpass, interface):
 
     # Ledger specific disabled command tests
     class TestLedgerDisabledCommands(DeviceTestCase):
@@ -127,8 +127,7 @@ def ledger_test_suite(emulator, rpc, userpass, interface, signtx=False):
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    if signtx:
-        suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     dev_emulator.stop()
@@ -140,11 +139,10 @@ if __name__ == '__main__':
     parser.add_argument('emulator', help='Path to the ledger emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
-    parser.add_argument('--signtx', help='Run the transaction signing tests too', action='store_true')
 
     args = parser.parse_args()
 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    sys.exit(not ledger_test_suite(args.emulator, rpc, userpass, args.interface, args.signtx))
+    sys.exit(not ledger_test_suite(args.emulator, rpc, userpass, args.interface))
