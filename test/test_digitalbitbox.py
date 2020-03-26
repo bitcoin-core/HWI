@@ -14,8 +14,13 @@ from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestG
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
 
 def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
+    try:
+        os.unlink('bitbox-emulator.stderr')
+    except FileNotFoundError:
+        pass
+    bitbox_log = open('bitbox-emulator.stderr', 'a')
     # Start the Digital bitbox simulator
-    simulator_proc = subprocess.Popen(['./' + os.path.basename(simulator), '../../tests/sd_files/'], cwd=os.path.dirname(simulator), stderr=subprocess.DEVNULL)
+    simulator_proc = subprocess.Popen(['./' + os.path.basename(simulator), '../../tests/sd_files/'], cwd=os.path.dirname(simulator), stderr=bitbox_log)
     # Wait for simulator to be up
     while True:
         try:
@@ -31,6 +36,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     def cleanup_simulator():
         simulator_proc.terminate()
         simulator_proc.wait()
+        bitbox_log.close()
     atexit.register(cleanup_simulator)
 
     # Set password and load from backup

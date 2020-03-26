@@ -11,3 +11,6 @@ pip-wheel-metadata
 # Qt stuff
 hwiqt.pyproject.user
 hwilib/ui/ui_*.py
+
+*.stderr
+*.stdout

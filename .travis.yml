@@ -55,6 +55,8 @@ install:
     - cd test; ./setup_environment.sh; cd ..
     - pip uninstall -y trezor # Hack to get rid of master branch version of trezor that is installed for trezor-mcu build
     - poetry install
+after_failure:
+    - tail -v -n +1 *.std*
 jobs:
     include:
         -   name: lint

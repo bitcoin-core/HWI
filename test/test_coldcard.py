@@ -13,8 +13,13 @@ from hwilib.cli import process_commands
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
+    try:
+        os.unlink('coldcard-emulator.stdout')
+    except FileNotFoundError:
+        pass
+    coldcard_log = open('coldcard-emulator.stdout', 'a')
     # Start the Coldcard simulator
-    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), '--ms'], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
+    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), '--ms'], cwd=os.path.dirname(simulator), stdout=coldcard_log, preexec_fn=os.setsid)
     # Wait for simulator to be up
     while True:
         try:
@@ -35,6 +40,7 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
         if coldcard_proc.poll() is None:
             os.killpg(os.getpgid(coldcard_proc.pid), signal.SIGTERM)
             os.waitpid(os.getpgid(coldcard_proc.pid), 0)
+        coldcard_log.close()
     atexit.register(cleanup_simulator)
 
     # Coldcard specific management command tests

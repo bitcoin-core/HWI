@@ -87,17 +87,17 @@ if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    if args.bitbox:
+    if success and args.bitbox:
         success &= digitalbitbox_test_suite(args.bitbox_path, rpc, userpass, args.interface)
-    if args.coldcard:
+    if success and args.coldcard:
         success &= coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface)
-    if args.trezor:
+    if success and args.trezor:
         success &= trezor_test_suite(args.trezor_path, rpc, userpass, args.interface)
-    if args.trezor_t:
+    if success and args.trezor_t:
         success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True)
-    if args.keepkey:
+    if success and args.keepkey:
         success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
-    if args.ledger:
+    if success and args.ledger:
         success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
 
 sys.exit(not success)
