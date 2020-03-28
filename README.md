@@ -113,6 +113,9 @@ Please also see [docs](docs/) for additional information about each device.
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
 | Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | Yes | Yes | Yes | Yes | Yes |
 | Display on device screen | Yes | Yes | Yes | Yes | N/A | Yes | Yes | Yes |
+| Firmware Downloading | N/A | N/A | Yes | Yes | Yes | No | Yes | Yes |
+| Firmware Sig Verify | N/A | N/A | Yes | Yes | Yes | No |Yes | Yes |
+| Firmware Upgrade | N/A | N/A | Yes | Yes | Yes | No | Yes | Yes |
 
 ## Using with Bitcoin Core
 
