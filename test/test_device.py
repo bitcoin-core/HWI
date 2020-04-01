@@ -175,12 +175,6 @@ class TestGetKeypool(DeviceTestCase):
             self.dev_args.append('--testnet')
         self.emulator.start()
 
-    def test_getkeypool_bad_args(self):
-        result = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--wpkh', '0', '20'])
-        self.assertIn('error', result)
-        self.assertIn('code', result)
-        self.assertEqual(result['code'], -7)
-
     def test_getkeypool(self):
         non_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--nokeypool', '0', '20'])
         import_result = self.wpk_rpc.importmulti(non_keypool_desc)
