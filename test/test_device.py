@@ -180,11 +180,11 @@ class TestGetKeypool(DeviceTestCase):
         import_result = self.wpk_rpc.importmulti(non_keypool_desc)
         self.assertTrue(import_result[0]['success'])
 
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '0', '20'])
-        import_result = self.wpk_rpc.importmulti(keypool_desc)
+        pkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '0', '20'])
+        import_result = self.wpk_rpc.importmulti(pkh_keypool_desc)
         self.assertFalse(import_result[0]['success'])
 
-        import_result = self.wrpc.importmulti(keypool_desc)
+        import_result = self.wrpc.importmulti(pkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
@@ -192,8 +192,8 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/44'/1'/0'/1/{}".format(i))
 
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '0', '20'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        shwpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '0', '20'])
+        import_result = self.wrpc.importmulti(shwpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
@@ -201,14 +201,18 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/1/{}".format(i))
 
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '0', '20'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        wpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '0', '20'])
+        import_result = self.wrpc.importmulti(wpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for i in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/0/{}".format(i))
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
             self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/1/{}".format(i))
+
+        # Test that `--all` option gives the "concatenation" of previous three calls
+        all_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '0', '20'])
+        self.assertEqual(all_keypool_desc, pkh_keypool_desc + wpkh_keypool_desc + shwpkh_keypool_desc)
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--account', '3', '0', '20'])
         import_result = self.wrpc.importmulti(keypool_desc)
