@@ -42,7 +42,7 @@ def getdescriptors_handler(args, client):
 
 def restore_device_handler(args, client):
     if args.interactive:
-        return restore_device(client, label=args.label)
+        return restore_device(client, label=args.label, word_count=args.word_count)
     return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
 def setup_device_handler(args, client):
@@ -166,6 +166,7 @@ def process_commands(cli_args):
     wipedev_parser.set_defaults(func=wipe_device_handler)
 
     restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process. Requires interactive mode')
+    restore_parser.add_argument('--word_count', '-w', help='Word count of your BIP39 recovery phrase (options: 12/18/24)', type=int, default=24)
     restore_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
     restore_parser.set_defaults(func=restore_device_handler)
 

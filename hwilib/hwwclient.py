@@ -45,7 +45,7 @@ class HardwareWalletClient(object):
                                   'implement this method')
 
     # Restore device from mnemonic or xprv
-    def restore_device(self, label=''):
+    def restore_device(self, label='', word_count=24):
         raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
 
     # Begin backup process
