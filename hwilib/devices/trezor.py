@@ -9,7 +9,7 @@ from .trezorlib.transport import enumerate_devices, get_transport, TREZOR_VENDOR
 from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
 from .trezorlib import tools, btc, device
 from .trezorlib import messages as proto
-from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test, get_xpub_fingerprint_hex
+from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test
 from ..serializations import CTxOut, ExtendedKey, ser_uint256
 from .. import bech32
 from usb1 import USBErrorNoDevice
@@ -467,8 +467,7 @@ def enumerate(password=''):
             if d_data['needs_passphrase_sent'] and not password:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
-                master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
-                d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
+                d_data['fingerprint'] = client.get_master_fingerprint_hex()
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'

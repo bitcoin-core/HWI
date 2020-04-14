@@ -82,11 +82,6 @@ def get_xpub_fingerprint_hex(xpub: str) -> str:
     fingerprint = data[5:9]
     return hexlify(fingerprint).decode()
 
-def get_xpub_fingerprint_as_id(xpub: str) -> str:
-    data = decode(xpub)
-    fingerprint = data[5:9]
-    return hexlify(fingerprint).decode()
-
 def to_address(b: bytes, version: bytes) -> str:
     data = version + b
     checksum = hash256(data)[0:4]
