@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from .commands import backup_device, displayaddress, enumerate, find_device, \
-    get_client, getmasterxpub, getxpub, getkeypool, getdescriptors, prompt_pin, restore_device, send_pin, setup_device, \
+    get_client, getmasterxpub, getxpub, getkeypool, getdescriptors, prompt_pin, toggle_passphrase, restore_device, send_pin, setup_device, \
     signmessage, signtx, wipe_device, install_udev_rules
 from .errors import (
     handle_errors,
@@ -61,6 +61,9 @@ def wipe_device_handler(args, client):
 
 def prompt_pin_handler(args, client):
     return prompt_pin(client)
+
+def toggle_passphrase_handler(args, client):
+    return toggle_passphrase(client)
 
 def send_pin_handler(args, client):
     return send_pin(client, pin=args.pin)
@@ -177,6 +180,9 @@ def process_commands(cli_args):
 
     promptpin_parser = subparsers.add_parser('promptpin', help='Have the device prompt for your PIN')
     promptpin_parser.set_defaults(func=prompt_pin_handler)
+
+    togglepassphrase_parser = subparsers.add_parser('togglepassphrase', help='Toggle BIP39 passphrase protection')
+    togglepassphrase_parser.set_defaults(func=toggle_passphrase_handler)
 
     sendpin_parser = subparsers.add_parser('sendpin', help='Send the numeric positions for your PIN to the device')
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')

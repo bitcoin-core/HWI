@@ -434,6 +434,12 @@ class TrezorClient(HardwareWalletClient):
             return {'success': False}
         return {'success': True}
 
+    # Toggle passphrase
+    @trezor_exception
+    def toggle_passphrase(self):
+        self._check_unlocked()
+        return device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
+
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():

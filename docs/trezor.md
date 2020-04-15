@@ -12,6 +12,7 @@ Current implemented commands are:
 - `wipe`
 - `restore`
 - `backup`
+- `togglepassphrase`
 
 ## `signtx` Caveats
 

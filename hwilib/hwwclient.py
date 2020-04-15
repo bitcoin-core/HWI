@@ -71,3 +71,7 @@ class HardwareWalletClient(object):
     # Send pin
     def send_pin(self):
         raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+
+    # Toggle passphrase
+    def toggle_passphrase(self):
+        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')

@@ -13,6 +13,7 @@ Current implemented commands are:
 - `signtx`
 - `displayaddress`
 - `signmessage`
+- `togglepassphrase`
 
 ## `signtx` Caveats
 

@@ -258,24 +258,8 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertEqual(result['code'], -11)
 
     def test_passphrase(self):
-        # There's no passphrase
-        result = self.do_command(self.dev_args + ['enumerate'])
-        for dev in result:
-            if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEquals(dev['fingerprint'], '95d8f670')
-        # Setting a passphrase won't change the fingerprint
-        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
-        for dev in result:
-            if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEquals(dev['fingerprint'], '95d8f670')
-
-        # Set a passphrase
-        device.wipe(self.client)
-        self.client.set_passphrase('pass')
-        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=True, label='test')
-        self.client.call(messages.ClearSession())
+        # Enable passphrase
+        self.do_command(self.dev_args + ['togglepassphrase'])
 
         # A passphrase will need to be sent
         result = self.do_command(self.dev_args + ['enumerate'])
@@ -301,6 +285,22 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertNotEqual(dev['fingerprint'], fpr)
+
+        # Disable passphrase
+        self.do_command(self.dev_args + ['togglepassphrase'])
+
+        # There's no passphrase
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertEquals(dev['fingerprint'], '95d8f670')
+        # Setting a passphrase won't change the fingerprint
+        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
+        for dev in result:
+            if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertFalse(dev['needs_passphrase_sent'])
+                self.assertEquals(dev['fingerprint'], '95d8f670')
 
 def keepkey_test_suite(emulator, rpc, userpass, interface):
     # Redirect stderr to /dev/null as it's super spammy
