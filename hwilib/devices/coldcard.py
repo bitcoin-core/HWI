@@ -197,7 +197,7 @@ class ColdcardClient(HardwareWalletClient):
         raise UnavailableActionError('The Coldcard does not support wiping via software')
 
     # Restore device from mnemonic or xprv
-    def restore_device(self, label=''):
+    def restore_device(self, label='', word_count=24):
         raise UnavailableActionError('The Coldcard does not support restoring via software')
 
     # Begin backup process

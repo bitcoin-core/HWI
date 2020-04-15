@@ -220,8 +220,8 @@ def setup_device(client, label='', backup_passphrase=''):
 def wipe_device(client):
     return client.wipe_device()
 
-def restore_device(client, label):
-    return client.restore_device(label)
+def restore_device(client, label='', word_count=24):
+    return client.restore_device(label, word_count)
 
 def backup_device(client, label='', backup_passphrase=''):
     return client.backup_device(label, backup_passphrase)
