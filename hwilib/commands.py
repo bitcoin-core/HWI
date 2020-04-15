@@ -240,6 +240,9 @@ def prompt_pin(client):
 def send_pin(client, pin):
     return client.send_pin(pin)
 
+def toggle_passphrase(client):
+    return client.toggle_passphrase()
+
 def install_udev_rules(source, location):
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller

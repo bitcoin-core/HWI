@@ -583,6 +583,10 @@ class DigitalbitboxClient(HardwareWalletClient):
     def send_pin(self, pin):
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
+    # Toggle passphrase
+    def toggle_passphrase(self):
+        raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)

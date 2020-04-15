@@ -242,6 +242,10 @@ class ColdcardClient(HardwareWalletClient):
     def send_pin(self, pin):
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
+    # Toggle passphrase
+    def toggle_passphrase(self):
+        raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
+
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
