@@ -10,6 +10,12 @@ from .base58 import xpub_to_pub_hex
 from .errors import UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
 from .descriptor import Descriptor
 from .devices import __all__ as all_devs
+from enum import Enum
+
+class AddressType(Enum):
+    PKH = 1
+    WPKH = 2
+    SH_WPKH = 3
 
 # Get the client for the device
 def get_client(device_type, device_path, password='', expert=False):
@@ -80,16 +86,14 @@ def getxpub(client, path):
 def signmessage(client, message, path):
     return client.sign_message(message, path)
 
-def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True):
-    if sh_wpkh and wpkh:
-        return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
+def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, addr_type=AddressType.WPKH):
 
     try:
         master_fpr = client.get_master_fingerprint_hex()
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
 
-    desc = getdescriptor(client, master_fpr, client.is_testnet, path, internal, sh_wpkh, wpkh, account, start, end)
+    desc = getdescriptor(client, master_fpr, client.is_testnet, path, internal, addr_type, account, start, end)
 
     if not isinstance(desc, Descriptor):
         return desc
@@ -105,19 +109,23 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     this_import['watchonly'] = True
     return [this_import]
 
-def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, sh_wpkh=False, wpkh=True, account=0, start=None, end=None):
+def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, addr_type=AddressType.WPKH, account=0, start=None, end=None):
     testnet = client.is_testnet
+
+    is_wpkh = addr_type is AddressType.WPKH
+    is_sh_wpkh = addr_type is AddressType.SH_WPKH
 
     if not path:
         # Master key:
         path = "m/"
 
         # Purpose
-        if wpkh:
+        if is_wpkh:
             path += "84'/"
-        elif sh_wpkh:
+        elif is_sh_wpkh:
             path += "49'/"
         else:
+            assert addr_type == AddressType.PKH
             path += "44'/"
 
         # Coin type
@@ -153,21 +161,35 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
 
-    return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, sh_wpkh, wpkh)
+    return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, is_sh_wpkh, is_wpkh)
 
-# wrapper to allow both internal and external entries when path not given
-def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True):
+def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True, addr_all=False):
+
+    if sh_wpkh:
+        addr_types = [AddressType.SH_WPKH]
+    elif wpkh:
+        addr_types = [AddressType.WPKH]
+    elif addr_all:
+        addr_types = list(AddressType)
+    else:
+        addr_types = [AddressType.PKH]
+
+    # When no specific path or internal-ness is specified, create standard types
+    chains = []
     if path is None and not internal:
-        internal_chain = getkeypool_inner(client, None, start, end, True, keypool, account, sh_wpkh, wpkh)
-        external_chain = getkeypool_inner(client, None, start, end, False, keypool, account, sh_wpkh, wpkh)
+        for addr_type in addr_types:
+            for internal_addr in [False, True]:
+                chains = chains + getkeypool_inner(client, None, start, end, internal_addr, keypool, account, addr_type)
+
         # Report the first error we encounter
-        for chain in [internal_chain, external_chain]:
+        for chain in chains:
             if 'error' in chain:
                 return chain
         # No errors, return pair
-        return internal_chain + external_chain
+        return chains
     else:
-        return getkeypool_inner(client, path, start, end, internal, keypool, account, sh_wpkh, wpkh)
+        assert len(addr_types) == 1
+        return getkeypool_inner(client, path, start, end, internal, keypool, account, addr_types[0])
 
 
 def getdescriptors(client, account=0):
@@ -180,9 +202,9 @@ def getdescriptors(client, account=0):
 
     for internal in [False, True]:
         descriptors = []
-        desc1 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=False, account=account)
-        desc2 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, sh_wpkh=True, wpkh=False, account=account)
-        desc3 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, sh_wpkh=False, wpkh=True, account=account)
+        desc1 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.PKH, account=account)
+        desc2 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.SH_WPKH, account=account)
+        desc3 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.WPKH, account=account)
         for desc in [desc1, desc2, desc3]:
             if not isinstance(desc, Descriptor):
                 return desc
