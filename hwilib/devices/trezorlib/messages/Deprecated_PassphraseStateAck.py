@@ -3,5 +3,5 @@
 from .. import protobuf as p
 
 
-class PassphraseStateAck(p.MessageType):
+class Deprecated_PassphraseStateAck(p.MessageType):
     MESSAGE_WIRE_TYPE = 78

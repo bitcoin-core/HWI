@@ -51,8 +51,9 @@ def apply_settings(
     language=None,
     use_passphrase=None,
     homescreen=None,
-    passphrase_source=None,
+    passphrase_always_on_device=None,
     auto_lock_delay_ms=None,
+    display_rotation=None,
 ):
     settings = proto.ApplySettings()
     if label is not None:
@@ -63,10 +64,12 @@ def apply_settings(
         settings.use_passphrase = use_passphrase
     if homescreen is not None:
         settings.homescreen = homescreen
-    if passphrase_source is not None:
-        settings.passphrase_source = passphrase_source
+    if passphrase_always_on_device is not None:
+        settings.passphrase_always_on_device = passphrase_always_on_device
     if auto_lock_delay_ms is not None:
         settings.auto_lock_delay_ms = auto_lock_delay_ms
+    if display_rotation is not None:
+        settings.display_rotation = display_rotation
 
     out = client.call(settings)
     client.init_device()  # Reload Features

@@ -467,7 +467,7 @@ def enumerate(password=''):
             if client.client.features.model == '1':
                 d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Trezor One if it has passphrase protection enabled
             else:
-                d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection and not client.client.features.passphrase_cached
+                d_data['needs_passphrase_sent'] = False
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
             if d_data['needs_passphrase_sent'] and not password:
