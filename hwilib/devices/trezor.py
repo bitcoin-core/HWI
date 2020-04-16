@@ -414,7 +414,7 @@ class TrezorClient(HardwareWalletClient):
             raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        self.client.call_raw(proto.Ping(message=b'ping', button_protection=False, pin_protection=True, passphrase_protection=False))
+        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=None, script_type=proto.InputScriptType.SPENDADDRESS))
         return {'success': True}
 
     # Send the pin
