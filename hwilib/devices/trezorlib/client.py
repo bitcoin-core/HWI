@@ -190,6 +190,16 @@ class TrezorClient:
                 resp = self.call_raw(messages.Initialize())
                 if not isinstance(resp, messages.Features):
                     raise exceptions.TrezorException("Unexpected initial response")
+            # For the T, we need to check if a passphrase needs to be entered
+            elif resp.model == 'T':
+                # Try GetPublicKey. If it fails, we try to send Initialize
+                pubkey_resp = self.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000]))
+                if isinstance(pubkey_resp, messages.Failure):
+                    resp = self.call_raw(messages.Initialize())
+                    if not isinstance(resp, messages.Features):
+                        raise exceptions.TrezorException("Unexpected initial response")
+                elif isinstance(pubkey_resp, messages.PassphraseRequest):
+                    self.call_raw(messages.Cancel())
             self.features = resp
         if self.features.vendor not in VENDORS:
             raise RuntimeError("Unsupported device")
