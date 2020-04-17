@@ -12,7 +12,6 @@ trezor_setup_needed=false
 if [ ! -d "trezor-firmware" ]; then
     git clone --recursive https://github.com/trezor/trezor-firmware.git
     cd trezor-firmware
-    git checkout core/v2.2.0
     trezor_setup_needed=true
 else
     cd trezor-firmware
@@ -55,6 +54,8 @@ make build_unix
 # Delete any emulator.img file
 rm /var/tmp/trezor.flash
 cd ../..
+# Remove nanopb to avoid interfering with keepkey
+pip uninstall -y nanopb
 
 # Clone coldcard firmware if it doesn't exist, or update it if it does
 coldcard_setup_needed=false
