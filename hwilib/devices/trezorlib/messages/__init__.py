@@ -40,8 +40,8 @@ from .MessageSignature import MessageSignature
 from .MultisigRedeemScriptType import MultisigRedeemScriptType
 from .PassphraseAck import PassphraseAck
 from .PassphraseRequest import PassphraseRequest
-from .PassphraseStateAck import PassphraseStateAck
-from .PassphraseStateRequest import PassphraseStateRequest
+from .Deprecated_PassphraseStateAck import Deprecated_PassphraseStateAck
+from .Deprecated_PassphraseStateRequest import Deprecated_PassphraseStateRequest
 from .PinMatrixAck import PinMatrixAck
 from .PinMatrixRequest import PinMatrixRequest
 from .Ping import Ping

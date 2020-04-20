@@ -130,26 +130,36 @@ class TrezorClient:
             return resp
 
     def _callback_passphrase(self, msg):
-        if msg.on_device:
-            passphrase = None
-        else:
-            try:
-                passphrase = self.ui.get_passphrase()
-            except:
-                self.call_raw(messages.Cancel())
-                raise
+        available_on_device = self.features.model == 'T'
 
-            passphrase = Mnemonic.normalize_string(passphrase)
-            if len(passphrase) > MAX_PASSPHRASE_LENGTH:
-                self.call_raw(messages.Cancel())
-                raise ValueError("Passphrase too long")
-
-        resp = self.call_raw(messages.PassphraseAck(passphrase=passphrase))
-        if isinstance(resp, messages.PassphraseStateRequest):
-            self.state = resp.state
-            return self.call_raw(messages.PassphraseStateAck())
-        else:
+        def send_passphrase(passphrase=None, on_device=None):
+            msg = messages.PassphraseAck(passphrase=passphrase, on_device=on_device)
+            resp = self.call_raw(msg)
+            if isinstance(resp, messages.Deprecated_PassphraseStateRequest):
+                self.session_id = resp._state
+                resp = self.call_raw(messages.Deprecated_PassphraseStateAck())
             return resp
+
+        # short-circuit old style entry
+        if msg._on_device is True:
+            return send_passphrase(None, None)
+
+        if available_on_device:
+            return send_passphrase(on_device=True)
+
+        try:
+            passphrase = self.ui.get_passphrase()
+        except:
+            self.call_raw(messages.Cancel())
+            raise
+
+        # else process host-entered passphrase
+        passphrase = Mnemonic.normalize_string(passphrase)
+        if len(passphrase) > MAX_PASSPHRASE_LENGTH:
+            self.call_raw(messages.Cancel())
+            raise ValueError("Passphrase too long")
+
+        return send_passphrase(passphrase=passphrase)
 
     def _callback_button(self, msg):
         __tracebackhide__ = True  # for pytest # pylint: disable=W0612
@@ -190,6 +200,16 @@ class TrezorClient:
                 resp = self.call_raw(messages.Initialize())
                 if not isinstance(resp, messages.Features):
                     raise exceptions.TrezorException("Unexpected initial response")
+            # For the T, we need to check if a passphrase needs to be entered
+            elif resp.model == 'T':
+                # Try GetPublicKey. If it fails, we try to send Initialize
+                pubkey_resp = self.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000]))
+                if isinstance(pubkey_resp, messages.Failure):
+                    resp = self.call_raw(messages.Initialize())
+                    if not isinstance(resp, messages.Features):
+                        raise exceptions.TrezorException("Unexpected initial response")
+                elif isinstance(pubkey_resp, messages.PassphraseRequest):
+                    self.call_raw(messages.Cancel())
             self.features = resp
         if self.features.vendor not in VENDORS:
             raise RuntimeError("Unsupported device")

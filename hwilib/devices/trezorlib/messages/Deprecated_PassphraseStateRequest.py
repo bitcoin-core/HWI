@@ -3,17 +3,17 @@
 from .. import protobuf as p
 
 
-class PassphraseStateRequest(p.MessageType):
+class Deprecated_PassphraseStateRequest(p.MessageType):
     MESSAGE_WIRE_TYPE = 77
 
     def __init__(
         self,
-        state: bytes = None,
+        _state: bytes = None,
     ) -> None:
-        self.state = state
+        self._state = _state
 
     @classmethod
     def get_fields(cls):
         return {
-            1: ('state', p.BytesType, 0),
+            1: ('_state', p.BytesType, 0),
         }
