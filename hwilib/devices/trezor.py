@@ -438,7 +438,14 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def toggle_passphrase(self):
         self._check_unlocked()
-        return device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
+        try:
+            device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
+        except:
+            if self.type == 'Keepkey':
+                print('Confirm the action by entering your PIN', file=sys.stderr)
+                print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
+                print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
+        return {'success': True}
 
 def enumerate(password=''):
     results = []
