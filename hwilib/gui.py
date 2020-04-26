@@ -47,7 +47,7 @@ class SetPassphraseDialog(QDialog):
 class SendPinDialog(QDialog):
     pin_sent_success = Signal()
 
-    def __init__(self, client):
+    def __init__(self, client, prompt_pin=True):
         super(SendPinDialog, self).__init__()
         self.ui = Ui_SendPinDialog()
         self.ui.setupUi(self)
@@ -68,7 +68,8 @@ class SendPinDialog(QDialog):
         self.ui.p9_button.clicked.connect(self.button_clicked(9))
 
         self.accepted.connect(self.sendpindialog_accepted)
-        do_command(commands.prompt_pin, self.client)
+        if prompt_pin:
+            do_command(commands.prompt_pin, self.client)
 
     def button_clicked(self, number):
         @Slot()
@@ -233,12 +234,13 @@ class HWIQt(QMainWindow):
 
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
-        self.ui.sendpin_button.clicked.connect(self.show_sendpindialog)
+        self.ui.sendpin_button.clicked.connect(lambda: self.show_sendpindialog(prompt_pin=True))
         self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
         self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
         self.ui.signmsg_button.clicked.connect(self.show_signmessagedialog)
         self.ui.display_addr_button.clicked.connect(self.show_displayaddressdialog)
         self.ui.getkeypool_opts_button.clicked.connect(self.show_getkeypooloptionsdialog)
+        self.ui.toggle_passphrase_button.clicked.connect(self.toggle_passphrase)
 
         self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
 
@@ -248,6 +250,7 @@ class HWIQt(QMainWindow):
         self.ui.signmsg_button.setEnabled(False)
         self.ui.display_addr_button.setEnabled(False)
         self.ui.getkeypool_opts_button.setEnabled(False)
+        self.ui.toggle_passphrase_button.setEnabled(False)
         self.ui.keypool_textedit.clear()
         self.ui.desc_textedit.clear()
 
@@ -298,6 +301,9 @@ class HWIQt(QMainWindow):
         self.device_info = self.devices[index - 1]
         self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase)
         self.client.is_testnet = self.testnet
+
+        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] == 'trezor' or self.device_info['type'] == 'keepkey')
+
         self.get_device_info()
 
     def get_device_info(self):
@@ -331,8 +337,8 @@ class HWIQt(QMainWindow):
         self.ui.desc_textedit.setPlainText(json.dumps(descriptors, indent=2))
 
     @Slot()
-    def show_sendpindialog(self):
-        self.current_dialog = SendPinDialog(self.client)
+    def show_sendpindialog(self, prompt_pin=True):
+        self.current_dialog = SendPinDialog(self.client, prompt_pin)
         self.current_dialog.pin_sent_success.connect(self.sendpindialog_accepted)
         self.current_dialog.exec_()
 
@@ -386,6 +392,12 @@ class HWIQt(QMainWindow):
             self.getkeypool_opts['account_used'] = False
         self.current_dialog = None
         self.get_device_info()
+
+    @Slot()
+    def toggle_passphrase(self):
+        do_command(commands.toggle_passphrase, self.client)
+        if self.device_info['model'] == "keepkey":
+            self.show_sendpindialog(prompt_pin=False)
 
 def process_gui_commands(cli_args):
     parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))
