@@ -45,6 +45,10 @@ class ColdcardClient(HardwareWalletClient):
             device = hid.device()
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
+    
+    # In HSM mode it only accepts 'm' path
+    def get_master_xpub(self):
+        return self.get_pubkey_at_path('m')
 
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
@@ -75,8 +79,7 @@ class ColdcardClient(HardwareWalletClient):
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
-        xpub = self.device.send_recv(CCProtocolPacker.get_xpub('m/0\''), timeout=None)
-        master_fp = get_xpub_fingerprint(xpub)
+        master_fp = self.device.master_fingerprint
 
         # For multisigs, we may need to do multiple passes if we appear in an input multiple times
         passes = 1
