@@ -85,4 +85,26 @@ def get_pubkey_string(b):
         y = p - y
     return x.to_bytes(32, byteorder="big") + y.to_bytes(32, byteorder="big")
 
+
+def calc_local_pincode(psbt_sha, next_local_code):
+    # In HSM mode, you will need this function to generate
+    # the next 6-digit code for the local user.
+    #
+    # - next_local_code comes from the hsm_status response
+    # - psbt_sha is sha256() over the binary PSBT you will be submitting
+    #
+    from binascii import a2b_base64
+    from hashlib import sha256
+    import struct, hmac
+
+    key = a2b_base64(next_local_code)
+    assert len(key) >= 15
+    assert len(psbt_sha) == 32
+    digest = hmac.new(key, psbt_sha, sha256).digest()
+
+    num = struct.unpack('>I', digest[-4:])[0] & 0x7fffffff
+
+    return '%06d' % (num % 1000000)
+
+
 # EOF

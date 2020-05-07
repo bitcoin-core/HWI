@@ -11,6 +11,12 @@ class CCProtoError(RuntimeError):
     def __str__(self):
         return self.args[0]
 
+class CCFramingError(CCProtoError):
+    # Typically framing errors are caused by multiple
+    # programs trying to talk to Coldcard at same time,
+    # and the encryption state gets confused.
+    pass
+
 class CCUserRefused(RuntimeError):
     def __str__(self):
         return 'You refused permission to do the operation'
@@ -43,6 +49,15 @@ class CCProtocolPacker:
         return b'ping' + bytes(msg)
 
     @staticmethod
+    def bip39_passphrase(pw):
+        return b'pass' + bytes(pw, 'utf8')
+
+    @staticmethod
+    def get_passphrase_done():
+        # poll completion of BIP39 encryption change (provides root xpub)
+        return b'pwok'
+
+    @staticmethod
     def check_mitm():
         return b'mitm'
 
@@ -72,10 +87,11 @@ class CCProtocolPacker:
         return b'sha2'
 
     @staticmethod
-    def sign_transaction(length, file_sha, finalize=False):
+    def sign_transaction(length, file_sha, finalize=False, flags=0x0):
         # must have already uploaded binary, and give expected sha256
         assert len(file_sha) == 32
-        return pack('<4sII32s', b'stxn', length, int(finalize), file_sha)
+        flags |= (STXN_FINALIZE if finalize else 0x00)
+        return pack('<4sII32s', b'stxn', length, int(flags), file_sha)
 
     @staticmethod
     def sign_message(raw_msg, subpath='m', addr_fmt=AF_CLASSIC):
@@ -99,15 +115,54 @@ class CCProtocolPacker:
         return b'stok'
 
     @staticmethod
+    def multisig_enroll(length, file_sha):
+        # multisig details must already be uploaded as a text file, this starts approval process.
+        assert len(file_sha) == 32
+        return pack('<4sI32s', b'enrl', length, file_sha)
+
+    @staticmethod
+    def multisig_check(M, N, xfp_xor):
+        # do we have a wallet already that matches M+N and xor(*xfps)?
+        return pack('<4s3I', b'msck', M, N, xfp_xor)
+
+    @staticmethod
     def get_xpub(subpath='m'):
         # takes a string, like: m/44'/0'/23/23
         return b'xpub' + subpath.encode('ascii')
 
     @staticmethod
     def show_address(subpath, addr_fmt=AF_CLASSIC):
-        # takes a string, like: m/44'/0'/23/23
-        # shows on screen, no feedback from user expected
+        # - takes a string, like: m/44'/0'/23/23
+        # - shows on screen, no feedback from user expected
+        assert not (addr_fmt & AFC_SCRIPT)
         return pack('<4sI', b'show', addr_fmt) + subpath.encode('ascii')
+
+    @staticmethod
+    def show_p2sh_address(M, xfp_paths, witdeem_script, addr_fmt=AF_P2SH):
+        # For multisig (aka) P2SH cases, you will need all the info required to build
+        # the redeem script, and the Coldcard must already have been enrolled 
+        # into the wallet.
+        # - redeem script must be provided
+        # - full subkey paths for each involved key is required in a list of lists of ints, where
+        #   is a XFP and derivation path, like in BIP174
+        # - the order of xfp_paths must match the order of pubkeys in
+        #   redeem script (after BIP67 sort). This allows for dup xfp values.
+        assert addr_fmt & AFC_SCRIPT
+        assert 30 <= len(witdeem_script) <= 520
+
+        rv = pack('<4sIBBH', b'p2sh', addr_fmt, M, len(xfp_paths), len(witdeem_script))
+        rv += witdeem_script
+
+        for xfp_path in xfp_paths:
+            ln = len(xfp_path)
+            rv += pack('<B%dI' % ln, ln, *xfp_path)
+
+        return rv
+
+    @staticmethod
+    def block_chain():
+        # ask what blockchain it's set for; expect "BTC" or "XTN"
+        return b'blkc'
 
     @staticmethod
     def sim_keypress(key):
@@ -118,6 +173,48 @@ class CCProtocolPacker:
     def bag_number(new_number=b''):
         # one time only: put into bag, or readback bag
         return b'bagi' + bytes(new_number)
+
+    @staticmethod
+    def hsm_start(length=0, file_sha=b''):
+        if length:
+            # New policy already be uploaded as a JSON file, get approval and start.
+            assert len(file_sha) == 32
+            return pack('<4sI32s', b'hsms', length, file_sha)
+        else:
+            # Use policy on device already. Confirmation still required by local user.
+            return b'hsms'
+
+    @staticmethod
+    def hsm_status():
+        # get current status of HSM mode and/or policy defined already. Returns JSON
+        return b'hsts'
+
+    @staticmethod
+    def create_user(username, auth_mode, secret=b''):
+        # create username, with pre-shared secret/password, or we generate.
+        # auth_model should be one of USER_AUTH_*
+        # for TOTP/HOTP, secret can be empty. Set bit 0x80 in auth_mode and QR will be used
+        assert 1 <= len(username) <= MAX_USERNAME_LEN
+        assert len(secret) in { 0, 10, 20, 32}
+        return pack('<4sBBB', b'nwur', auth_mode, len(username), len(secret)) + username + secret
+
+    @staticmethod
+    def delete_user(username):
+        # remove a username and forget secret; cannot be used in HSM mode (only before)
+        assert 0 < len(username) <= MAX_USERNAME_LEN
+        return pack('<4sB', b'rmur', len(username)) + username
+
+    @staticmethod
+    def user_auth(username, token, totp_time=0):
+        # HSM mode: try an authentication method for a username
+        assert 0 < len(username) <= 16
+        assert 6 <= len(token) <= 32
+        return pack('<4sIBB', b'user', totp_time, len(username), len(token)) + username + token
+
+    @staticmethod
+    def get_storage_locker():
+        # returns up to 414 bytes of user-defined sensitive data
+        return b'gslr'
 
 
 class CCProtocolUnpacker:
@@ -134,7 +231,7 @@ class CCProtocolUnpacker:
 
         d = getattr(cls, sign, cls)
         if d is cls:
-            raise CCProtoError('Unknown response signature: ' + repr(sign))
+            raise CCFramingError('Unknown response signature: ' + repr(sign))
 
         return d(msg)
         
@@ -148,9 +245,9 @@ class CCProtocolUnpacker:
 
     # low-level errors
     def fram(msg):
-        raise CCProtoError("Framing Error", str(msg[4:], 'utf8'))
+        raise CCFramingError("Framing Error", str(msg[4:], 'utf8'))
     def err_(msg):
-        raise CCProtoError("Remote Error: " + str(msg[4:], 'utf8', 'ignore'), msg[4:])
+        raise CCProtoError("Coldcard Error: " + str(msg[4:], 'utf8', 'ignore'), msg[4:])
 
     def refu(msg):
         # user didn't want to approve something
