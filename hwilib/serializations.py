@@ -612,7 +612,8 @@ class PartiallySignedInput:
 
         if not self.final_script_witness.is_null():
             r += ser_string(b"\x08")
-            r += self.final_script_witness.serialize()
+            witstack = self.final_script_witness.serialize()
+            r += ser_string(witstack)
 
         for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
