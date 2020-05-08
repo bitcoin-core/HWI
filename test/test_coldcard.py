@@ -8,18 +8,27 @@ import subprocess
 import sys
 import time
 import unittest
+import json
 
 from hwilib.cli import process_commands
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
-def coldcard_test_suite(simulator, rpc, userpass, interface):
+def coldcard_test_suite(simulator, rpc, userpass, interface, hsm = False):
     try:
         os.unlink('coldcard-emulator.stdout')
     except FileNotFoundError:
         pass
     coldcard_log = open('coldcard-emulator.stdout', 'a')
     # Start the Coldcard simulator
-    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), '--ms'], cwd=os.path.dirname(simulator), stdout=coldcard_log, preexec_fn=os.setsid)
+    flags = ["--ms"]
+    if hsm:
+        flags.append("--hsm")
+        policy_path = os.path.join(os.path.dirname(simulator), 'work/hsm-policy.json')
+        with open(policy_path, 'w') as outfile:
+            # share addresses & xpubs, empty rule means sign all txs
+            json.dump({ "share_xpubs": ["any"], "share_addrs": ["any"], "warnings_ok": True, "rules": [{}]}, outfile)
+
+    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), *flags], cwd=os.path.dirname(simulator), stdout=coldcard_log, preexec_fn=os.setsid)
     # Wait for simulator to be up
     while True:
         try:
@@ -40,6 +49,8 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
         if coldcard_proc.poll() is None:
             os.killpg(os.getpgid(coldcard_proc.pid), signal.SIGTERM)
             os.waitpid(os.getpgid(coldcard_proc.pid), 0)
+        if hsm and os.path.exists(policy_path):
+            os.remove(policy_path)
         coldcard_log.close()
     atexit.register(cleanup_simulator)
 
@@ -68,10 +79,15 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
 
         def test_backup(self):
             result = self.do_command(self.dev_args + ['backup'])
-            self.assertTrue(result['success'])
-            self.assertIn('The backup has been written to', result['message'])
-            backup_filename = result['message'].split(' ')[-1]
-            os.remove(backup_filename)
+            if hsm:
+                self.assertTrue(result['error'])
+                self.assertEqual(result['error'],'Coldcard Error: Not allowed in HSM mode')
+                self.assertEqual(result['code'], -7)
+            else:
+                self.assertTrue(result['success'])
+                self.assertIn('The backup has been written to', result['message'])
+                backup_filename = result['message'].split(' ')[-1]
+                os.remove(backup_filename)
 
         def test_pin(self):
             result = self.do_command(self.dev_args + ['promptpin'])
@@ -98,17 +114,22 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             self.assertEqual(result['chaincode'], '806b26507824f73bc331494afe122f428ef30dde80b2c1ce025d2d03aff411e7')
             self.assertEqual(result['pubkey'], '0368000bdff5e0b71421c37b8514de8acd4d98ba9908d183d9da56d02ca4fcfd08')
 
+    if hsm:
+        full_type = 'coldcard_hsm'
+    else:
+        full_type = 'coldcard'
+
     # Generic device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', '', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestColdcardGetXpub, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard_simulator', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, 'coldcard', 'coldcard', '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', '', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardGetXpub, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'coldcard_simulator', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, 'coldcard', full_type, '/tmp/ckcc-simulator.sock', '0f056943', 'tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd', interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     cleanup_simulator()
@@ -120,9 +141,11 @@ if __name__ == '__main__':
     parser.add_argument('simulator', help='Path to the Coldcard simulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
+    parser.add_argument('--hsm', help='Run emulator in hsm mode', action='store_true')
+
     args = parser.parse_args()
 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    sys.exit(not coldcard_test_suite(args.simulator, rpc, userpass, args.interface))
+    sys.exit(not coldcard_test_suite(args.simulator, rpc, userpass, args.interface, args.hsm))
