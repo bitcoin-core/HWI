@@ -186,7 +186,7 @@ setuptools = "*"
 category = "main"
 description = "Python bindings for the Qt cross-platform application and UI framework"
 name = "pyside2"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <3.9"
 version = "5.14.2.1"
 
@@ -206,7 +206,7 @@ version = "0.2.0"
 category = "main"
 description = "Python / C++ bindings helper module"
 name = "shiboken2"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <3.9"
 version = "5.14.2.1"
 
@@ -231,8 +231,11 @@ version = "3.1.0"
 docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
+[extras]
+qt = ["pyside2"]
+
 [metadata]
-content-hash = "e076be1de3ff88d71f7ed62865dc7f4ecc424ef5d409cc1b7db578021961164a"
+content-hash = "bce2677f0c45cb74f03eecfab2094577eed8fb16fe305a21c924128c4faa1b47"
 python-versions = "^3.6,<3.9"
 
 [metadata.files]
