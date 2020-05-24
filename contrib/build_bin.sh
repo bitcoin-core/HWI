@@ -7,7 +7,7 @@ pip install -U pip
 pip install poetry
 
 # Setup poetry and install the dependencies
-poetry install
+poetry install -E qt
 
 # We now need to remove debugging symbols and build id from the hidapi SO file
 so_dir=`dirname $(dirname $(poetry run which python))`/lib/python3.6/site-packages

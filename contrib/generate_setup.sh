@@ -4,7 +4,7 @@
 set -e
 
 # Setup poetry and install the dependencies
-poetry install
+poetry install -E qt
 
 # Build the source distribution
 poetry build -f sdist

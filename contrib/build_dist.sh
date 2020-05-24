@@ -7,7 +7,7 @@ pip install -U pip
 pip install poetry
 
 # Setup poetry and install the dependencies
-poetry install
+poetry install -E qt
 
 # Make the distribution archives for pypi
 poetry build -f wheel
