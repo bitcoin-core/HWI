@@ -1,6 +1,8 @@
 #! /bin/bash
 # Script for building pypi distribution archives deterministically
 
+set -ex
+
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 pip install -U pip

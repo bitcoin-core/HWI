@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script which sets up Wine and builds the Windows standalone binary
 
-set -e
+set -ex
 
 PYTHON_VERSION=3.6.8
 

@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -ex
+
 pushd hwilib/ui
 for file in *.ui
 do
