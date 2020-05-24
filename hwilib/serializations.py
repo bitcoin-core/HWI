@@ -40,16 +40,16 @@ def hash160(s):
 
 
 # Serialization/deserialization tools
-def ser_compact_size(l):
+def ser_compact_size(size):
     r = b""
-    if l < 253:
-        r = struct.pack("B", l)
-    elif l < 0x10000:
-        r = struct.pack("<BH", 253, l)
-    elif l < 0x100000000:
-        r = struct.pack("<BI", 254, l)
+    if size < 253:
+        r = struct.pack("B", size)
+    elif size < 0x10000:
+        r = struct.pack("<BH", 253, size)
+    elif size < 0x100000000:
+        r = struct.pack("<BI", 254, size)
     else:
-        r = struct.pack("<BQ", 255, l)
+        r = struct.pack("<BQ", 255, size)
     return r
 
 def deser_compact_size(f):
@@ -106,9 +106,9 @@ def deser_vector(f, c):
 # ser_function_name: Allow for an alternate serialization function on the
 # entries in the vector (we use this for serializing the vector of transactions
 # for a witness block).
-def ser_vector(l, ser_function_name=None):
-    r = ser_compact_size(len(l))
-    for i in l:
+def ser_vector(v, ser_function_name=None):
+    r = ser_compact_size(len(v))
+    for i in v:
         if ser_function_name:
             r += getattr(i, ser_function_name)()
         else:
@@ -125,9 +125,9 @@ def deser_string_vector(f):
     return r
 
 
-def ser_string_vector(l):
-    r = ser_compact_size(len(l))
-    for sv in l:
+def ser_string_vector(v):
+    r = ser_compact_size(len(v))
+    for sv in v:
         r += ser_string(sv)
     return r
 
