@@ -11,7 +11,7 @@ poetry install
 
 # We now need to remove debugging symbols and build id from the hidapi SO file
 so_dir=`dirname $(dirname $(poetry run which python))`/lib/python3.6/site-packages
-strip ${so_dir}/hid*.so
+strip -x ${so_dir}/hid*.so
 if [[ $OSTYPE != *"darwin"* ]]; then
     strip -R .note.gnu.build-id ${so_dir}/hid*.so
 fi
