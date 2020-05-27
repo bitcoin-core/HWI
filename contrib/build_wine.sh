@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script which sets up Wine and builds the Windows standalone binary
 
-set -e
+set -ex
 
 PYTHON_VERSION=3.6.8
 
@@ -67,7 +67,7 @@ TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" 
 # Install python dependencies
 POETRY="wine $PYHOME/Scripts/poetry.exe"
 sleep 5 # For some reason, pausing for a few seconds makes the next step work
-$POETRY install
+$POETRY install -E qt
 
 # make the ui files
 pushd hwilib/ui

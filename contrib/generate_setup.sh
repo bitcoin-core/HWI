@@ -1,10 +1,10 @@
 #! /bin/bash
 # Generates the setup.py file
 
-set -e
+set -ex
 
 # Setup poetry and install the dependencies
-poetry install
+poetry install -E qt
 
 # Build the source distribution
 poetry build -f sdist
