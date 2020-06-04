@@ -420,10 +420,9 @@ class TestSignTx(DeviceTestCase):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey'}
         supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
         supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard'}
-        if self.full_type not in supports_mixed:
-            self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
-            self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
-        else:
+        self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
+        self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
+        if self.full_type in supports_mixed:
             self._test_signtx("all", self.full_type in supports_multisig, self.full_type in supports_external)
 
     # Make a huge transaction which might cause some problems with different interfaces
