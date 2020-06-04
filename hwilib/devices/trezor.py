@@ -164,12 +164,7 @@ class TrezorClient(HardwareWalletClient):
 
                 # Detrermine spend type
                 scriptcode = b''
-                if psbt_in.non_witness_utxo:
-                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
-                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
-                    scriptcode = utxo.scriptPubKey
-                    txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
-                elif psbt_in.witness_utxo:
+                if psbt_in.witness_utxo:
                     utxo = psbt_in.witness_utxo
                     # Check if the output is p2sh
                     if psbt_in.witness_utxo.is_p2sh():
@@ -178,6 +173,11 @@ class TrezorClient(HardwareWalletClient):
                         txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
                     scriptcode = psbt_in.witness_utxo.scriptPubKey
                     txinputtype.amount = psbt_in.witness_utxo.nValue
+                elif psbt_in.non_witness_utxo:
+                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                    scriptcode = utxo.scriptPubKey
+                    txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
 
                 # Set the script
                 if psbt_in.witness_script:
@@ -197,7 +197,7 @@ class TrezorClient(HardwareWalletClient):
                 if is_ms:
                     # Add to txinputtype
                     txinputtype.multisig = multisig
-                    if psbt_in.non_witness_utxo:
+                    if not psbt_in.witness_utxo:
                         if utxo.is_p2sh:
                             txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
                         else:
