@@ -186,7 +186,7 @@ class TrezorClient(HardwareWalletClient):
                     scriptcode = psbt_in.redeem_script
 
                 def ignore_input():
-                    txinputtype.address_n = [0x80000000]
+                    txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (1 if self.is_testnet else 0)]
                     txinputtype.multisig = None
                     txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
