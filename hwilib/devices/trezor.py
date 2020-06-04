@@ -109,6 +109,7 @@ class TrezorClient(HardwareWalletClient):
         self.type = 'Trezor'
 
     def _check_unlocked(self):
+        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
         self.client.init_device()
         if self.client.features.model == 'T':
             self.client.ui.disallow_passphrase()
@@ -124,7 +125,7 @@ class TrezorClient(HardwareWalletClient):
             expanded_path = tools.parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
-        output = btc.get_public_node(self.client, expanded_path)
+        output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
         if self.is_testnet:
             result = {'xpub': xpub_main_2_test(output.xpub)}
         else:
@@ -142,7 +143,7 @@ class TrezorClient(HardwareWalletClient):
         self._check_unlocked()
 
         # Get this devices master key fingerprint
-        master_key = btc.get_public_node(self.client, [0])
+        master_key = btc.get_public_node(self.client, [0x80000000], coin_name='Bitcoin')
         master_fp = get_xpub_fingerprint(master_key.xpub)
 
         # Do multiple passes for multisig
@@ -321,10 +322,7 @@ class TrezorClient(HardwareWalletClient):
             tx_details = proto.SignTx()
             tx_details.version = tx.tx.nVersion
             tx_details.lock_time = tx.tx.nLockTime
-            if self.is_testnet:
-                signed_tx = btc.sign_tx(self.client, "Testnet", inputs, outputs, tx_details, prevtxs)
-            else:
-                signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
+            signed_tx = btc.sign_tx(self.client, self.coin_name, inputs, outputs, tx_details, prevtxs)
 
             # Each input has one signature
             for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
@@ -346,7 +344,7 @@ class TrezorClient(HardwareWalletClient):
     def sign_message(self, message, keypath):
         self._check_unlocked()
         path = tools.parse_path(keypath)
-        result = btc.sign_message(self.client, 'Bitcoin', path, message)
+        result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
@@ -354,12 +352,13 @@ class TrezorClient(HardwareWalletClient):
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         self._check_unlocked()
         expanded_path = tools.parse_path(keypath)
+        script_type = proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
         address = btc.get_address(
             self.client,
-            "Testnet" if self.is_testnet else "Bitcoin",
+            self.coin_name,
             expanded_path,
             show_display=True,
-            script_type=proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
+            script_type=script_type
         )
         return {'address': address}
 
@@ -406,6 +405,7 @@ class TrezorClient(HardwareWalletClient):
     # Prompt for a pin on device
     @trezor_exception
     def prompt_pin(self):
+        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
         self.client.open()
         self.client.init_device()
         if not self.client.features.pin_protection:
@@ -414,7 +414,7 @@ class TrezorClient(HardwareWalletClient):
             raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=None, script_type=proto.InputScriptType.SPENDADDRESS))
+        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=proto.InputScriptType.SPENDADDRESS))
         return {'success': True}
 
     # Send the pin
