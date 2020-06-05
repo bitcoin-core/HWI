@@ -335,10 +335,10 @@ class TestSignTx(DeviceTestCase):
 
     def _test_signtx(self, input_type, multisig, external):
         # Import some keys to the watch only wallet and send coins to them
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '50'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '30', '50'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
