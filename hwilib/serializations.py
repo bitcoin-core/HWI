@@ -242,6 +242,42 @@ class CTxIn(object):
                self.nSequence)
 
 
+def is_p2sh(script):
+    return len(script) == 23 and script[0] == 0xa9 and script[1] == 0x14 and script[22] == 0x87
+
+def is_p2pkh(script):
+    return len(script) == 25 and script[0] == 0x76 and script[1] == 0xa9 and script[2] == 0x14 and script[23] == 0x88 and script[24] == 0xac
+
+def is_p2pk(script):
+    return (len(script) == 35 or len(script) == 67) and (script[0] == 0x21 or script[0] == 0x41) and script[-1] == 0xac
+
+def is_witness(script):
+    if len(script) < 4 or len(script) > 42:
+        return (False, None, None)
+
+    if script[0] != 0 and (script[0] < 81 or script[0] > 96):
+        return (False, None, None)
+
+    if script[1] + 2 == len(script):
+        return (True, script[0] - 0x50 if script[0] else 0, script[2:])
+
+def is_p2wpkh(script):
+    is_wit, wit_ver, wit_prog = is_witness(script)
+    if not is_wit:
+        return False
+    elif wit_ver != 0:
+        return False
+    return len(wit_prog) == 20
+
+def is_p2wsh(script):
+    is_wit, wit_ver, wit_prog = is_witness(script)
+    if not is_wit:
+        return False
+    elif wit_ver != 0:
+        return False
+    return len(wit_prog) == 32
+
+
 class CTxOut(object):
     def __init__(self, nValue=0, scriptPubKey=b""):
         self.nValue = nValue
@@ -258,25 +294,16 @@ class CTxOut(object):
         return r
 
     def is_p2sh(self):
-        return len(self.scriptPubKey) == 23 and self.scriptPubKey[0] == 0xa9 and self.scriptPubKey[1] == 0x14 and self.scriptPubKey[22] == 0x87
+        return is_p2sh(self.scriptPubKey)
 
     def is_p2pkh(self):
-        return len(self.scriptPubKey) == 25 and self.scriptPubKey[0] == 0x76 and self.scriptPubKey[1] == 0xa9 and self.scriptPubKey[2] == 0x14 and self.scriptPubKey[23] == 0x88 and self.scriptPubKey[24] == 0xac
+        return is_p2pkh(self.scriptPubKey)
 
     def is_p2pk(self):
-        return (len(self.scriptPubKey) == 35 or len(self.scriptPubKey) == 67) and (self.scriptPubKey[0] == 0x21 or self.scriptPubKey[0] == 0x41) and self.scriptPubKey[-1] == 0xac
+        return is_p2pk(self.scriptPubKey)
 
     def is_witness(self):
-        if len(self.scriptPubKey) < 4 or len(self.scriptPubKey) > 42:
-            return (False, None, None)
-
-        if self.scriptPubKey[0] != 0 and (self.scriptPubKey[0] < 81 or self.scriptPubKey[0] > 96):
-            return (False, None, None)
-
-        if self.scriptPubKey[1] + 2 == len(self.scriptPubKey):
-            return (True, self.scriptPubKey[0] - 0x50 if self.scriptPubKey[0] else 0, self.scriptPubKey[2:])
-
-        return (False, None, None)
+        return is_witness(self.scriptPubKey)
 
     def __repr__(self):
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
