@@ -216,6 +216,7 @@ else
         bitcoind_setup_needed=true
     fi
 fi
+git am ../../data/psbt_non_witness_utxo_segwit.patch
 
 # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.
 if [ "$bitcoind_setup_needed" == true ] ; then
