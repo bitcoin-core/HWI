@@ -1,17 +1,33 @@
 # Ledger interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
+from ..errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceConnectionError,
+    DeviceFailureError,
+    UnavailableActionError,
+    common_err_msgs,
+    handle_errors,
+)
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
-from .btchip.btchipComm import DongleServer, HIDDongleHIDAPI
+from .btchip.btchipComm import (
+    DongleServer,
+    HIDDongleHIDAPI,
+)
 from .btchip.btchipException import BTChipException
 from .btchip.btchipUtils import compress_public_key
 import base64
 import hid
 import struct
 from .. import base58
-from ..serializations import ExtendedKey, hash256, hash160, CTransaction
+from ..serializations import (
+    ExtendedKey,
+    hash256,
+    hash160,
+    CTransaction,
+)
 import logging
 import re
 

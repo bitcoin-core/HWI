@@ -15,10 +15,30 @@ import sys
 import time
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceFailureError, DeviceAlreadyInitError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, NoPasswordError, UnavailableActionError, common_err_msgs, handle_errors
-from ..serializations import CTransaction, ExtendedKey, hash256, ser_sig_der, ser_sig_compact, ser_compact_size
-from ..base58 import get_xpub_fingerprint, xpub_main_2_test
-
+from ..errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceFailureError,
+    DeviceAlreadyInitError,
+    DEVICE_NOT_INITIALIZED,
+    DeviceNotReadyError,
+    NoPasswordError,
+    UnavailableActionError,
+    common_err_msgs,
+    handle_errors,
+)
+from ..serializations import (
+    CTransaction,
+    ExtendedKey,
+    hash256,
+    ser_sig_der,
+    ser_sig_compact,
+    ser_compact_size,
+)
+from ..base58 import (
+    get_xpub_fingerprint,
+    xpub_main_2_test,
+)
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512
 usb_report_size = 64 # firmware > v2.0

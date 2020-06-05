@@ -1,16 +1,52 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, UnavailableActionError, common_err_msgs, handle_errors
+from ..errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceAlreadyInitError,
+    DeviceAlreadyUnlockedError,
+    DeviceConnectionError,
+    DEVICE_NOT_INITIALIZED,
+    DeviceNotReadyError,
+    UnavailableActionError,
+    common_err_msgs,
+    handle_errors,
+)
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled
-from .trezorlib.transport import enumerate_devices, get_transport, TREZOR_VENDOR_IDS
-from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
-from .trezorlib import tools, btc, device
+from .trezorlib.transport import (
+    enumerate_devices,
+    get_transport,
+    TREZOR_VENDOR_IDS,
+)
+from .trezorlib.ui import (
+    echo,
+    PassphraseUI,
+    mnemonic_words,
+    PIN_CURRENT,
+    PIN_NEW,
+    PIN_CONFIRM,
+    PIN_MATRIX_DESCRIPTION,
+    prompt,
+)
+from .trezorlib import (
+    tools,
+    btc,
+    device,
+)
 from .trezorlib import messages as proto
-from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test
-from ..serializations import CTxOut, ExtendedKey, ser_uint256
+from ..base58 import (
+    get_xpub_fingerprint,
+    to_address,
+    xpub_main_2_test,
+)
+from ..serializations import (
+    CTxOut,
+    ExtendedKey,
+    ser_uint256,
+)
 from .. import bech32
 from usb1 import USBErrorNoDevice
 from types import MethodType

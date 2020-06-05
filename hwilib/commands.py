@@ -7,7 +7,11 @@ import platform
 
 from .serializations import PSBT
 from .base58 import xpub_to_pub_hex
-from .errors import UnknownDeviceError, BAD_ARGUMENT, NOT_IMPLEMENTED
+from .errors import (
+    UnknownDeviceError,
+    BAD_ARGUMENT,
+    NOT_IMPLEMENTED,
+)
 from .descriptor import Descriptor
 from .devices import __all__ as all_devs
 from enum import Enum
