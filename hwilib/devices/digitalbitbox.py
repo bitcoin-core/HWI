@@ -31,8 +31,15 @@ from ..serializations import (
     CTransaction,
     ExtendedKey,
     hash256,
+    is_p2pk,
+    is_p2pkh,
+    is_p2sh,
+    is_p2wpkh,
+    is_p2wsh,
+    is_witness,
     ser_sig_der,
     ser_sig_compact,
+    ser_string,
     ser_compact_size,
 )
 from ..base58 import (
@@ -365,18 +372,39 @@ class DigitalbitboxClient(HardwareWalletClient):
         sighash_tuples = []
         for txin, psbt_in, i_num in zip(blank_tx.vin, tx.inputs, range(len(blank_tx.vin))):
             sighash = b""
+            utxo = None
+            if psbt_in.witness_utxo:
+                utxo = psbt_in.witness_utxo
             if psbt_in.non_witness_utxo:
+                if txin.prevout.hash != psbt_in.non_witness_utxo.sha256:
+                    raise BadArgumentError('Input {} has a non_witness_utxo with the wrong hash'.format(i_num))
                 utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+            if utxo is None:
+                continue
+            scriptcode = utxo.scriptPubKey
 
-                # Check if P2SH
-                if utxo.is_p2sh():
-                    # Look up redeemscript
-                    redeemscript = psbt_in.redeem_script
+            # Check if P2SH
+            p2sh = False
+            if is_p2sh(scriptcode):
+                # Look up redeemscript
+                if len(psbt_in.redeem_script) == 0:
+                    continue
+                scriptcode = psbt_in.redeem_script
+                p2sh = True
+
+            is_wit, _, _ = is_witness(scriptcode)
+
+            # Check if P2WSH
+            if is_p2wsh(scriptcode):
+                # Look up witnessscript
+                if len(psbt_in.witness_script) == 0:
+                    continue
+                scriptcode = psbt_in.witness_script
+
+            if not is_wit:
+                if p2sh or is_p2pkh(scriptcode) or is_p2pk(scriptcode):
                     # Add to blank_tx
-                    txin.scriptSig = redeemscript
-                # Check if P2PKH
-                elif utxo.is_p2pkh() or utxo.is_p2pk():
-                    txin.scriptSig = psbt_in.non_witness_utxo.vout[txin.prevout.n].scriptPubKey
+                    txin.scriptSig = scriptcode
                 # We don't know what this is, skip it
                 else:
                     continue
@@ -388,7 +416,7 @@ class DigitalbitboxClient(HardwareWalletClient):
                 # Hash it
                 sighash += hash256(ser_tx)
                 txin.scriptSig = b""
-            elif psbt_in.witness_utxo:
+            else:
                 # Calculate hashPrevouts and hashSequence
                 prevouts_preimage = b""
                 sequence_preimage = b""
@@ -404,25 +432,10 @@ class DigitalbitboxClient(HardwareWalletClient):
                     outputs_preimage += output.serialize()
                 hashOutputs = hash256(outputs_preimage)
 
-                # Get the scriptCode
-                scriptCode = b""
-                witness_program = b""
-                if psbt_in.witness_utxo.is_p2sh():
-                    # Look up redeemscript
-                    redeemscript = psbt_in.redeem_script
-                    witness_program = redeemscript
-                else:
-                    witness_program = psbt_in.witness_utxo.scriptPubKey
-
-                # Check if witness_program is script hash
-                if len(witness_program) == 34 and witness_program[0] == 0x00 and witness_program[1] == 0x20:
-                    # look up witnessscript and set as scriptCode
-                    witnessscript = psbt_in.witness_script
-                    scriptCode += ser_compact_size(len(witnessscript)) + witnessscript
-                else:
-                    scriptCode += b"\x19\x76\xa9\x14"
-                    scriptCode += witness_program[2:]
-                    scriptCode += b"\x88\xac"
+                # Check if scriptcode is p2wpkh
+                if is_p2wpkh(scriptcode):
+                    _, _, wit_prog = is_witness(scriptcode)
+                    scriptcode = b"\x76\xa9\x14" + wit_prog + b"\x88\xac"
 
                 # Make sighash preimage
                 preimage = b""
@@ -430,7 +443,7 @@ class DigitalbitboxClient(HardwareWalletClient):
                 preimage += hashPrevouts
                 preimage += hashSequence
                 preimage += txin.prevout.serialize()
-                preimage += scriptCode
+                preimage += ser_string(scriptcode)
                 preimage += struct.pack("<q", psbt_in.witness_utxo.nValue)
                 preimage += struct.pack("<I", txin.nSequence)
                 preimage += hashOutputs
