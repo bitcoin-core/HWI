@@ -203,10 +203,10 @@ class btchip:
 			apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00 ]
 			params = []
 			script = bytearray(redeemScript)
-			if ('witness' in passedOutput) and passedOutput['witness']:
-				params.append(0x02)
-			elif ('trustedInput' in passedOutput) and passedOutput['trustedInput']:
+			if ('trustedInput' in passedOutput) and passedOutput['trustedInput']:
 				params.append(0x01)
+			elif ('witness' in passedOutput) and passedOutput['witness']:
+				params.append(0x02)
 			else:
 				params.append(0x00)
 			if ('trustedInput' in passedOutput) and passedOutput['trustedInput']:
