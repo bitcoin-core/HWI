@@ -176,6 +176,10 @@ class LedgerClient(HardwareWalletClient):
         # An entry per input, each with 0 to many keys to sign with
         all_signature_attempts = [[]] * len(c_tx.vin)
 
+        # Get the app version to determine whether to use Trusted Input for segwit
+        version = self.app.getFirmwareVersion()
+        use_trusted_segwit = (version['major_version'] == 1 and version['minor_version'] >= 4) or version['major_version'] > 1
+
         # NOTE: We only support signing Segwit inputs, where we can skip over non-segwit
         # inputs, or non-segwit inputs, where *all* inputs are non-segwit. This is due
         # to Ledger's mutually exclusive signing steps for each type.
@@ -250,6 +254,10 @@ class LedgerClient(HardwareWalletClient):
                 legacy_inputs[-1]["sequence"] = seq_hex
                 has_legacy = True
 
+            if psbt_in.non_witness_utxo and use_trusted_segwit:
+                ledger_prevtx = bitcoinTransaction(psbt_in.non_witness_utxo.serialize())
+                segwit_inputs[-1].update(self.app.getTrustedInput(ledger_prevtx, txin.prevout.n))
+
             pubkeys = []
             signature_attempts = []
 
@@ -279,7 +287,7 @@ class LedgerClient(HardwareWalletClient):
             # Process them up front with all scriptcodes blank
             blank_script_code = bytearray()
             for i in range(len(segwit_inputs)):
-                self.app.startUntrustedTransaction(i == 0, i, segwit_inputs, blank_script_code, c_tx.nVersion)
+                self.app.startUntrustedTransaction(i == 0, i, segwit_inputs, script_codes[i] if use_trusted_segwit else blank_script_code, c_tx.nVersion)
 
             # Number of unused fields for Nano S, only changepath and transaction in bytes req
             self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
