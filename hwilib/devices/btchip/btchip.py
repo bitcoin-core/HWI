@@ -397,5 +397,8 @@ class btchip:
 				raise
 		result['compressedKeys'] = (response[0] == 0x01)
 		result['version'] = "%d.%d.%d" % (response[2], response[3], response[4])
+		result['major_version'] = response[2]
+		result['minor_version'] = response[3]
+		result['patch_version'] = response[4]
 		result['specialVersion'] = response[1]
 		return result
