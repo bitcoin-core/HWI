@@ -118,9 +118,6 @@ jobs:
             stage: test
             os: osx
             language: generic
-            addons:
-                artifacts:
-                    working_dir: dist
             before_install:
             install:
                 - brew update && brew upgrade pyenv
