@@ -110,6 +110,28 @@ class CCProtocolPacker:
         return pack('<4sI', b'show', addr_fmt) + subpath.encode('ascii')
 
     @staticmethod
+    def show_p2sh_address(M, xfp_paths, witdeem_script, addr_fmt=AF_P2SH):
+        # For multisig (aka) P2SH cases, you will need all the info required to build
+        # the redeem script, and the Coldcard must already have been enrolled 
+        # into the wallet.
+        # - redeem script must be provided
+        # - full subkey paths for each involved key is required in a list of lists of ints, where
+        #   is a XFP and derivation path, like in BIP174
+        # - the order of xfp_paths must match the order of pubkeys in
+        #   redeem script (after BIP67 sort). This allows for dup xfp values.
+        assert addr_fmt & AFC_SCRIPT
+        assert 30 <= len(witdeem_script) <= 520
+
+        rv = pack('<4sIBBH', b'p2sh', addr_fmt, M, len(xfp_paths), len(witdeem_script))
+        rv += witdeem_script
+
+        for xfp_path in xfp_paths:
+            ln = len(xfp_path)
+            rv += pack('<B%dI' % ln, ln, *xfp_path)
+
+        return rv
+
+    @staticmethod
     def sim_keypress(key):
         # Simulator ONLY: pretend a key is pressed
         return b'XKEY' + key
