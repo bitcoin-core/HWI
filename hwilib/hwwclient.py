@@ -41,6 +41,11 @@ class HardwareWalletClient(object):
         raise NotImplementedError('The HardwareWalletClient base class does not '
                                   'implement this method')
 
+    # Display address of specified type on the device.
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
+        raise NotImplementedError('The HardwareWalletClient base class does not '
+                                  'implement this method')
+
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
         raise NotImplementedError('The HardwareWalletClient base class does not '
