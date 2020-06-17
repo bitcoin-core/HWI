@@ -14,6 +14,8 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import binascii
+
 from . import messages
 from .tools import CallException, expect, normalize_nfc, session
 
@@ -119,6 +121,8 @@ def sign_tx(client, coin_name, inputs, outputs, details=None, prev_txes=None):
 
         # Device asked for one more information, let's process it.
         if res.details.tx_hash is not None:
+            if res.details.tx_hash not in prev_txes:
+                raise ValueError('Previous transaction {} not available'.format(binascii.hexlify(res.details.tx_hash)))
             current_tx = prev_txes[res.details.tx_hash]
         else:
             current_tx = this_tx
