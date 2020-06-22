@@ -1,15 +1,32 @@
 #! /usr/bin/env python3
 
-from .commands import backup_device, displayaddress, enumerate, find_device, \
-    get_client, getmasterxpub, getxpub, getkeypool, getdescriptors, prompt_pin, toggle_passphrase, restore_device, send_pin, setup_device, \
-    signmessage, signtx, wipe_device, install_udev_rules
+from .commands import (
+    backup_device,
+    displayaddress,
+    enumerate,
+    find_device,
+    get_client,
+    getmasterxpub,
+    getxpub,
+    getkeypool,
+    getdescriptors,
+    prompt_pin,
+    toggle_passphrase,
+    restore_device,
+    send_pin,
+    setup_device,
+    signmessage,
+    signtx,
+    wipe_device,
+    install_udev_rules,
+)
 from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
     HELP_TEXT,
     MISSING_ARGUMENTS,
     NO_DEVICE_TYPE,
-    UNAVAILABLE_ACTION
+    UNAVAILABLE_ACTION,
 )
 from . import __version__
 

@@ -2,12 +2,40 @@
 
 from binascii import b2a_hex
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceBusyError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
-from .ckcc.client import ColdcardDevice, COINKITE_VID, CKCC_PID
-from .ckcc.protocol import CCProtocolPacker, CCBusyError, CCProtoError, CCUserRefused
-from .ckcc.constants import MAX_BLK_LEN, AF_P2WPKH, AF_CLASSIC, AF_P2WPKH_P2SH
-from ..base58 import get_xpub_fingerprint, xpub_main_2_test
-from ..serializations import ExtendedKey, PSBT
+from ..errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceBusyError,
+    DeviceFailureError,
+    UnavailableActionError,
+    common_err_msgs,
+    handle_errors,
+)
+from .ckcc.client import (
+    ColdcardDevice,
+    COINKITE_VID,
+    CKCC_PID,
+)
+from .ckcc.protocol import (
+    CCProtocolPacker,
+    CCBusyError,
+    CCProtoError,
+    CCUserRefused,
+)
+from .ckcc.constants import (
+    MAX_BLK_LEN,
+    AF_P2WPKH,
+    AF_CLASSIC,
+    AF_P2WPKH_P2SH,
+)
+from ..base58 import (
+    get_xpub_fingerprint,
+    xpub_main_2_test,
+)
+from ..serializations import (
+    ExtendedKey,
+    PSBT,
+)
 from hashlib import sha256
 
 import base64

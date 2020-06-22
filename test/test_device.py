@@ -335,10 +335,10 @@ class TestSignTx(DeviceTestCase):
 
     def _test_signtx(self, input_type, multisig, external):
         # Import some keys to the watch only wallet and send coins to them
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '50'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '30', '40'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '30', '50'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
@@ -420,10 +420,9 @@ class TestSignTx(DeviceTestCase):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey'}
         supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
         supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard'}
-        if self.full_type not in supports_mixed:
-            self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
-            self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
-        else:
+        self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
+        self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
+        if self.full_type in supports_mixed:
             self._test_signtx("all", self.full_type in supports_multisig, self.full_type in supports_external)
 
     # Make a huge transaction which might cause some problems with different interfaces
@@ -456,6 +455,11 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
+    def setUp(self):
+        if '--testnet' not in self.dev_args:
+            self.dev_args.append('--testnet')
+        self.emulator.start()
+
     def test_display_address_bad_args(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)

@@ -1,7 +1,15 @@
 # KeepKey interaction script
 
-from ..errors import DEVICE_NOT_INITIALIZED, DeviceNotReadyError, common_err_msgs, handle_errors
-from .trezorlib.transport import enumerate_devices, KEEPKEY_VENDOR_IDS
+from ..errors import (
+    DEVICE_NOT_INITIALIZED,
+    DeviceNotReadyError,
+    common_err_msgs,
+    handle_errors,
+)
+from .trezorlib.transport import (
+    enumerate_devices,
+    KEEPKEY_VENDOR_IDS,
+)
 from .trezor import TrezorClient
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that

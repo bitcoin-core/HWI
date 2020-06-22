@@ -1,16 +1,56 @@
 # Trezor interaction script
 
 from ..hwwclient import HardwareWalletClient
-from ..errors import ActionCanceledError, BadArgumentError, DeviceAlreadyInitError, DeviceAlreadyUnlockedError, DeviceConnectionError, DEVICE_NOT_INITIALIZED, DeviceNotReadyError, UnavailableActionError, common_err_msgs, handle_errors
+from ..errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceAlreadyInitError,
+    DeviceAlreadyUnlockedError,
+    DeviceConnectionError,
+    DEVICE_NOT_INITIALIZED,
+    DeviceNotReadyError,
+    UnavailableActionError,
+    common_err_msgs,
+    handle_errors,
+)
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled
-from .trezorlib.transport import enumerate_devices, get_transport, TREZOR_VENDOR_IDS
-from .trezorlib.ui import echo, PassphraseUI, mnemonic_words, PIN_CURRENT, PIN_NEW, PIN_CONFIRM, PIN_MATRIX_DESCRIPTION, prompt
-from .trezorlib import tools, btc, device
+from .trezorlib.transport import (
+    enumerate_devices,
+    get_transport,
+    TREZOR_VENDOR_IDS,
+)
+from .trezorlib.ui import (
+    echo,
+    PassphraseUI,
+    mnemonic_words,
+    PIN_CURRENT,
+    PIN_NEW,
+    PIN_CONFIRM,
+    PIN_MATRIX_DESCRIPTION,
+    prompt,
+)
+from .trezorlib import (
+    tools,
+    btc,
+    device,
+)
 from .trezorlib import messages as proto
-from ..base58 import get_xpub_fingerprint, to_address, xpub_main_2_test
-from ..serializations import CTxOut, ExtendedKey, ser_uint256
+from ..base58 import (
+    get_xpub_fingerprint,
+    to_address,
+    xpub_main_2_test,
+)
+from ..serializations import (
+    CTxOut,
+    ExtendedKey,
+    is_p2pkh,
+    is_p2sh,
+    is_p2wsh,
+    is_witness,
+    ser_uint256,
+)
 from .. import bech32
 from usb1 import USBErrorNoDevice
 from types import MethodType
@@ -109,6 +149,7 @@ class TrezorClient(HardwareWalletClient):
         self.type = 'Trezor'
 
     def _check_unlocked(self):
+        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
         self.client.init_device()
         if self.client.features.model == 'T':
             self.client.ui.disallow_passphrase()
@@ -124,7 +165,7 @@ class TrezorClient(HardwareWalletClient):
             expanded_path = tools.parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
-        output = btc.get_public_node(self.client, expanded_path)
+        output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
         if self.is_testnet:
             result = {'xpub': xpub_main_2_test(output.xpub)}
         else:
@@ -142,7 +183,7 @@ class TrezorClient(HardwareWalletClient):
         self._check_unlocked()
 
         # Get this devices master key fingerprint
-        master_key = btc.get_public_node(self.client, [0])
+        master_key = btc.get_public_node(self.client, [0x80000000], coin_name='Bitcoin')
         master_fp = get_xpub_fingerprint(master_key.xpub)
 
         # Do multiple passes for multisig
@@ -163,29 +204,49 @@ class TrezorClient(HardwareWalletClient):
 
                 # Detrermine spend type
                 scriptcode = b''
-                if psbt_in.non_witness_utxo:
-                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
-                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
-                    scriptcode = utxo.scriptPubKey
-                    txinputtype.amount = psbt_in.non_witness_utxo.vout[txin.prevout.n].nValue
-                elif psbt_in.witness_utxo:
+                utxo = None
+                if psbt_in.witness_utxo:
                     utxo = psbt_in.witness_utxo
-                    # Check if the output is p2sh
-                    if psbt_in.witness_utxo.is_p2sh():
+                if psbt_in.non_witness_utxo:
+                    if txin.prevout.hash != psbt_in.non_witness_utxo.sha256:
+                        raise BadArgumentError('Input {} has a non_witness_utxo with the wrong hash'.format(input_num))
+                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+                if utxo is None:
+                    continue
+                scriptcode = utxo.scriptPubKey
+
+                # Check if P2SH
+                p2sh = False
+                if is_p2sh(scriptcode):
+                    # Look up redeemscript
+                    if len(psbt_in.redeem_script) == 0:
+                        continue
+                    scriptcode = psbt_in.redeem_script
+                    p2sh = True
+
+                # Check segwit
+                is_wit, _, _ = is_witness(scriptcode)
+
+                if is_wit:
+                    if p2sh:
                         txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
                     else:
                         txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
-                    scriptcode = psbt_in.witness_utxo.scriptPubKey
-                    txinputtype.amount = psbt_in.witness_utxo.nValue
+                else:
+                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                txinputtype.amount = utxo.nValue
 
-                # Set the script
-                if psbt_in.witness_script:
+                # Check if P2WSH
+                p2wsh = False
+                if is_p2wsh(scriptcode):
+                    # Look up witnessscript
+                    if len(psbt_in.witness_script) == 0:
+                        continue
                     scriptcode = psbt_in.witness_script
-                elif psbt_in.redeem_script:
-                    scriptcode = psbt_in.redeem_script
+                    p2wsh = True
 
                 def ignore_input():
-                    txinputtype.address_n = [0x80000000]
+                    txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (1 if self.is_testnet else 0)]
                     txinputtype.multisig = None
                     txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
@@ -196,18 +257,18 @@ class TrezorClient(HardwareWalletClient):
                 if is_ms:
                     # Add to txinputtype
                     txinputtype.multisig = multisig
-                    if psbt_in.non_witness_utxo:
+                    if not psbt_in.witness_utxo:
                         if utxo.is_p2sh:
                             txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
                         else:
                             # Cannot sign bare multisig, ignore it
                             ignore_input()
                             continue
-                elif not is_ms and psbt_in.non_witness_utxo and not utxo.is_p2pkh:
+                elif not is_ms and not is_wit and not is_p2pkh(scriptcode):
                     # Cannot sign unknown spk, ignore it
                     ignore_input()
                     continue
-                elif not is_ms and psbt_in.witness_utxo and psbt_in.witness_script:
+                elif not is_ms and is_wit and p2wsh:
                     # Cannot sign unknown witness script, ignore it
                     ignore_input()
                     continue
@@ -236,7 +297,8 @@ class TrezorClient(HardwareWalletClient):
                     ignore_input()
                     continue
                 elif not found and found_in_sigs: # All of our keys are in partial_sigs, ignore whatever signature is produced for this input
-                    to_ignore.append(input_num)
+                    ignore_input()
+                    continue
 
                 # append to inputs
                 inputs.append(txinputtype)
@@ -321,10 +383,7 @@ class TrezorClient(HardwareWalletClient):
             tx_details = proto.SignTx()
             tx_details.version = tx.tx.nVersion
             tx_details.lock_time = tx.tx.nLockTime
-            if self.is_testnet:
-                signed_tx = btc.sign_tx(self.client, "Testnet", inputs, outputs, tx_details, prevtxs)
-            else:
-                signed_tx = btc.sign_tx(self.client, "Bitcoin", inputs, outputs, tx_details, prevtxs)
+            signed_tx = btc.sign_tx(self.client, self.coin_name, inputs, outputs, tx_details, prevtxs)
 
             # Each input has one signature
             for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
@@ -346,7 +405,7 @@ class TrezorClient(HardwareWalletClient):
     def sign_message(self, message, keypath):
         self._check_unlocked()
         path = tools.parse_path(keypath)
-        result = btc.sign_message(self.client, 'Bitcoin', path, message)
+        result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
     # Display address of specified type on the device. Only supports single-key based addresses.
@@ -354,12 +413,13 @@ class TrezorClient(HardwareWalletClient):
     def display_address(self, keypath, p2sh_p2wpkh, bech32):
         self._check_unlocked()
         expanded_path = tools.parse_path(keypath)
+        script_type = proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
         address = btc.get_address(
             self.client,
-            "Testnet" if self.is_testnet else "Bitcoin",
+            self.coin_name,
             expanded_path,
             show_display=True,
-            script_type=proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
+            script_type=script_type
         )
         return {'address': address}
 
@@ -406,6 +466,7 @@ class TrezorClient(HardwareWalletClient):
     # Prompt for a pin on device
     @trezor_exception
     def prompt_pin(self):
+        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
         self.client.open()
         self.client.init_device()
         if not self.client.features.pin_protection:
@@ -414,7 +475,7 @@ class TrezorClient(HardwareWalletClient):
             raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=None, script_type=proto.InputScriptType.SPENDADDRESS))
+        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=proto.InputScriptType.SPENDADDRESS))
         return {'success': True}
 
     # Send the pin
