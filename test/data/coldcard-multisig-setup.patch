@@ -1,17 +1,17 @@
-From 86e11ded21ffe839cb907e2096fd7bc832c79ce3 Mon Sep 17 00:00:00 2001
+From cadbd3d25306b43060fd06eed589947d537a5ced Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 17 Dec 2019 17:56:05 -0500
-Subject: [PATCH] Change default simulator multisig
+Subject: [PATCH 2/2] Change default simulator multisig
 
 ---
  unix/frozen-modules/sim_settings.py | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/unix/frozen-modules/sim_settings.py b/unix/frozen-modules/sim_settings.py
-index db78972..9565078 100644
+index 0313c3e..e2c3d71 100644
 --- a/unix/frozen-modules/sim_settings.py
 +++ b/unix/frozen-modules/sim_settings.py
-@@ -62,7 +62,11 @@ if '-m' in sys.argv:
+@@ -68,7 +68,11 @@ if '--ms' in sys.argv:
          sim_defaults['multisig'] = [["CC-2-of-4", [2, 4], [[1130956047, "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP"], [3503269483, "tpubDFcrvj5n7gyatVbr8dHCUfHT4CGvL8hREBjtxc4ge7HZgqNuPhFimPRtVg6fRRwfXiQthV9EBjNbwbpgV2VoQeL1ZNXoAWXxP2L9vMtRjax"], [2389277556, "tpubDExj5FnaUnPAjjgzELoSiNRkuXJG8Cm1pbdiA4Hc5vkAZHphibeVcUp6mqH5LuNVKbtLVZxVSzyja5X26Cfmx6pzRH6gXBUJAH7MiqwNyuM"], [3190206587, "tpubDFiuHYSJhNbHaGtB5skiuDLg12tRboh2uVZ6KGXxr8WVr28pLcS7F3gv8SsHFa2tm1jtx3VAuw56YfgRkdo6DXyfp51oygTKY3nJFT5jBMt"]], {"pp": "48'/1'/0'/1'", "ch": "XTN", "ft": 26}]]
      else:
          # P2SH: 2of4 using BIP39 passwords: "Me", "Myself", "and I", and (empty string) on simulator
@@ -25,5 +25,5 @@ index db78972..9565078 100644
  
  if '--xfp' in sys.argv:
 -- 
-2.24.1
+2.27.0
 

@@ -1,20 +1,20 @@
-From d1a3a1cef890ebe4ff72a8f89cd6c56dca89747e Mon Sep 17 00:00:00 2001
+From b0513638e494afa6414a73e2b56f282aba8325cb Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 27 Nov 2018 17:32:44 -0500
-Subject: [PATCH] Use linux unix socket address format
+Subject: [PATCH 1/2] Use linux unix socket address format
 
 ---
  unix/frozen-modules/pyb.py | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/unix/frozen-modules/pyb.py b/unix/frozen-modules/pyb.py
-index 39778a2..0108516 100644
+index 0fd96de..3ac83f6 100644
 --- a/unix/frozen-modules/pyb.py
 +++ b/unix/frozen-modules/pyb.py
-@@ -23,10 +23,10 @@ class USB_HID:
-         import usocket as socket
+@@ -25,10 +25,10 @@ class USB_HID:
          fn = b'/tmp/ckcc-simulator.sock'
          self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+         # If on linux, try commenting the following line
 -        addr = bytes([len(fn)+2, socket.AF_UNIX] + list(fn))
 +        # addr = bytes([len(fn)+2, socket.AF_UNIX] + list(fn))
          # If on linux, try uncommenting the following two lines
@@ -26,5 +26,5 @@ index 39778a2..0108516 100644
              try:
                  self.pipe.bind(addr)
 -- 
-2.11.0
+2.27.0
 
