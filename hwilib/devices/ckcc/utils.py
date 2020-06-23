@@ -85,4 +85,24 @@ def get_pubkey_string(b):
         y = p - y
     return x.to_bytes(32, byteorder="big") + y.to_bytes(32, byteorder="big")
 
+def str_to_int_path(xfp, path):
+    # convert text  m/34'/33/44 into BIP174 binary compat format
+    # - include hex for fingerprint (m) as first arg
+
+    rv = [struct.unpack('<I', binascii.a2b_hex(xfp))[0]]
+    for i in path.split('/'):
+        if i == 'm': continue
+        if not i: continue      # trailing or duplicated slashes
+        
+        if i[-1] in "'phHP":
+            assert len(i) >= 2, i
+            here = int(i[:-1]) | 0x80000000
+        else:
+            here = int(i)
+            assert 0 <= here < 0x80000000, here
+        
+        rv.append(here)
+
+    return rv
+
 # EOF

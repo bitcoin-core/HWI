@@ -220,17 +220,31 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False):
+def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, redeem_script=None):
     if path is not None:
         if sh_wpkh and wpkh:
             return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
-        return client.display_address(path, sh_wpkh, wpkh)
+        return client.display_address(path, sh_wpkh, wpkh, redeem_script=redeem_script)
     elif desc is not None:
         if sh_wpkh or wpkh:
             return {'error': ' `--wpkh` and `--sh_wpkh` can not be combined with --desc', 'code': BAD_ARGUMENT}
+        if redeem_script:
+            return {'error': ' `--redeem_script` can not be combined with --desc', 'code': BAD_ARGUMENT}
         descriptor = Descriptor.parse(desc, client.is_testnet)
         if descriptor is None:
             return {'error': 'Unable to parse descriptor: ' + desc, 'code': BAD_ARGUMENT}
+        if descriptor.sh or descriptor.sh_wsh or descriptor.wsh:
+            path = ''
+            redeem_script = format(80 + int(descriptor.multisig_M), 'x')
+            for i in range(0, descriptor.multisig_N):
+                path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i] + ','
+                if not descriptor.path_suffix[i]:
+                    redeem_script += '21' + descriptor.base_key[i]
+                else:
+                    return {'error': 'Multisig descriptor must include all pubkeys', 'code': BAD_ARGUMENT}
+            path = path[0:-1]
+            redeem_script += format(80 + descriptor.multisig_N, 'x') + 'ae'
+            return client.display_address(path, descriptor.sh_wpkh or descriptor.sh_wsh, descriptor.wpkh or descriptor.wsh, redeem_script)
         if descriptor.m_path is None:
             return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
         if descriptor.origin_fingerprint != client.get_master_fingerprint_hex():

@@ -408,20 +408,53 @@ class TrezorClient(HardwareWalletClient):
         result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
-    # Display address of specified type on the device. Only supports single-key based addresses.
+    # Display address of specified type on the device.
     @trezor_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32):
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
         self._check_unlocked()
-        expanded_path = tools.parse_path(keypath)
-        script_type = proto.InputScriptType.SPENDWITNESS if bech32 else (proto.InputScriptType.SPENDP2SHWITNESS if p2sh_p2wpkh else proto.InputScriptType.SPENDADDRESS)
-        address = btc.get_address(
-            self.client,
-            self.coin_name,
-            expanded_path,
-            show_display=True,
-            script_type=script_type
-        )
-        return {'address': address}
+
+        # redeem_script means p2sh/multisig
+        if redeem_script:
+            # Get multisig object required by Trezor's get_address
+            multisig = parse_multisig(bytes.fromhex(redeem_script))
+            if not multisig[0]:
+                raise BadArgumentError("The redeem script provided is not a multisig. Only multisig scripts can be displayed.")
+            multisig = multisig[1]
+        else:
+            multisig = None
+
+        # Script type
+        if p2sh_p2wpkh:
+            script_type = proto.InputScriptType.SPENDP2SHWITNESS
+        elif bech32:
+            script_type = proto.InputScriptType.SPENDWITNESS
+        elif redeem_script:
+            script_type = proto.InputScriptType.SPENDMULTISIG
+        else:
+            script_type = proto.InputScriptType.SPENDADDRESS
+
+        # convert device fingerprint to 'm' if exists in path
+        keypath = keypath.replace(self.get_master_fingerprint_hex(), 'm')
+
+        for path in keypath.split(','):
+            if len(path.split('/')[0]) == 8:
+                path = path.split('/', 1)[1]
+            expanded_path = tools.parse_path(path)
+
+            try:
+                address = btc.get_address(
+                    self.client,
+                    self.coin_name,
+                    expanded_path,
+                    show_display=True,
+                    script_type=script_type,
+                    multisig=multisig,
+                )
+                return {'address': address}
+            except:
+                pass
+
+        raise BadArgumentError("No path supplied matched device keys")
 
     # Setup a new device
     @trezor_exception
