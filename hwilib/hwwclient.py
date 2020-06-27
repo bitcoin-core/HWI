@@ -1,82 +1,181 @@
+from typing import Dict, Optional, Union
+
 from .base58 import get_xpub_fingerprint_hex
+from .serializations import PSBT
 
-# This is an abstract class that defines all of the methods that each Hardware
-# wallet subclass must implement.
+
 class HardwareWalletClient(object):
+    """Create a client for a HID device that has already been opened.
 
-    # device is an HID device that has already been opened.
-    def __init__(self, path, password, expert):
+    This abstract class defines the methods
+    that hardware wallet subclasses should implement.
+    """
+
+    def __init__(self, path: str, password: str, expert: bool) -> None:
         self.path = path
         self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
         self.is_testnet = False
-        self.fingerprint = None
-        self.xpub_cache = {}
+        self.fingerprint: Optional[str] = None
+        # {bip32_path: <xpub string>}
+        self.xpub_cache: Dict[str, str] = {}
         self.expert = expert
 
-    # Get the master BIP 44 pubkey
-    def get_master_xpub(self):
-        return self.get_pubkey_at_path('m/44\'/0\'/0\'')
+    def get_master_xpub(self) -> Dict[str, str]:
+        """Return the master BIP44 public key.
 
-    # Get the master fingerprint
-    def get_master_fingerprint_hex(self):
-        master_xpub = self.get_pubkey_at_path('m/0h')['xpub']
+        Retrieve the public key at the "m/44h/0h/0h" derivation path.
+
+        Return {"xpub": <xpub string>}.
+        """
+        # FIXME testnet is not handled yet
+        return self.get_pubkey_at_path("m/44h/0h/0h")
+
+    def get_master_fingerprint_hex(self) -> str:
+        """Return the master public key fingerprint as hex-string.
+
+        Retrieve the master public key at the "m/0h" derivation path.
+        """
+        master_xpub = self.get_pubkey_at_path("m/0h")["xpub"]
         return get_xpub_fingerprint_hex(master_xpub)
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
-    def get_pubkey_at_path(self, path):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+    def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
+        """Return the public key at the BIP32 derivation path.
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the combined unsigned transaction format
-    def sign_tx(self, tx):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+        Return {"xpub": <xpub string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
 
-    # Must return a base64 encoded string with the signed message
-    # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
-    def sign_message(self, message, keypath):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+    def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
+        """Sign a partially signed bitcoin transaction (PSBT).
 
-    # Display address of specified type on the device.
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+        Return {"psbt": <base64 psbt string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
 
-    # Setup a new device
-    def setup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+    def sign_message(self, message: str, bip32_path: str) -> Dict[str, str]:
+        """Sign a message (bitcoin message signing).
 
-    # Wipe this device
-    def wipe_device(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+        Sign the message according to the bitcoin message signing standard.
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
-        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+        Retrieve the signing key at the specified BIP32 derivation path.
 
-    # Begin backup process
-    def backup_device(self, label='', passphrase=''):
-        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+        Return {"signature": <base64 signature string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
 
-    # Close the device
-    def close(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not '
-                                  'implement this method')
+    def display_address(
+        self,
+        bip32_path: str,
+        p2sh_p2wpkh: bool,
+        bech32: bool,
+        redeem_script: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Display and return the address of specified type.
 
-    # Prompt pin
-    def prompt_pin(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+        redeem_script is a hex-string.
 
-    # Send pin
-    def send_pin(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+        Retrieve the public key at the specified BIP32 derivation path.
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
-        raise NotImplementedError('The HardwareWalletClient base class does not implement this method')
+        Return {"address": <base58 or bech32 address string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def wipe_device(self) -> Dict[str, Union[bool, str, int]]:
+        """Wipe the HID device.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def setup_device(
+        self, label: str = "", passphrase: str = ""
+    ) -> Dict[str, Union[bool, str, int]]:
+        """Setup the HID device.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": str, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def restore_device(
+        self, label: str = "", word_count: int = 24
+    ) -> Dict[str, Union[bool, str, int]]:
+        """Restore the HID device from mnemonic.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def backup_device(
+        self, label: str = "", passphrase: str = ""
+    ) -> Dict[str, Union[bool, str, int]]:
+        """Backup the HID device.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def close(self) -> None:
+        "Close the HID device."
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
+        """Prompt for PIN.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def send_pin(self) -> Dict[str, Union[bool, str, int]]:
+        """Send PIN.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def toggle_passphrase(self) -> Dict[str, Union[bool, str, int]]:
+        """Toggle passphrase.
+
+        Must return a dictionary with the "success" key,
+        possibly including also "error" and "code", e.g.:
+        {"success": bool, "error": srt, "code": int}.
+
+        Raise UnavailableActionError if appropriate for the device.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
