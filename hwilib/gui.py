@@ -4,9 +4,20 @@ import json
 import logging
 import sys
 
-from . import commands, __version__
+from PySide2.QtCore import QRegExp, Signal, Slot
+from PySide2.QtGui import QRegExpValidator
+from PySide2.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+)
+
+from . import __version__, commands
 from .cli import HWIArgumentParser
-from .errors import handle_errors, DEVICE_NOT_INITIALIZED
+from .errors import DEVICE_NOT_INITIALIZED, handle_errors
 
 try:
     from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
@@ -18,31 +29,30 @@ try:
     from .ui.ui_signmessagedialog import Ui_SignMessageDialog
     from .ui.ui_signpsbtdialog import Ui_SignPSBTDialog
 except ImportError:
-    print('Could not import UI files, did you run contrib/generate-ui.sh')
+    print("Could not import UI files, did you run contrib/generate-ui.sh")
     exit(-1)
 
-from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QMainWindow
-from PySide2.QtCore import QRegExp, Signal, Slot
 
 def do_command(f, *args, **kwargs):
     result = {}
     with handle_errors(result=result):
         result = f(*args, **kwargs)
-    if 'error' in result:
-        msg = 'Error: {}\nCode:{}'.format(result['error'], result['code'])
+    if "error" in result:
+        msg = "Error: {}\nCode:{}".format(result["error"], result["code"])
         QMessageBox.critical(None, "An Error Occurred", msg)
         return None
     return result
+
 
 class SetPassphraseDialog(QDialog):
     def __init__(self):
         super(SetPassphraseDialog, self).__init__()
         self.ui = Ui_SetPassphraseDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Set Passphrase')
+        self.setWindowTitle("Set Passphrase")
 
         self.ui.passphrase_lineedit.setFocus()
+
 
 class SendPinDialog(QDialog):
     pin_sent_success = Signal()
@@ -51,7 +61,7 @@ class SendPinDialog(QDialog):
         super(SendPinDialog, self).__init__()
         self.ui = Ui_SendPinDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Send Pin')
+        self.setWindowTitle("Send Pin")
         self.client = client
         self.ui.pin_lineedit.setFocus()
         self.ui.pin_lineedit.setValidator(QRegExpValidator(QRegExp("[1-9]+"), None))
@@ -75,6 +85,7 @@ class SendPinDialog(QDialog):
         @Slot()
         def button_clicked_num():
             self.ui.pin_lineedit.setText(self.ui.pin_lineedit.text() + str(number))
+
         return button_clicked_num
 
     @Slot()
@@ -87,15 +98,18 @@ class SendPinDialog(QDialog):
         self.client = None
         self.pin_sent_success.emit()
 
+
 class GetXpubDialog(QDialog):
     def __init__(self, client):
         super(GetXpubDialog, self).__init__()
         self.ui = Ui_GetXpubDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Get xpub')
+        self.setWindowTitle("Get xpub")
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(
+            QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None)
+        )
         self.ui.path_lineedit.setFocus()
         self.ui.buttonBox.button(QDialogButtonBox.Close).setAutoDefault(False)
 
@@ -106,14 +120,15 @@ class GetXpubDialog(QDialog):
     def getxpub_button_clicked(self):
         path = self.ui.path_lineedit.text()
         res = do_command(commands.getxpub, self.client, path)
-        self.ui.xpub_lineedit.setText(res['xpub'])
+        self.ui.xpub_lineedit.setText(res["xpub"])
+
 
 class SignPSBTDialog(QDialog):
     def __init__(self, client):
         super(SignPSBTDialog, self).__init__()
         self.ui = Ui_SignPSBTDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Sign PSBT')
+        self.setWindowTitle("Sign PSBT")
         self.client = client
 
         self.ui.psbt_in_textedit.setFocus()
@@ -125,17 +140,20 @@ class SignPSBTDialog(QDialog):
     def sign_psbt_button_clicked(self):
         psbt_str = self.ui.psbt_in_textedit.toPlainText()
         res = do_command(commands.signtx, self.client, psbt_str)
-        self.ui.psbt_out_textedit.setPlainText(res['psbt'])
+        self.ui.psbt_out_textedit.setPlainText(res["psbt"])
+
 
 class SignMessageDialog(QDialog):
     def __init__(self, client):
         super(SignMessageDialog, self).__init__()
         self.ui = Ui_SignMessageDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Sign Message')
+        self.setWindowTitle("Sign Message")
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(
+            QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None)
+        )
         self.ui.msg_textedit.setFocus()
 
         self.ui.signmsg_button.clicked.connect(self.signmsg_button_clicked)
@@ -146,17 +164,20 @@ class SignMessageDialog(QDialog):
         msg_str = self.ui.msg_textedit.toPlainText()
         path = self.ui.path_lineedit.text()
         res = do_command(commands.signmessage, self.client, msg_str, path)
-        self.ui.sig_textedit.setPlainText(res['signature'])
+        self.ui.sig_textedit.setPlainText(res["signature"])
+
 
 class DisplayAddressDialog(QDialog):
     def __init__(self, client):
         super(DisplayAddressDialog, self).__init__()
         self.ui = Ui_DisplayAddressDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Display Address')
+        self.setWindowTitle("Display Address")
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(
+            QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None)
+        )
         self.ui.path_lineedit.setFocus()
 
         self.ui.go_button.clicked.connect(self.go_button_clicked)
@@ -165,36 +186,45 @@ class DisplayAddressDialog(QDialog):
     @Slot()
     def go_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        res = do_command(commands.displayaddress, self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
-        self.ui.address_lineedit.setText(res['address'])
+        res = do_command(
+            commands.displayaddress,
+            self.client,
+            path,
+            sh_wpkh=self.ui.sh_wpkh_radio.isChecked(),
+            wpkh=self.ui.wpkh_radio.isChecked(),
+        )
+        self.ui.address_lineedit.setText(res["address"])
+
 
 class GetKeypoolOptionsDialog(QDialog):
     def __init__(self, opts):
         super(GetKeypoolOptionsDialog, self).__init__()
         self.ui = Ui_GetKeypoolOptionsDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Set getkeypool options')
+        self.setWindowTitle("Set getkeypool options")
 
-        self.ui.start_spinbox.setValue(opts['start'])
-        self.ui.end_spinbox.setValue(opts['end'])
-        self.ui.internal_checkbox.setChecked(opts['internal'])
-        self.ui.keypool_checkbox.setChecked(opts['keypool'])
-        self.ui.account_spinbox.setValue(opts['account'])
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
-        if opts['account_used']:
+        self.ui.start_spinbox.setValue(opts["start"])
+        self.ui.end_spinbox.setValue(opts["end"])
+        self.ui.internal_checkbox.setChecked(opts["internal"])
+        self.ui.keypool_checkbox.setChecked(opts["keypool"])
+        self.ui.account_spinbox.setValue(opts["account"])
+        self.ui.path_lineedit.setValidator(
+            QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None)
+        )
+        if opts["account_used"]:
             self.ui.account_radio.setChecked(True)
             self.ui.path_radio.setChecked(False)
             self.ui.path_lineedit.setEnabled(False)
             self.ui.account_spinbox.setEnabled(True)
-            self.ui.account_spinbox.setValue(opts['account'])
+            self.ui.account_spinbox.setValue(opts["account"])
         else:
             self.ui.account_radio.setChecked(False)
             self.ui.path_radio.setChecked(True)
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
-            self.ui.path_lineedit.setText(opts['path'])
-        self.ui.sh_wpkh_radio.setChecked(opts['sh_wpkh'])
-        self.ui.wpkh_radio.setChecked(opts['wpkh'])
+            self.ui.path_lineedit.setText(opts["path"])
+        self.ui.sh_wpkh_radio.setChecked(opts["sh_wpkh"])
+        self.ui.wpkh_radio.setChecked(opts["wpkh"])
 
         self.ui.account_radio.toggled.connect(self.toggle_account)
 
@@ -207,12 +237,13 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
 
+
 class HWIQt(QMainWindow):
-    def __init__(self, passphrase='', testnet=False):
+    def __init__(self, passphrase="", testnet=False):
         super(HWIQt, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowTitle('HWI Qt')
+        self.setWindowTitle("HWI Qt")
 
         self.devices = []
         self.client = None
@@ -221,28 +252,34 @@ class HWIQt(QMainWindow):
         self.testnet = testnet
         self.current_dialog = None
         self.getkeypool_opts = {
-            'start': 0,
-            'end': 1000,
-            'account': 0,
-            'internal': False,
-            'keypool': True,
-            'sh_wpkh': True,
-            'wpkh': False,
-            'path': None,
-            'account_used': True
+            "start": 0,
+            "end": 1000,
+            "account": 0,
+            "internal": False,
+            "keypool": True,
+            "sh_wpkh": True,
+            "wpkh": False,
+            "path": None,
+            "account_used": True,
         }
 
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
-        self.ui.sendpin_button.clicked.connect(lambda: self.show_sendpindialog(prompt_pin=True))
+        self.ui.sendpin_button.clicked.connect(
+            lambda: self.show_sendpindialog(prompt_pin=True)
+        )
         self.ui.getxpub_button.clicked.connect(self.show_getxpubdialog)
         self.ui.signtx_button.clicked.connect(self.show_signpsbtdialog)
         self.ui.signmsg_button.clicked.connect(self.show_signmessagedialog)
         self.ui.display_addr_button.clicked.connect(self.show_displayaddressdialog)
-        self.ui.getkeypool_opts_button.clicked.connect(self.show_getkeypooloptionsdialog)
+        self.ui.getkeypool_opts_button.clicked.connect(
+            self.show_getkeypooloptionsdialog
+        )
         self.ui.toggle_passphrase_button.clicked.connect(self.toggle_passphrase)
 
-        self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
+        self.ui.enumerate_combobox.currentIndexChanged.connect(
+            self.get_client_and_device_info
+        )
 
     def clear_info(self):
         self.ui.getxpub_button.setEnabled(False)
@@ -263,14 +300,18 @@ class HWIQt(QMainWindow):
         self.devices = commands.enumerate(self.passphrase)
         self.ui.enumerate_combobox.currentIndexChanged.disconnect()
         self.ui.enumerate_combobox.clear()
-        self.ui.enumerate_combobox.addItem('')
+        self.ui.enumerate_combobox.addItem("")
         for dev in self.devices:
-            fingerprint = 'none'
-            if 'fingerprint' in dev:
-                fingerprint = dev['fingerprint']
-            dev_str = '{} fingerprint:{} path:{}'.format(dev['model'], fingerprint, dev['path'])
+            fingerprint = "none"
+            if "fingerprint" in dev:
+                fingerprint = dev["fingerprint"]
+            dev_str = "{} fingerprint:{} path:{}".format(
+                dev["model"], fingerprint, dev["path"]
+            )
             self.ui.enumerate_combobox.addItem(dev_str)
-        self.ui.enumerate_combobox.currentIndexChanged.connect(self.get_client_and_device_info)
+        self.ui.enumerate_combobox.currentIndexChanged.connect(
+            self.get_client_and_device_info
+        )
         self.clear_info()
 
     @Slot()
@@ -299,16 +340,21 @@ class HWIQt(QMainWindow):
 
         # Get the client
         self.device_info = self.devices[index - 1]
-        self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase)
+        self.client = commands.get_client(
+            self.device_info["model"], self.device_info["path"], self.passphrase
+        )
         self.client.is_testnet = self.testnet
 
-        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] == 'trezor' or self.device_info['type'] == 'keepkey')
+        self.ui.toggle_passphrase_button.setEnabled(
+            self.device_info["type"] == "trezor"
+            or self.device_info["type"] == "keepkey"
+        )
 
         self.get_device_info()
 
     def get_device_info(self):
         # Enable the sendpin button if it's a trezor and it needs it
-        if self.device_info['needs_pin_sent']:
+        if self.device_info["needs_pin_sent"]:
             self.ui.sendpin_button.setEnabled(True)
             self.clear_info()
             return
@@ -316,22 +362,34 @@ class HWIQt(QMainWindow):
             self.ui.sendpin_button.setEnabled(False)
 
         # If it isn't initialized, show an error but don't do anything
-        if 'code' in self.device_info and self.device_info['code'] == DEVICE_NOT_INITIALIZED:
+        if (
+            "code" in self.device_info
+            and self.device_info["code"] == DEVICE_NOT_INITIALIZED
+        ):
             self.clear_info()
-            QMessageBox.information(None, "Not initialized yet", 'Device is not initalized yet')
+            QMessageBox.information(
+                None, "Not initialized yet", "Device is not initalized yet"
+            )
             return
 
         # do getkeypool and getdescriptors
-        keypool = do_command(commands.getkeypool, self.client,
-                             None if self.getkeypool_opts['account_used'] else self.getkeypool_opts['path'],
-                             self.getkeypool_opts['start'],
-                             self.getkeypool_opts['end'],
-                             self.getkeypool_opts['internal'],
-                             self.getkeypool_opts['keypool'],
-                             self.getkeypool_opts['account'],
-                             self.getkeypool_opts['sh_wpkh'],
-                             self.getkeypool_opts['wpkh'])
-        descriptors = do_command(commands.getdescriptors, self.client, self.getkeypool_opts['account'])
+        keypool = do_command(
+            commands.getkeypool,
+            self.client,
+            None
+            if self.getkeypool_opts["account_used"]
+            else self.getkeypool_opts["path"],
+            self.getkeypool_opts["start"],
+            self.getkeypool_opts["end"],
+            self.getkeypool_opts["internal"],
+            self.getkeypool_opts["keypool"],
+            self.getkeypool_opts["account"],
+            self.getkeypool_opts["sh_wpkh"],
+            self.getkeypool_opts["wpkh"],
+        )
+        descriptors = do_command(
+            commands.getdescriptors, self.client, self.getkeypool_opts["account"]
+        )
 
         self.ui.keypool_textedit.setPlainText(json.dumps(keypool, indent=2))
         self.ui.desc_textedit.setPlainText(json.dumps(descriptors, indent=2))
@@ -378,33 +436,53 @@ class HWIQt(QMainWindow):
 
     @Slot()
     def getkeypooloptionsdialog_accepted(self):
-        self.getkeypool_opts['start'] = self.current_dialog.ui.start_spinbox.value()
-        self.getkeypool_opts['end'] = self.current_dialog.ui.end_spinbox.value()
-        self.getkeypool_opts['internal'] = self.current_dialog.ui.internal_checkbox.isChecked()
-        self.getkeypool_opts['keypool'] = self.current_dialog.ui.keypool_checkbox.isChecked()
-        self.getkeypool_opts['sh_wpkh'] = self.current_dialog.ui.sh_wpkh_radio.isChecked()
-        self.getkeypool_opts['wpkh'] = self.current_dialog.ui.wpkh_radio.isChecked()
+        self.getkeypool_opts["start"] = self.current_dialog.ui.start_spinbox.value()
+        self.getkeypool_opts["end"] = self.current_dialog.ui.end_spinbox.value()
+        self.getkeypool_opts[
+            "internal"
+        ] = self.current_dialog.ui.internal_checkbox.isChecked()
+        self.getkeypool_opts[
+            "keypool"
+        ] = self.current_dialog.ui.keypool_checkbox.isChecked()
+        self.getkeypool_opts[
+            "sh_wpkh"
+        ] = self.current_dialog.ui.sh_wpkh_radio.isChecked()
+        self.getkeypool_opts["wpkh"] = self.current_dialog.ui.wpkh_radio.isChecked()
         if self.current_dialog.ui.account_radio.isChecked():
-            self.getkeypool_opts['account'] = self.current_dialog.ui.account_spinbox.value()
-            self.getkeypool_opts['account_used'] = True
+            self.getkeypool_opts[
+                "account"
+            ] = self.current_dialog.ui.account_spinbox.value()
+            self.getkeypool_opts["account_used"] = True
         else:
-            self.getkeypool_opts['path'] = self.current_dialog.ui.path_lineedit.text()
-            self.getkeypool_opts['account_used'] = False
+            self.getkeypool_opts["path"] = self.current_dialog.ui.path_lineedit.text()
+            self.getkeypool_opts["account_used"] = False
         self.current_dialog = None
         self.get_device_info()
 
     @Slot()
     def toggle_passphrase(self):
         do_command(commands.toggle_passphrase, self.client)
-        if self.device_info['model'] == "keepkey":
+        if self.device_info["model"] == "keepkey":
             self.show_sendpindialog(prompt_pin=False)
 
+
 def process_gui_commands(cli_args):
-    parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))
-    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
-    parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
-    parser.add_argument('--debug', help='Print debug statements', action='store_true')
-    parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
+    parser = HWIArgumentParser(
+        description="Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.".format(
+            __version__
+        )
+    )
+    parser.add_argument(
+        "--password",
+        "-p",
+        help="Device password if it has one (e.g. DigitalBitbox)",
+        default="",
+    )
+    parser.add_argument("--testnet", help="Use testnet prefixes", action="store_true")
+    parser.add_argument("--debug", help="Print debug statements", action="store_true")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s {}".format(__version__)
+    )
 
     # Parse arguments again for anything entered over stdin
     args = parser.parse_args(cli_args)
@@ -423,9 +501,10 @@ def process_gui_commands(cli_args):
 
     window.show()
     ret = app.exec_()
-    result = {'success': ret == 0}
+    result = {"success": ret == 0}
 
     return result
+
 
 def main():
     result = process_gui_commands(sys.argv[1:])

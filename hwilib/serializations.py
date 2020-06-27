@@ -15,25 +15,29 @@ CTransaction,CTxIn, CTxOut, etc....:
 ser_*, deser_*: functions that handle serialization/deserialization
 """
 
-from io import BytesIO, BufferedReader
-from codecs import encode
-from .errors import PSBTSerializationError
-from . import base58
-
-import struct
-import binascii
-import hashlib
-import copy
 import base64
+import binascii
+import copy
+import hashlib
+import struct
+from codecs import encode
+from io import BufferedReader, BytesIO
+
+from . import base58
+from .errors import PSBTSerializationError
+
 
 def sha256(s):
-    return hashlib.new('sha256', s).digest()
+    return hashlib.new("sha256", s).digest()
+
 
 def ripemd160(s):
-    return hashlib.new('ripemd160', s).digest()
+    return hashlib.new("ripemd160", s).digest()
+
 
 def hash256(s):
     return sha256(sha256(s))
+
 
 def hash160(s):
     return ripemd160(sha256(s))
@@ -52,6 +56,7 @@ def ser_compact_size(size):
         r = struct.pack("<BQ", 255, size)
     return r
 
+
 def deser_compact_size(f):
     nit = struct.unpack("<B", f.read(1))[0]
     if nit == 253:
@@ -62,12 +67,15 @@ def deser_compact_size(f):
         nit = struct.unpack("<Q", f.read(8))[0]
     return nit
 
+
 def deser_string(f):
     nit = deser_compact_size(f)
     return f.read(nit)
 
+
 def ser_string(s):
     return ser_compact_size(len(s)) + s
+
 
 def deser_uint256(f):
     r = 0
@@ -79,7 +87,7 @@ def deser_uint256(f):
 
 def ser_uint256(u):
     rs = b""
-    for i in range(8):
+    for _ in range(8):
         rs += struct.pack("<I", u & 0xFFFFFFFF)
         u >>= 32
     return rs
@@ -96,7 +104,7 @@ def uint256_from_str(s):
 def deser_vector(f, c):
     nit = deser_compact_size(f)
     r = []
-    for i in range(nit):
+    for _ in range(nit):
         t = c()
         t.deserialize(f)
         r.append(t)
@@ -119,7 +127,7 @@ def ser_vector(v, ser_function_name=None):
 def deser_string_vector(f):
     nit = deser_compact_size(f)
     r = []
-    for i in range(nit):
+    for _ in range(nit):
         t = deser_string(f)
         r.append(t)
     return r
@@ -131,11 +139,14 @@ def ser_string_vector(v):
         r += ser_string(sv)
     return r
 
+
 def Base64ToHex(s):
     return binascii.hexlify(base64.b64decode(s))
 
+
 def HexToBase64(s):
     return base64.b64encode(binascii.unhexlify(s))
+
 
 def ser_sig_der(r, s):
     sig = b"\x30"
@@ -181,6 +192,7 @@ def ser_sig_der(r, s):
     sig += b"\x01"
     return sig
 
+
 def ser_sig_compact(r, s, recid):
     rec = struct.unpack("B", recid)[0]
     prefix = struct.pack("B", 27 + 4 + rec)
@@ -191,12 +203,14 @@ def ser_sig_compact(r, s, recid):
 
     return sig
 
+
 # Objects that map to bitcoind objects, which can be serialized/deserialized
 
 MSG_WITNESS_FLAG = 1 << 30
 
+
 class COutPoint(object):
-    def __init__(self, hash=0, n=0xffffffff):
+    def __init__(self, hash=0, n=0xFFFFFFFF):
         self.hash = hash
         self.n = n
 
@@ -237,19 +251,40 @@ class CTxIn(object):
         return r
 
     def __repr__(self):
-        return "CTxIn(prevout=%s scriptSig=%s nSequence=%i)" \
-            % (repr(self.prevout), self.scriptSig.hex(),
-               self.nSequence)
+        return "CTxIn(prevout=%s scriptSig=%s nSequence=%i)" % (
+            repr(self.prevout),
+            self.scriptSig.hex(),
+            self.nSequence,
+        )
 
 
 def is_p2sh(script):
-    return len(script) == 23 and script[0] == 0xa9 and script[1] == 0x14 and script[22] == 0x87
+    return (
+        len(script) == 23
+        and script[0] == 0xA9
+        and script[1] == 0x14
+        and script[22] == 0x87
+    )
+
 
 def is_p2pkh(script):
-    return len(script) == 25 and script[0] == 0x76 and script[1] == 0xa9 and script[2] == 0x14 and script[23] == 0x88 and script[24] == 0xac
+    return (
+        len(script) == 25
+        and script[0] == 0x76
+        and script[1] == 0xA9
+        and script[2] == 0x14
+        and script[23] == 0x88
+        and script[24] == 0xAC
+    )
+
 
 def is_p2pk(script):
-    return (len(script) == 35 or len(script) == 67) and (script[0] == 0x21 or script[0] == 0x41) and script[-1] == 0xac
+    return (
+        (len(script) == 35 or len(script) == 67)
+        and (script[0] == 0x21 or script[0] == 0x41)
+        and script[-1] == 0xAC
+    )
+
 
 def is_witness(script):
     if len(script) < 4 or len(script) > 42:
@@ -261,6 +296,7 @@ def is_witness(script):
     if script[1] + 2 == len(script):
         return (True, script[0] - 0x50 if script[0] else 0, script[2:])
 
+
 def is_p2wpkh(script):
     is_wit, wit_ver, wit_prog = is_witness(script)
     if not is_wit:
@@ -268,6 +304,7 @@ def is_p2wpkh(script):
     elif wit_ver != 0:
         return False
     return len(wit_prog) == 20
+
 
 def is_p2wsh(script):
     is_wit, wit_ver, wit_prog = is_witness(script)
@@ -306,8 +343,11 @@ class CTxOut(object):
         return is_witness(self.scriptPubKey)
 
     def __repr__(self):
-        return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
-            % (self.nValue, self.nValue, binascii.hexlify(self.scriptPubKey))
+        return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" % (
+            self.nValue,
+            self.nValue,
+            binascii.hexlify(self.scriptPubKey),
+        )
 
 
 class CScriptWitness(object):
@@ -316,8 +356,7 @@ class CScriptWitness(object):
         self.stack = []
 
     def __repr__(self):
-        return "CScriptWitness(%s)" % \
-               (",".join([x.hex() for x in self.stack]))
+        return "CScriptWitness(%s)" % (",".join([x.hex() for x in self.stack]))
 
     def is_null(self):
         if self.stack:
@@ -360,8 +399,7 @@ class CTxWitness(object):
         return r
 
     def __repr__(self):
-        return "CTxWitness(%s)" % \
-               (';'.join([repr(x) for x in self.vtxinwit]))
+        return "CTxWitness(%s)" % (";".join([repr(x) for x in self.vtxinwit]))
 
     def is_null(self):
         for x in self.vtxinwit:
@@ -397,7 +435,7 @@ class CTransaction(object):
             flags = struct.unpack("<B", f.read(1))[0]
             # Not sure why flags can't be zero, but this
             # matches the implementation in bitcoind
-            if (flags != 0):
+            if flags != 0:
                 self.vin = deser_vector(f, CTxIn)
                 self.vout = deser_vector(f, CTxOut)
         else:
@@ -431,10 +469,10 @@ class CTransaction(object):
         r += ser_vector(self.vin)
         r += ser_vector(self.vout)
         if flags & 1:
-            if (len(self.wit.vtxinwit) != len(self.vin)):
+            if len(self.wit.vtxinwit) != len(self.vin):
                 # vtxinwit must have the same length as vin
-                self.wit.vtxinwit = self.wit.vtxinwit[:len(self.vin)]
-                for i in range(len(self.wit.vtxinwit), len(self.vin)):
+                self.wit.vtxinwit = self.wit.vtxinwit[: len(self.vin)]
+                for _ in range(len(self.wit.vtxinwit), len(self.vin)):
                     self.wit.vtxinwit.append(CTxInWitness())
             r += self.wit.serialize()
         r += struct.pack("<I", self.nLockTime)
@@ -459,24 +497,35 @@ class CTransaction(object):
 
         if self.sha256 is None:
             self.sha256 = uint256_from_str(hash256(self.serialize_without_witness()))
-        self.hash = encode(hash256(self.serialize())[::-1], 'hex_codec').decode('ascii')
+        self.hash = encode(hash256(self.serialize())[::-1], "hex_codec").decode("ascii")
 
     def is_null(self):
         return len(self.vin) == 0 and len(self.vout) == 0
 
     def __repr__(self):
-        return "CTransaction(nVersion=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
-            % (self.nVersion, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+        return "CTransaction(nVersion=%i vin=%s vout=%s wit=%s nLockTime=%i)" % (
+            self.nVersion,
+            repr(self.vin),
+            repr(self.vout),
+            repr(self.wit),
+            self.nLockTime,
+        )
+
 
 def DeserializeHDKeypath(f, key, hd_keypaths):
     if len(key) != 34 and len(key) != 66:
-        raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
+        raise PSBTSerializationError(
+            "Size of key was not the expected size for the type partial signature pubkey"
+        )
     pubkey = key[1:]
     if pubkey in hd_keypaths:
-        raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
+        raise PSBTSerializationError(
+            "Duplicate key, input partial signature for pubkey already provided"
+        )
 
     value = deser_string(f)
     hd_keypaths[pubkey] = struct.unpack("<" + "I" * (len(value) // 4), value)
+
 
 def SerializeHDKeypath(hd_keypaths, type):
     r = b""
@@ -485,6 +534,7 @@ def SerializeHDKeypath(hd_keypaths, type):
         packed = struct.pack("<" + "I" * len(path), *path)
         r += ser_string(packed)
     return r
+
 
 class PartiallySignedInput:
     def __init__(self):
@@ -528,9 +578,13 @@ class PartiallySignedInput:
 
             if key_type == 0:
                 if self.non_witness_utxo:
-                    raise PSBTSerializationError("Duplicate Key, input non witness utxo already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate Key, input non witness utxo already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("non witness utxo key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "non witness utxo key is more than one byte type"
+                    )
                 self.non_witness_utxo = CTransaction()
                 value = BufferedReader(BytesIO(deser_string(f)))
                 self.non_witness_utxo.deserialize(value)
@@ -538,43 +592,63 @@ class PartiallySignedInput:
 
             elif key_type == 1:
                 if self.witness_utxo:
-                    raise PSBTSerializationError("Duplicate Key, input witness utxo already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate Key, input witness utxo already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("witness utxo key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "witness utxo key is more than one byte type"
+                    )
                 self.witness_utxo = CTxOut()
                 value = BufferedReader(BytesIO(deser_string(f)))
                 self.witness_utxo.deserialize(value)
 
             elif key_type == 2:
                 if len(key) != 34 and len(key) != 66:
-                    raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
+                    raise PSBTSerializationError(
+                        "Size of key was not the expected size for the type partial signature pubkey"
+                    )
                 pubkey = key[1:]
                 if pubkey in self.partial_sigs:
-                    raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input partial signature for pubkey already provided"
+                    )
 
                 sig = deser_string(f)
                 self.partial_sigs[pubkey] = sig
 
             elif key_type == 3:
                 if self.sighash > 0:
-                    raise PSBTSerializationError("Duplicate key, input sighash type already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input sighash type already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("sighash key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "sighash key is more than one byte type"
+                    )
                 value = deser_string(f)
                 self.sighash = struct.unpack("<I", value)[0]
 
             elif key_type == 4:
                 if len(self.redeem_script) != 0:
-                    raise PSBTSerializationError("Duplicate key, input redeemScript already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input redeemScript already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("redeemScript key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "redeemScript key is more than one byte type"
+                    )
                 self.redeem_script = deser_string(f)
 
             elif key_type == 5:
                 if len(self.witness_script) != 0:
-                    raise PSBTSerializationError("Duplicate key, input witnessScript already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input witnessScript already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("witnessScript key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "witnessScript key is more than one byte type"
+                    )
                 self.witness_script = deser_string(f)
 
             elif key_type == 6:
@@ -582,22 +656,32 @@ class PartiallySignedInput:
 
             elif key_type == 7:
                 if len(self.final_script_sig) != 0:
-                    raise PSBTSerializationError("Duplicate key, input final scriptSig already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input final scriptSig already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("final scriptSig key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "final scriptSig key is more than one byte type"
+                    )
                 self.final_script_sig = deser_string(f)
 
             elif key_type == 8:
                 if not self.final_script_witness.is_null():
-                    raise PSBTSerializationError("Duplicate key, input final scriptWitness already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, input final scriptWitness already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("final scriptWitness key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "final scriptWitness key is more than one byte type"
+                    )
                 value = BufferedReader(BytesIO(deser_string(f)))
                 self.final_script_witness.deserialize(value)
 
             else:
                 if key in self.unknown:
-                    raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, key for unknown value already provided"
+                    )
                 value = deser_string(f)
                 self.unknown[key] = value
 
@@ -650,6 +734,7 @@ class PartiallySignedInput:
 
         return r
 
+
 class PartiallySignedOutput:
     def __init__(self):
         self.redeem_script = b""
@@ -680,16 +765,24 @@ class PartiallySignedOutput:
 
             if key_type == 0:
                 if len(self.redeem_script) != 0:
-                    raise PSBTSerializationError("Duplicate key, output redeemScript already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, output redeemScript already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("Output redeemScript key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "Output redeemScript key is more than one byte type"
+                    )
                 self.redeem_script = deser_string(f)
 
             elif key_type == 1:
                 if len(self.witness_script) != 0:
-                    raise PSBTSerializationError("Duplicate key, output witnessScript already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, output witnessScript already provided"
+                    )
                 elif len(key) != 1:
-                    raise PSBTSerializationError("Output witnessScript key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "Output witnessScript key is more than one byte type"
+                    )
                 self.witness_script = deser_string(f)
 
             elif key_type == 2:
@@ -697,7 +790,9 @@ class PartiallySignedOutput:
 
             else:
                 if key in self.unknown:
-                    raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, key for unknown value already provided"
+                    )
                 value = deser_string(f)
                 self.unknown[key] = value
 
@@ -721,8 +816,8 @@ class PartiallySignedOutput:
 
         return r
 
-class PSBT(object):
 
+class PSBT(object):
     def __init__(self, tx=None):
         if tx:
             self.tx = tx
@@ -761,9 +856,13 @@ class PSBT(object):
             if key_type == 0x00:
                 # Checks for correctness
                 if not self.tx.is_null:
-                    raise PSBTSerializationError("Duplicate key, unsigned tx already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, unsigned tx already provided"
+                    )
                 elif len(key) > 1:
-                    raise PSBTSerializationError("Global unsigned tx key is more than one byte type")
+                    raise PSBTSerializationError(
+                        "Global unsigned tx key is more than one byte type"
+                    )
 
                 # read in value
                 value = BufferedReader(BytesIO(deser_string(f)))
@@ -772,11 +871,15 @@ class PSBT(object):
                 # Make sure that all scriptSigs and scriptWitnesses are empty
                 for txin in self.tx.vin:
                     if len(txin.scriptSig) != 0 or not self.tx.wit.is_null():
-                        raise PSBTSerializationError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
+                        raise PSBTSerializationError(
+                            "Unsigned tx does not have empty scriptSigs and scriptWitnesses"
+                        )
 
             else:
                 if key in self.unknown:
-                    raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
+                    raise PSBTSerializationError(
+                        "Duplicate key, key for unknown value already provided"
+                    )
                 value = deser_string(f)
                 self.unknown[key] = value
 
@@ -792,11 +895,19 @@ class PSBT(object):
             input.deserialize(f)
             self.inputs.append(input)
 
-            if input.non_witness_utxo and input.non_witness_utxo.rehash() and input.non_witness_utxo.sha256 != txin.prevout.sha256:
-                raise PSBTSerializationError("Non-witness UTXO does not match outpoint hash")
+            if (
+                input.non_witness_utxo
+                and input.non_witness_utxo.rehash()
+                and input.non_witness_utxo.sha256 != txin.prevout.sha256
+            ):
+                raise PSBTSerializationError(
+                    "Non-witness UTXO does not match outpoint hash"
+                )
 
-        if (len(self.inputs) != len(self.tx.vin)):
-            raise PSBTSerializationError("Inputs provided does not match the number of inputs in transaction")
+        if len(self.inputs) != len(self.tx.vin):
+            raise PSBTSerializationError(
+                "Inputs provided does not match the number of inputs in transaction"
+            )
 
         # Read output data
         for txout in self.tx.vout:
@@ -807,7 +918,9 @@ class PSBT(object):
             self.outputs.append(output)
 
         if len(self.outputs) != len(self.tx.vout):
-            raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
+            raise PSBTSerializationError(
+                "Outputs provided does not match the number of outputs in transaction"
+            )
 
     def serialize(self):
         r = b""
@@ -842,37 +955,44 @@ class PSBT(object):
         # return hex string
         return HexToBase64(binascii.hexlify(r)).decode()
 
+
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
 # Only handles deserialization of extended keys into component data to be handled by something else
 class ExtendedKey(object):
 
-    MAINNET_PUBLIC = b'\x04\x88\xB2\x1E'
-    MAINNET_PRIVATE = b'\x04\x88\xAD\xE4'
-    TESTNET_PUBLIC = b'\x04\x35\x87\xCF'
-    TESTNET_PRIVATE = b'\x04\x35\x83\x94'
+    MAINNET_PUBLIC = b"\x04\x88\xB2\x1E"
+    MAINNET_PRIVATE = b"\x04\x88\xAD\xE4"
+    TESTNET_PUBLIC = b"\x04\x35\x87\xCF"
+    TESTNET_PRIVATE = b"\x04\x35\x83\x94"
 
     def __init__(self):
         self.is_testnet = False
         self.is_private = False
         self.depth = 0
-        self.parent_fingerprint = b''
+        self.parent_fingerprint = b""
         self.child_num = 0
-        self.chaincode = b''
-        self.pubkey = b''
-        self.privkey = b''
+        self.chaincode = b""
+        self.pubkey = b""
+        self.privkey = b""
 
     def deserialize(self, xpub: str):
-        data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
+        data = base58.decode(xpub)[:-4]  # Decoded xpub without checksum
 
         version = data[0:4]
-        if version == ExtendedKey.TESTNET_PUBLIC or version == ExtendedKey.TESTNET_PRIVATE:
+        if (
+            version == ExtendedKey.TESTNET_PUBLIC
+            or version == ExtendedKey.TESTNET_PRIVATE
+        ):
             self.is_testnet = True
-        if version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE:
+        if (
+            version == ExtendedKey.MAINNET_PRIVATE
+            or version == ExtendedKey.TESTNET_PRIVATE
+        ):
             self.is_private = True
 
         self.depth = data[4]
         self.parent_fingerprint = data[5:9]
-        self.child_num = struct.unpack('>I', data[9:13])[0]
+        self.child_num = struct.unpack(">I", data[9:13])[0]
         self.chaincode = data[13:45]
 
         if self.is_private:
@@ -882,14 +1002,14 @@ class ExtendedKey(object):
 
     def get_printable_dict(self):
         d = {}
-        d['testnet'] = self.is_testnet
-        d['private'] = self.is_private
-        d['depth'] = self.depth
-        d['parent_fingerprint'] = binascii.hexlify(self.parent_fingerprint).decode()
-        d['child_num'] = self.child_num
-        d['chaincode'] = binascii.hexlify(self.chaincode).decode()
+        d["testnet"] = self.is_testnet
+        d["private"] = self.is_private
+        d["depth"] = self.depth
+        d["parent_fingerprint"] = binascii.hexlify(self.parent_fingerprint).decode()
+        d["child_num"] = self.child_num
+        d["chaincode"] = binascii.hexlify(self.chaincode).decode()
         if self.is_private:
-            d['privkey'] = binascii.hexlify(self.privkey).decode()
+            d["privkey"] = binascii.hexlify(self.privkey).decode()
         else:
-            d['pubkey'] = binascii.hexlify(self.pubkey).decode()
+            d["pubkey"] = binascii.hexlify(self.pubkey).decode()
         return d

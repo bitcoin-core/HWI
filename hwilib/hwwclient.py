@@ -1,5 +1,6 @@
 from .base58 import get_xpub_fingerprint_hex
 
+
 # This is an abstract class that defines all of the methods that each Hardware
 # wallet subclass must implement.
 class HardwareWalletClient(object):

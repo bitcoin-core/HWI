@@ -1,4 +1,20 @@
 [flake8]
-exclude = *.pyc,__pycache__,hwilib/devices/btchip/,hwilib/devices/ckcc/,hwilib/devices/trezorlib/,test/work/,hwilib/ui
-ignore = E261,E302,E305,E501,E722,W5
-per-file-ignores = setup.py:E122
+exclude =
+    *.pyc,
+    __pycache__,
+    hwilib/devices/btchip/,
+    hwilib/devices/ckcc/,
+    hwilib/devices/trezorlib/,
+    test/work/,
+    hwilib/ui
+max-line-length = 80
+# B950: Line too long. It considers "max-line-length"
+# but only triggers when the value has been exceeded
+# by more than 10%. So the efective max line length is 88
+# Disable E501 to avoid duplicate warnings.
+select = C, E, F, W, B, B950
+# E203 and W503 are not PEP 8 compliant
+ignore = E203, E501, W503
+# emit a warning for high McCabe complexity
+# See https://en.wikipedia.org/wiki/Cyclomatic_complexity
+max-complexity = 10
