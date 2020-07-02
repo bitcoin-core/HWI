@@ -1,4 +1,4 @@
-From 80038049e33f6a708e1d1c2151ef48e1bce3ee70 Mon Sep 17 00:00:00 2001
+From 73d6aaf4262b083bf4b8860914d9e0edcdff3ea6 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Thu, 12 Mar 2020 17:25:09 -0400
 Subject: [PATCH] Do button presses within seproxyhal
@@ -8,18 +8,16 @@ Subject: [PATCH] Do button presses within seproxyhal
  1 file changed, 35 insertions(+)
 
 diff --git a/mcu/seproxyhal.py b/mcu/seproxyhal.py
-index b18f8a2..b0554ea 100644
+index ffaaff5..eaf22c9 100644
 --- a/mcu/seproxyhal.py
 +++ b/mcu/seproxyhal.py
-@@ -2,6 +2,7 @@ import binascii
+@@ -1,4 +1,5 @@
  import logging
- import os
- import select
 +import struct
  import sys
  import time
  import threading
-@@ -146,6 +147,7 @@ class SeProxyHal:
+@@ -141,6 +142,7 @@ class SeProxyHal:
                                                daemon=True)
          self.ticker_thread.start()
          self.usb = usb.USB(self.packet_thread.queue_packet)
@@ -68,5 +66,5 @@ index b18f8a2..b0554ea 100644
              elif tag == SephTag.SCREEN_DISPLAY_RAW_STATUS:
                  self.logger.debug("SephTag.SCREEN_DISPLAY_RAW_STATUS")
 -- 
-2.26.1
+2.27.0
 
