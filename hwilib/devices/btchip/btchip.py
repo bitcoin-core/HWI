@@ -172,7 +172,7 @@ class btchip:
 		result['value'] = response
 		return result
 
-	def startUntrustedTransaction(self, newTransaction, inputIndex, outputList, redeemScript, version=0x01, cashAddr=False):
+	def startUntrustedTransaction(self, newTransaction, inputIndex, outputList, redeemScript, version=0x01, cashAddr=False, continueSegwit=False):
 		# Start building a fake transaction with the passed inputs
 		segwit = False
 		if newTransaction:
@@ -186,7 +186,7 @@ class btchip:
 			else:
 				p2 = 0x00
 		else:
-				p2 = 0x80
+				p2 = 0x10 if continueSegwit else 0x80
 		apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x00, p2 ]
 		params = bytearray([version, 0x00, 0x00, 0x00])
 		writeVarint(len(outputList), params)
@@ -215,8 +215,6 @@ class btchip:
 			if currentIndex != inputIndex:
 				script = bytearray()
 			writeVarint(len(script), params)
-			if len(script) == 0:
-				params.extend(sequence)
 			apdu.append(len(params))
 			apdu.extend(params)
 			self.dongle.exchange(bytearray(apdu))
@@ -234,6 +232,10 @@ class btchip:
 				apdu.extend(params)
 				self.dongle.exchange(bytearray(apdu))
 				offset += blockLength
+			if len(script) == 0:
+			    apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00, len(sequence) ]
+			    apdu.extend(sequence)
+			    self.dongle.exchange(bytearray(apdu))
 			currentIndex += 1
 
 	def finalizeInput(self, outputAddress, amount, fees, changePath, rawTx=None):
