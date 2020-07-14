@@ -9,6 +9,7 @@ from .serializations import PSBT
 from .base58 import xpub_to_pub_hex
 from .errors import (
     UnknownDeviceError,
+    UnavailableActionError,
     BAD_ARGUMENT,
     NOT_IMPLEMENTED,
 )
@@ -206,10 +207,12 @@ def getdescriptors(client, account=0):
 
     for internal in [False, True]:
         descriptors = []
-        desc1 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.PKH, account=account)
-        desc2 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.SH_WPKH, account=account)
-        desc3 = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=AddressType.WPKH, account=account)
-        for desc in [desc1, desc2, desc3]:
+        for addr_type in (AddressType.PKH, AddressType.SH_WPKH, AddressType.WPKH):
+            try:
+                desc = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=addr_type, account=account)
+            except UnavailableActionError:
+                # Device does not support this address type or network. Skip.
+                continue
             if not isinstance(desc, Descriptor):
                 return desc
             descriptors.append(desc.serialize())

@@ -3,12 +3,14 @@
 import json
 import logging
 import sys
+from typing import Callable
 
 from . import commands, __version__
 from .cli import HWIArgumentParser
 from .errors import handle_errors, DEVICE_NOT_INITIALIZED
 
 try:
+    from .ui.ui_bitbox02pairing import Ui_BitBox02PairingDialog
     from .ui.ui_displayaddressdialog import Ui_DisplayAddressDialog
     from .ui.ui_getxpubdialog import Ui_GetXpubDialog
     from .ui.ui_getkeypooloptionsdialog import Ui_GetKeypoolOptionsDialog
@@ -23,7 +25,9 @@ except ImportError:
 
 from PySide2.QtGui import QRegExpValidator
 from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QMainWindow
-from PySide2.QtCore import QRegExp, Signal, Slot
+from PySide2.QtCore import QCoreApplication, QRegExp, Signal, Slot
+
+import bitbox02.util
 
 def do_command(f, *args, **kwargs):
     result = {}
@@ -207,6 +211,41 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
 
+class BitBox02PairingDialog(QDialog):
+    def __init__(self, pairing_code: str, device_response: Callable[[], bool]):
+        super(BitBox02PairingDialog, self).__init__()
+        self.ui = Ui_BitBox02PairingDialog()
+        self.ui.setupUi(self)
+        self.setWindowTitle('Verify BitBox02 pairing code')
+        self.ui.pairingCode.setText(pairing_code.replace("\n", "<br>"))
+        self.ui.buttonBox.setEnabled(False)
+        self.device_response = device_response
+
+    def enable_buttons(self):
+        self.ui.buttonBox.setEnabled(True)
+
+class BitBox02NoiseConfig(bitbox02.util.BitBoxAppNoiseConfig):
+    """ GUI elements to perform the BitBox02 pairing and attestatoin check """
+
+    def show_pairing(self, code: str, device_response: Callable[[], bool]) -> bool:
+        dialog = BitBox02PairingDialog(code, device_response)
+        dialog.show()
+        # render the window since the next operation is blocking
+        QCoreApplication.processEvents()
+        if not device_response():
+            return False
+        dialog.enable_buttons()
+        dialog.exec_()
+        return dialog.result() == QDialog.Accepted
+
+    def attestation_check(self, result: bool) -> None:
+        if not result:
+            QMessageBox.warning(
+                None,
+                "BitBox02 attestation check",
+                "BitBox02 attestation check failed. Your BitBox02 might not be genuine. Please contact support@shiftcrypto.ch if the problem persists.",
+            )
+
 class HWIQt(QMainWindow):
     def __init__(self, passphrase='', testnet=False):
         super(HWIQt, self).__init__()
@@ -293,7 +332,6 @@ class HWIQt(QMainWindow):
 
         self.ui.getxpub_button.setEnabled(True)
         self.ui.signtx_button.setEnabled(True)
-        self.ui.signmsg_button.setEnabled(True)
         self.ui.display_addr_button.setEnabled(True)
         self.ui.getkeypool_opts_button.setEnabled(True)
 
@@ -302,7 +340,12 @@ class HWIQt(QMainWindow):
         self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase)
         self.client.is_testnet = self.testnet
 
-        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] == 'trezor' or self.device_info['type'] == 'keepkey')
+        if self.device_info['type'] == 'bitbox02':
+            self.client.set_noise_config(BitBox02NoiseConfig())
+
+        self.ui.setpass_button.setEnabled(self.device_info['type'] != 'bitbox02')
+        self.ui.signmsg_button.setEnabled(self.device_info['type'] != 'bitbox02')
+        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] in ('trezor', 'keepkey', 'bitbox02', ))
 
         self.get_device_info()
 
