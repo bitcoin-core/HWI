@@ -1,5 +1,6 @@
 # Defines errors and error codes
 
+from typing import Any, Dict, Iterator, Optional
 from contextlib import contextmanager
 
 # Error codes
@@ -24,74 +25,79 @@ DEVICE_NOT_INITIALIZED = -18
 
 # Exceptions
 class HWWError(Exception):
-    def __init__(self, msg, code):
+    def __init__(self, msg: str, code: int):
         Exception.__init__(self)
         self.code = code
         self.msg = msg
 
-    def get_code(self):
+    def get_code(self) -> int:
         return self.code
 
-    def get_msg(self):
+    def get_msg(self) -> str:
         return self.msg
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.msg
 
 class NoPasswordError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, NO_PASSWORD)
 
 class UnavailableActionError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, UNAVAILABLE_ACTION)
 
 class DeviceAlreadyInitError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_ALREADY_INIT)
 
 class DeviceNotReadyError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_NOT_READY)
 
 class DeviceAlreadyUnlockedError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_ALREADY_UNLOCKED)
 
 class UnknownDeviceError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, UNKNWON_DEVICE_TYPE)
 
 class NotImplementedError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, NOT_IMPLEMENTED)
 
 class PSBTSerializationError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, INVALID_TX)
 
 class BadArgumentError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, BAD_ARGUMENT)
 
 class DeviceFailureError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, UNKNOWN_ERROR)
 
 class ActionCanceledError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, ACTION_CANCELED)
 
 class DeviceConnectionError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_CONN_ERROR)
 
 class DeviceBusyError(HWWError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_BUSY)
 
 @contextmanager
-def handle_errors(msg=None, result=None, code=UNKNOWN_ERROR, debug=False):
+def handle_errors(
+    msg: Optional[str] = None,
+    result: Optional[Dict[str, Any]] = None,
+    code: int = UNKNOWN_ERROR,
+    debug: bool = False,
+) -> Iterator[None]:
     if result is None:
         result = {}
 
