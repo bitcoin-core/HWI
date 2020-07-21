@@ -88,7 +88,7 @@ The below table lists what devices and features are supported for each device.
 
 Please also see [docs](docs/) for additional information about each device.
 
-| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard | D'cent |
+| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | Digital BitBox | KeepKey | Coldcard | D'CENT |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Support Planned | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Implemented | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |

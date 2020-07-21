@@ -176,7 +176,7 @@ class DcentClient(HardwareWalletClient):
             # Prepare inputs
             inputs = []
             isTxToSegwit = False
-            # D'Cent only support p2wpkh, p2pkh
+            # D'CENT only support p2wpkh, p2pkh
             for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
                 # Set the input stuff
                 input = {}
@@ -334,7 +334,8 @@ class DcentClient(HardwareWalletClient):
             p += 1
         return {'psbt': tx.serialize()}
     
-    # Display address of specified type on the device. Only supports single-key based addresses.
+    # The D'CENT does not allow you to display_address it via software. That is done on the device itself. 
+    # The D'CENT do not display address on the device screen. Just return the address. Only supports single-key based addresses.
     @dcent_exception
     def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
         if not is_vaild_keypath(keypath):
@@ -343,7 +344,6 @@ class DcentClient(HardwareWalletClient):
             raise BadArgumentError("The D'CENT do not support P2SH address")
         address = Dcent.getAddress(self.transport, keypath, bech32, self.is_testnet)
         return {'address': address} 
-
 
     # Close the device
     def close(self):
