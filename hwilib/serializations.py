@@ -131,9 +131,6 @@ def ser_string_vector(v):
         r += ser_string(sv)
     return r
 
-def Base64ToHex(s):
-    return binascii.hexlify(base64.b64decode(s))
-
 def HexToBase64(s):
     return base64.b64encode(binascii.unhexlify(s))
 
@@ -733,9 +730,9 @@ class PSBT(object):
         self.unknown = {}
 
     def deserialize(self, psbt):
-        hexstring = Base64ToHex(psbt.strip())
-        f = BufferedReader(BytesIO(binascii.unhexlify(hexstring)))
-        end = len(binascii.unhexlify(hexstring))
+        psbt_bytes = base64.b64decode(psbt.strip())
+        f = BufferedReader(BytesIO(psbt_bytes))
+        end = len(psbt_bytes)
 
         # Read the magic bytes
         magic = f.read(5)
