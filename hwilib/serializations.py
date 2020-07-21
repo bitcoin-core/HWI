@@ -792,8 +792,10 @@ class PSBT(object):
             input.deserialize(f)
             self.inputs.append(input)
 
-            if input.non_witness_utxo and input.non_witness_utxo.rehash() and input.non_witness_utxo.sha256 != txin.prevout.sha256:
-                raise PSBTSerializationError("Non-witness UTXO does not match outpoint hash")
+            if input.non_witness_utxo:
+                input.non_witness_utxo.rehash()
+                if input.non_witness_utxo.sha256 != txin.prevout.hash:
+                    raise PSBTSerializationError("Non-witness UTXO does not match outpoint hash")
 
         if (len(self.inputs) != len(self.tx.vin)):
             raise PSBTSerializationError("Inputs provided does not match the number of inputs in transaction")
