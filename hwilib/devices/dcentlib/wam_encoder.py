@@ -5,17 +5,16 @@
 #/* */
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
+import json
+from io import BytesIO
 
 from . import wam_log as log
 from . import wam_debug as DEBUG
-
-from .protobuf import general_pb2
-
-import json
-
+from . import protobuf as message
 from . import wam_encoder_device as encoder_device
 from . import wam_encoder_coin as encoder_coin
 from . import wam_encoder_bitcoin as encoder_bitcoin
+from . import prototrez as proto
 
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
@@ -28,12 +27,12 @@ _pb_version_dicts = {
 }
 
 _pb_cointype_dicts = {
-	"device" : general_pb2.device,
-	"coin" : general_pb2.coin,
-	"bitcoin" : general_pb2.bitcoin,
-	"bitcoin-testnet" : general_pb2.bitcoin_testnet,
-	"bitcoin-segwit" : general_pb2.bitcoin_segwit,
-	"bitcoin-segwit-testnet" : general_pb2.bitcoin_segwit_testnet,
+	"device" : message.cointype_t.device,
+	"coin" : message.cointype_t.coin,
+	"bitcoin" : message.cointype_t.bitcoin,
+	"bitcoin-testnet" : message.cointype_t.bitcoin_testnet,
+	"bitcoin-segwit" : message.cointype_t.bitcoin_segwit,
+	"bitcoin-segwit-testnet" : message.cointype_t.bitcoin_segwit_testnet,
 }
 
 _pb_status_dicts = {
@@ -42,19 +41,19 @@ _pb_status_dicts = {
 }
 
 _pb_error_code_dicts = {
-	"none" : general_pb2.none,
-	"invalid_access" : general_pb2.invalid_access,
-	"internal_process" : general_pb2.internal_process,
-	"memory_access" : general_pb2.memory_access,
-	"invalid_format" : general_pb2.invalid_format,
-	"not_support" : general_pb2.not_support,
-	"invalid_command" : general_pb2.invalid_command,
-	"wrong_length" : general_pb2.wrong_length,
-	"wrong_number" : general_pb2.wrong_number,
-	"lowlevel_protocol" : general_pb2.lowlevel_protocol,
-	"user_cancel" : general_pb2.user_cancel,
-	"device_busy" : general_pb2.device_busy,
-	"unknown" : general_pb2.unknown
+	"none" : message.error_code_t.none,
+	"invalid_access" : message.error_code_t.invalid_access,
+	"internal_process" : message.error_code_t.internal_process,
+	"memory_access" : message.error_code_t.memory_access,
+	"invalid_format" : message.error_code_t.invalid_format,
+	"not_support" : message.error_code_t.not_support,
+	"invalid_command" : message.error_code_t.invalid_command,
+	"wrong_length" : message.error_code_t.wrong_length,
+	"wrong_number" : message.error_code_t.wrong_number,
+	"lowlevel_protocol" : message.error_code_t.lowlevel_protocol,
+	"user_cancel" : message.error_code_t.user_cancel,
+	"device_busy" : message.error_code_t.device_busy,
+	"unknown" : message.error_code_t.unknown
 }
 
 _pb_json_map_dicts = {
@@ -156,8 +155,9 @@ class Encoder:
 
 		encoded_list = []
 		for pb_request in pb_request_list:
-			encoded = pb_request.SerializeToString()
-			#log.d("encoded : " + str(encoded))
+			data = BytesIO()
+			proto.dump_message(data, pb_request)
+			encoded = data.getvalue()
 			encoded_list.append(encoded)
 
 		return encoded_list
@@ -169,9 +169,10 @@ class Encoder:
 		pb_response_list = []
 		is_error_case = False
 		for encoded_stream in stream_list:
-			pb_response = general_pb2.response()
-			pb_response.ParseFromString(encoded_stream)
-			if pb_response.body.HasField("error") is True:
+			data = BytesIO(encoded_stream)
+			pb_response = proto.load_message(data, message.response)
+			
+			if pb_response.body.error is not None:
 				json_error = json_get_error(pb_response.body.error)
 				json_body = {
 					"command" : self.command,
@@ -230,13 +231,13 @@ class Encoder:
 #/* ############################################################ */
 
 def get_has_more(stream):
-	pb_response = general_pb2.response()
-	pb_response.ParseFromString(stream)
+	data = BytesIO(stream)
+	pb_response = proto.load_message(data, message.response)
 	return pb_response.body.has_more
 
 def get_is_error(stream):
-	pb_response = general_pb2.response()
-	pb_response.ParseFromString(stream)
+	data = BytesIO(stream)
+	pb_response = proto.load_message(data, message.response)
 	return pb_response.header.is_error
 
 #/* ############################################################ */

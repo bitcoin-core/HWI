@@ -105,8 +105,7 @@ install_requires = \
  'libusb1>=1.7,<2.0',
  'mnemonic>=0.18.0,<0.19.0',
  'pyaes>=1.6,<2.0',
- 'typing-extensions>=3.7,<4.0',
- 'protobuf>=3.12.2']
+ 'typing-extensions>=3.7,<4.0']
 
 extras_require = \
 {'qt': ['pyside2>=5.14.0,<6.0.0']}

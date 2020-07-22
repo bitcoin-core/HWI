@@ -3,9 +3,10 @@
 #/* */
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
-
+from io import BytesIO
 from . import wam_log as log
-
+from . import prototrez as proto
+from . import protobuf as message
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
 #/* */
@@ -53,6 +54,24 @@ def bin2hexstring(hexbin):
 
 def int2bytes(value):
 	return value.to_bytes((value.bit_length() + 7) // 8, byteorder='big', signed=False)
+
+def pb_serializeToString(msg):
+	data = BytesIO()
+	proto.dump_message(data, msg)
+	ser = data.getvalue()
+	return ser
+
+def pb_serializeFromString(stream, messageType):
+	data = BytesIO(stream)
+	pb_response = proto.load_message(data, messageType)
+	return pb_response
+
+def pb_makeTransactionReq():
+	h = message.req_header_t()
+	b = message.req_body_t(message.command_t())
+	t = message.request(h, b)
+	return t
+
 
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */

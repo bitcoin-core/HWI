@@ -10,10 +10,8 @@ from . import wam_log as log
 from . import wam_debug as DEBUG
 from . import wam_error as error
 
-from .protobuf import device_pb2
-from .protobuf import general_pb2
-from .protobuf import nanopb_pb2
-
+from . import protobuf as message
+from . import wam_util as util
 import json
 
 #/* ############################################################ */
@@ -21,14 +19,15 @@ import json
 #/* */
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
+MAX_LABEL_SIZE = 11
 
 _pb_state_dicts = {
-	"init" : device_pb2.init,
-	"ready" : device_pb2.ready,
-	"secure" : device_pb2.secure,
-	"locked_fp" : device_pb2.locked_fp,
-	"locked_pin" : device_pb2.locked_pin,
-	"invalid" : device_pb2.invalid
+	"init" : message.wallet_state_t.init,
+	"ready" : message.wallet_state_t.ready,
+	"secure" : message.wallet_state_t.secure,
+	"locked_fp" : message.wallet_state_t.locked_fp,
+	"locked_pin" : message.wallet_state_t.locked_pin,
+	"invalid" : message.wallet_state_t.invalid
 }
 
 _pb_json_map_dicts = {
@@ -56,28 +55,21 @@ def json_get(key, pb_value):
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
 
-def get_label_max_size():
-	desc = device_pb2.set_label_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["label"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
 def pb_get_parameter_set_label(json_parameter):
-	if len(json_parameter["label"]) >= get_label_max_size():
-		error.raiseWam("max label len is " + str(get_label_max_size()))
+	if len(json_parameter["label"]) >= MAX_LABEL_SIZE:
+		error.raiseWam("max label len is " + str(MAX_LABEL_SIZE))
 
-	pb_parameter = device_pb2.set_label_req_parameter_t()
-	pb_parameter.label = json_parameter["label"]
-	return pb_parameter.SerializeToString()
+	pb_parameter = message.set_label_req_parameter_t(json_parameter["label"])
+	return util.pb_serializeToString(pb_parameter)
 
 def pb_get_parameter_init_wallet(json_parameter):
 	#
 	# no parameter check because this command only for test mode
 
 	mnemonic_str = json_parameter["mnemonic"]
-	pb_parameter = device_pb2.init_wallet_req_parameter_t()
+	pb_parameter = message.init_wallet_req_parameter_t()
 	pb_parameter.mnemonic.extend(mnemonic_str.split(' '))
-	return pb_parameter.SerializeToString()
+	return util.pb_serializeToString(pb_parameter)
 
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
@@ -88,11 +80,10 @@ def pb_get_parameter_init_wallet(json_parameter):
 def encode_getinfo(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
-
-	pb_request.body.command.value = general_pb2.command_t.get_info
+	pb_request.body.command.value = message.device_t.get_info
 
 	pb_request_list.append(pb_request)
 
@@ -101,11 +92,11 @@ def encode_getinfo(request_to, version, json_parameter):
 def encode_setlabel(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
 
-	pb_request.body.command.value = general_pb2.command_t.set_label
+	pb_request.body.command.value = message.device_t.set_label
 	pb_request.body.parameter = pb_get_parameter_set_label(json_parameter)
 
 	pb_request_list.append(pb_request)
@@ -115,11 +106,11 @@ def encode_setlabel(request_to, version, json_parameter):
 def encode_init_wallet(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
 
-	pb_request.body.command.value = general_pb2.command_t.init_wallet
+	pb_request.body.command.value = message.device_t.init_wallet
 	pb_request.body.parameter = pb_get_parameter_init_wallet(json_parameter)
 
 	pb_request_list.append(pb_request)
@@ -129,11 +120,11 @@ def encode_init_wallet(request_to, version, json_parameter):
 def encode_reboot_to_bl(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
 
-	pb_request.body.command.value = general_pb2.command_t.reboot_to_bl
+	pb_request.body.command.value = message.device_t.reboot_to_bl
 
 	pb_request_list.append(pb_request)
 
@@ -186,14 +177,12 @@ def decode_getinfo(command, pb_response_list):
 		DEBUG.NOT_REACHED()
 	
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.get_info:
+		if pb_response.body.command.value != message.device_t.get_info:
 			DEBUG.NOT_REACHED()
-
-		pb_get_info_parameter = device_pb2.get_info_res_parameter_t()
-		pb_get_info_parameter.ParseFromString(pb_response.body.parameter)
+		pb_get_info_parameter = util.pb_serializeFromString(pb_response.body.parameter, message.get_info_res_parameter_t)
 		this_param = pb_get_info_parameter
 
 		json_device_id = this_param.devid
@@ -228,10 +217,10 @@ def decode_setlabel(command, pb_response_list):
 		DEBUG.NOT_REACHED()
 	
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.set_label:
+		if pb_response.body.command.value != message.device_t.set_label:
 			DEBUG.NOT_REACHED()
 
 	# //
@@ -251,10 +240,10 @@ def decode_init_wallet(command, pb_response_list):
 		DEBUG.NOT_REACHED()
 	
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.init_wallet:
+		if pb_response.body.command.value != message.device_t.init_wallet:
 			DEBUG.NOT_REACHED()
 
 	# //

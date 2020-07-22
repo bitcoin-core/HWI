@@ -19,8 +19,6 @@ from . import wam_debug as DEBUG
 from . import wam_encoder as encoder
 from . import wam_error as error
 
-from .protobuf import general_pb2
-
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
 #/* */

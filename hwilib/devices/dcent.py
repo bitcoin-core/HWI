@@ -10,7 +10,7 @@ from io import BytesIO, BufferedReader
 from .dcentlib.transport_usb import TransportUsb
 from .dcentlib.transport import TransportRunner as Dcent
 from .dcentlib.wam_error import WamException
-from .dcentlib.protobuf import general_pb2 as ErrType
+from .dcentlib.protobuf import error_code_t as ErrType
 
 from ..hwwclient import HardwareWalletClient
 from ..errors import (

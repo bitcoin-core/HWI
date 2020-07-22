@@ -5,7 +5,7 @@
 #/* ############################################################ */
 
 from . import wam_log as log
-from .protobuf import general_pb2
+from .protobuf import error_code_t
 from . import wam_encoder as encoder
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
@@ -28,7 +28,7 @@ class WamException(Exception):
 		return self.errmsg
 
 def raiseWam(msg):
-	raise WamException(general_pb2.invalid_format, msg)
+	raise WamException(error_code_t.invalid_format, msg)
 
 def raiseWamByCode(code):
   	raise WamException(encoder.pb_get("error.code", code), code)

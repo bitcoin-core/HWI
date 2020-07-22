@@ -11,9 +11,7 @@ from . import wam_debug as DEBUG
 from . import wam_util as util
 from . import wam_error as error
 
-from .protobuf import coin_pb2
-from .protobuf import general_pb2
-from .protobuf import nanopb_pb2
+from . import protobuf as message
 
 import json
 
@@ -22,6 +20,17 @@ import json
 #/* */
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
+#
+MAX_DATE_SIZE = 17
+MAX_COIN_GROUP_SIZE = 16
+MAX_COIN_NAME_SIZE = 16
+MAX_LABEL_SIZE = 15
+MAX_BALANCE_SIZE = 15
+MAX_ADDRESS_PATH_SIZE = 25
+
+#
+MAX_PUBKEY_BIP32NAME_SIZE = 17
+MAX_PUBKEY_PATH_SIZE = 51
 
 def convert_dics(dics):
 	converted_dics = {}
@@ -34,48 +43,12 @@ def convert_dics(dics):
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
 
-def get_date_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["date"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_coin_group_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["coin_group"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_coin_name_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["coin_name"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_label_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["label"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_balance_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["balance"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_address_path_max_size():
-	desc = coin_pb2.sync_account_info_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["address_path"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
 def pb_get_parameter_sync_account(json_parameter):
 
 	log.d("[ENTER]")
 
-	if len(json_parameter["date"]) >= get_date_max_size():
-		error.raiseWam("max date len is " + str(get_date_max_size()))
+	if len(json_parameter["date"]) >= MAX_DATE_SIZE:
+		error.raiseWam("max date len is " + str(MAX_DATE_SIZE))
 
 	json_date = json_parameter["date"]
 	log.v("json_date = "+json_date)
@@ -84,18 +57,18 @@ def pb_get_parameter_sync_account(json_parameter):
 	account_idx = 0
 	pb_parameter_list = []
 	for json_account in json_parameter["account"]:
-		if len(json_account["coin_group"]) >= get_coin_group_max_size():
-			error.raiseWam("max coin group len is " + str(get_coin_group_max_size()))
-		elif len(json_account["coin_name"]) >= get_coin_name_max_size():
-			error.raiseWam("max coin name len is " + str(get_coin_name_max_size()))
-		elif len(json_account["label"]) >= get_label_max_size():
-			error.raiseWam("max label len is " + str(get_label_max_size()))
-		elif len(json_account["balance"]) >= get_balance_max_size():
-			error.raiseWam("max balance len is " + str(get_balance_max_size()))
-		elif len(json_account["address_path"]) >= get_address_path_max_size():
-			error.raiseWam("max address path len is " + str(get_address_path_max_size()))
+		if len(json_account["coin_group"]) >= MAX_COIN_GROUP_SIZE:
+			error.raiseWam("max coin group len is " + str(MAX_COIN_GROUP_SIZE))
+		elif len(json_account["coin_name"]) >= MAX_COIN_NAME_SIZE:
+			error.raiseWam("max coin name len is " + str(MAX_COIN_NAME_SIZE))
+		elif len(json_account["label"]) >= MAX_LABEL_SIZE:
+			error.raiseWam("max label len is " + str(MAX_LABEL_SIZE))
+		elif len(json_account["balance"]) >= MAX_BALANCE_SIZE:
+			error.raiseWam("max balance len is " + str(MAX_BALANCE_SIZE))
+		elif len(json_account["address_path"]) >= MAX_ADDRESS_PATH_SIZE:
+			error.raiseWam("max address path len is " + str(MAX_ADDRESS_PATH_SIZE))
 
-		pb_parameter = coin_pb2.sync_account_info_req_parameter_t()
+		pb_parameter = message.sync_account_info_req_parameter_t()
 		pb_parameter.total_num = total_num
 		pb_parameter.account_idx = account_idx
 		pb_parameter.date = json_date
@@ -104,32 +77,20 @@ def pb_get_parameter_sync_account(json_parameter):
 		pb_parameter.label = json_account["label"]
 		pb_parameter.balance = json_account["balance"]
 		pb_parameter.address_path = json_account["address_path"]
-	
-		pb_parameter_list.append(pb_parameter.SerializeToString())
+		
+		pb_parameter_list.append(util.pb_serializeToString(pb_parameter))
 		account_idx += 1
 
 	log.d("LEAVE")
 		
 	return pb_parameter_list
 
-def get_bip32name_max_size():
-	desc = coin_pb2.extract_pubkey_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["bip32name"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
-def get_key_path_max_size():
-	desc = coin_pb2.extract_pubkey_req_parameter_t.DESCRIPTOR
-	field_option = desc.fields_by_name["key_path"].GetOptions()
-	max_value = field_option.Extensions[nanopb_pb2.nanopb].max_size
-	return max_value
-
 def pb_get_parameter_xpub(json_parameter):
-	pb_parameter = coin_pb2.extract_pubkey_req_parameter_t()
+	pb_parameter = message.extract_pubkey_req_parameter_t()
 
 	if "bip32name" in json_parameter:
-		if len(json_parameter["bip32name"]) >= get_bip32name_max_size():
-			error.raiseWam("max bip32name len is " + str(get_bip32name_max_size()))
+		if len(json_parameter["bip32name"]) >= MAX_PUBKEY_BIP32NAME_SIZE:
+			error.raiseWam("max bip32name len is " + str(MAX_PUBKEY_BIP32NAME_SIZE))
 		pb_parameter.bip32name = json_parameter["bip32name"]
 	else:
 		pb_parameter.bip32name = "Bitcoin seed"
@@ -137,12 +98,12 @@ def pb_get_parameter_xpub(json_parameter):
 	##
 	#
 
-	if len(json_parameter["key"]) >= get_key_path_max_size():
-		error.raiseWam("max key path len is " + str(get_key_path_max_size()))
+	if len(json_parameter["key"]) >= MAX_PUBKEY_PATH_SIZE:
+		error.raiseWam("max key path len is " + str(MAX_PUBKEY_PATH_SIZE))
 
 	pb_parameter.key_path = json_parameter["key"]
 		
-	return pb_parameter.SerializeToString()
+	return util.pb_serializeToString(pb_parameter)
 
 #/* ############################################################ */
 #/* //////////////////////////////////////////////////////////// */
@@ -155,11 +116,11 @@ def encode_sync_account(request_to, version, json_parameter):
 	
 	pb_parameter_list = pb_get_parameter_sync_account(json_parameter)
 	for pb_parameter in pb_parameter_list:
-		pb_request = general_pb2.request()
+		pb_request = util.pb_makeTransactionReq()
 		pb_request.header.version = version
 		pb_request.header.request_to = request_to
 
-		pb_request.body.command.value = general_pb2.command_t.sync_account_info
+		pb_request.body.command.value = message.coin_t.sync_account_info
 		pb_request.body.parameter = pb_parameter
 
 		pb_request_list.append(pb_request)
@@ -169,11 +130,11 @@ def encode_sync_account(request_to, version, json_parameter):
 def encode_get_account_info(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
 
-	pb_request.body.command.value = general_pb2.command_t.get_account_info
+	pb_request.body.command.value = message.coin_t.get_account_info
 
 	pb_request_list.append(pb_request)
 
@@ -182,11 +143,11 @@ def encode_get_account_info(request_to, version, json_parameter):
 def encode_xpub(request_to, version, json_parameter):
 	pb_request_list = []
 	
-	pb_request = general_pb2.request()
+	pb_request = util.pb_makeTransactionReq()
 	pb_request.header.version = version
 	pb_request.header.request_to = request_to
 
-	pb_request.body.command.value = general_pb2.command_t.extract_pubkey
+	pb_request.body.command.value = message.coin_t.extract_pubkey
 	pb_request.body.parameter = pb_get_parameter_xpub(json_parameter)
 
 	pb_request_list.append(pb_request)
@@ -215,10 +176,10 @@ def encode(request_to, version, json_body):
 def decode_sync_account(command, pb_response_list):
 
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.sync_account_info:
+		if pb_response.body.command.value != message.coin_t.sync_account_info:
 			DEBUG.NOT_REACHED()
 
 	# //
@@ -239,14 +200,13 @@ def decode_get_account_info(command, pb_response_list):
 	account_idx = 0
 	total_num = 0
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.get_account_info:
+		if pb_response.body.command.value != message.coin_t.get_account_info:
 			DEBUG.NOT_REACHED()
 
-		pb_get_account_info_parameter = coin_pb2.get_account_info_res_parameter_t()
-		pb_get_account_info_parameter.ParseFromString(pb_response.body.parameter)
+		pb_get_account_info_parameter = util.pb_serializeFromString(pb_response.body.parameter, message.get_account_info_res_parameter_t)
 		this_param = pb_get_account_info_parameter
 
 		# //
@@ -269,7 +229,7 @@ def decode_get_account_info(command, pb_response_list):
 			"address_path" : this_param.address_path
 		}
 
-		if this_param.HasField("coin_group"):
+		if this_param.coin_group is not None:
 			json_account["coin_group"] = this_param.coin_group
 
 		json_account_list.append(json_account)
@@ -299,14 +259,13 @@ def decode_xpub(command, pb_response_list):
 
 	json_public_key = ""
 	for pb_response in pb_response_list:
-		if pb_response.body.HasField("error") is True:
+		if pb_response.body.error is not None:
 			DEBUG.NOT_REACHED()	# Error already Checked
 
-		if pb_response.body.command.value != general_pb2.command_t.extract_pubkey:
+		if pb_response.body.command.value != message.coin_t.extract_pubkey:
 			DEBUG.NOT_REACHED()
 
-		pb_xpub_parameter = coin_pb2.extract_pubkey_res_parameter_t()
-		pb_xpub_parameter.ParseFromString(pb_response.body.parameter)
+		pb_xpub_parameter = util.pb_serializeFromString(pb_response.body.parameter, message.extract_pubkey_res_parameter_t)
 		this_param = pb_xpub_parameter
 		json_public_key += util.bin2hexstring(this_param.pubkey)
 
