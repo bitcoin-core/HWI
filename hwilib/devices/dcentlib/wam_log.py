@@ -30,7 +30,7 @@ class LogLevel(Enum):
 #/* //////////////////////////////////////////////////////////// */
 #/* ############################################################ */
 
-_vIsLogLevel = LogLevel.debug.value
+_vIsLogLevel = LogLevel.error.value
 #_vIsLogLevel = LogLevel.debug
 
 #/* ############################################################ */
