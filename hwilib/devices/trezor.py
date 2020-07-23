@@ -257,7 +257,7 @@ class TrezorClient(HardwareWalletClient):
                 if is_ms:
                     # Add to txinputtype
                     txinputtype.multisig = multisig
-                    if not psbt_in.witness_utxo:
+                    if not is_wit:
                         if utxo.is_p2sh:
                             txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
                         else:
