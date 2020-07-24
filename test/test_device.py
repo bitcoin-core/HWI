@@ -304,9 +304,9 @@ class TestSignTx(DeviceTestCase):
             # Single input PSBTs will be fully signed by first signer
             for psbt_input in first_psbt.inputs[1:]:
                 for pubkey, path in psbt_input.hd_keypaths.items():
-                    psbt_input.hd_keypaths[pubkey] = (0,) + path[1:]
+                    psbt_input.hd_keypaths[pubkey] = [0] + path[1:]
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
-                second_psbt.inputs[0].hd_keypaths[pubkey] = (0,) + path[1:]
+                second_psbt.inputs[0].hd_keypaths[pubkey] = [0] + path[1:]
 
             single_input = len(first_psbt.inputs) == 1
 

@@ -14,10 +14,10 @@ from binascii import hexlify, unhexlify
 from typing import List
 b58_digits: str = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
-def sha256(s):
+def sha256(s: bytes) -> bytes:
     return hashlib.new('sha256', s).digest()
 
-def hash256(s):
+def hash256(s: bytes) -> bytes:
     return sha256(sha256(s))
 
 def encode(b: bytes) -> str:
@@ -72,10 +72,11 @@ def decode(s: str) -> bytes:
             break
     return b'\x00' * pad + res
 
-def get_xpub_fingerprint(s: str) -> str:
+def get_xpub_fingerprint(s: str) -> int:
     data = decode(s)
     fingerprint = data[5:9]
-    return struct.unpack("<I", fingerprint)[0]
+    result: int = struct.unpack("<I", fingerprint)[0]
+    return result
 
 def get_xpub_fingerprint_hex(xpub: str) -> str:
     data = decode(xpub)
