@@ -108,6 +108,11 @@ class LedgerClient(HardwareWalletClient):
 
         self.app = btchip(self.dongle)
 
+    # Retrieves current application name or None if in dashboard
+    @ledger_exception
+    def get_app_name(self):
+        return self.app.getAppName()
+
     # Must return a dict with the xpub
     # Retrieves the public key at the specified BIP 32 derivation path
     @ledger_exception
@@ -404,6 +409,7 @@ def enumerate(password=''):
             with handle_errors(common_err_msgs["enumerate"], d_data):
                 try:
                     client = LedgerClient(path, password)
+                    d_data['app_name'] = client.get_app_name()
                     d_data['fingerprint'] = client.get_master_fingerprint_hex()
                     d_data['needs_pin_sent'] = False
                     d_data['needs_passphrase_sent'] = False
