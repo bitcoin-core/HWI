@@ -26,8 +26,10 @@ from binascii import hexlify, unhexlify
 
 class btchip:
 	BTCHIP_CLA = 0xe0
+	BTCHIP_CLA_COMMON_SDK = 0xb0
 	BTCHIP_JC_EXT_CLA = 0xf0
 
+	BTCHIP_INS_GET_APP_NAME_AND_VERSION = 0x01
 	BTCHIP_INS_SET_ALTERNATE_COIN_VERSION = 0x14
 	BTCHIP_INS_SETUP = 0x20
 	BTCHIP_INS_VERIFY_PIN = 0x22
@@ -406,6 +408,23 @@ class btchip:
 		apdu.extend(params)
 		response = self.dongle.exchange(bytearray(apdu))
 		return response
+
+	def getAppName(self):
+		apdu = [ self.BTCHIP_CLA_COMMON_SDK, self.BTCHIP_INS_GET_APP_NAME_AND_VERSION, 0x00, 0x00, 0x00 ]
+		try:
+			response = self.dongle.exchange(bytearray(apdu))
+			name_len = response[1]
+			name = response[2:][:name_len]
+			if b'OLOS' not in name:
+				return name.decode('ascii')
+		except BTChipException as e:
+			if e.sw == 0x6faa:
+				# ins not implemented"
+				return None
+			if e.sw == 0x6d00:
+				# Not in an app, return just a string saying that
+				return "not in an app"
+			raise
 
 	def getFirmwareVersion(self):
 		result = {}
