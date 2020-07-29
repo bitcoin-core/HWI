@@ -359,7 +359,7 @@ def enumerate(password=''):
         
         path = d['path'].decode()
         d_data['type'] = 'dcent'
-        d_data['model'] = 'dcenthardwarewallet'
+        d_data['model'] = 'dcentbiometricwallet'
         d_data['path'] = path
         d_data['needs_pin_sent'] = False
         d_data['needs_passphrase_sent'] = False
