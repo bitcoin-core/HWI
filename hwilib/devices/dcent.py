@@ -353,28 +353,27 @@ class DcentClient(HardwareWalletClient):
 def enumerate(password=''):
     results = []
     devices = hid.enumerate(IoTrust_VENDOR_ID, IoTrust_DEVICE_ID)
-
+    
     for d in devices:
-        if ('interface_number' in d and d['interface_number'] == 0):
-            d_data = {}
-            
-            path = d['path'].decode()
-            d_data['type'] = 'dcent'
-            d_data['model'] = 'dcenthardwarewallet'
-            d_data['path'] = path
-            d_data['needs_pin_sent'] = False
-            d_data['needs_passphrase_sent'] = False
+        d_data = {}
+        
+        path = d['path'].decode()
+        d_data['type'] = 'dcent'
+        d_data['model'] = 'dcenthardwarewallet'
+        d_data['path'] = path
+        d_data['needs_pin_sent'] = False
+        d_data['needs_passphrase_sent'] = False
 
-            client = None
-            with handle_errors(common_err_msgs["enumerate"], d_data):
-                try:
-                    client = DcentClient(path)
-                    d_data['fingerprint'] = client.get_master_fingerprint_hex()
-                except RuntimeError as e:
-                   raise e
-            
-            if client:
-                client.close()
+        client = None
+        with handle_errors(common_err_msgs["enumerate"], d_data):
+            try:
+                client = DcentClient(path)
+                d_data['fingerprint'] = client.get_master_fingerprint_hex()
+            except RuntimeError as e:
+                raise e
+        
+        if client:
+            client.close()
 
-            results.append(d_data)
+        results.append(d_data)
     return results
