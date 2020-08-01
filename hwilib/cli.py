@@ -119,7 +119,7 @@ def process_commands(cli_args):
     parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
-    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
+    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default=None)
     parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
     parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')

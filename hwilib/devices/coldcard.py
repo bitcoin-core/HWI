@@ -69,7 +69,9 @@ def coldcard_exception(f):
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path, password=None, expert=False):
+        if password is None:
+            password = ''
         super(ColdcardClient, self).__init__(path, password, expert)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
@@ -313,7 +315,7 @@ class ColdcardClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
-def enumerate(password=''):
+def enumerate(password=None):
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
     devices.append({'path': CC_SIMULATOR_SOCK.encode()})

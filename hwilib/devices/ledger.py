@@ -91,7 +91,7 @@ def ledger_exception(f):
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path, password=None, expert=False):
         super(LedgerClient, self).__init__(path, password, expert)
 
         if path.startswith('tcp'):
@@ -380,7 +380,7 @@ class LedgerClient(HardwareWalletClient):
     def toggle_passphrase(self):
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
-def enumerate(password=''):
+def enumerate(password=None):
     results = []
     devices = []
     for device_id in LEDGER_DEVICE_IDS:
@@ -403,6 +403,8 @@ def enumerate(password=''):
             client = None
             with handle_errors(common_err_msgs["enumerate"], d_data):
                 try:
+                    if password is None:
+                        password = ''
                     client = LedgerClient(path, password)
                     d_data['fingerprint'] = client.get_master_fingerprint_hex()
                     d_data['needs_pin_sent'] = False

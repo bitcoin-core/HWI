@@ -129,7 +129,7 @@ def interactive_get_pin(self, code=None):
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path, password=None, expert=False):
         super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
         if path.startswith('udp'):
@@ -541,7 +541,7 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return {'success': True}
 
-def enumerate(password=''):
+def enumerate(password=None):
     results = []
     for dev in enumerate_devices():
         # enumerate_devices filters to Trezors and Keepkeys.
@@ -571,7 +571,7 @@ def enumerate(password=''):
                 d_data['needs_passphrase_sent'] = False
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
-            if d_data['needs_passphrase_sent'] and not password:
+            if d_data['needs_passphrase_sent'] and password is None:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
                 d_data['fingerprint'] = client.get_master_fingerprint_hex()

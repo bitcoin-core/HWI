@@ -15,11 +15,11 @@ from .trezor import TrezorClient
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
 
 class KeepkeyClient(TrezorClient):
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path, password=None, expert=False):
         super(KeepkeyClient, self).__init__(path, password, expert)
         self.type = 'Keepkey'
 
-def enumerate(password=''):
+def enumerate(password=None):
     results = []
     for dev in enumerate_devices():
         # enumerate_devices filters to Trezors and Keepkeys.
@@ -47,7 +47,7 @@ def enumerate(password=''):
             d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Keepkey if it has passphrase protection enabled
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
-            if d_data['needs_passphrase_sent'] and not password:
+            if d_data['needs_passphrase_sent'] and password is None:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
                 d_data['fingerprint'] = client.get_master_fingerprint_hex()

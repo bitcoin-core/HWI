@@ -142,16 +142,16 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
                 load_device_by_xprv(client=self.client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
-                gmxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
+                gmxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', '-p', '', 'getmasterxpub'])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs
                 for path_vec in vec['vectors']:
-                    gxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
+                    gxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', '-p', '', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
     def test_expert_getxpub(self):
-        result = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', '--expert', 'getxpub', 'm/44h/0h/0h/3'])
+        result = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', '-p', '', '--expert', 'getxpub', 'm/44h/0h/0h/3'])
         self.assertEqual(result['xpub'], 'xpub6FMafWAi3n3ET2rU5yQr16UhRD1Zx4dELmcEw3NaYeBaNnipcr2zjzYp1sNdwR3aTN37hxAqRWQ13AWUZr6L9jc617mU6EvgYXyBjXrEhgr')
         self.assertFalse(result['testnet'])
         self.assertFalse(result['private'])
@@ -165,7 +165,7 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
 class TestKeepkeyManCommands(KeepkeyTestCase):
     def setUp(self):
         self.client = self.emulator.start()
-        self.dev_args = ['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324']
+        self.dev_args = ['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', '-p', '']
 
     def test_setup_wipe(self):
         # Device is init, setup should fail
@@ -262,7 +262,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.do_command(self.dev_args + ['togglepassphrase'])
 
         # A passphrase will need to be sent
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args[0:-2] + ['enumerate'])
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_passphrase_sent'])

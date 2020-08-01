@@ -22,7 +22,7 @@ class AddressType(Enum):
     SH_WPKH = 3
 
 # Get the client for the device
-def get_client(device_type, device_path, password='', expert=False):
+def get_client(device_type, device_path, password=None, expert=False):
     device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
@@ -40,7 +40,7 @@ def get_client(device_type, device_path, password='', expert=False):
     return client
 
 # Get a list of all available hardware wallets
-def enumerate(password=''):
+def enumerate(password=None):
     result = []
 
     for module in all_devs:
@@ -52,7 +52,7 @@ def enumerate(password=''):
     return result
 
 # Fingerprint or device type required
-def find_device(password='', device_type=None, fingerprint=None, expert=False):
+def find_device(password=None, device_type=None, fingerprint=None, expert=False):
     devices = enumerate(password)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
