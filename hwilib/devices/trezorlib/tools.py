@@ -19,7 +19,7 @@ import hashlib
 import re
 import struct
 import unicodedata
-from typing import List, NewType
+from typing import List, NewType, Union
 
 from .exceptions import TrezorFailure
 
@@ -181,13 +181,13 @@ def parse_path(nstr: str) -> Address:
         raise ValueError("Invalid BIP32 path", nstr)
 
 
-def normalize_nfc(txt):
+def normalize_nfc(txt: Union[str, bytes]) -> bytes:
     """
     Normalize message to NFC and return bytes suitable for protobuf.
     This seems to be bitcoin-qt standard of doing things.
     """
     if isinstance(txt, bytes):
-        txt = txt.decode()
+        return txt
     return unicodedata.normalize("NFC", txt).encode()
 
 

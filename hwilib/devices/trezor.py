@@ -1,5 +1,7 @@
 # Trezor interaction script
 
+from typing import Dict, Union
+
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -399,10 +401,8 @@ class TrezorClient(HardwareWalletClient):
 
         return {'psbt': tx.serialize()}
 
-    # Must return a base64 encoded string with the signed message
-    # The message can be any string
     @trezor_exception
-    def sign_message(self, message, keypath):
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
         self._check_unlocked()
         path = tools.parse_path(keypath)
         result = btc.sign_message(self.client, self.coin_name, path, message)
