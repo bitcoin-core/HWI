@@ -147,6 +147,9 @@ class Descriptor:
                     origin_path = match.group(2)
                     # Replace h with '
                     origin_path = origin_path.replace('h', '\'')
+                else:
+                    origin_fingerprint = origin
+                    origin_path = ''
 
                 base_key_and_path_match = re.search(r"\[.*\](\w+)([\d'\/\*]*)", key)
             else:

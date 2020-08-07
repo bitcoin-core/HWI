@@ -28,6 +28,18 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.testnet, True)
         self.assertEqual(desc.m_path, None)
 
+    def test_parse_descriptor_with_origin_fingerprint_only(self):
+        desc = Descriptor.parse("wpkh([00000001]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
+        self.assertIsNotNone(desc)
+        self.assertEqual(desc.wpkh, True)
+        self.assertEqual(desc.sh_wpkh, None)
+        self.assertEqual(desc.origin_fingerprint, "00000001")
+        self.assertEqual(desc.origin_path, "")
+        self.assertEqual(desc.base_key, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.path_suffix, "/0/0")
+        self.assertEqual(desc.testnet, True)
+        self.assertEqual(desc.m_path, None)
+
     def test_parse_descriptor_with_key_at_end_with_origin(self):
         desc = Descriptor.parse("wpkh([00000001/84'/1'/0'/0/0]0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)", True)
         self.assertIsNotNone(desc)
