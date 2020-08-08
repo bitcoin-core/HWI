@@ -158,7 +158,7 @@ class MessageType:
 
     def _fill_missing(self):
         # fill missing fields
-        for fname, ftype, fflags in self.get_fields().values():
+        for fname, _, fflags in self.get_fields().values():
             if not hasattr(self, fname):
                 if fflags & FLAG_REPEATED:
                     setattr(self, fname, [])

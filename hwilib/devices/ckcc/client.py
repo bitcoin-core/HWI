@@ -159,7 +159,7 @@ class ColdcardDevice:
                 print("Rx [%2d]: %r" % (len(resp), b2a_hex(bytes(resp))))
 
             return CCProtocolUnpacker.decode(resp)
-        except CCProtoError as e:
+        except CCProtoError:
             if expect_errors: raise
             raise
         except:
@@ -258,7 +258,7 @@ class ColdcardDevice:
 
         # If Pycoin is not available, do it using ecdsa
         from ecdsa import BadSignatureError, SECP256k1, VerifyingKey
-        pubkey, chaincode = decode_xpub(expected_xpub)
+        pubkey, _ = decode_xpub(expected_xpub)
         vk = VerifyingKey.from_string(get_pubkey_string(pubkey), curve=SECP256k1)
         try:
             ok = vk.verify_digest(sig[1:], self.session_key)

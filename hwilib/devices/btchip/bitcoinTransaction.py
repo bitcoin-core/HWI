@@ -101,14 +101,14 @@ class bitcoinTransaction:
 			inputSize = readVarint(data, offset)
 			offset += inputSize['size']
 			numInputs = inputSize['value']
-			for i in range(numInputs):
+			for _ in range(numInputs):
 				tmp = { 'buffer': data, 'offset' : offset}
 				self.inputs.append(bitcoinInput(tmp))
 				offset = tmp['offset']
 			outputSize = readVarint(data, offset)
 			offset += outputSize['size']
 			numOutputs = outputSize['value']
-			for i in range(numOutputs):
+			for _ in range(numOutputs):
 				tmp = { 'buffer': data, 'offset' : offset}
 				self.outputs.append(bitcoinOutput(tmp))
 				offset = tmp['offset']
