@@ -103,7 +103,7 @@ def deser_uint256(f: Readable) -> int:
 
 def ser_uint256(u: int) -> bytes:
     rs = b""
-    for i in range(8):
+    for _ in range(8):
         rs += struct.pack("<I", u & 0xFFFFFFFF)
         u >>= 32
     return rs
@@ -121,7 +121,7 @@ D = TypeVar("D", bound=Deserializable)
 def deser_vector(f: Readable, c: Callable[[], D]) -> List[D]:
     nit = deser_compact_size(f)
     r = []
-    for i in range(nit):
+    for _ in range(nit):
         t = c()
         t.deserialize(f)
         r.append(t)
@@ -138,7 +138,7 @@ def ser_vector(v: Sequence[Serializable]) -> bytes:
 def deser_string_vector(f: Readable) -> List[bytes]:
     nit = deser_compact_size(f)
     r = []
-    for i in range(nit):
+    for _ in range(nit):
         t = deser_string(f)
         r.append(t)
     return r
@@ -456,7 +456,7 @@ class CTransaction(object):
             if (len(self.wit.vtxinwit) != len(self.vin)):
                 # vtxinwit must have the same length as vin
                 self.wit.vtxinwit = self.wit.vtxinwit[:len(self.vin)]
-                for i in range(len(self.wit.vtxinwit), len(self.vin)):
+                for _ in range(len(self.wit.vtxinwit), len(self.vin)):
                     self.wit.vtxinwit.append(CTxInWitness())
             r += self.wit.serialize()
         r += struct.pack("<I", self.nLockTime)

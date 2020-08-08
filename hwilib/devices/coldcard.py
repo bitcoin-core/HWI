@@ -122,7 +122,7 @@ class ColdcardClient(HardwareWalletClient):
             if our_keys > passes:
                 passes = our_keys
 
-        for i in range(0, passes):
+        for _ in range(passes):
             # Get psbt in hex and then make binary
             fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
@@ -198,7 +198,7 @@ class ColdcardClient(HardwareWalletClient):
         if len(done) != 2:
             raise DeviceFailureError('Failed: %r' % done)
 
-        addr, raw = done
+        _, raw = done
 
         sig = str(base64.b64encode(raw), 'ascii').replace('\n', '')
         return {"signature": sig}
