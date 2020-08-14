@@ -15,9 +15,10 @@
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
 import binascii
+from typing import Union
 
 from . import messages
-from .tools import CallException, expect, normalize_nfc, session
+from .tools import expect, normalize_nfc, session
 
 
 @expect(messages.PublicKey)
@@ -62,7 +63,11 @@ def get_address(
 
 @expect(messages.MessageSignature)
 def sign_message(
-    client, coin_name, n, message, script_type=messages.InputScriptType.SPENDADDRESS
+    client,
+    coin_name,
+    n,
+    message: Union[str, bytes],
+    script_type=messages.InputScriptType.SPENDADDRESS,
 ):
     message = normalize_nfc(message)
     return client.call(
@@ -70,6 +75,7 @@ def sign_message(
             coin_name=coin_name, address_n=n, message=message, script_type=script_type
         )
     )
+
 
 @session
 def sign_tx(client, coin_name, inputs, outputs, details=None, prev_txes=None):

@@ -1,5 +1,7 @@
 # Coldcard interaction script
 
+from typing import Dict, Union
+
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -174,15 +176,18 @@ class ColdcardClient(HardwareWalletClient):
             tx.deserialize(base64.b64encode(result).decode())
         return {'psbt': tx.serialize()}
 
-    # Must return a base64 encoded string with the signed message
-    # The message can be any string. keypath is the bip 32 derivation path for the key to sign with
     @coldcard_exception
-    def sign_message(self, message, keypath):
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
-        ok = self.device.send_recv(CCProtocolPacker.sign_message(message.encode(), keypath, AF_CLASSIC), timeout=None)
+        msg = message
+        if not isinstance(message, bytes):
+            msg = message.encode()
+        ok = self.device.send_recv(
+            CCProtocolPacker.sign_message(msg, keypath, AF_CLASSIC), timeout=None
+        )
         assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
