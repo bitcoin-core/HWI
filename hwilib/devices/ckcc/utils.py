@@ -24,14 +24,14 @@ def dfu_parse(fd):
 
     assert dfu_prefix.signature == b'DfuSe', "Not a DFU file (bad magic)"
 
-    for idx in range(dfu_prefix.targets):
+    for _ in range(dfu_prefix.targets):
 
         prefix = consume(fd, 'Target', '<6sBI255s2I', 
                                    'signature altsetting named name size elements')
 
         #print("target%d: %r" % (idx, prefix))
 
-        for ei in range(prefix.elements):
+        for _ in range(prefix.elements):
             # Decode target prefix
             #   <   little endian
             #   I   uint32_t    element address
