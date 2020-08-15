@@ -340,7 +340,7 @@ class LedgerClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     @ledger_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None, descriptor=None):
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
         if redeem_script is not None:

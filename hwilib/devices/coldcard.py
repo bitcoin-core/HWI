@@ -205,7 +205,7 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @coldcard_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None, descriptor=None):
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')

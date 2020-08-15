@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import re
 
 # From: https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
@@ -82,6 +83,12 @@ class Descriptor:
         if origin_path and not isinstance(origin_path, list):
             self.m_path_base = "m" + origin_path
             self.m_path = "m" + origin_path + (path_suffix or "")
+        elif isinstance(origin_path, list):
+            self.m_path_base = []
+            self.m_path = []
+            for i in range(0, len(origin_path)):
+                self.m_path_base.append("m" + origin_path[i])
+                self.m_path.append("m" + origin_path[i] + (path_suffix[i] or ""))
 
     @classmethod
     def parse(cls, desc, testnet=False):
