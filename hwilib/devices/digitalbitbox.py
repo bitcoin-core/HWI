@@ -551,7 +551,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         return {"signature": base64.b64encode(compact_sig).decode('utf-8')}
 
     # Display address of specified type on the device.
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None):
+    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None, descriptor=None):
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     # Setup a new device

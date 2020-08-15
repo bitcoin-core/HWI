@@ -16,6 +16,18 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.testnet, True)
         self.assertEqual(desc.m_path, "m/84'/1'/0'/0/0")
 
+    def test_parse_multisig_descriptor_with_origin(self):
+        desc = Descriptor.parse("wsh(multi(2,[00000001/48'/0'/0'/2']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,[00000002/48'/0'/0'/2']tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty/0/0))", True)
+        self.assertIsNotNone(desc)
+        self.assertEqual(desc.wsh, True)
+        self.assertEqual(desc.origin_fingerprint, ["00000001", "00000002"])
+        self.assertEqual(desc.origin_path, ["/48'/0'/0'/2'", "/48'/0'/0'/2'"])
+        self.assertEqual(desc.base_key, ["tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B", "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty"])
+        self.assertEqual(desc.path_suffix, ["/0/0", "/0/0"])
+        self.assertEqual(desc.testnet, True)
+        self.assertEqual(desc.m_path_base, ["m/48'/0'/0'/2'", "m/48'/0'/0'/2'"])
+        self.assertEqual(desc.m_path, ["m/48'/0'/0'/2'/0/0", "m/48'/0'/0'/2'/0/0"])
+
     def test_parse_descriptor_without_origin(self):
         desc = Descriptor.parse("wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
         self.assertIsNotNone(desc)

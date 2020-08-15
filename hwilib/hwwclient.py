@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Union
 
 from .base58 import get_xpub_fingerprint_hex
+from .descriptor import Descriptor
 from .serializations import PSBT
 
 
@@ -77,6 +78,7 @@ class HardwareWalletClient(object):
         p2sh_p2wpkh: bool,
         bech32: bool,
         redeem_script: Optional[str] = None,
+        descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
         """Display and return the address of specified type.
 

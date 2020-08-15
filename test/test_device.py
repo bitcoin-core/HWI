@@ -13,6 +13,7 @@ import unittest
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib.base58 import xpub_to_pub_hex
 from hwilib.cli import process_commands
+from hwilib.descriptor import AddChecksum
 from hwilib.serializations import PSBT
 
 # Class for emulator control
@@ -657,10 +658,23 @@ class TestDisplayAddress(DeviceTestCase):
         sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti-display-desc").popitem()[0]
         wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti-display-desc").popitem()[0]
 
-        # need to replace `'` with `h` and to remove checksome for the stdin option to work
+        # need to replace `'` with `h` and to remove checksum for the stdin option to work
         sh_multi_desc = sh_multi_desc.replace("'", "h").split('#')[0]
         sh_wsh_multi_desc = sh_wsh_multi_desc.replace("'", "h").split('#')[0]
         wsh_multi_desc = wsh_multi_desc.replace("'", "h").split('#')[0]
+
+        # descriptor with xpubs
+        if self.full_type == 'trezor_t':
+            account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/45h/0h/0h/2h'])['xpub']
+            desc = 'wsh(multi(2,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/0/0,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/1/0))'
+            result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
+            self.assertNotIn('error', result)
+            self.assertNotIn('code', result)
+            self.assertIn('address', result)
+            addr = self.wrpc.deriveaddresses(AddChecksum(desc))[0]
+            # removes prefix and checksum since regtest gives
+            # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+            self.assertEqual(addr[4:58], result['address'][2:56])
 
         # legacy
         result = self.do_command(self.dev_args + ['displayaddress', '--desc', sh_multi_desc])

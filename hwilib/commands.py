@@ -236,15 +236,18 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
         if descriptor.sh or descriptor.sh_wsh or descriptor.wsh:
             path = ''
             redeem_script = format(80 + int(descriptor.multisig_M), 'x')
+            xpubs_descriptor = False
             for i in range(0, descriptor.multisig_N):
-                path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i] + ','
+                path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i]
                 if not descriptor.path_suffix[i]:
                     redeem_script += '21' + descriptor.base_key[i]
                 else:
-                    return {'error': 'Multisig descriptor must include all pubkeys', 'code': BAD_ARGUMENT}
+                    path += descriptor.path_suffix[i]
+                    xpubs_descriptor = True
+                path += ','
             path = path[0:-1]
             redeem_script += format(80 + descriptor.multisig_N, 'x') + 'ae'
-            return client.display_address(path, descriptor.sh_wpkh or descriptor.sh_wsh, descriptor.wpkh or descriptor.wsh, redeem_script)
+            return client.display_address(path, descriptor.sh_wpkh or descriptor.sh_wsh, descriptor.wpkh or descriptor.wsh, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
         if descriptor.m_path is None:
             return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
         if descriptor.origin_fingerprint != client.get_master_fingerprint_hex():
