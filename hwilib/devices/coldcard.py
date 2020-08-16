@@ -39,8 +39,10 @@ from ..base58 import (
     get_xpub_fingerprint,
     xpub_main_2_test,
 )
-from ..serializations import (
+from ..key import (
     ExtendedKey,
+)
+from ..serializations import (
     PSBT,
 )
 from hashlib import sha256

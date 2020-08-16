@@ -24,8 +24,11 @@ import base64
 import hid
 import struct
 from .. import base58
-from ..serializations import (
+
+from ..key import (
     ExtendedKey,
+)
+from ..serializations import (
     hash256,
     hash160,
     is_p2sh,

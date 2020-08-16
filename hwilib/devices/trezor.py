@@ -44,9 +44,12 @@ from ..base58 import (
     to_address,
     xpub_main_2_test,
 )
+
+from ..key import (
+    ExtendedKey,
+)
 from ..serializations import (
     CTxOut,
-    ExtendedKey,
     is_p2pkh,
     is_p2sh,
     is_p2wsh,

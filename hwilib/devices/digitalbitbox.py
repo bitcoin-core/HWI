@@ -28,9 +28,11 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
+from ..key import (
+    ExtendedKey,
+)
 from ..serializations import (
     CTransaction,
-    ExtendedKey,
     hash256,
     is_p2pk,
     is_p2pkh,
