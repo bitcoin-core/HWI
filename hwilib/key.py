@@ -21,14 +21,14 @@ class ExtendedKey(object):
     TESTNET_PRIVATE = b'\x04\x35\x83\x94'
 
     def __init__(self) -> None:
-        self.is_testnet = False
-        self.is_private = False
-        self.depth = 0
-        self.parent_fingerprint = b''
-        self.child_num = 0
-        self.chaincode = b''
-        self.pubkey = b''
-        self.privkey = b''
+        self.is_testnet: bool = False
+        self.is_private: bool = False
+        self.depth: int = 0
+        self.parent_fingerprint: bytes = b''
+        self.child_num: int = 0
+        self.chaincode: bytes = b''
+        self.pubkey: bytes = b''
+        self.privkey: bytes = b''
 
     def deserialize(self, xpub: str) -> None:
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
