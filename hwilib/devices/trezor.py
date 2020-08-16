@@ -38,7 +38,9 @@ from .trezorlib import (
 )
 from .trezorlib import messages as proto
 from ..base58 import (
+    encode as base58_encode,
     get_xpub_fingerprint,
+    hash256,
     to_address,
     xpub_main_2_test,
 )
@@ -58,6 +60,7 @@ from types import MethodType
 import base64
 import logging
 import sys
+import struct
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
 
@@ -94,6 +97,38 @@ def parse_multisig(script):
     # Build MultisigRedeemScriptType and return it
     multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
+
+# Parses the PSBT_GLOBAL_XPUB fields of a PSBT as multisig pubkeys
+def parse_multisig_xpubs(tx, psbt_in_out, multisig):
+    try:
+        old_pubs = [k.node.public_key for k in multisig.pubkeys]
+        if len(old_pubs) != sum([len(xpubs) for xpubs in tx.global_xpubs.values()]):
+            # global xpubs weren't found
+            return multisig
+        new_pubs = []
+        xpubs = [item for sublist in tx.global_xpubs.values() for item in sublist]
+        derivations = [list(struct.unpack("<" + "I" * (len(der) // 4), der)) * len(tx.global_xpubs[der]) for der in tx.global_xpubs.keys()]
+        for pub in old_pubs:
+            der = list(psbt_in_out.hd_keypaths[pub])
+            for i, derivation in py_enumerate(derivations):
+                if der[0] == derivation[0]:
+                    idx = i
+                    for i in range(len(derivation)):
+                        if der[i] != derivation[i]:
+                            # derivations mismatch
+                            return multisig
+                    break
+            xpub = xpubs[idx]
+            address_n = der[len(derivations[idx]):]
+            xpub_obj = ExtendedKey()
+            xpub_obj.deserialize(base58_encode(xpub + hash256(xpub)[:4]))
+            hd_node = proto.HDNodeType(depth=xpub_obj.depth, fingerprint=der[0], child_num=xpub_obj.child_num, chain_code=xpub_obj.chaincode, public_key=xpub_obj.pubkey)
+            new_pub = proto.HDNodePathType(node=hd_node, address_n=address_n)
+            new_pubs.append(new_pub)
+        return proto.MultisigRedeemScriptType(m=multisig.m, signatures=multisig.signatures, pubkeys=new_pubs)
+    except:
+        # If not all necessary data is available or malformatted, return the original multisig
+        return multisig
 
 def trezor_exception(f):
     def func(*args, **kwargs):
@@ -255,8 +290,7 @@ class TrezorClient(HardwareWalletClient):
                 # Check for multisig
                 is_ms, multisig = parse_multisig(scriptcode)
                 if is_ms:
-                    # Add to txinputtype
-                    txinputtype.multisig = multisig
+                    txinputtype.multisig = parse_multisig_xpubs(tx, psbt_in, multisig)
                     if not is_wit:
                         if utxo.is_p2sh:
                             txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
@@ -330,10 +364,9 @@ class TrezorClient(HardwareWalletClient):
                     else:
                         raise BadArgumentError("Output is not an address")
 
-                # Add the derivation path for change, but only if there is exactly one derivation path
+                # Add the derivation path for change
                 psbt_out = tx.outputs[i]
-                if len(psbt_out.hd_keypaths) == 1:
-                    _, keypath = next(iter(psbt_out.hd_keypaths.items()))
+                for _, keypath in psbt_out.hd_keypaths.items():
                     if keypath[0] == master_fp:
                         wit, ver, prog = out.is_witness()
                         if out.is_p2pkh():
@@ -349,7 +382,9 @@ class TrezorClient(HardwareWalletClient):
                                 txoutput.script_type = proto.OutputScriptType.PAYTOP2SHWITNESS
                                 txoutput.address_n = keypath[1:]
                                 txoutput.address = None
-
+                        is_ms, multisig = parse_multisig(psbt_out.witness_script if wit else psbt_out.redeem_script)
+                        if is_ms:
+                            txoutput.multisig = parse_multisig_xpubs(tx, psbt_out, multisig)
                 # append to outputs
                 outputs.append(txoutput)
 

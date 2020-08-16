@@ -758,6 +758,7 @@ class PSBT(object):
         self.inputs: List[PartiallySignedInput] = []
         self.outputs: List[PartiallySignedOutput] = []
         self.unknown: Dict[bytes, bytes] = {}
+        self.global_xpubs: Dict[bytes, List[bytes]] = {}
 
     def deserialize(self, psbt: str) -> None:
         psbt_bytes = base64.b64decode(psbt.strip())
@@ -800,7 +801,12 @@ class PSBT(object):
                 for txin in self.tx.vin:
                     if len(txin.scriptSig) != 0 or not self.tx.wit.is_null():
                         raise PSBTSerializationError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
-
+            elif key_type == 0x01:
+                xpub = key[1:]
+                derivation = deser_string(f)
+                if derivation not in self.global_xpubs:
+                    self.global_xpubs[derivation] = []
+                self.global_xpubs[derivation].append(xpub)
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
