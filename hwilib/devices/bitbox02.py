@@ -39,8 +39,6 @@ from ..errors import (
 
 import hid  # type: ignore
 
-from .trezorlib.tools import parse_path
-
 from bitbox02 import util
 from bitbox02 import bitbox02
 from bitbox02.communication import (
@@ -133,6 +131,40 @@ class CLINoiseConfig(util.BitBoxAppNoiseConfig):
             sys.stderr.write(
                 "Your BitBox02 might not be genuine. Please contact support@shiftcrypto.ch if the problem persists.\n"
             )
+
+
+def _parse_path(nstr: str) -> Sequence[int]:
+    """
+    Adapted from trezorlib.tools.parse_path.
+    Convert BIP32 path string to list of uint32 integers with hardened flags.
+    Several conventions are supported to set the hardened flag: -1, 1', 1h
+
+    e.g.: "0/1h/1" -> [0, 0x80000001, 1]
+
+    :param nstr: path string
+    :return: list of integers
+    """
+    if not nstr:
+        return []
+
+    n = nstr.split("/")
+
+    # m/a/b/c => a/b/c
+    if n[0] == "m":
+        n = n[1:]
+
+    def str_to_harden(x: str) -> int:
+        if x.startswith("-"):
+            return abs(int(x)) + HARDENED
+        elif x.endswith(("h", "'")):
+            return int(x[:-1]) + HARDENED
+        else:
+            return int(x)
+
+    try:
+        return [str_to_harden(x) for x in n]
+    except Exception:
+        raise ValueError("Invalid BIP32 path", nstr)
 
 
 def enumerate(password: str = "") -> List[Dict[str, object]]:
@@ -297,7 +329,7 @@ class Bitbox02Client(HardwareWalletClient):
         )
 
     def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
-        path_uint32s = parse_path(bip32_path)
+        path_uint32s = _parse_path(bip32_path)
         try:
             xpub = self._get_xpub(path_uint32s)
         except Bitbox02Exception as exc:
@@ -329,7 +361,7 @@ class Bitbox02Client(HardwareWalletClient):
                 "The BitBox02 does not support legacy p2pkh addresses"
             )
         address = self.init().btc_address(
-            parse_path(bip32_path),
+            _parse_path(bip32_path),
             coin=self._get_coin(),
             script_config=script_config,
             display=True,
