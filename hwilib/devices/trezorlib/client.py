@@ -72,7 +72,7 @@ class TrezorClient:
     """
 
     def __init__(self, transport, ui=None, state=None):
-        LOG.info("creating client instance for device: {}".format(transport.get_path()))
+        LOG.debug("creating client instance for device: {}".format(transport.get_path()))
         self.transport = transport
         self.ui = ui
         self.state = state

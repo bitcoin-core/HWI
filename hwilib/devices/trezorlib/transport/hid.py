@@ -27,7 +27,7 @@ LOG = logging.getLogger(__name__)
 try:
     import hid
 except Exception as e:
-    LOG.info("HID transport is disabled: {}".format(e))
+    LOG.warning("HID transport is disabled: {}".format(e))
     hid = None
 
 
