@@ -162,7 +162,7 @@ class ColdcardDevice:
         except CCProtoError:
             if expect_errors: raise
             raise
-        except:
+        except Exception:
             #print("Corrupt response: %r" % resp)
             raise
 
@@ -376,7 +376,8 @@ class UnixSimulatorPipe:
         self.pipe.close()
         try:
             os.unlink(self.pipe_name)
-        except: pass
+        except Exception:
+            pass
 
     def get_serial_number_string(self):
         return 'simulator'

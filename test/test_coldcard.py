@@ -31,7 +31,7 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
                     break
             if found:
                 break
-        except:
+        except Exception:
             pass
         time.sleep(0.5)
     # Cleanup

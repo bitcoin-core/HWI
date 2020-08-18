@@ -149,7 +149,7 @@ class TrezorClient:
 
         try:
             passphrase = self.ui.get_passphrase()
-        except:
+        except Exception:
             self.call_raw(messages.Cancel())
             raise
 

@@ -129,7 +129,7 @@ class WebUsbTransport(ProtocolBasedTransport):
                 # non-functional.
                 dev.getProduct()
                 devices.append(WebUsbTransport(dev))
-            except:
+            except Exception:
                 pass
         return devices
 

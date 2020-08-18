@@ -460,7 +460,7 @@ class TrezorClient(HardwareWalletClient):
                     multisig=multisig,
                 )
                 return {'address': address}
-            except:
+            except Exception:
                 pass
 
         raise BadArgumentError("No path supplied matched device keys")
@@ -543,7 +543,7 @@ class TrezorClient(HardwareWalletClient):
         self._check_unlocked()
         try:
             device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
-        except:
+        except Exception:
             if self.type == 'Keepkey':
                 print('Confirm the action by entering your PIN', file=sys.stderr)
                 print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)

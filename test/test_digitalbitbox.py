@@ -28,7 +28,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             reply = send_plain(b'{"password":"0000"}', dev)
             if 'error' not in reply:
                 break
-        except:
+        except Exception:
             pass
         time.sleep(0.5)
     # Cleanup
