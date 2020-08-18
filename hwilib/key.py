@@ -9,7 +9,10 @@ import binascii
 import struct
 from typing import (
     Dict,
+    Sequence,
 )
+
+HARDENED_FLAG = 1 << 31
 
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
 # Only handles deserialization of extended keys into component data to be handled by something else
@@ -62,3 +65,53 @@ class ExtendedKey(object):
         else:
             d['pubkey'] = binascii.hexlify(self.pubkey).decode()
         return d
+
+
+class KeyOriginInfo(object):
+    def __init__(self, fingerprint: bytes, path: Sequence[int]) -> None:
+        self.fingerprint: bytes = fingerprint
+        self.path: Sequence[int] = path
+
+    @classmethod
+    def deserialize(cls, s: bytes) -> object:
+        """
+        Deserialize a serialized KeyOriginInfo.
+        They will be serialized in the same way that PSBTs serialize derivation paths
+        """
+        fingerprint = s[0:4]
+        s = s[4:]
+        path = list(struct.unpack("<" + "I" * (len(s) // 4), s))
+        return cls(fingerprint, path)
+
+    def serialize(self) -> bytes:
+        """
+        Serializes the KeyOriginInfo in the same way that derivation paths are stored in PSBTs
+        """
+        r = self.fingerprint
+        r += struct.pack("<" + "I" * len(self.path), *self.path)
+        return r
+
+    def _path_string(self) -> str:
+        s = ""
+        for i in self.path:
+            hardened = i & HARDENED_FLAG != 0
+            i &= ~HARDENED_FLAG
+            s += "/" + str(i)
+            if hardened:
+                s += "'"
+        return s
+
+    def to_string(self) -> str:
+        """
+        Return the KeyOriginInfo as a string in the form <fingerprint>/<index>/<index>/...
+        This is the same way that KeyOriginInfo is shown in descriptors
+        """
+        s = binascii.hexlify(self.fingerprint).decode()
+        s += self._path_string()
+        return s
+
+    def get_derivation_path(self) -> str:
+        """
+        Return the string for just the path
+        """
+        return "m" + self._path_string()
