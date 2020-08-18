@@ -6,6 +6,8 @@
 from . import base58
 
 import binascii
+import hmac
+import hashlib
 import struct
 from typing import (
     Dict,
@@ -13,6 +15,7 @@ from typing import (
     Sequence,
     Tuple,
 )
+
 
 HARDENED_FLAG = 1 << 31
 
@@ -133,6 +136,34 @@ class ExtendedKey(object):
         else:
             d['pubkey'] = binascii.hexlify(self.pubkey).decode()
         return d
+
+    def derive_pub(self, i: int) -> 'ExtendedKey':
+        if is_hardened(i):
+            raise ValueError("Index cannot be larger than 2^31")
+
+        # Data to HMAC.  Same as CKDpriv() for public child key.
+        data = self.pubkey + struct.pack(">L", i)
+
+        # Get HMAC of data
+        Ihmac = hmac.new(self.chaincode, data, hashlib.sha512).digest()
+        Il = Ihmac[:32]
+        Ir = Ihmac[32:]
+
+        # Construct curve point Il*G+K
+        Il_int = int(binascii.hexlify(Il), 16)
+        child_pubkey = point_add(point_mul(G, Il_int), bytes_to_point(self.pubkey))
+
+        # Construct and return a new BIP32Key
+        pubkey = point_to_bytes(child_pubkey)
+        chaincode = Ir
+        fingerprint = hashlib.new('ripemd160', hashlib.sha256(self.pubkey).digest()).digest()[0:4]
+        return ExtendedKey(ExtendedKey.TESTNET_PUBLIC if self.is_testnet else ExtendedKey.MAINNET_PUBLIC, self.depth + 1, fingerprint, i, chaincode, None, pubkey)
+
+    def derive_pub_path(self, path: Sequence[int]) -> 'ExtendedKey':
+        key = self
+        for i in path:
+            key = key.derive_pub(i)
+        return key
 
 
 class KeyOriginInfo(object):
