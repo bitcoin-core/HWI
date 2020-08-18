@@ -90,7 +90,7 @@ class ExtendedKey(object):
     TESTNET_PUBLIC = b'\x04\x35\x87\xCF'
     TESTNET_PRIVATE = b'\x04\x35\x83\x94'
 
-    def __init__(self, version: bytes, depth: int, parent_fingerprint: bytes, child_num: int, chaincode: bytes, privkey: Optional[bytes], pubkey: Optional[bytes]) -> None:
+    def __init__(self, version: bytes, depth: int, parent_fingerprint: bytes, child_num: int, chaincode: bytes, privkey: Optional[bytes], pubkey: bytes) -> None:
         self.version: bytes = version
         self.is_testnet: bool = version == ExtendedKey.TESTNET_PUBLIC or version == ExtendedKey.TESTNET_PRIVATE
         self.is_private: bool = version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE
@@ -98,7 +98,7 @@ class ExtendedKey(object):
         self.parent_fingerprint: bytes = parent_fingerprint
         self.child_num: int = child_num
         self.chaincode: bytes = chaincode
-        self.pubkey: Optional[bytes] = pubkey
+        self.pubkey: bytes = pubkey
         self.privkey: Optional[bytes] = privkey
 
     @classmethod
@@ -114,7 +114,8 @@ class ExtendedKey(object):
 
         if is_private:
             privkey = data[46:]
-            return cls(version, depth, parent_fingerprint, child_num, chaincode, privkey, None)
+            pubkey = point_to_bytes(point_mul(G, int.from_bytes(privkey, byteorder="big")))
+            return cls(version, depth, parent_fingerprint, child_num, chaincode, privkey, pubkey)
         else:
             pubkey = data[45:78]
             return cls(version, depth, parent_fingerprint, child_num, chaincode, None, pubkey)
@@ -129,7 +130,7 @@ class ExtendedKey(object):
         d['chaincode'] = binascii.hexlify(self.chaincode).decode()
         if self.is_private and isinstance(self.privkey, bytes):
             d['privkey'] = binascii.hexlify(self.privkey).decode()
-        elif isinstance(self.pubkey, bytes):
+        else:
             d['pubkey'] = binascii.hexlify(self.pubkey).decode()
         return d
 
