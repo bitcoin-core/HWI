@@ -11,10 +11,16 @@ from typing import (
     Dict,
     Optional,
     Sequence,
+    Tuple,
 )
 
 HARDENED_FLAG = 1 << 31
 
+p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+G = (0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798, 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8)
+
+Point = Optional[Tuple[int, int]]
 
 def H_(x: int) -> int:
     """
@@ -27,6 +33,52 @@ def is_hardened(i: int) -> bool:
     Returns whether an index is hardened
     """
     return i & HARDENED_FLAG != 0
+
+
+def point_add(p1: Point, p2: Point) -> Point:
+    if (p1 is None):
+        return p2
+    if (p2 is None):
+        return p1
+    if (p1[0] == p2[0] and p1[1] != p2[1]):
+        return None
+    if (p1 == p2):
+        lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
+    else:
+        lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
+    x3 = (lam * lam - p1[0] - p2[0]) % p
+    return (x3, (lam * (p1[0] - x3) - p1[1]) % p)
+
+
+def point_mul(p: Point, n: int) -> Point:
+    r = None
+    for i in range(256):
+        if ((n >> i) & 1):
+            r = point_add(r, p)
+        p = point_add(p, p)
+    return r
+
+
+def deserialize_point(b: bytes) -> Point:
+    x = int.from_bytes(b[1:], byteorder="big")
+    y = pow((x * x * x + 7) % p, (p + 1) // 4, p)
+    if (y & 1 != b[0] & 1):
+        y = p - y
+    return (x, y)
+
+
+def bytes_to_point(point_bytes: bytes) -> Point:
+    header = point_bytes[0]
+    if header == 4:
+        x = point_bytes = point_bytes[1:33]
+        y = point_bytes = point_bytes[33:65]
+        return (int(binascii.hexlify(x), 16), int(binascii.hexlify(y), 16))
+    return deserialize_point(point_bytes)
+
+def point_to_bytes(p: Point) -> bytes:
+    if p is None:
+        raise ValueError("Cannot convert None to bytes")
+    return (b'\x03' if p[1] & 1 else b'\x02') + p[0].to_bytes(32, byteorder="big")
 
 
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
