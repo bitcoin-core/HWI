@@ -167,8 +167,7 @@ class LedgerClient(HardwareWalletClient):
         result = {"xpub": xpub}
 
         if self.expert:
-            xpub_obj = ExtendedKey()
-            xpub_obj.deserialize(xpub)
+            xpub_obj = ExtendedKey.deserialize(xpub)
             result.update(xpub_obj.get_printable_dict())
         return result
 

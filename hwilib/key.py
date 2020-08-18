@@ -9,6 +9,7 @@ import binascii
 import struct
 from typing import (
     Dict,
+    Optional,
     Sequence,
 )
 
@@ -37,34 +38,34 @@ class ExtendedKey(object):
     TESTNET_PUBLIC = b'\x04\x35\x87\xCF'
     TESTNET_PRIVATE = b'\x04\x35\x83\x94'
 
-    def __init__(self) -> None:
-        self.is_testnet: bool = False
-        self.is_private: bool = False
-        self.depth: int = 0
-        self.parent_fingerprint: bytes = b''
-        self.child_num: int = 0
-        self.chaincode: bytes = b''
-        self.pubkey: bytes = b''
-        self.privkey: bytes = b''
+    def __init__(self, version: bytes, depth: int, parent_fingerprint: bytes, child_num: int, chaincode: bytes, privkey: Optional[bytes], pubkey: Optional[bytes]) -> None:
+        self.version: bytes = version
+        self.is_testnet: bool = version == ExtendedKey.TESTNET_PUBLIC or version == ExtendedKey.TESTNET_PRIVATE
+        self.is_private: bool = version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE
+        self.depth: int = depth
+        self.parent_fingerprint: bytes = parent_fingerprint
+        self.child_num: int = child_num
+        self.chaincode: bytes = chaincode
+        self.pubkey: Optional[bytes] = pubkey
+        self.privkey: Optional[bytes] = privkey
 
-    def deserialize(self, xpub: str) -> None:
+    @classmethod
+    def deserialize(cls, xpub: str) -> 'ExtendedKey':
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
 
         version = data[0:4]
-        if version == ExtendedKey.TESTNET_PUBLIC or version == ExtendedKey.TESTNET_PRIVATE:
-            self.is_testnet = True
-        if version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE:
-            self.is_private = True
+        is_private = version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE
+        depth = data[4]
+        parent_fingerprint = data[5:9]
+        child_num = struct.unpack('>I', data[9:13])[0]
+        chaincode = data[13:45]
 
-        self.depth = data[4]
-        self.parent_fingerprint = data[5:9]
-        self.child_num = struct.unpack('>I', data[9:13])[0]
-        self.chaincode = data[13:45]
-
-        if self.is_private:
-            self.privkey = data[46:]
+        if is_private:
+            privkey = data[46:]
+            return cls(version, depth, parent_fingerprint, child_num, chaincode, privkey, None)
         else:
-            self.pubkey = data[45:78]
+            pubkey = data[45:78]
+            return cls(version, depth, parent_fingerprint, child_num, chaincode, None, pubkey)
 
     def get_printable_dict(self) -> Dict[str, object]:
         d: Dict[str, object] = {}
@@ -74,9 +75,9 @@ class ExtendedKey(object):
         d['parent_fingerprint'] = binascii.hexlify(self.parent_fingerprint).decode()
         d['child_num'] = self.child_num
         d['chaincode'] = binascii.hexlify(self.chaincode).decode()
-        if self.is_private:
+        if self.is_private and isinstance(self.privkey, bytes):
             d['privkey'] = binascii.hexlify(self.privkey).decode()
-        else:
+        elif isinstance(self.pubkey, bytes):
             d['pubkey'] = binascii.hexlify(self.pubkey).decode()
         return d
 

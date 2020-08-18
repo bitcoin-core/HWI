@@ -176,8 +176,7 @@ class TrezorClient(HardwareWalletClient):
         else:
             result = {'xpub': output.xpub}
         if self.expert:
-            xpub_obj = ExtendedKey()
-            xpub_obj.deserialize(output.xpub)
+            xpub_obj = ExtendedKey.deserialize(output.xpub)
             result.update(xpub_obj.get_printable_dict())
         return result
 
@@ -419,9 +418,8 @@ class TrezorClient(HardwareWalletClient):
         # descriptor means multisig with xpubs
         if descriptor:
             pubkeys = []
-            xpub = ExtendedKey()
             for i in range(0, descriptor.multisig_N):
-                xpub.deserialize(descriptor.base_key[i])
+                xpub = ExtendedKey.deserialize(descriptor.base_key[i])
                 hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
                 pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path('m' + descriptor.path_suffix[i])))
             multisig = proto.MultisigRedeemScriptType(m=int(descriptor.multisig_M), signatures=[b''] * int(descriptor.multisig_N), pubkeys=pubkeys)
