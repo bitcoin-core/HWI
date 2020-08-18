@@ -123,6 +123,21 @@ class ExtendedKey(object):
             pubkey = data[45:78]
             return cls(version, depth, parent_fingerprint, child_num, chaincode, None, pubkey)
 
+    def serialize(self) -> bytes:
+        r = self.version + struct.pack('B', self.depth) + self.parent_fingerprint + struct.pack('>I', self.child_num) + self.chaincode
+        if self.is_private:
+            if self.privkey is None:
+                raise ValueError("Somehow we are private but don't have a privkey")
+            r += b"\x00" + self.privkey
+        else:
+            r += self.pubkey
+        return r
+
+    def to_string(self) -> str:
+        data = self.serialize()
+        checksum = hashlib.sha256(hashlib.sha256(data).digest()).digest()[0:4]
+        return base58.encode(data + checksum)
+
     def get_printable_dict(self) -> Dict[str, object]:
         d: Dict[str, object] = {}
         d['testnet'] = self.is_testnet
