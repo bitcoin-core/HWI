@@ -121,7 +121,7 @@ def enumerate_devices() -> Iterable[Transport]:
         name = transport.__name__
         try:
             found = list(transport.enumerate())
-            LOG.info("Enumerating {}: found {} devices".format(name, len(found)))
+            LOG.debug("Enumerating {}: found {} devices".format(name, len(found)))
             devices.extend(found)
         except NotImplementedError:
             LOG.error("{} does not implement device enumeration".format(name))
@@ -144,7 +144,7 @@ def get_transport(path: str = None, prefix_search: bool = False) -> Transport:
     def match_prefix(a: str, b: str) -> bool:
         return a.startswith(b) or b.startswith(a)
 
-    LOG.info(
+    LOG.debug(
         "looking for device by {}: {}".format(
             "prefix" if prefix_search else "full path", path
         )

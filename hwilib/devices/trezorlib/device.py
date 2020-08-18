@@ -14,6 +14,7 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import logging
 import os
 import time
 import warnings
@@ -24,6 +25,8 @@ from .tools import expect, session
 from .transport import enumerate_devices, get_transport
 
 RECOVERY_BACK = "\x08"  # backspace character, sent literally
+
+LOG = logging.getLogger(__name__)
 
 
 class TrezorDevice:
@@ -192,7 +195,7 @@ def reset(
         raise RuntimeError("Invalid response, expected EntropyRequest")
 
     external_entropy = os.urandom(32)
-    # LOG.debug("Computer generated entropy: " + external_entropy.hex())
+    LOG.debug("Computer generated entropy: " + external_entropy.hex())
     ret = client.call(proto.EntropyAck(entropy=external_entropy))
     client.init_device()
     return ret
