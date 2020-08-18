@@ -133,8 +133,7 @@ class ExtendedKey(object):
         d['chaincode'] = binascii.hexlify(self.chaincode).decode()
         if self.is_private and isinstance(self.privkey, bytes):
             d['privkey'] = binascii.hexlify(self.privkey).decode()
-        else:
-            d['pubkey'] = binascii.hexlify(self.pubkey).decode()
+        d['pubkey'] = binascii.hexlify(self.pubkey).decode()
         return d
 
     def derive_pub(self, i: int) -> 'ExtendedKey':
