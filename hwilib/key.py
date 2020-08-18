@@ -21,6 +21,12 @@ def H_(x: int) -> int:
     """
     return x | HARDENED_FLAG
 
+def is_hardened(i: int) -> bool:
+    """
+    Returns whether an index is hardened
+    """
+    return i & HARDENED_FLAG != 0
+
 
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
 # Only handles deserialization of extended keys into component data to be handled by something else
@@ -102,7 +108,7 @@ class KeyOriginInfo(object):
     def _path_string(self) -> str:
         s = ""
         for i in self.path:
-            hardened = i & HARDENED_FLAG != 0
+            hardened = is_hardened(i)
             i &= ~HARDENED_FLAG
             s += "/" + str(i)
             if hardened:
