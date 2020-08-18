@@ -14,6 +14,7 @@ from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib.base58 import xpub_to_pub_hex
 from hwilib.cli import process_commands
 from hwilib.descriptor import AddChecksum
+from hwilib.key import KeyOriginInfo
 from hwilib.serializations import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
@@ -289,9 +290,9 @@ class TestSignTx(DeviceTestCase):
             # Single input PSBTs will be fully signed by first signer
             for psbt_input in first_psbt.inputs[1:]:
                 for pubkey, path in psbt_input.hd_keypaths.items():
-                    psbt_input.hd_keypaths[pubkey] = [0] + path[1:]
+                    psbt_input.hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x00", path.path)
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
-                second_psbt.inputs[0].hd_keypaths[pubkey] = [0] + path[1:]
+                second_psbt.inputs[0].hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x00", path.path)
 
             single_input = len(first_psbt.inputs) == 1
 

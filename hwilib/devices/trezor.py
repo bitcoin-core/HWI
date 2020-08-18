@@ -284,12 +284,12 @@ class TrezorClient(HardwareWalletClient):
                 our_keys = 0
                 for key in psbt_in.hd_keypaths.keys():
                     keypath = psbt_in.hd_keypaths[key]
-                    if keypath[0] == master_fp:
+                    if keypath.fingerprint == master_fp:
                         if key in psbt_in.partial_sigs: # This key already has a signature
                             found_in_sigs = True
                             continue
                         if not found: # This key does not have a signature and we don't have a key to sign with yet
-                            txinputtype.address_n = keypath[1:]
+                            txinputtype.address_n = keypath.path
                             found = True
                         our_keys += 1
 
@@ -339,20 +339,20 @@ class TrezorClient(HardwareWalletClient):
                 psbt_out = tx.outputs[i]
                 if len(psbt_out.hd_keypaths) == 1:
                     _, keypath = next(iter(psbt_out.hd_keypaths.items()))
-                    if keypath[0] == master_fp:
+                    if keypath.fingerprint == master_fp:
                         wit, ver, prog = out.is_witness()
                         if out.is_p2pkh():
-                            txoutput.address_n = keypath[1:]
+                            txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif wit:
                             txoutput.script_type = proto.OutputScriptType.PAYTOWITNESS
-                            txoutput.address_n = keypath[1:]
+                            txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif out.is_p2sh() and psbt_out.redeem_script:
                             wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
                             if wit and len(prog) == 20:
                                 txoutput.script_type = proto.OutputScriptType.PAYTOP2SHWITNESS
-                                txoutput.address_n = keypath[1:]
+                                txoutput.address_n = keypath.path
                                 txoutput.address = None
 
                 # append to outputs
@@ -395,7 +395,7 @@ class TrezorClient(HardwareWalletClient):
                 if input_num in to_ignore:
                     continue
                 for pubkey in psbt_in.hd_keypaths.keys():
-                    fp = psbt_in.hd_keypaths[pubkey][0]
+                    fp = psbt_in.hd_keypaths[pubkey].fingerprint
                     if fp == master_fp and pubkey not in psbt_in.partial_sigs:
                         psbt_in.partial_sigs[pubkey] = sig + b'\x01'
                         break

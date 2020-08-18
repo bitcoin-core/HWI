@@ -204,7 +204,7 @@ class LedgerClient(HardwareWalletClient):
             # Wallets shouldn't be sending to change address as user action
             # otherwise this will get confused
             for pubkey, path in tx.outputs[i_num].hd_keypaths.items():
-                if struct.pack("<I", path[0]) == master_fpr and len(path) > 2 and path[-2] == 1:
+                if path.fingerprint == master_fpr and len(path.path) > 1 and path[-1] == 1:
                     # For possible matches, check if pubkey matches possible template
                     if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014") + hash160(pubkey)) in txout.scriptPubKey:
                         change_path = ''
@@ -277,12 +277,9 @@ class LedgerClient(HardwareWalletClient):
             # Figure out which keys in inputs are from our wallet
             for pubkey in pubkeys:
                 keypath = psbt_in.hd_keypaths[pubkey]
-                if master_fpr == struct.pack("<I", keypath[0]):
+                if master_fpr == keypath.fingerprint:
                     # Add the keypath strings
-                    keypath_str = ''
-                    for index in keypath[1:]:
-                        keypath_str += str(index) + "/"
-                    keypath_str = keypath_str[:-1]
+                    keypath_str = keypath.get_derivation_path()[2:] # Drop the leading m/
                     signature_attempts.append([keypath_str, pubkey])
 
             all_signature_attempts[i_num] = signature_attempts

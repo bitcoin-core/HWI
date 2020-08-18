@@ -458,15 +458,9 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
-                if master_fp == keypath[0]:
+                if master_fp == keypath.fingerprint:
                     # Add the keypath strings
-                    keypath_str = 'm'
-                    for index in keypath[1:]:
-                        keypath_str += '/'
-                        if index >= 0x80000000:
-                            keypath_str += str(index - 0x80000000) + 'h'
-                        else:
-                            keypath_str += str(index)
+                    keypath_str = keypath.get_derivation_path()
 
                     # Create tuples and add to List
                     tup = (binascii.hexlify(sighash).decode(), keypath_str, i_num, pubkey)

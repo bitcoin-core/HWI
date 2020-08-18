@@ -81,7 +81,7 @@ class KeyOriginInfo(object):
         self.path: Sequence[int] = path
 
     @classmethod
-    def deserialize(cls, s: bytes) -> object:
+    def deserialize(cls, s: bytes) -> 'KeyOriginInfo':
         """
         Deserialize a serialized KeyOriginInfo.
         They will be serialized in the same way that PSBTs serialize derivation paths

@@ -121,7 +121,7 @@ class ColdcardClient(HardwareWalletClient):
             our_keys = 0
             for key in psbt_in.hd_keypaths.keys():
                 keypath = psbt_in.hd_keypaths[key]
-                if keypath[0] == master_fp and key not in psbt_in.partial_sigs:
+                if keypath.fingerprint == master_fp and key not in psbt_in.partial_sigs:
                     our_keys += 1
             if our_keys > passes:
                 passes = our_keys

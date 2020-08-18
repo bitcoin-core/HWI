@@ -15,14 +15,16 @@ CTransaction,CTxIn, CTxOut, etc....:
 ser_*, deser_*: functions that handle serialization/deserialization
 """
 
-from io import BytesIO, BufferedReader
 from .errors import PSBTSerializationError
+from .key import KeyOriginInfo
 
 import struct
 import binascii
 import hashlib
 import copy
 import base64
+
+from io import BytesIO, BufferedReader
 from typing import (
     Dict,
     List,
@@ -34,7 +36,6 @@ from typing import (
     TypeVar,
     Callable,
 )
-
 from typing_extensions import Protocol
 
 class Readable(Protocol):
@@ -493,7 +494,7 @@ class CTransaction(object):
 def DeserializeHDKeypath(
     f: Readable,
     key: bytes,
-    hd_keypaths: MutableMapping[bytes, Sequence[int]],
+    hd_keypaths: MutableMapping[bytes, KeyOriginInfo],
 ) -> None:
     if len(key) != 34 and len(key) != 66:
         raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
@@ -501,14 +502,13 @@ def DeserializeHDKeypath(
     if pubkey in hd_keypaths:
         raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
 
-    value = deser_string(f)
-    hd_keypaths[pubkey] = list(struct.unpack("<" + "I" * (len(value) // 4), value))
+    hd_keypaths[pubkey] = KeyOriginInfo.deserialize(deser_string(f))
 
-def SerializeHDKeypath(hd_keypaths: Mapping[bytes, Sequence[int]], type: bytes) -> bytes:
+def SerializeHDKeypath(hd_keypaths: Mapping[bytes, KeyOriginInfo], type: bytes) -> bytes:
     r = b""
     for pubkey, path in sorted(hd_keypaths.items()):
         r += ser_string(type + pubkey)
-        packed = struct.pack("<" + "I" * len(path), *path)
+        packed = path.serialize()
         r += ser_string(packed)
     return r
 
@@ -520,7 +520,7 @@ class PartiallySignedInput:
         self.sighash = 0
         self.redeem_script = b""
         self.witness_script = b""
-        self.hd_keypaths: Dict[bytes, Sequence[int]] = {}
+        self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.final_script_sig = b""
         self.final_script_witness = CTxInWitness()
         self.unknown: Dict[bytes, bytes] = {}
@@ -680,7 +680,7 @@ class PartiallySignedOutput:
     def __init__(self) -> None:
         self.redeem_script = b""
         self.witness_script = b""
-        self.hd_keypaths: Dict[bytes, Sequence[int]] = {}
+        self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
