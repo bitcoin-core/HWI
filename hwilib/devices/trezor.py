@@ -34,7 +34,6 @@ from .trezorlib.ui import (
     prompt,
 )
 from .trezorlib import (
-    tools,
     btc,
     device,
 )
@@ -47,6 +46,7 @@ from ..base58 import (
 
 from ..key import (
     ExtendedKey,
+    parse_path,
 )
 from ..serializations import (
     CTxOut,
@@ -167,7 +167,7 @@ class TrezorClient(HardwareWalletClient):
     def get_pubkey_at_path(self, path):
         self._check_unlocked()
         try:
-            expanded_path = tools.parse_path(path)
+            expanded_path = parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
@@ -407,7 +407,7 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
         self._check_unlocked()
-        path = tools.parse_path(keypath)
+        path = parse_path(keypath)
         result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
@@ -423,7 +423,7 @@ class TrezorClient(HardwareWalletClient):
             for i in range(0, descriptor.multisig_N):
                 xpub.deserialize(descriptor.base_key[i])
                 hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=tools.parse_path('m' + descriptor.path_suffix[i])))
+                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path('m' + descriptor.path_suffix[i])))
             multisig = proto.MultisigRedeemScriptType(m=int(descriptor.multisig_M), signatures=[b''] * int(descriptor.multisig_N), pubkeys=pubkeys)
         # redeem_script means p2sh/multisig
         elif redeem_script:
@@ -451,7 +451,7 @@ class TrezorClient(HardwareWalletClient):
         for path in keypath.split(','):
             if len(path.split('/')[0]) == 8:
                 path = path.split('/', 1)[1]
-            expanded_path = tools.parse_path(path)
+            expanded_path = parse_path(path)
 
             try:
                 address = btc.get_address(
