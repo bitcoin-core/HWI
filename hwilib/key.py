@@ -14,6 +14,14 @@ from typing import (
 
 HARDENED_FLAG = 1 << 31
 
+
+def H_(x: int) -> int:
+    """
+    Shortcut function that "hardens" a number in a BIP44 path.
+    """
+    return x | HARDENED_FLAG
+
+
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
 # Only handles deserialization of extended keys into component data to be handled by something else
 class ExtendedKey(object):
@@ -115,3 +123,36 @@ class KeyOriginInfo(object):
         Return the string for just the path
         """
         return "m" + self._path_string()
+
+
+def parse_path(nstr: str) -> Sequence[int]:
+    """
+    Convert BIP32 path string to list of uint32 integers with hardened flags.
+    Several conventions are supported to set the hardened flag: -1, 1', 1h
+
+    e.g.: "0/1h/1" -> [0, 0x80000001, 1]
+
+    :param nstr: path string
+    :return: list of integers
+    """
+    if not nstr:
+        return []
+
+    n = nstr.split("/")
+
+    # m/a/b/c => a/b/c
+    if n[0] == "m":
+        n = n[1:]
+
+    def str_to_harden(x: str) -> int:
+        if x.startswith("-"):
+            return H_(abs(int(x)))
+        elif x.endswith(("h", "'")):
+            return H_(int(x[:-1]))
+        else:
+            return int(x)
+
+    try:
+        return [str_to_harden(x) for x in n]
+    except Exception:
+        raise ValueError("Invalid BIP32 path", nstr)
