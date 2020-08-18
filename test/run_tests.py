@@ -6,6 +6,7 @@ import unittest
 
 from test_base58 import TestBase58
 from test_bech32 import TestSegwitAddress
+from test_bip32 import TestBIP32
 from test_coldcard import coldcard_test_suite
 from test_descriptor import TestDescriptor
 from test_device import start_bitcoind
@@ -62,6 +63,7 @@ suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
 suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
+suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBIP32))
 if sys.platform.startswith("linux"):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
 success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
