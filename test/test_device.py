@@ -325,12 +325,34 @@ class TestSignTx(DeviceTestCase):
             self.assertTrue(self.wrpc.testmempoolaccept([finalize_res['hex']])[0]["allowed"])
         return finalize_res['hex']
 
+    def _make_multisigs(self):
+        desc_pubkeys = []
+        sorted_pubkeys = []
+        for i in range(0, 3):
+            path = "/49h/1h/0h/0/{}".format(i)
+            origin = '{}{}'.format(self.fingerprint, path)
+            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
+            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
+            sorted_pubkeys.append(xpub["pubkey"])
+        sorted_pubkeys.sort()
+
+        sh_desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
+        sh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "legacy")
+        self.assertEqual(self.rpc.deriveaddresses(sh_desc)[0], sh_ms_info["address"])
+
+        sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
+        sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
+        self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
+
+        wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
+        wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
+        self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
+
+        return sh_desc, sh_ms_info["address"], sh_wsh_desc, sh_wsh_ms_info["address"], wsh_desc, wsh_ms_info["address"]
+
     def _test_signtx(self, input_type, multisig, external):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '50'])
-        import_result = self.wrpc.importmulti(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '30', '50'])
         import_result = self.wrpc.importmulti(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
@@ -339,34 +361,15 @@ class TestSignTx(DeviceTestCase):
         self.wrpc.importaddress(wpkh_addr)
         self.wrpc.importaddress(pkh_addr)
 
-        # pubkeys to construct 2-of-3 multisig descriptors for import
-        sh_wpkh_info = self.wrpc.getaddressinfo(sh_wpkh_addr)
-        wpkh_info = self.wrpc.getaddressinfo(wpkh_addr)
-        pkh_info = self.wrpc.getaddressinfo(pkh_addr)
-
-        # Get origin info/key pair so wallet doesn't forget how to
-        # sign with keys post-import
-        pubkeys = [sh_wpkh_info['desc'][8:-11],
-                   wpkh_info['desc'][5:-10],
-                   pkh_info['desc'][4:-10]]
-
-        # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(sortedmulti(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
+        sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
 
         sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
         sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
-        # re-order pubkeys to allow import without "already have private keys" error
         wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
         multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
         self.assertTrue(multi_result[0]['success'])
         self.assertTrue(multi_result[1]['success'])
         self.assertTrue(multi_result[2]['success'])
-
-        sh_multi_addr = self.wrpc.getaddressesbylabel("shmulti").popitem()[0]
-        sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti").popitem()[0]
-        wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti").popitem()[0]
 
         in_amt = 3
         out_amt = in_amt // 3
