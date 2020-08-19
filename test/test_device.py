@@ -549,44 +549,33 @@ class TestDisplayAddress(DeviceTestCase):
 
         return ms_info["address"], desc, ms_info["redeemScript"], path
 
-    def test_display_address_multisig_path(self):
+    def test_display_address_multisig(self):
         if self.full_type not in SUPPORTS_MS_DISPLAY:
             raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
-            addr, desc, rs, path = self._make_single_multisig(addrtype)
-            args = ['displayaddress', '--path', path, '--redeem_script', rs]
-            if addrtype != "pkh":
-                args.append("--{}".format(addrtype))
-            result = self.do_command(self.dev_args + args)
-            self.assertNotIn('error', result)
-            self.assertNotIn('code', result)
-            self.assertIn('address', result)
+            for use_desc in [True, False]:
+                with self.subTest(addrtype=addrtype, use_desc=use_desc):
+                    addr, desc, rs, path = self._make_single_multisig(addrtype)
 
-            if addrtype == "wpkh":
-                # removes prefix and checksum since regtest gives
-                # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-                self.assertEqual(addr[4:58], result['address'][2:56])
-            else:
-                self.assertEqual(addr, result['address'])
+                    if use_desc:
+                        args = ['displayaddress', '--desc', desc]
+                    else:
+                        args = ['displayaddress', '--path', path, '--redeem_script', rs]
+                        if addrtype != "pkh":
+                            args.append("--{}".format(addrtype))
 
-    def test_display_address_multisig_descriptor(self):
-        if self.full_type not in SUPPORTS_MS_DISPLAY:
-            raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
+                    result = self.do_command(self.dev_args + args)
+                    self.assertNotIn('error', result)
+                    self.assertNotIn('code', result)
+                    self.assertIn('address', result)
 
-        for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
-            addr, desc, rs, path = self._make_single_multisig(addrtype)
-            result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
-            self.assertNotIn('error', result)
-            self.assertNotIn('code', result)
-            self.assertIn('address', result)
-
-            if addrtype == "wpkh":
-                # removes prefix and checksum since regtest gives
-                # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-                self.assertEqual(addr[4:58], result['address'][2:56])
-            else:
-                self.assertEqual(addr, result['address'])
+                    if addrtype == "wpkh":
+                        # removes prefix and checksum since regtest gives
+                        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+                        self.assertEqual(addr[4:58], result['address'][2:56])
+                    else:
+                        self.assertEqual(addr, result['address'])
 
     def test_display_address_xpub_multisig(self):
         if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
