@@ -119,7 +119,7 @@ class DeviceTestCase(unittest.TestCase):
 
     def setup_wallets(self):
         wallet_name = '{}_{}_test'.format(self.full_type, self.id())
-        self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True)
+        self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True, descriptors=True)
         self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
 
@@ -180,67 +180,60 @@ class TestGetKeypool(DeviceTestCase):
         self.setup_wallets()
 
     def test_getkeypool(self):
-        non_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--nokeypool', '0', '20'])
-        import_result = self.wpk_rpc.importmulti(non_keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-
         pkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '0', '20'])
-        import_result = self.wpk_rpc.importmulti(pkh_keypool_desc)
-        self.assertFalse(import_result[0]['success'])
-
-        import_result = self.wrpc.importmulti(pkh_keypool_desc)
+        import_result = self.wrpc.importdescriptors(pkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/44'/1'/0'/0/{}".format(i))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/44'/1'/0'/1/{}".format(i))
+        for _ in range(0, 21):
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'legacy'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/44'/1'/0'/0/"))
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('legacy'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/44'/1'/0'/1/"))
 
         shwpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '0', '20'])
-        import_result = self.wrpc.importmulti(shwpkh_keypool_desc)
+        import_result = self.wrpc.importdescriptors(shwpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
+        for _ in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
-            self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/0/{}".format(i))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/0'/0/"))
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
-            self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/0'/1/{}".format(i))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/0'/1/"))
 
         wpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '0', '20'])
-        import_result = self.wrpc.importmulti(wpkh_keypool_desc)
+        import_result = self.wrpc.importdescriptors(wpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/0/{}".format(i))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/0'/1/{}".format(i))
+        for _ in range(0, 21):
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'bech32'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/0'/0/"))
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('bech32'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/0'/1/"))
 
         # Test that `--all` option gives the "concatenation" of previous three calls
         all_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '0', '20'])
         self.assertEqual(all_keypool_desc, pkh_keypool_desc + wpkh_keypool_desc + shwpkh_keypool_desc)
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--account', '3', '0', '20'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
+        for _ in range(0, 21):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
-            self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/0/{}".format(i))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/3'/0/"))
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
-            self.assertEqual(addr_info['hdkeypath'], "m/49'/1'/3'/1/{}".format(i))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/3'/1/"))
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '--account', '3', '0', '20'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/3'/0/{}".format(i))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/84'/1'/3'/1/{}".format(i))
+        for _ in range(0, 21):
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'bech32'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/3'/0/"))
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('bech32'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/3'/1/"))
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
-        for i in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress())
-            self.assertEqual(addr_info['hdkeypath'], "m/0'/0'/4'/{}".format(i))
+        for _ in range(0, 21):
+            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'legacy'))
+            self.assertTrue(addr_info['hdkeypath'].startswith("m/0'/0'/4'/"))
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', '/0h/0h/4h/*', '0', '20'])
         self.assertEqual(keypool_desc['error'], 'Path must start with m/')
@@ -352,21 +345,19 @@ class TestSignTx(DeviceTestCase):
 
     def _test_signtx(self, input_type, multisig, external):
         # Import some keys to the watch only wallet and send coins to them
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '30', '50'])
-        import_result = self.wrpc.importmulti(keypool_desc)
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
+        import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
         wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
-        self.wrpc.importaddress(wpkh_addr)
-        self.wrpc.importaddress(pkh_addr)
 
         sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
 
         sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
         sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
         wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
-        multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
+        multi_result = self.wrpc.importdescriptors([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
         self.assertTrue(multi_result[0]['success'])
         self.assertTrue(multi_result[1]['success'])
         self.assertTrue(multi_result[2]['success'])
