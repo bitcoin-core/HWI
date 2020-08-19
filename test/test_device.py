@@ -17,6 +17,7 @@ from hwilib.descriptor import AddChecksum
 from hwilib.serializations import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
+SUPPORTS_XPUB_MS_DISPLAY = {'trezor_t'}
 
 # Class for emulator control
 class DeviceEmulator():
@@ -573,19 +574,6 @@ class TestDisplayAddress(DeviceTestCase):
         if self.full_type not in SUPPORTS_MS_DISPLAY:
             raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
-        # descriptor with xpubs
-        if self.full_type == 'trezor_t':
-            account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/45h/0h/0h/2h'])['xpub']
-            desc = 'wsh(multi(2,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/0/0,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/1/0))'
-            result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
-            self.assertNotIn('error', result)
-            self.assertNotIn('code', result)
-            self.assertIn('address', result)
-            addr = self.wrpc.deriveaddresses(AddChecksum(desc))[0]
-            # removes prefix and checksum since regtest gives
-            # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-            self.assertEqual(addr[4:58], result['address'][2:56])
-
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
             addr, desc, rs, path = self._make_single_multisig(addrtype)
             result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
@@ -599,6 +587,21 @@ class TestDisplayAddress(DeviceTestCase):
                 self.assertEqual(addr[4:58], result['address'][2:56])
             else:
                 self.assertEqual(addr, result['address'])
+
+    def test_display_address_xpub_multisig(self):
+        if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
+            raise unittest.SkipTest("{} does not support multsig display with xpubs".format(self.full_type))
+
+        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/45h/0h/0h/2h'])['xpub']
+        desc = 'wsh(multi(2,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/0/0,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/1/0))'
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
+        self.assertNotIn('error', result)
+        self.assertNotIn('code', result)
+        self.assertIn('address', result)
+        addr = self.rpc.deriveaddresses(AddChecksum(desc))[0]
+        # removes prefix and checksum since regtest gives
+        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+        self.assertEqual(addr[4:58], result['address'][2:56])
 
 class TestSignMessage(DeviceTestCase):
     def test_sign_msg(self):
