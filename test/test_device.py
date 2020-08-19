@@ -521,129 +521,61 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
+    def _make_single_multisig(self, addrtype):
+        desc_pubkeys = []
+        sorted_pubkeys = []
+        for i in range(0, 3):
+            path = "/49h/1h/0h/0/{}".format(i)
+            origin = '{}{}'.format(self.fingerprint, path)
+            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
+            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
+            sorted_pubkeys.append((xpub["pubkey"], origin))
+        sorted_pubkeys.sort(key=lambda tup: tup[0])
+
+        if addrtype == "pkh":
+            desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
+            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "legacy")
+        elif addrtype == "sh_wpkh":
+            desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
+            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "p2sh-segwit")
+        elif addrtype == "wpkh":
+            desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
+            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "bech32")
+        else:
+            self.fail("Oops the test is broken")
+
+        self.assertEqual(self.rpc.deriveaddresses(desc)[0], ms_info["address"])
+
+        path = "{},{},{}".format(sorted_pubkeys[0][1], sorted_pubkeys[1][1], sorted_pubkeys[2][1])
+
+        return ms_info["address"], desc, ms_info["redeemScript"], path
+
     def test_display_address_multisig_path(self):
         supports_multisig = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
         if self.full_type not in supports_multisig:
             return
-        # Import some keys to the watch only wallet and get multisig address
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '40', '50'])
-        import_result = self.wrpc.importmulti(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '40', '50'])
-        import_result = self.wrpc.importmulti(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
-        wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
-        pkh_addr = self.wrpc.getnewaddress('', 'legacy')
-        self.wrpc.importaddress(wpkh_addr)
-        self.wrpc.importaddress(pkh_addr)
 
-        # pubkeys to construct 2-of-3 multisig descriptors for import
-        sh_wpkh_info = self.wrpc.getaddressinfo(sh_wpkh_addr)
-        wpkh_info = self.wrpc.getaddressinfo(wpkh_addr)
-        pkh_info = self.wrpc.getaddressinfo(pkh_addr)
+        for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
+            addr, desc, rs, path = self._make_single_multisig(addrtype)
+            args = ['displayaddress', '--path', path, '--redeem_script', rs]
+            if addrtype != "pkh":
+                args.append("--{}".format(addrtype))
+            result = self.do_command(self.dev_args + args)
+            self.assertNotIn('error', result)
+            self.assertNotIn('code', result)
+            self.assertIn('address', result)
 
-        pubkeys = [sh_wpkh_info['desc'][8:-11],
-                   wpkh_info['desc'][5:-10],
-                   pkh_info['desc'][4:-10]]
-
-        # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(sortedmulti(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
-
-        sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti-display"}
-        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti-display"}
-        # re-order pubkeys to allow import without "already have private keys" error
-        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti-display"}
-        multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
-        self.assertTrue(multi_result[0]['success'])
-        self.assertTrue(multi_result[1]['success'])
-        self.assertTrue(multi_result[2]['success'])
-
-        sh_multi_addr = self.wrpc.getaddressesbylabel("shmulti-display").popitem()[0]
-        sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti-display").popitem()[0]
-        wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti-display").popitem()[0]
-
-        sh_multi_addr_redeem_script = self.wrpc.getaddressinfo(sh_multi_addr)['hex']
-        sh_wsh_multi_addr_redeem_script = self.wrpc.getaddressinfo(sh_multi_addr)['hex']
-        wsh_multi_addr_redeem_script = self.wrpc.getaddressinfo(sh_multi_addr)['hex']
-
-        path = pubkeys[2][1:24] + ',' + pubkeys[1][1:24] + ',' + pubkeys[0][1:24]
-        # need to replace `'` with `h` for stdin option to work
-        path = path.replace("'", "h")
-
-        # legacy
-        result = self.do_command(self.dev_args + ['displayaddress', '--path', path, '--redeem_script', sh_multi_addr_redeem_script])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        self.assertEqual(sh_multi_addr, result['address'])
-
-        # wrapped segwit
-        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', path, '--redeem_script', sh_wsh_multi_addr_redeem_script])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        self.assertEqual(sh_wsh_multi_addr, result['address'])
-
-        # native setwit
-        result = self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', path, '--redeem_script', wsh_multi_addr_redeem_script])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        # removes prefix and checksum since regtest gives
-        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-        self.assertEqual(wsh_multi_addr[4:58], result['address'][2:56])
+            if addrtype == "wpkh":
+                # removes prefix and checksum since regtest gives
+                # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+                self.assertEqual(addr[4:58], result['address'][2:56])
+            else:
+                self.assertEqual(addr, result['address'])
 
     def test_display_address_multisig_descriptor(self):
         supports_multisig = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
         if self.full_type not in supports_multisig:
             return
-        # Import some keys to the watch only wallet and get multisig address
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '50', '60'])
-        import_result = self.wrpc.importmulti(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--internal', '50', '60'])
-        import_result = self.wrpc.importmulti(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
-        wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
-        pkh_addr = self.wrpc.getnewaddress('', 'legacy')
-        self.wrpc.importaddress(wpkh_addr)
-        self.wrpc.importaddress(pkh_addr)
-
-        # pubkeys to construct 2-of-3 multisig descriptors for import
-        sh_wpkh_info = self.wrpc.getaddressinfo(sh_wpkh_addr)
-        wpkh_info = self.wrpc.getaddressinfo(wpkh_addr)
-        pkh_info = self.wrpc.getaddressinfo(pkh_addr)
-
-        pubkeys = [sh_wpkh_info['desc'][8:-11],
-                   wpkh_info['desc'][5:-10],
-                   pkh_info['desc'][4:-10]]
-
-        # Get the descriptors with their checksums
-        sh_multi_desc = self.wrpc.getdescriptorinfo('sh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + '))')['descriptor']
-        sh_wsh_multi_desc = self.wrpc.getdescriptorinfo('sh(wsh(sortedmulti(2,' + pubkeys[0] + ',' + pubkeys[1] + ',' + pubkeys[2] + ')))')['descriptor']
-        wsh_multi_desc = self.wrpc.getdescriptorinfo('wsh(sortedmulti(2,' + pubkeys[2] + ',' + pubkeys[1] + ',' + pubkeys[0] + '))')['descriptor']
-
-        sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti-display-desc"}
-        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti-display-desc"}
-        # re-order pubkeys to allow import without "already have private keys" error
-        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti-display-desc"}
-        multi_result = self.wrpc.importmulti([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
-        self.assertTrue(multi_result[0]['success'])
-        self.assertTrue(multi_result[1]['success'])
-        self.assertTrue(multi_result[2]['success'])
-
-        sh_multi_addr = self.wrpc.getaddressesbylabel("shmulti-display-desc").popitem()[0]
-        sh_wsh_multi_addr = self.wrpc.getaddressesbylabel("shwshmulti-display-desc").popitem()[0]
-        wsh_multi_addr = self.wrpc.getaddressesbylabel("wshmulti-display-desc").popitem()[0]
-
-        # need to replace `'` with `h` and to remove checksum for the stdin option to work
-        sh_multi_desc = sh_multi_desc.replace("'", "h").split('#')[0]
-        sh_wsh_multi_desc = sh_wsh_multi_desc.replace("'", "h").split('#')[0]
-        wsh_multi_desc = wsh_multi_desc.replace("'", "h").split('#')[0]
 
         # descriptor with xpubs
         if self.full_type == 'trezor_t':
@@ -658,28 +590,19 @@ class TestDisplayAddress(DeviceTestCase):
             # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
             self.assertEqual(addr[4:58], result['address'][2:56])
 
-        # legacy
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', sh_multi_desc])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        self.assertEqual(sh_multi_addr, result['address'])
+        for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
+            addr, desc, rs, path = self._make_single_multisig(addrtype)
+            result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
+            self.assertNotIn('error', result)
+            self.assertNotIn('code', result)
+            self.assertIn('address', result)
 
-        # wrapped segwit
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', sh_wsh_multi_desc])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        self.assertEqual(sh_wsh_multi_addr, result['address'])
-
-        # native setwit
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', wsh_multi_desc])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        # removes prefix and checksum since regtest gives
-        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-        self.assertEqual(wsh_multi_addr[4:58], result['address'][2:56])
+            if addrtype == "wpkh":
+                # removes prefix and checksum since regtest gives
+                # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+                self.assertEqual(addr[4:58], result['address'][2:56])
+            else:
+                self.assertEqual(addr, result['address'])
 
 class TestSignMessage(DeviceTestCase):
     def test_sign_msg(self):
