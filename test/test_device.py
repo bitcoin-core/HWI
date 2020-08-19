@@ -16,6 +16,8 @@ from hwilib.cli import process_commands
 from hwilib.descriptor import AddChecksum
 from hwilib.serializations import PSBT
 
+SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
+
 # Class for emulator control
 class DeviceEmulator():
     def start(self):
@@ -547,9 +549,8 @@ class TestDisplayAddress(DeviceTestCase):
         return ms_info["address"], desc, ms_info["redeemScript"], path
 
     def test_display_address_multisig_path(self):
-        supports_multisig = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
-        if self.full_type not in supports_multisig:
-            return
+        if self.full_type not in SUPPORTS_MS_DISPLAY:
+            raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
             addr, desc, rs, path = self._make_single_multisig(addrtype)
@@ -569,9 +570,8 @@ class TestDisplayAddress(DeviceTestCase):
                 self.assertEqual(addr, result['address'])
 
     def test_display_address_multisig_descriptor(self):
-        supports_multisig = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
-        if self.full_type not in supports_multisig:
-            return
+        if self.full_type not in SUPPORTS_MS_DISPLAY:
+            raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
         # descriptor with xpubs
         if self.full_type == 'trezor_t':
