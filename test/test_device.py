@@ -444,10 +444,6 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
-    def setUp(self):
-        super().setUp()
-        self.setup_wallets()
-
     def test_display_address_bad_args(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
         self.assertIn('error', result)
