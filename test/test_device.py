@@ -115,9 +115,9 @@ class DeviceTestCase(unittest.TestCase):
         return '{}: {}'.format(self.full_type, super().__repr__())
 
     def setup_wallets(self):
-        if '{}_test'.format(self.full_type) not in self.rpc.listwallets():
-            self.rpc.createwallet('{}_test'.format(self.full_type), True)
-        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}_test'.format(self.rpc_userpass, self.full_type))
+        wallet_name = '{}_{}_test'.format(self.full_type, self.id())
+        self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True)
+        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/'.format(self.rpc_userpass))
 
     def setUp(self):
