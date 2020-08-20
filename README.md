@@ -111,7 +111,7 @@ Please also see [docs](docs/) for additional information about each device.
 | Arbitrary redeemScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
 | Arbitrary witnessScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A |
 | Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | N/A | Yes | Yes | Yes |
+| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | Yes | Yes | Yes | Yes |
 | Display on device screen | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
 
 ## Using with Bitcoin Core
