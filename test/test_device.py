@@ -322,7 +322,7 @@ class TestSignTx(DeviceTestCase):
         desc_pubkeys = []
         sorted_pubkeys = []
         for i in range(0, 3):
-            path = "/49h/1h/0h/0/{}".format(i)
+            path = "/48h/1h/{}h/0/0".format(i)
             origin = '{}{}'.format(self.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
             desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
@@ -518,7 +518,7 @@ class TestDisplayAddress(DeviceTestCase):
         desc_pubkeys = []
         sorted_pubkeys = []
         for i in range(0, 3):
-            path = "/49h/1h/0h/0/{}".format(i)
+            path = "/48h/1h/{}h/0/0".format(i)
             origin = '{}{}'.format(self.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
             desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
@@ -575,8 +575,8 @@ class TestDisplayAddress(DeviceTestCase):
         if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
             raise unittest.SkipTest("{} does not support multsig display with xpubs".format(self.full_type))
 
-        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/45h/0h/0h/2h'])['xpub']
-        desc = 'wsh(multi(2,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/0/0,[' + self.fingerprint + '/45h/0h/0h/2h]' + account_xpub + '/1/0))'
+        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/48h/1h/0h'])['xpub']
+        desc = 'wsh(multi(2,[' + self.fingerprint + '/48h/1h/0h]' + account_xpub + '/0/0,[' + self.fingerprint + '/48h/1h/0h]' + account_xpub + '/1/0))'
         result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
