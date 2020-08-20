@@ -1,4 +1,4 @@
-From cadbd3d25306b43060fd06eed589947d537a5ced Mon Sep 17 00:00:00 2001
+From 8793fbaa9b32f3c67f289a05194e68acc5c61b7d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 17 Dec 2019 17:56:05 -0500
 Subject: [PATCH 2/2] Change default simulator multisig
@@ -8,7 +8,7 @@ Subject: [PATCH 2/2] Change default simulator multisig
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/unix/frozen-modules/sim_settings.py b/unix/frozen-modules/sim_settings.py
-index 0313c3e..e2c3d71 100644
+index 0313c3e..6d301d4 100644
 --- a/unix/frozen-modules/sim_settings.py
 +++ b/unix/frozen-modules/sim_settings.py
 @@ -68,7 +68,11 @@ if '--ms' in sys.argv:
@@ -17,13 +17,13 @@ index 0313c3e..e2c3d71 100644
          # P2SH: 2of4 using BIP39 passwords: "Me", "Myself", "and I", and (empty string) on simulator
 -        sim_defaults['multisig'] = [['MeMyself', [2, 4], [[3503269483, 'tpubD9429UXFGCTKJ9NdiNK4rC5ygqSUkginycYHccqSg5gkmyQ7PZRHNjk99M6a6Y3NY8ctEUUJvCu6iCCui8Ju3xrHRu3Ez1CKB4ZFoRZDdP9'], [2389277556, 'tpubD97nVL37v5tWyMf9ofh5rznwhh1593WMRg6FT4o6MRJkKWANtwAMHYLrcJFsFmPfYbY1TE1LLQ4KBb84LBPt1ubvFwoosvMkcWJtMwvXgSc'], [3190206587, 'tpubD9ArfXowvGHnuECKdGXVKDMfZVGdephVWg8fWGWStH3VKHzT4ph3A4ZcgXWqFu1F5xGTfxncmrnf3sLC86dup2a8Kx7z3xQ3AgeNTQeFxPa'], [1130956047, 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n']], {'ch': 'XTN', 'pp': "45'"}]]
 +        sim_defaults['multisig'] = [
-+            ['mstest', [2, 3], [[1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj']], {'ft': 8, 'ch': 'XTN'}],
-+            ['mstest1', [2, 3], [[1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj']], {'ft': 14, 'ch': 'XTN'}],
-+            ['mstest2', [2, 3], [[1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj'], [1130956047, 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj']], {'ft': 26, 'ch': 'XTN'}],
++            ['mstest', [2, 3], [[1130956047, 'tpubDCp1a2CuSdeVLYbjKRF6H1oSU2hubMm6oV4tXYFkh5u7BwhJ1P5ZwntWGfNCx92BUWpbYPcbgApbYHNTEED49vFdscWgg6KpJepKdgBB92U'], [1130956047, 'tpubDCp1a2CuSdeVQxVNMuLWW4GDnSYqzaPwYRfb8uveDQmwYaPBXERNPWUR8GvyfSLDsbr9MwQxLsKeAAjSsigKpmgrkLdHJM77C3us7t5QFL2'], [1130956047, 'tpubDCp1a2CuSdeVS6h1LsXGqpALo6ZhvWEFDYDv8qTgcnBZYdAPsZ7QL25UKdUqKsMcc8eMQyZA9zjvUMaJjdSVcfDftzgmdvJfH5MnrZoxzFG']], {'ft': 8, 'ch': 'XTN'}],
++            ['mstest1', [2, 3], [[1130956047, 'tpubDCp1a2CuSdeVLYbjKRF6H1oSU2hubMm6oV4tXYFkh5u7BwhJ1P5ZwntWGfNCx92BUWpbYPcbgApbYHNTEED49vFdscWgg6KpJepKdgBB92U'], [1130956047, 'tpubDCp1a2CuSdeVQxVNMuLWW4GDnSYqzaPwYRfb8uveDQmwYaPBXERNPWUR8GvyfSLDsbr9MwQxLsKeAAjSsigKpmgrkLdHJM77C3us7t5QFL2'], [1130956047, 'tpubDCp1a2CuSdeVS6h1LsXGqpALo6ZhvWEFDYDv8qTgcnBZYdAPsZ7QL25UKdUqKsMcc8eMQyZA9zjvUMaJjdSVcfDftzgmdvJfH5MnrZoxzFG']], {'ft': 14, 'ch': 'XTN'}],
++            ['mstest2', [2, 3], [[1130956047, 'tpubDCp1a2CuSdeVLYbjKRF6H1oSU2hubMm6oV4tXYFkh5u7BwhJ1P5ZwntWGfNCx92BUWpbYPcbgApbYHNTEED49vFdscWgg6KpJepKdgBB92U'], [1130956047, 'tpubDCp1a2CuSdeVQxVNMuLWW4GDnSYqzaPwYRfb8uveDQmwYaPBXERNPWUR8GvyfSLDsbr9MwQxLsKeAAjSsigKpmgrkLdHJM77C3us7t5QFL2'], [1130956047, 'tpubDCp1a2CuSdeVS6h1LsXGqpALo6ZhvWEFDYDv8qTgcnBZYdAPsZ7QL25UKdUqKsMcc8eMQyZA9zjvUMaJjdSVcfDftzgmdvJfH5MnrZoxzFG']], {'ft': 26, 'ch': 'XTN'}],
 +            ]
      sim_defaults['fee_limit'] = -1
  
  if '--xfp' in sys.argv:
 -- 
-2.27.0
+2.28.0
 
