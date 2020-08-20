@@ -21,7 +21,6 @@ Due to the limitations of the Trezor, some transactions cannot be signed by a Tr
 - Multisig inputs are limited to at most n-of-15 multisigs. This is a firmware limitation.
 * Transactions with arbitrary input scripts (scriptPubKey, redeemScript, or witnessScript) and arbitrary output scripts cannot be signed. This is a firmware limitation.
 * Send-to-self transactions will result in no prompt for outputs as all outputs will be detected as change.
-- For **Trezor T**, a transaction cannot contain both segwit and non-segwit inputs
 
 ## Note on `backup`
 
