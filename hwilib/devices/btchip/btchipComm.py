@@ -142,7 +142,7 @@ class HIDDongleHIDAPI(Dongle, DongleWait):
 		if self.opened:
 			try:
 				self.device.close()
-			except:
+			except Exception:
 				pass
 		self.opened = False
 
@@ -155,7 +155,7 @@ class DongleServer(Dongle):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		try:
 			self.socket.connect((self.server, self.port))
-		except:
+		except Exception:
 			raise BTChipException("Proxy connection failed")
 
 	def exchange(self, apdu, timeout=20000):
@@ -175,5 +175,5 @@ class DongleServer(Dongle):
 	def close(self):
 		try:
 			self.socket.close()
-		except:
+		except Exception:
 			pass

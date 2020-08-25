@@ -631,7 +631,7 @@ def enumerate(password=''):
         dev.send_recv(b'{"device" : "info"}')
         devices.append({'path': b'udp:127.0.0.1:35345', 'interface_number': 0})
         dev.close()
-    except:
+    except Exception:
         pass
     for d in devices:
         if ('interface_number' in d and d['interface_number'] == 0

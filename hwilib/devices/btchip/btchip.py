@@ -84,7 +84,7 @@ class btchip:
 				self.scriptBlockLength = 50
 			else:
 				self.scriptBlockLength = 255
-		except:
+		except Exception:
 			pass			
 
 	def getWalletPublicKey(self, path, showOnScreen=False, segwit=False, segwitNative=False, cashAddr=False):
@@ -271,7 +271,7 @@ class btchip:
 					response = self.dongle.exchange(bytearray(apdu))
 					offset += dataLength
 				alternateEncoding = True
-			except:
+			except Exception:
 				pass
 		if not alternateEncoding:
 			apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_FINALIZE, 0x02, 0x00 ]

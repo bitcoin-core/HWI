@@ -69,7 +69,7 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
                 client.close()
                 continue
             return client
-        except:
+        except Exception:
             if client:
                 client.close()
             pass # Ignore things we wouldn't get fingerprints for
