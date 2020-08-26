@@ -62,13 +62,14 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
         try:
             client = get_client(d['type'], d['path'], password, expert)
 
-            master_fpr = d.get('fingerprint', None)
-            if master_fpr is None:
-                master_fpr = client.get_master_fingerprint_hex()
+            if fingerprint:
+                master_fpr = d.get('fingerprint', None)
+                if master_fpr is None:
+                    master_fpr = client.get_master_fingerprint_hex()
 
-            if fingerprint and master_fpr != fingerprint:
-                client.close()
-                continue
+                if master_fpr != fingerprint:
+                    client.close()
+                    continue
             return client
         except Exception:
             if client:
