@@ -86,37 +86,7 @@ pass the `--help` parameter after the command name; for example:
 
 ## Device Support
 
-The below table lists what devices and features are supported for each device.
-
-Please also see [docs](docs/) for additional information about each device.
-
-* `✓` - supported by the firmware and implemented in HWI
-* `✗` - supported by the firmware and not implemented in HWI
-* `-` - not supported by the firmware
-
-| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | BitBox01 | BitBox02 | KeepKey | Coldcard |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Implemented | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| xpub retrieval | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Message Signing | ✓ | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ |
-| Device Setup | - | - | ✓ | ✓ | ✓ | ✓ | ✓ | - |
-| Device Wipe | - | - | ✓ | ✓ | ✓ | ✓ | ✓ | - |
-| Device Recovery | - | - | ✓ | ✓ | - | ✓ | ✓ | - |
-| Device Backup | - | - | - | - | ✓ | ✓ | - | ✓ |
-| P2PKH Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ |
-| P2SH-P2WPKH Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| P2WPKH Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| P2SH Multisig Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| P2SH-P2WSH Multisig Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| P2WSH Multisig Inputs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Bare Multisig Inputs | ✓ | ✓ | - | - | ✓ | - | - | - |
-| Arbitrary scriptPubKey Inputs | ✓ | ✓ | - | - | ✓ | - | - | - |
-| Arbitrary redeemScript Inputs | ✓ | ✓ | - | - | ✓ | - | - | - |
-| Arbitrary witnessScript Inputs | ✓ | ✓ | - | - | ✓ | - | - | - |
-| Non-wallet inputs | ✓ | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ |
-| Mixed Segwit and Non-Segwit Inputs | - | - | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Display on device screen | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ |
+For documentation on devices supported and how they are supported, please check the [devicesupport page](docs/devices/index.rst)
 
 ## Using with Bitcoin Core
 

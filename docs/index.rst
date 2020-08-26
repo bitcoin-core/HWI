@@ -5,6 +5,7 @@ Welcome to Hardware Wallet Interface's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   devices/index
 
 
 Indices and tables
