@@ -6,6 +6,7 @@ Welcome to Hardware Wallet Interface's documentation!
    :caption: Contents:
 
    devices/index
+   examples/index
 
 
 Indices and tables

@@ -90,7 +90,7 @@ For documentation on devices supported and how they are supported, please check 
 
 ## Using with Bitcoin Core
 
-See [Using Bitcoin Core with Hardware Wallets](docs/bitcoin-core-usage.md).
+See [Using Bitcoin Core with Hardware Wallets](docs/examples/bitcoin-core-usage.rst).
 
 ## License
 
