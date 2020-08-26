@@ -206,10 +206,6 @@ def enumerate(password: str = "") -> List[Dict[str, object]]:
                     if _using_external_gui
                     else "Please use any subcommand to unlock"
                 )
-            bb02 = client.init()
-            info = bb02.device_info()
-            if not info["initialized"]:
-                raise HWWError("Not initialized", DEVICE_NOT_INITIALIZED)
             d_data["fingerprint"] = client.get_master_fingerprint_hex()
 
         result.append(d_data)
@@ -268,7 +264,7 @@ class Bitbox02Client(HardwareWalletClient):
     def set_noise_config(self, noise_config: BitBoxNoiseConfig) -> None:
         self.noise_config = noise_config
 
-    def init(self) -> bitbox02.BitBox02:
+    def init(self, expect_initialized: bool = True) -> bitbox02.BitBox02:
         if self.bb02 is not None:
             return self.bb02
 
@@ -285,6 +281,16 @@ class Bitbox02Client(HardwareWalletClient):
                     sys.stderr.write("WARNING: {}\n".format(exc))
                     raise
             self.bb02 = bb02
+            is_initialized = bb02.device_info()["initialized"]
+            if expect_initialized:
+                if not is_initialized:
+                    raise HWWError(
+                        "The BitBox02 must be initialized first.",
+                        DEVICE_NOT_INITIALIZED,
+                    )
+            elif is_initialized:
+                raise UnavailableActionError("The BitBox02 must be wiped before setup.")
+
             return bb02
         raise Exception(
             "Could not find the hid device info for path {}".format(self.device_path)
@@ -299,8 +305,6 @@ class Bitbox02Client(HardwareWalletClient):
         The BitBox02 does not support querying arbitrary keypaths, but has an api call return the fingerprint at m/.
         """
         bb02 = self.init()
-        if not bb02.device_info()["initialized"]:
-            raise UnavailableActionError("Not initialized")
         return bb02.root_fingerprint().hex()
 
     def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
@@ -606,9 +610,7 @@ class Bitbox02Client(HardwareWalletClient):
                 "Passphrase not needed when setting up a BitBox02."
             )
 
-        bb02 = self.init()
-        if bb02.device_info()["initialized"]:
-            raise UnavailableActionError("The BitBox02 must be wiped before setup.")
+        bb02 = self.init(expect_initialized=False)
 
         if label:
             bb02.set_device_name(label)
@@ -635,9 +637,7 @@ class Bitbox02Client(HardwareWalletClient):
     def restore_device(
         self, label: str = "", word_count: int = 24
     ) -> Dict[str, Union[bool, str, int]]:
-        bb02 = self.init()
-        if bb02.device_info()["initialized"]:
-            raise UnavailableActionError("The BitBox02 must be wiped before restore.")
+        bb02 = self.init(expect_initialized=False)
 
         if label:
             bb02.set_device_name(label)
