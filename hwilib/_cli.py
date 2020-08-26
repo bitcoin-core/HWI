@@ -131,7 +131,7 @@ class HWIArgumentParser(argparse.ArgumentParser):
         print(json.dumps(error))
         self.exit(2)
 
-def process_commands(cli_args: List[str]) -> Any:
+def get_parser() -> HWIArgumentParser:
     parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
@@ -175,9 +175,9 @@ def process_commands(cli_args: List[str]) -> Any:
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     kp_type_group = getkeypool_parser.add_mutually_exclusive_group()
     kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
-    kp_type_group.add_argument('--all', action='store_true', help='Generate addresses for all standard address types (default paths: m/{44,49,84}h/0h/0h/[0,1]/*)')
+    kp_type_group.add_argument('--all', action='store_true', help='Generate addresses for all standard address types (default paths: ``m/{44,49,84}h/0h/0h/[0,1]/*)``')
     getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
-    getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --addr-type wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
+    getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*`` with --addr-type wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
@@ -189,7 +189,7 @@ def process_commands(cli_args: List[str]) -> Any:
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
-    group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. m/84h/0h/0h/1/*')
+    group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
     displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
@@ -225,6 +225,11 @@ def process_commands(cli_args: List[str]) -> Any:
         udevrules_parser = subparsers.add_parser('installudevrules', help='Install and load the udev rule files for the hardware wallet devices')
         udevrules_parser.add_argument('--location', help='The path where the udev rules files will be copied', default='/etc/udev/rules.d/')
         udevrules_parser.set_defaults(func=install_udev_rules_handler)
+
+    return parser
+
+def process_commands(cli_args: List[str]) -> Any:
+    parser = get_parser()
 
     if any(arg == '--stdin' for arg in cli_args):
         while True:

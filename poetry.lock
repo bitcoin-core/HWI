@@ -540,6 +540,18 @@ lint = ["flake8", "mypy", "docutils-stubs"]
 test = ["pytest"]
 
 [[package]]
+name = "sphinxcontrib-autoprogram"
+version = "0.1.7"
+description = "Documenting CLI programs"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
+Sphinx = ">=1.2"
+
+[[package]]
 name = "sphinxcontrib-devhelp"
 version = "1.0.2"
 description = "sphinxcontrib-devhelp is a sphinx extension which outputs Devhelp document."
@@ -653,7 +665,7 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6,<3.10"
-content-hash = "da6bc3b9d0b1eb4346d7d97532d88e3c30610b6d1f3a95eda1a3971b28e73bf1"
+content-hash = "c0072453b031fbfb5de06909f5bc9a7263c2e1241b8f2e9c7a5ad4c9b4ddbc2a"
 
 [metadata.files]
 alabaster = [
@@ -1001,6 +1013,10 @@ sphinx-rtd-theme = [
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},
     {file = "sphinxcontrib_applehelp-1.0.2-py2.py3-none-any.whl", hash = "sha256:806111e5e962be97c29ec4c1e7fe277bfd19e9652fb1a4392105b43e01af885a"},
+]
+sphinxcontrib-autoprogram = [
+    {file = "sphinxcontrib-autoprogram-0.1.7.tar.gz", hash = "sha256:bc642e3f2817a7539f306e021697f72b225bea5ad23b30dc14a7b9d1408d1f1a"},
+    {file = "sphinxcontrib_autoprogram-0.1.7-py2.py3-none-any.whl", hash = "sha256:746adb4214c3d2917af948499b3ed4b7b88b208a48c96368c0cff356474dba42"},
 ]
 sphinxcontrib-devhelp = [
     {file = "sphinxcontrib-devhelp-1.0.2.tar.gz", hash = "sha256:ff7f1afa7b9642e7060379360a67e9c41e8f3121f2ce9164266f61b9f4b338e4"},
