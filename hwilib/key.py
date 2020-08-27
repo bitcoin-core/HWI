@@ -223,6 +223,21 @@ class KeyOriginInfo(object):
         s += self._path_string()
         return s
 
+    @classmethod
+    def from_string(cls, s: str) -> 'KeyOriginInfo':
+        """
+        Create a KeyOriginInfo from the string
+
+        :param s: The string to parse
+        """
+        s = s.lower()
+        entries = s.split("/")
+        fingerprint = binascii.unhexlify(s[0:8])
+        path: Sequence[int] = []
+        if len(entries) > 1:
+            path = parse_path(s[9:])
+        return cls(fingerprint, path)
+
     def get_derivation_path(self) -> str:
         """
         Return the string for just the path
