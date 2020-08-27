@@ -244,6 +244,12 @@ class KeyOriginInfo(object):
         """
         return "m" + self._path_string()
 
+    def get_fingerprint_hex(self) -> str:
+        """
+        Return the hex for just the fingerprint
+        """
+        return binascii.hexlify(self.fingerprint).decode()
+
 
 def parse_path(nstr: str) -> Sequence[int]:
     """

@@ -418,11 +418,11 @@ class TrezorClient(HardwareWalletClient):
         # descriptor means multisig with xpubs
         if descriptor:
             pubkeys = []
-            for i in range(0, descriptor.multisig_N):
-                xpub = ExtendedKey.deserialize(descriptor.base_key[i])
+            for p in descriptor.pubkeys:
+                xpub = ExtendedKey.deserialize(p.pubkey)
                 hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path('m' + descriptor.path_suffix[i])))
-            multisig = proto.MultisigRedeemScriptType(m=int(descriptor.multisig_M), signatures=[b''] * int(descriptor.multisig_N), pubkeys=pubkeys)
+                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
+            multisig = proto.MultisigRedeemScriptType(m=descriptor.thresh, signatures=[b''] * len(descriptor.pubkeys), pubkeys=pubkeys)
         # redeem_script means p2sh/multisig
         elif redeem_script:
             # Get multisig object required by Trezor's get_address
