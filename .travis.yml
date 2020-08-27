@@ -70,7 +70,7 @@ jobs:
                 - pip install mypy
                 - pip install poetry
                 - poetry install
-            script: mypy --implicit-reexport --strict hwilib/base58.py hwilib/errors.py hwilib/serializations.py hwilib/hwwclient.py hwilib/devices/bitbox02.py hwilib/key.py
+            script: mypy --implicit-reexport --strict hwilib/base58.py hwilib/errors.py hwilib/serializations.py hwilib/hwwclient.py hwilib/devices/bitbox02.py hwilib/key.py hwilib/descriptor.py
         -   name: Run non-device tests only
             stage: test
             install:
