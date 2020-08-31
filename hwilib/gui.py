@@ -3,6 +3,7 @@
 import json
 import logging
 import sys
+import time
 from typing import Callable
 
 from . import commands, __version__
@@ -220,6 +221,11 @@ class BitBox02PairingDialog(QDialog):
         self.ui.pairingCode.setText(pairing_code.replace("\n", "<br>"))
         self.ui.buttonBox.setEnabled(False)
         self.device_response = device_response
+        self.painted = False
+
+    def paintEvent(self, ev):
+        super().paintEvent(ev)
+        self.painted = True
 
     def enable_buttons(self):
         self.ui.buttonBox.setEnabled(True)
@@ -231,7 +237,11 @@ class BitBox02NoiseConfig(bitbox02.util.BitBoxAppNoiseConfig):
         dialog = BitBox02PairingDialog(code, device_response)
         dialog.show()
         # render the window since the next operation is blocking
-        QCoreApplication.processEvents()
+        while True:
+            QCoreApplication.processEvents()
+            if dialog.painted:
+                break
+            time.sleep(0.1)
         if not device_response():
             return False
         dialog.enable_buttons()
