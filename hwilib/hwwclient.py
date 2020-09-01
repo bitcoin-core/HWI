@@ -162,7 +162,7 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def send_pin(self) -> Dict[str, Union[bool, str, int]]:
+    def send_pin(self, pin: str) -> Dict[str, Union[bool, str, int]]:
         """Send PIN.
 
         Must return a dictionary with the "success" key,
