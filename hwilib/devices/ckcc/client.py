@@ -8,7 +8,7 @@
 #
 #   - ec_mult, ec_setup, aes_setup, mitm_verify
 #
-import hid, sys, os, platform
+import hid, sys, os
 from binascii import b2a_hex, a2b_hex
 from hashlib import sha256
 from .protocol import CCProtocolPacker, CCProtocolUnpacker, CCProtoError, MAX_MSG_LEN, MAX_BLK_LEN
@@ -27,8 +27,6 @@ class ColdcardDevice:
         self.is_simulator = False
 
         if not dev and sn and '/' in sn:
-            if platform.system() == 'Windows':
-                raise RuntimeError("Cannot connect to simulator. Is it running?")
             dev = UnixSimulatorPipe(sn)
             found = 'simulator'
             self.is_simulator = True
@@ -92,12 +90,12 @@ class ColdcardDevice:
 
         # check the above all worked
         err = self.dev.error()
-        if err != '':
+        if err and ('not implemented yet' not in err) and (err != 'Success'):
             raise RuntimeError('hidapi: '+err)
 
         assert self.dev.get_serial_number_string() == self.serial
 
-    def send_recv(self, msg, expect_errors=False, verbose=0, timeout=1000, encrypt=True):
+    def send_recv(self, msg, expect_errors=False, verbose=0, timeout=3000, encrypt=True):
         # first byte of each 64-byte packet encodes length or packet-offset
         assert 4 <= len(msg) <= MAX_MSG_LEN, "msg length: %d" % len(msg)
 
@@ -139,6 +137,10 @@ class ColdcardDevice:
         resp = b''
         while 1:
             buf = self.dev.read(64, timeout_ms=(timeout or 0))
+
+            if not buf and timeout:
+                # give it another try
+                buf = self.dev.read(64, timeout_ms=timeout)
 
             assert buf, "timeout reading USB EP"
 
@@ -217,8 +219,8 @@ class ColdcardDevice:
         # - count must start at zero, and increment in LSB for each block.
         import pyaes
 
-        self.encrypt_request = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).decrypt
-        self.decrypt_response = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).encrypt
+        self.encrypt_request = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).encrypt
+        self.decrypt_response = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).decrypt
 
     def start_encryption(self):
         # setup encryption on the link
@@ -258,6 +260,7 @@ class ColdcardDevice:
 
         # If Pycoin is not available, do it using ecdsa
         from ecdsa import BadSignatureError, SECP256k1, VerifyingKey
+        # of the returned (pubkey, chaincode) tuple, chaincode is not used
         pubkey, _ = decode_xpub(expected_xpub)
         vk = VerifyingKey.from_string(get_pubkey_string(pubkey), curve=SECP256k1)
         try:
@@ -325,6 +328,15 @@ class ColdcardDevice:
 
         return data
 
+    def hash_password(self, text_password):
+        # Turn text password into a key for use in HSM auth protocol
+        from hashlib import pbkdf2_hmac, sha256
+        from .constants import PBKDF2_ITER_COUNT
+
+        salt = sha256(b'pepper' + self.serial.encode('ascii')).digest()
+
+        return pbkdf2_hmac('sha256', text_password, salt, PBKDF2_ITER_COUNT)
+
 
 class UnixSimulatorPipe:
     # Use a UNIX pipe to the simulator instead of a real USB connection.
@@ -335,7 +347,8 @@ class UnixSimulatorPipe:
         self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
             self.pipe.connect(path)
-        except FileNotFoundError:
+        except Exception:
+            self.close()
             raise RuntimeError("Cannot connect to simulator. Is it running?")
 
         instance = 0
