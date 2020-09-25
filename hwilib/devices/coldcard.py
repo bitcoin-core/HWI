@@ -32,9 +32,6 @@ from .ckcc.constants import (
     AF_P2SH,
     AF_P2WSH_P2SH,
 )
-from .ckcc.utils import (
-    str_to_int_path,
-)
 from ..base58 import (
     get_xpub_fingerprint,
     xpub_main_2_test,
@@ -55,6 +52,30 @@ from binascii import hexlify, a2b_hex, b2a_hex
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
+
+
+def str_to_int_path(xfp, path):
+    # convert text  m/34'/33/44 into BIP174 binary compat format
+    # - include hex for fingerprint (m) as first arg
+
+    rv = [struct.unpack('<I', a2b_hex(xfp))[0]]
+    for i in path.split('/'):
+        if i == 'm':
+            continue
+        if not i:
+            continue      # trailing or duplicated slashes
+
+        if i[-1] in "'phHP":
+            assert len(i) >= 2, i
+            here = int(i[:-1]) | 0x80000000
+        else:
+            here = int(i)
+            assert 0 <= here < 0x80000000, here
+
+        rv.append(here)
+
+    return rv
+
 
 def coldcard_exception(f):
     def func(*args, **kwargs):
