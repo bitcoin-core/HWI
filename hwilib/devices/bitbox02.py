@@ -10,8 +10,6 @@ from typing import (
     Sequence,
     TypeVar,
 )
-from binascii import unhexlify
-import struct
 import builtins
 import sys
 from functools import wraps
@@ -35,6 +33,10 @@ from ..errors import (
     DEVICE_NOT_INITIALIZED,
     handle_errors,
     common_err_msgs,
+)
+from ..key import (
+    KeyOriginInfo,
+    parse_path,
 )
 
 import hid  # type: ignore
@@ -131,40 +133,6 @@ class CLINoiseConfig(util.BitBoxAppNoiseConfig):
             sys.stderr.write(
                 "Your BitBox02 might not be genuine. Please contact support@shiftcrypto.ch if the problem persists.\n"
             )
-
-
-def _parse_path(nstr: str) -> Sequence[int]:
-    """
-    Adapted from trezorlib.tools.parse_path.
-    Convert BIP32 path string to list of uint32 integers with hardened flags.
-    Several conventions are supported to set the hardened flag: -1, 1', 1h
-
-    e.g.: "0/1h/1" -> [0, 0x80000001, 1]
-
-    :param nstr: path string
-    :return: list of integers
-    """
-    if not nstr:
-        return []
-
-    n = nstr.split("/")
-
-    # m/a/b/c => a/b/c
-    if n[0] == "m":
-        n = n[1:]
-
-    def str_to_harden(x: str) -> int:
-        if x.startswith("-"):
-            return abs(int(x)) + HARDENED
-        elif x.endswith(("h", "'")):
-            return int(x[:-1]) + HARDENED
-        else:
-            return int(x)
-
-    try:
-        return [str_to_harden(x) for x in n]
-    except Exception:
-        raise ValueError("Invalid BIP32 path", nstr)
 
 
 def enumerate(password: str = "") -> List[Dict[str, object]]:
@@ -299,13 +267,16 @@ class Bitbox02Client(HardwareWalletClient):
     def close(self) -> None:
         self.transport.close()
 
-    def get_master_fingerprint_hex(self) -> str:
+    def get_master_fingerprint(self) -> bytes:
         """
         HWI by default retrieves the fingerprint at m/ by getting the xpub at m/0', which contains the parent fingerprint.
         The BitBox02 does not support querying arbitrary keypaths, but has an api call return the fingerprint at m/.
         """
         bb02 = self.init()
-        return bb02.root_fingerprint().hex()
+        return bb02.root_fingerprint()
+
+    def get_master_fingerprint_hex(self) -> str:
+        return self.get_master_fingerprint().hex()
 
     def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
         raise UnavailableActionError(
@@ -333,7 +304,7 @@ class Bitbox02Client(HardwareWalletClient):
         )
 
     def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
-        path_uint32s = _parse_path(bip32_path)
+        path_uint32s = parse_path(bip32_path)
         try:
             xpub = self._get_xpub(path_uint32s)
         except Bitbox02Exception as exc:
@@ -365,7 +336,7 @@ class Bitbox02Client(HardwareWalletClient):
                 "The BitBox02 does not support legacy p2pkh addresses"
             )
         address = self.init().btc_address(
-            _parse_path(bip32_path),
+            parse_path(bip32_path),
             coin=self._get_coin(),
             script_config=script_config,
             display=True,
@@ -375,23 +346,22 @@ class Bitbox02Client(HardwareWalletClient):
     @bitbox02_exception
     def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
         def find_our_key(
-            keypaths: Dict[bytes, Sequence[int]]
+            keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
             """
             Keypaths is a map of pubkey to hd keypath, where the first element in the keypath is the master fingerprint. We attempt to find the key which belongs to the BitBox02 by matching the fingerprint, and then matching the pubkey.
             Returns the pubkey and the keypath, without the fingerprint.
             """
-            for pubkey, keypath_with_fingerprint in keypaths.items():
-                fp, keypath = keypath_with_fingerprint[0], keypath_with_fingerprint[1:]
+            for pubkey, origin in keypaths.items():
                 # Cheap check if the key is ours.
-                if fp != master_fp:
+                if origin.fingerprint != master_fp:
                     continue
 
                 # Expensive check if the key is ours.
                 # TODO: check for fingerprint collision
                 # keypath_account = keypath[:-2]
 
-                return pubkey, keypath
+                return pubkey, origin.path
             return None, None
 
         def get_simple_type(
@@ -409,7 +379,7 @@ class Bitbox02Client(HardwareWalletClient):
                 "Input script type not recognized of input {}.".format(input_index)
             )
 
-        master_fp = struct.unpack("<I", unhexlify(self.get_master_fingerprint_hex()))[0]
+        master_fp = self.get_master_fingerprint()
 
         inputs: List[bitbox02.BTCInputType] = []
 

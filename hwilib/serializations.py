@@ -15,15 +15,16 @@ CTransaction,CTxIn, CTxOut, etc....:
 ser_*, deser_*: functions that handle serialization/deserialization
 """
 
-from io import BytesIO, BufferedReader
 from .errors import PSBTSerializationError
-from . import base58
+from .key import KeyOriginInfo
 
 import struct
 import binascii
 import hashlib
 import copy
 import base64
+
+from io import BytesIO, BufferedReader
 from typing import (
     Dict,
     List,
@@ -35,7 +36,6 @@ from typing import (
     TypeVar,
     Callable,
 )
-
 from typing_extensions import Protocol
 
 class Readable(Protocol):
@@ -494,7 +494,7 @@ class CTransaction(object):
 def DeserializeHDKeypath(
     f: Readable,
     key: bytes,
-    hd_keypaths: MutableMapping[bytes, Sequence[int]],
+    hd_keypaths: MutableMapping[bytes, KeyOriginInfo],
 ) -> None:
     if len(key) != 34 and len(key) != 66:
         raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
@@ -502,14 +502,13 @@ def DeserializeHDKeypath(
     if pubkey in hd_keypaths:
         raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
 
-    value = deser_string(f)
-    hd_keypaths[pubkey] = list(struct.unpack("<" + "I" * (len(value) // 4), value))
+    hd_keypaths[pubkey] = KeyOriginInfo.deserialize(deser_string(f))
 
-def SerializeHDKeypath(hd_keypaths: Mapping[bytes, Sequence[int]], type: bytes) -> bytes:
+def SerializeHDKeypath(hd_keypaths: Mapping[bytes, KeyOriginInfo], type: bytes) -> bytes:
     r = b""
     for pubkey, path in sorted(hd_keypaths.items()):
         r += ser_string(type + pubkey)
-        packed = struct.pack("<" + "I" * len(path), *path)
+        packed = path.serialize()
         r += ser_string(packed)
     return r
 
@@ -521,7 +520,7 @@ class PartiallySignedInput:
         self.sighash = 0
         self.redeem_script = b""
         self.witness_script = b""
-        self.hd_keypaths: Dict[bytes, Sequence[int]] = {}
+        self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.final_script_sig = b""
         self.final_script_witness = CTxInWitness()
         self.unknown: Dict[bytes, bytes] = {}
@@ -681,7 +680,7 @@ class PartiallySignedOutput:
     def __init__(self) -> None:
         self.redeem_script = b""
         self.witness_script = b""
-        self.hd_keypaths: Dict[bytes, Sequence[int]] = {}
+        self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
@@ -870,55 +869,3 @@ class PSBT(object):
 
         # return hex string
         return HexToBase64(r.hex()).decode()
-
-# An extended public key (xpub) or private key (xprv). Just a data container for now.
-# Only handles deserialization of extended keys into component data to be handled by something else
-class ExtendedKey(object):
-
-    MAINNET_PUBLIC = b'\x04\x88\xB2\x1E'
-    MAINNET_PRIVATE = b'\x04\x88\xAD\xE4'
-    TESTNET_PUBLIC = b'\x04\x35\x87\xCF'
-    TESTNET_PRIVATE = b'\x04\x35\x83\x94'
-
-    def __init__(self) -> None:
-        self.is_testnet = False
-        self.is_private = False
-        self.depth = 0
-        self.parent_fingerprint = b''
-        self.child_num = 0
-        self.chaincode = b''
-        self.pubkey = b''
-        self.privkey = b''
-
-    def deserialize(self, xpub: str) -> None:
-        data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
-
-        version = data[0:4]
-        if version == ExtendedKey.TESTNET_PUBLIC or version == ExtendedKey.TESTNET_PRIVATE:
-            self.is_testnet = True
-        if version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE:
-            self.is_private = True
-
-        self.depth = data[4]
-        self.parent_fingerprint = data[5:9]
-        self.child_num = struct.unpack('>I', data[9:13])[0]
-        self.chaincode = data[13:45]
-
-        if self.is_private:
-            self.privkey = data[46:]
-        else:
-            self.pubkey = data[45:78]
-
-    def get_printable_dict(self) -> Dict[str, object]:
-        d: Dict[str, object] = {}
-        d['testnet'] = self.is_testnet
-        d['private'] = self.is_private
-        d['depth'] = self.depth
-        d['parent_fingerprint'] = binascii.hexlify(self.parent_fingerprint).decode()
-        d['child_num'] = self.child_num
-        d['chaincode'] = binascii.hexlify(self.chaincode).decode()
-        if self.is_private:
-            d['privkey'] = binascii.hexlify(self.privkey).decode()
-        else:
-            d['pubkey'] = binascii.hexlify(self.pubkey).decode()
-        return d

@@ -9,7 +9,6 @@
 #
 
 import hashlib
-import struct
 from binascii import hexlify, unhexlify
 from typing import List
 b58_digits: str = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -72,11 +71,10 @@ def decode(s: str) -> bytes:
             break
     return b'\x00' * pad + res
 
-def get_xpub_fingerprint(s: str) -> int:
+def get_xpub_fingerprint(s: str) -> bytes:
     data = decode(s)
     fingerprint = data[5:9]
-    result: int = struct.unpack("<I", fingerprint)[0]
-    return result
+    return fingerprint
 
 def get_xpub_fingerprint_hex(xpub: str) -> str:
     data = decode(xpub)

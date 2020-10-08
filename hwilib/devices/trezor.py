@@ -34,7 +34,6 @@ from .trezorlib.ui import (
     prompt,
 )
 from .trezorlib import (
-    tools,
     btc,
     device,
 )
@@ -44,9 +43,13 @@ from ..base58 import (
     to_address,
     xpub_main_2_test,
 )
+
+from ..key import (
+    ExtendedKey,
+    parse_path,
+)
 from ..serializations import (
     CTxOut,
-    ExtendedKey,
     is_p2pkh,
     is_p2sh,
     is_p2wsh,
@@ -164,7 +167,7 @@ class TrezorClient(HardwareWalletClient):
     def get_pubkey_at_path(self, path):
         self._check_unlocked()
         try:
-            expanded_path = tools.parse_path(path)
+            expanded_path = parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
@@ -281,12 +284,12 @@ class TrezorClient(HardwareWalletClient):
                 our_keys = 0
                 for key in psbt_in.hd_keypaths.keys():
                     keypath = psbt_in.hd_keypaths[key]
-                    if keypath[0] == master_fp:
+                    if keypath.fingerprint == master_fp:
                         if key in psbt_in.partial_sigs: # This key already has a signature
                             found_in_sigs = True
                             continue
                         if not found: # This key does not have a signature and we don't have a key to sign with yet
-                            txinputtype.address_n = keypath[1:]
+                            txinputtype.address_n = keypath.path
                             found = True
                         our_keys += 1
 
@@ -336,20 +339,20 @@ class TrezorClient(HardwareWalletClient):
                 psbt_out = tx.outputs[i]
                 if len(psbt_out.hd_keypaths) == 1:
                     _, keypath = next(iter(psbt_out.hd_keypaths.items()))
-                    if keypath[0] == master_fp:
+                    if keypath.fingerprint == master_fp:
                         wit, ver, prog = out.is_witness()
                         if out.is_p2pkh():
-                            txoutput.address_n = keypath[1:]
+                            txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif wit:
                             txoutput.script_type = proto.OutputScriptType.PAYTOWITNESS
-                            txoutput.address_n = keypath[1:]
+                            txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif out.is_p2sh() and psbt_out.redeem_script:
                             wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
                             if wit and len(prog) == 20:
                                 txoutput.script_type = proto.OutputScriptType.PAYTOP2SHWITNESS
-                                txoutput.address_n = keypath[1:]
+                                txoutput.address_n = keypath.path
                                 txoutput.address = None
 
                 # append to outputs
@@ -392,7 +395,7 @@ class TrezorClient(HardwareWalletClient):
                 if input_num in to_ignore:
                     continue
                 for pubkey in psbt_in.hd_keypaths.keys():
-                    fp = psbt_in.hd_keypaths[pubkey][0]
+                    fp = psbt_in.hd_keypaths[pubkey].fingerprint
                     if fp == master_fp and pubkey not in psbt_in.partial_sigs:
                         psbt_in.partial_sigs[pubkey] = sig + b'\x01'
                         break
@@ -404,7 +407,7 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
         self._check_unlocked()
-        path = tools.parse_path(keypath)
+        path = parse_path(keypath)
         result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
@@ -420,7 +423,7 @@ class TrezorClient(HardwareWalletClient):
             for i in range(0, descriptor.multisig_N):
                 xpub.deserialize(descriptor.base_key[i])
                 hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=tools.parse_path('m' + descriptor.path_suffix[i])))
+                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path('m' + descriptor.path_suffix[i])))
             multisig = proto.MultisigRedeemScriptType(m=int(descriptor.multisig_M), signatures=[b''] * int(descriptor.multisig_N), pubkeys=pubkeys)
         # redeem_script means p2sh/multisig
         elif redeem_script:
@@ -448,7 +451,7 @@ class TrezorClient(HardwareWalletClient):
         for path in keypath.split(','):
             if len(path.split('/')[0]) == 8:
                 path = path.split('/', 1)[1]
-            expanded_path = tools.parse_path(path)
+            expanded_path = parse_path(path)
 
             try:
                 address = btc.get_address(
