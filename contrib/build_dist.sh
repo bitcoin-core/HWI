@@ -6,7 +6,7 @@ set -ex
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 pip install -U pip
-pip install poetry
+pip install poetry==1.0.10
 
 # Setup poetry and install the dependencies
 poetry install -E qt
