@@ -246,7 +246,7 @@ class Bitbox02Client(HardwareWalletClient):
         Initializes a new BitBox02 client instance.
         """
         super().__init__(path, password=password, expert=expert)
-        if password != "":
+        if password:
             raise BadArgumentError(
                 "The BitBox02 does not accept a passphrase from the host. Please enable the passphrase option and enter the passphrase on the device during unlock."
             )
