@@ -86,14 +86,22 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.origin_path, "/84'/1'/0'")
 
     def test_serialize_descriptor_with_origin(self):
-        descriptor = "wpkh([00000001/84'/1'/0']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#mz20k55p"
-        desc = Descriptor.parse(descriptor, True)
-        self.assertEqual(desc.serialize(), descriptor)
+        descriptors = [
+            "wpkh([00000001/84'/1'/0']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#mz20k55p",
+            "wsh(sortedmulti(1,[0b9fb36b/48'/1'/0'/2']tpubDEhAkijE6ovaiWkJpnGnLhW3VJSSbbQeAtRWQro8EaWgNarWFv2TumZ1sj4iBPReCufziRnnb9QSYSEE8tgZQbbaXJTdLtGtQgQTGXEJdfV/0/*,[5d5c5649/48'/1'/0'/2']tpubDEizCJr6sdiKWC6Be8b5EB7akzS7omSX8CHfAYNYewweRDzjmX2kgDAnig9RcVxqtcxdKuYQSKhkjHecYjyej22b7WThS8r1RBmY3Rfczb9/0/*))#9c2fdyzy",
+        ]
+        for descriptor in descriptors:
+            desc = Descriptor.parse(descriptor, True)
+            self.assertEqual(desc.serialize(), descriptor)
 
     def test_serialize_descriptor_without_origin(self):
-        descriptor = "wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#ac0p4yhq"
-        desc = Descriptor.parse(descriptor, True)
-        self.assertEqual(desc.serialize(), descriptor)
+        descriptors = [
+            "wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#ac0p4yhq",
+            "wsh(sortedmulti(1,tpubDEhAkijE6ovaiWkJpnGnLhW3VJSSbbQeAtRWQro8EaWgNarWFv2TumZ1sj4iBPReCufziRnnb9QSYSEE8tgZQbbaXJTdLtGtQgQTGXEJdfV/0/*,tpubDEizCJr6sdiKWC6Be8b5EB7akzS7omSX8CHfAYNYewweRDzjmX2kgDAnig9RcVxqtcxdKuYQSKhkjHecYjyej22b7WThS8r1RBmY3Rfczb9/0/*))#fgnvn2w3"
+        ]
+        for descriptor in descriptors:
+            desc = Descriptor.parse(descriptor, True)
+            self.assertEqual(desc.serialize(), descriptor)
 
     def test_serialize_descriptor_with_key_at_end_with_origin(self):
         descriptor = "wpkh([00000001/84'/1'/0'/0/0]0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)#rh7p6vk2"
