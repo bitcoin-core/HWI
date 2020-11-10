@@ -132,6 +132,13 @@ class CLINoiseConfig(util.BitBoxAppNoiseConfig):
             )
 
 
+def _keypath_hardened_prefix(keypath: Sequence[int]) -> Sequence[int]:
+    for i, e in builtins.enumerate(keypath):
+        if e & HARDENED == 0:
+            return keypath[:i]
+    return keypath
+
+
 def enumerate(password: str = "") -> List[Dict[str, object]]:
     """
     Enumerate all BitBox02 devices. Bootloaders excluded.
@@ -375,17 +382,46 @@ class Bitbox02Client(HardwareWalletClient):
                 return pubkey, origin.path
             return None, None
 
-        def get_simple_type(
-            output: CTxOut, redeem_script: bytes
-        ) -> bitbox02.btc.BTCScriptConfig.SimpleType:
+        script_configs: List[bitbox02.btc.BTCScriptConfigWithKeypath] = []
+
+        def add_script_config(
+            script_config: bitbox02.btc.BTCScriptConfigWithKeypath
+        ) -> int:
+            # Find index of script config if already added.
+            script_config_index = next(
+                (
+                    i
+                    for i, e in builtins.enumerate(script_configs)
+                    if e.SerializeToString() == script_config.SerializeToString()
+                ),
+                None,
+            )
+            if script_config_index is not None:
+                return script_config_index
+            script_configs.append(script_config)
+            return len(script_configs) - 1
+
+        def script_config_from_utxo(
+            output: CTxOut, keypath: Sequence[int], redeem_script: bytes
+        ) -> bitbox02.btc.BTCScriptConfigWithKeypath:
             if is_p2pkh(output.scriptPubKey):
                 raise BadArgumentError(
                     "The BitBox02 does not support legacy p2pkh scripts"
                 )
             if is_p2wpkh(output.scriptPubKey):
-                return bitbox02.btc.BTCScriptConfig.P2WPKH
+                return bitbox02.btc.BTCScriptConfigWithKeypath(
+                    script_config=bitbox02.btc.BTCScriptConfig(
+                        simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
+                    ),
+                    keypath=_keypath_hardened_prefix(keypath),
+                )
             if output.is_p2sh() and is_p2wpkh(redeem_script):
-                return bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
+                return bitbox02.btc.BTCScriptConfigWithKeypath(
+                    script_config=bitbox02.btc.BTCScriptConfig(
+                        simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
+                    ),
+                    keypath=_keypath_hardened_prefix(keypath),
+                )
             raise BadArgumentError(
                 "Input script type not recognized of input {}.".format(input_index)
             )
@@ -446,8 +482,6 @@ class Bitbox02Client(HardwareWalletClient):
             assert keypath is not None
             found_pubkeys.append(found_pubkey)
 
-            # TOOD: validate keypath
-
             if bip44_account is None:
                 bip44_account = keypath[2]
             elif bip44_account != keypath[2]:
@@ -455,13 +489,9 @@ class Bitbox02Client(HardwareWalletClient):
                     "The bip44 account index must be the same for all inputs and changes"
                 )
 
-            simple_type = get_simple_type(utxo, psbt_in.redeem_script)
-
-            script_config_index_map = {
-                bitbox02.btc.BTCScriptConfig.P2WPKH: 0,
-                bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH: 1,
-            }
-
+            script_config_index = add_script_config(
+                script_config_from_utxo(utxo, keypath, psbt_in.redeem_script)
+            )
             inputs.append(
                 {
                     "prev_out_hash": ser_uint256(tx_in.prevout.hash),
@@ -469,7 +499,7 @@ class Bitbox02Client(HardwareWalletClient):
                     "prev_out_value": utxo.nValue,
                     "sequence": tx_in.nSequence,
                     "keypath": keypath,
-                    "script_config_index": script_config_index_map[simple_type],
+                    "script_config_index": script_config_index,
                     "prev_tx": {
                         "version": prevtx.nVersion,
                         "locktime": prevtx.nLockTime,
@@ -501,12 +531,14 @@ class Bitbox02Client(HardwareWalletClient):
             is_change = keypath and keypath[-2] == 1
             if is_change:
                 assert keypath is not None
-                simple_type = get_simple_type(tx_out, psbt_out.redeem_script)
+                script_config_index = add_script_config(
+                    script_config_from_utxo(tx_out, keypath, psbt_out.redeem_script)
+                )
                 outputs.append(
                     bitbox02.BTCOutputInternal(
                         keypath=keypath,
                         value=tx_out.nValue,
-                        script_config_index=script_config_index_map[simple_type],
+                        script_config_index=script_config_index,
                     )
                 )
             else:
@@ -540,20 +572,7 @@ class Bitbox02Client(HardwareWalletClient):
         bip44_network = 1 + HARDENED if self.is_testnet else 0 + HARDENED
         sigs = self.init().btc_sign(
             bitbox02.btc.TBTC if self.is_testnet else bitbox02.btc.BTC,
-            [
-                bitbox02.btc.BTCScriptConfigWithKeypath(
-                    script_config=bitbox02.btc.BTCScriptConfig(
-                        simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
-                    ),
-                    keypath=[84 + HARDENED, bip44_network, bip44_account],
-                ),
-                bitbox02.btc.BTCScriptConfigWithKeypath(
-                    script_config=bitbox02.btc.BTCScriptConfig(
-                        simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
-                    ),
-                    keypath=[49 + HARDENED, bip44_network, bip44_account],
-                ),
-            ],
+            script_configs,
             inputs=inputs,
             outputs=outputs,
             locktime=psbt.tx.nLockTime,
