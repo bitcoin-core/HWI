@@ -86,9 +86,13 @@ class Descriptor:
         elif isinstance(origin_path, list):
             self.m_path_base = []
             self.m_path = []
-            for i in range(0, len(origin_path)):
-                self.m_path_base.append("m" + origin_path[i])
-                self.m_path.append("m" + origin_path[i] + (path_suffix[i] or ""))
+            for i, path in enumerate(origin_path):
+                if path is None:
+                    self.m_path_base.append(None)
+                    self.m_path.append(None)
+                else:
+                    self.m_path_base.append("m" + path)
+                    self.m_path.append("m" + path + (path_suffix[i] or ""))
 
     @classmethod
     def parse(cls, desc, testnet=False):
@@ -145,6 +149,8 @@ class Descriptor:
 
         descriptors = []
         for key in keys:
+            origin_fingerprint = None
+            origin_path = None
             origin_match = re.search(r"\[(.*)\]", key)
             if origin_match:
                 origin = origin_match.group(1)
