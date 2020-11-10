@@ -300,6 +300,35 @@ def is_p2wsh(script: bytes) -> bool:
         return False
     return len(wit_prog) == 32
 
+# Only handles up to 15 of 15. Returns None if this script is not a
+# multisig script. Returns (m, pubkeys) otherwise.
+def parse_multisig(script: bytes) -> Optional[Tuple[int, Sequence[bytes]]]:
+    # Get m
+    m = script[0] - 80
+    if m < 1 or m > 15:
+        return None
+
+    # Get pubkeys
+    pubkeys = []
+    offset = 1
+    while True:
+        pubkey_len = script[offset]
+        if pubkey_len != 33:
+            break
+        offset += 1
+        pubkeys.append(script[offset:offset + 33])
+        offset += 33
+
+    # Check things at the end
+    n = script[offset] - 80
+    if n != len(pubkeys):
+        return None
+    offset += 1
+    op_cms = script[offset]
+    if op_cms != 174:
+        return None
+
+    return (m, pubkeys)
 
 class CTxOut(object):
     def __init__(self, nValue: int = 0, scriptPubKey: bytes = b""):
