@@ -242,7 +242,8 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
             redeem_script = format(80 + int(descriptor.multisig_M), 'x')
             xpubs_descriptor = False
             for i in range(0, descriptor.multisig_N):
-                path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i]
+                if descriptor.origin_fingerprint[i] and descriptor.origin_path[i]:
+                    path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i]
                 if not descriptor.path_suffix[i]:
                     redeem_script += '21' + descriptor.base_key[i]
                 else:
