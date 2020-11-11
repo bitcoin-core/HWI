@@ -348,6 +348,9 @@ class CTxOut(object):
     def is_p2sh(self) -> bool:
         return is_p2sh(self.scriptPubKey)
 
+    def is_p2wsh(self) -> bool:
+        return is_p2wsh(self.scriptPubKey)
+
     def is_p2pkh(self) -> bool:
         return is_p2pkh(self.scriptPubKey)
 

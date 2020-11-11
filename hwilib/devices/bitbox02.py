@@ -15,6 +15,8 @@ import builtins
 import sys
 from functools import wraps
 
+import base58
+
 from ..hwwclient import HardwareWalletClient, Descriptor
 from ..serializations import (
     PSBT,
@@ -24,6 +26,7 @@ from ..serializations import (
     is_p2wsh,
     ser_uint256,
     ser_sig_der,
+    parse_multisig,
 )
 from ..errors import (
     HWWError,
@@ -138,6 +141,15 @@ def _keypath_hardened_prefix(keypath: Sequence[int]) -> Sequence[int]:
         if e & HARDENED == 0:
             return keypath[:i]
     return keypath
+
+
+def _xpubs_equal_ignoring_version(xpub1: bytes, xpub2: bytes) -> bool:
+    """
+    Xpubs: 78 bytes. Returns true if the xpubs are equal, ignoring the 4 byte version.
+    The version is not important and allows compatibility with Electrum, which exports PSBTs with
+    xpubs using Electrum-style xpub versions.
+    """
+    return xpub1[4:] == xpub2[4:]
 
 
 def enumerate(password: str = "") -> List[Dict[str, object]]:
@@ -434,17 +446,14 @@ class Bitbox02Client(HardwareWalletClient):
                 raise BadArgumentError(
                     "BitBox02 currently only supports the following multisig scrit types: P2WSH, P2WSH_P2SH"
                 )
-            script_config = bitbox02.btc.BTCScriptConfig(
-                multisig=bitbox02.btc.BTCScriptConfig.Multisig(
-                    threshold=int(descriptor.multisig_M),
-                    xpubs=map(util.parse_xpub, xpubs),
-                    our_xpub_index=our_xpub_index,
-                    script_type=script_type,
-                )
+            our_xpub, script_config_with_keypath = self._multisig_scriptconfig(
+                int(descriptor.multisig_M), key_origin_infos, script_type
             )
-            self._maybe_register_script_config(script_config, our_account_keypath)
-            assert descriptor.m_path
-            keypath = parse_path(descriptor.m_path[our_xpub_index])
+            script_config = script_config_with_keypath.script_config
+            account_keypath: Sequence[int] = script_config_with_keypath.keypath
+            self._maybe_register_script_config(script_config, account_keypath)
+
+            keypath = parse_path(keypaths[our_xpub])
         elif redeem_script:
             raise BadArgumentError("BitBox02 multisig only works with descriptors")
         else:
@@ -507,7 +516,10 @@ class Bitbox02Client(HardwareWalletClient):
             return len(script_configs) - 1
 
         def script_config_from_utxo(
-            output: CTxOut, keypath: Sequence[int], redeem_script: bytes
+            output: CTxOut,
+            keypath: Sequence[int],
+            redeem_script: bytes,
+            witness_script: bytes,
         ) -> bitbox02.btc.BTCScriptConfigWithKeypath:
             if is_p2pkh(output.scriptPubKey):
                 raise BadArgumentError(
@@ -527,9 +539,26 @@ class Bitbox02Client(HardwareWalletClient):
                     ),
                     keypath=_keypath_hardened_prefix(keypath),
                 )
-            raise BadArgumentError(
-                "Input script type not recognized of input {}.".format(input_index)
-            )
+            # Check for segwit multisig (p2wsh or p2wsh-p2sh).
+            is_p2wsh_p2sh = output.is_p2sh() and is_p2wsh(redeem_script)
+            if output.is_p2wsh() or is_p2wsh_p2sh:
+                multisig = parse_multisig(witness_script)
+                if multisig:
+                    threshold, _ = multisig
+                    # We assume that all xpubs in the PSBT are part of the multisig. This is okay
+                    # since the BitBox02 enforces the same script type for all inputs and
+                    # changes. If that should change, we need to find and use the subset of xpubs
+                    # corresponding to the public keys in the current multisig script.
+                    _, script_config = self._multisig_scriptconfig(
+                        threshold,
+                        psbt.xpub,
+                        bitbox02.btc.BTCScriptConfig.Multisig.P2WSH
+                        if output.is_p2wsh()
+                        else bitbox02.btc.BTCScriptConfig.Multisig.P2WSH_P2SH,
+                    )
+                    return script_config
+
+            raise BadArgumentError("Input or change script type not recognized.")
 
         master_fp = self.get_master_fingerprint()
 
@@ -595,7 +624,9 @@ class Bitbox02Client(HardwareWalletClient):
                 )
 
             script_config_index = add_script_config(
-                script_config_from_utxo(utxo, keypath, psbt_in.redeem_script)
+                script_config_from_utxo(
+                    utxo, keypath, psbt_in.redeem_script, psbt_in.witness_script
+                )
             )
             inputs.append(
                 {
@@ -637,7 +668,9 @@ class Bitbox02Client(HardwareWalletClient):
             if is_change:
                 assert keypath is not None
                 script_config_index = add_script_config(
-                    script_config_from_utxo(tx_out, keypath, psbt_out.redeem_script)
+                    script_config_from_utxo(
+                        tx_out, keypath, psbt_out.redeem_script, psbt_out.witness_script
+                    )
                 )
                 outputs.append(
                     bitbox02.BTCOutputInternal(
@@ -673,10 +706,14 @@ class Bitbox02Client(HardwareWalletClient):
                 )
 
         assert bip44_account is not None
+        if len(script_configs) == 1 and script_configs[0].script_config.multisig:
+            self._maybe_register_script_config(
+                script_configs[0].script_config, script_configs[0].keypath
+            )
 
         bip44_network = 1 + HARDENED if self.is_testnet else 0 + HARDENED
         sigs = self.init().btc_sign(
-            bitbox02.btc.TBTC if self.is_testnet else bitbox02.btc.BTC,
+            self._get_coin(),
             script_configs,
             inputs=inputs,
             outputs=outputs,
