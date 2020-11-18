@@ -612,7 +612,8 @@ class Bitbox02Client(HardwareWalletClient):
                 "Label/passphrase not needed when exporting mnemonic from the BitBox02."
             )
 
-        return {"success": self.init().show_mnemonic()}
+        self.init().show_mnemonic()
+        return {"success": True}
 
     @bitbox02_exception
     def restore_device(

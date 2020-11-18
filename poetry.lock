@@ -32,7 +32,7 @@ description = "Python library for bitbox02 communication"
 name = "bitbox02"
 optional = false
 python-versions = ">=3.6"
-version = "4.1.0"
+version = "5.1.0"
 
 [package.dependencies]
 base58 = ">=2.0.0"
@@ -349,7 +349,8 @@ testing = ["jaraco.itertools", "func-timeout"]
 qt = ["pyside2"]
 
 [metadata]
-content-hash = "6bee57172b9beaa2587a228e24a3c7588d2472f228b4bd845ff0cc8c99f4374f"
+content-hash = "2cf812887d174f29ea88b17382662d98471ab2f753d5ef597a9c90413e58fab7"
+lock-version = "1.0"
 python-versions = "^3.6,<3.9"
 
 [metadata.files]
@@ -365,8 +366,8 @@ base58 = [
     {file = "base58-2.0.1.tar.gz", hash = "sha256:365c9561d9babac1b5f18ee797508cd54937a724b6e419a130abad69cec5ca79"},
 ]
 bitbox02 = [
-    {file = "bitbox02-4.1.0-py3-none-any.whl", hash = "sha256:1af95952d67b74c80ccc0588e0aee983c764960da637bd24bc41a1cb89d5e127"},
-    {file = "bitbox02-4.1.0.tar.gz", hash = "sha256:73a35594162f32897dd2b1880f0cfaa42922acd1c2d7f4cf3d94b8333329c931"},
+    {file = "bitbox02-5.1.0-py3-none-any.whl", hash = "sha256:7d0efad2516604c0275452506f415730ac9e790569dedc79668b67db2ed13cdf"},
+    {file = "bitbox02-5.1.0.tar.gz", hash = "sha256:0562bc93d87afd89879e130c60c8dbfaffa8a1c3deff01201702939c9594d242"},
 ]
 cffi = [
     {file = "cffi-1.14.2-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:da9d3c506f43e220336433dffe643fbfa40096d408cb9b7f2477892f369d5f82"},
@@ -518,6 +519,8 @@ pyside2 = [
     {file = "PySide2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-manylinux1_x86_64.whl", hash = "sha256:f9099e49fb2d3571f5a81eb9ff281ce832ce8c333052e8175e2356b9c3e4a882"},
     {file = "PySide2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-none-win32.whl", hash = "sha256:7c91a5074f3c60bac7e9336943a1dc9d5c8be8ab88a232dc55018e555dae81b2"},
     {file = "PySide2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-none-win_amd64.whl", hash = "sha256:2d72150f63025b9b55097c1a64d09da37ff9191f73f69237500dec7a4a130541"},
+    {file = "PySide2-5.15.0-5.15.0_1-cp35.cp36.cp37.cp38-none-win_amd64.whl", hash = "sha256:7ac86f31bc0a4fbf3f0bf00890e849441776be304c7b8bf259d777a7fe5fe913"},
+    {file = "PySide2-5.15.0-5.15.0_2-cp35.cp36.cp37.cp38-none-win_amd64.whl", hash = "sha256:fad5ce781d0774bfad39f54b6c3376909b8d27f2075cbde6f4499df7dbd855f9"},
 ]
 pywin32-ctypes = [
     {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},

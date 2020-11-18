@@ -24,7 +24,7 @@ mnemonic = "~0"
 typing-extensions = "^3.7"
 libusb1 = "^1.7"
 pyside2 = { version = "^5.14.0", optional = true }
-bitbox02 = ">=4.1.0"
+bitbox02 = ">=5.1.0"
 
 [tool.poetry.extras]
 qt = ["pyside2"]
