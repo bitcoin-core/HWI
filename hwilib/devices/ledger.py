@@ -47,6 +47,10 @@ LEDGER_MODEL_IDS = {
     0x10: "ledger_nano_s",
     0x40: "ledger_nano_x"
 }
+LEDGER_LEGACY_PRODUCT_IDS = {
+    0x0001: "ledger_nano_s",
+    0x0004: "ledger_nano_x"
+}
 
 # minimal checking of string keypath
 def check_keypath(key_path):
@@ -397,9 +401,12 @@ def enumerate(password=''):
             path = d['path'].decode()
             d_data['type'] = 'ledger'
             model = d['product_id'] >> 8
-            if model not in LEDGER_MODEL_IDS.keys():
+            if model in LEDGER_MODEL_IDS.keys():
+                d_data['model'] = LEDGER_MODEL_IDS[model]
+            elif d['product_id'] in LEDGER_LEGACY_PRODUCT_IDS.keys():
+                d_data['model'] = LEDGER_LEGACY_PRODUCT_IDS[d['product_id']]
+            else:
                 continue
-            d_data['model'] = LEDGER_MODEL_IDS[model]
             d_data['path'] = path
 
             if path == SIMULATOR_PATH:
