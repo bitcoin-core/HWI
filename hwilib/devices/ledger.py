@@ -43,10 +43,14 @@ import re
 SIMULATOR_PATH = 'tcp:127.0.0.1:9999'
 
 LEDGER_VENDOR_ID = 0x2c97
-LEDGER_DEVICE_IDS = [
-    0x0001, # Ledger Nano S
-    0x0004, # Ledger Nano X
-]
+LEDGER_MODEL_IDS = {
+    0x10: "ledger_nano_s",
+    0x40: "ledger_nano_x"
+}
+LEDGER_LEGACY_PRODUCT_IDS = {
+    0x0001: "ledger_nano_s",
+    0x0004: "ledger_nano_x"
+}
 
 # minimal checking of string keypath
 def check_keypath(key_path):
@@ -386,9 +390,8 @@ class LedgerClient(HardwareWalletClient):
 def enumerate(password=''):
     results = []
     devices = []
-    for device_id in LEDGER_DEVICE_IDS:
-        devices.extend(hid.enumerate(LEDGER_VENDOR_ID, device_id))
-    devices.append({'path': SIMULATOR_PATH.encode(), 'interface_number': 0, 'product_id': 1})
+    devices.extend(hid.enumerate(LEDGER_VENDOR_ID, 0))
+    devices.append({'path': SIMULATOR_PATH.encode(), 'interface_number': 0, 'product_id': 0x1000})
 
     for d in devices:
         if ('interface_number' in d and d['interface_number'] == 0
@@ -397,7 +400,13 @@ def enumerate(password=''):
 
             path = d['path'].decode()
             d_data['type'] = 'ledger'
-            d_data['model'] = 'ledger_nano_x' if d['product_id'] == 0x0004 else 'ledger_nano_s'
+            model = d['product_id'] >> 8
+            if model in LEDGER_MODEL_IDS.keys():
+                d_data['model'] = LEDGER_MODEL_IDS[model]
+            elif d['product_id'] in LEDGER_LEGACY_PRODUCT_IDS.keys():
+                d_data['model'] = LEDGER_LEGACY_PRODUCT_IDS[d['product_id']]
+            else:
+                continue
             d_data['path'] = path
 
             if path == SIMULATOR_PATH:
