@@ -34,10 +34,7 @@ from ..errors import (
     handle_errors,
     common_err_msgs,
 )
-from ..key import (
-    KeyOriginInfo,
-    parse_path,
-)
+from ..key import KeyOriginInfo, parse_path
 
 import hid  # type: ignore
 
