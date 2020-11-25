@@ -13,20 +13,19 @@ Current implemented commands are:
 * `backup`
 * `togglepassphrase`
 
-Multisig (P2WSH only) is supported by the BitBox02, but is not ingerated into HWI yet. Coming
-soon^{tm}.
-
 # Usage Notes
 
 ## Strict keypaths
 
 The BitBox02 has strict keypath validation.
 
-The only accepted keypaths for xpubs are:
+The only accepted keypaths for xpubs are (as of firmware v9.3.0):
 
 - `m/49'/0'/<account'>` for `p2wpkh-p2sh` (segwit wrapped in P2SH)
 - `m/84'/0'/<account'>` for `p2wpkh` (native segwit v0)
-- `m/48'/0'/<account'>/2` for p2wsh multisig (native segwit v0 multisig).
+- `m/48'/0'/<account'>/2'` for p2wsh multisig (native segwit v0 multisig).
+- `m/48'/0'/<account'>/1'` for p2wsh-p2sh multisig (p2sh-wrapped segwit v0 multisig).
+- `m/48'/0'/<account'>` for p2wsh and p2wsh-p2sh multisig.
 
 `account'` can be between `0'` and `99'`.
 
