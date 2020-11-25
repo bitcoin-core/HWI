@@ -78,6 +78,8 @@ class BitBox02Error(UnavailableActionError):
         msg += "m/49'/0'/<account'> for p2wpkh-p2sh; "
         msg += "m/84'/0'/<account'> for p2wpkh; "
         msg += "m/48'/0'/<account'>/2' for p2wsh multisig; "
+        msg += "m/48'/0'/<account'>/1' for p2wsh-p2sh multisig; "
+        msg += "m/48'/0'/<account'>' for any supported multisig; "
         msg += "account can be between 0' and 99'; "
         msg += "For address keypaths, append /0/<address index> for a receive and /1/<change index> for a change address."
         super().__init__(msg)

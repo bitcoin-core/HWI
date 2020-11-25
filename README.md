@@ -103,8 +103,8 @@ Please also see [docs](docs/) for additional information about each device.
 | P2PKH Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
 | P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
+| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Bare Multisig Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
 | Arbitrary scriptPubKey Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
