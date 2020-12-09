@@ -129,7 +129,12 @@ class ColdcardClient(HardwareWalletClient):
     # Must return a hex string with the signed transaction
     # The tx must be in the combined unsigned transaction format
     @coldcard_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: Union[PSBT, str, bytes]) -> Dict[str, str]:
+        if isinstance(tx, (str, bytes)):
+            psbt2 = PSBT()
+            psbt2.deserialize(tx)
+            tx = psbt2
+
         self.device.check_mitm()
 
         # Get this devices master key fingerprint

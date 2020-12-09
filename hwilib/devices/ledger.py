@@ -36,6 +36,7 @@ from ..serializations import (
     is_p2wsh,
     is_witness,
     CTransaction,
+    PSBT,
 )
 import logging
 import re
@@ -176,7 +177,12 @@ class LedgerClient(HardwareWalletClient):
     # The tx must be in the combined unsigned transaction format
     # Current only supports segwit signing
     @ledger_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: Union[PSBT, str, bytes]) -> Dict[str, str]:
+        if isinstance(tx, (str, bytes)):
+            psbt2 = PSBT()
+            psbt2.deserialize(tx)
+            tx = psbt2
+
         c_tx = CTransaction(tx.tx)
         tx_bytes = c_tx.serialize_with_witness()
 

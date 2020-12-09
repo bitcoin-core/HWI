@@ -358,7 +358,12 @@ class Bitbox02Client(HardwareWalletClient):
         return {"address": address}
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
+    def sign_tx(self, psbt: Union[PSBT, str, bytes]) -> Dict[str, str]:
+        if isinstance(psbt, (str, bytes)):
+            psbt2 = PSBT()
+            psbt2.deserialize(psbt)
+            psbt = psbt2
+
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:

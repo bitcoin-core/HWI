@@ -33,6 +33,7 @@ from ..key import (
 )
 from ..serializations import (
     CTransaction,
+    PSBT,
     hash256,
     is_p2pk,
     is_p2pkh,
@@ -363,7 +364,11 @@ class DigitalbitboxClient(HardwareWalletClient):
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format
     @digitalbitbox_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: Union[PSBT, str, bytes]) -> Dict[str, str]:
+        if isinstance(tx, (str, bytes)):
+            psbt2 = PSBT()
+            psbt2.deserialize(tx)
+            tx = psbt2
 
         # Create a transaction with all scriptsigs blanekd out
         blank_tx = CTransaction(tx.tx)
