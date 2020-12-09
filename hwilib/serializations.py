@@ -19,7 +19,6 @@ from .errors import PSBTSerializationError
 from .key import KeyOriginInfo
 
 import struct
-import binascii
 import hashlib
 import copy
 import base64
@@ -35,6 +34,7 @@ from typing import (
     Tuple,
     TypeVar,
     Callable,
+    Union,
 )
 from typing_extensions import Protocol
 
@@ -149,9 +149,6 @@ def ser_string_vector(v: List[bytes]) -> bytes:
     for sv in v:
         r += ser_string(sv)
     return r
-
-def HexToBase64(s: str) -> bytes:
-    return base64.b64encode(binascii.unhexlify(s))
 
 def ser_sig_der(r: bytes, s: bytes) -> bytes:
     sig = b"\x30"
@@ -758,8 +755,10 @@ class PSBT(object):
         self.outputs: List[PartiallySignedOutput] = []
         self.unknown: Dict[bytes, bytes] = {}
 
-    def deserialize(self, psbt: str) -> None:
-        psbt_bytes = base64.b64decode(psbt.strip())
+    def deserialize(self, psbt: Union[str, bytes]) -> None:
+        if isinstance(psbt, str):
+            psbt.strip()
+        psbt_bytes = base64.b64decode(psbt)
         f = BufferedReader(BytesIO(psbt_bytes)) # type: ignore
         end = len(psbt_bytes)
 
@@ -867,5 +866,5 @@ class PSBT(object):
         for output in self.outputs:
             r += output.serialize()
 
-        # return hex string
-        return HexToBase64(r.hex()).decode()
+        # return the base64 string
+        return base64.b64encode(r).decode('ascii')
