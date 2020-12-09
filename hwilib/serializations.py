@@ -65,16 +65,14 @@ def hash160(s: bytes) -> bytes:
 
 # Serialization/deserialization tools
 def ser_compact_size(size: int) -> bytes:
-    r = b""
     if size < 253:
-        r = struct.pack("B", size)
+        return struct.pack("B", size)
     elif size < 0x10000:
-        r = struct.pack("<BH", 253, size)
+        return struct.pack("<BH", 253, size)
     elif size < 0x100000000:
-        r = struct.pack("<BI", 254, size)
+        return struct.pack("<BI", 254, size)
     else:
-        r = struct.pack("<BQ", 255, size)
-    return r
+        return struct.pack("<BQ", 255, size)
 
 def deser_compact_size(f: Readable) -> int:
     nit: int = struct.unpack("<B", f.read(1))[0]
@@ -110,11 +108,8 @@ def ser_uint256(u: int) -> bytes:
 
 
 def uint256_from_str(s: bytes) -> int:
-    r = 0
     t = struct.unpack("<IIIIIIII", s[:32])
-    for i in range(8):
-        r += t[i] << (i * 32)
-    return r
+    return sum(t[i] << (i * 32) for i in range(8))
 
 D = TypeVar("D", bound=Deserializable)
 
@@ -234,10 +229,7 @@ class CTxIn(object):
         scriptSig: bytes = b"",
         nSequence: int = 0,
     ):
-        if outpoint is None:
-            self.prevout = COutPoint()
-        else:
-            self.prevout = outpoint
+        self.prevout = COutPoint() if outpoint is None else outpoint
         self.scriptSig = scriptSig
         self.nSequence = nSequence
 
@@ -267,7 +259,11 @@ def is_p2pkh(script: bytes) -> bool:
     return len(script) == 25 and script[0] == 0x76 and script[1] == 0xa9 and script[2] == 0x14 and script[23] == 0x88 and script[24] == 0xac
 
 def is_p2pk(script: bytes) -> bool:
-    return (len(script) == 35 or len(script) == 67) and (script[0] == 0x21 or script[0] == 0x41) and script[-1] == 0xac
+    return (
+        len(script) in [35, 67]
+        and script[0] in [0x21, 0x41]
+        and script[-1] == 0xAC
+    )
 
 def is_witness(script: bytes) -> Tuple[bool, int, bytes]:
     if len(script) < 4 or len(script) > 42:
@@ -283,17 +279,13 @@ def is_witness(script: bytes) -> Tuple[bool, int, bytes]:
 
 def is_p2wpkh(script: bytes) -> bool:
     is_wit, wit_ver, wit_prog = is_witness(script)
-    if not is_wit:
-        return False
-    elif wit_ver != 0:
+    if not is_wit or wit_ver != 0:
         return False
     return len(wit_prog) == 20
 
 def is_p2wsh(script: bytes) -> bool:
     is_wit, wit_ver, wit_prog = is_witness(script)
-    if not is_wit:
-        return False
-    elif wit_ver != 0:
+    if not is_wit or wit_ver != 0:
         return False
     return len(wit_prog) == 32
 
@@ -336,13 +328,10 @@ class CScriptWitness(object):
         self.stack: List[bytes] = []
 
     def __repr__(self) -> str:
-        return "CScriptWitness(%s)" % \
-               (",".join([x.hex() for x in self.stack]))
+        return ("CScriptWitness(%s)" % ",".join(x.hex() for x in self.stack))
 
     def is_null(self) -> bool:
-        if self.stack:
-            return False
-        return True
+        return not self.stack
 
 
 class CTxInWitness(object):
@@ -380,14 +369,10 @@ class CTxWitness(object):
         return r
 
     def __repr__(self) -> str:
-        return "CTxWitness(%s)" % \
-               (';'.join([repr(x) for x in self.vtxinwit]))
+        return ("CTxWitness(%s)" % ';'.join(repr(x) for x in self.vtxinwit))
 
     def is_null(self) -> bool:
-        for x in self.vtxinwit:
-            if not x.is_null():
-                return False
-        return True
+        return all(x.is_null() for x in self.vtxinwit)
 
 
 class CTransaction(object):
@@ -493,7 +478,7 @@ def DeserializeHDKeypath(
     key: bytes,
     hd_keypaths: MutableMapping[bytes, KeyOriginInfo],
 ) -> None:
-    if len(key) != 34 and len(key) != 66:
+    if len(key) not in [34, 66]:
         raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
     pubkey = key[1:]
     if pubkey in hd_keypaths:
@@ -569,7 +554,7 @@ class PartiallySignedInput:
                 self.witness_utxo.deserialize(tx_out_bytes)
 
             elif key_type == 2:
-                if len(key) != 34 and len(key) != 66:
+                if len(key) not in [34, 66]:
                     raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
                 pubkey = key[1:]
                 if pubkey in self.partial_sigs:
@@ -747,10 +732,7 @@ class PartiallySignedOutput:
 class PSBT(object):
 
     def __init__(self, tx: Optional[CTransaction] = None) -> None:
-        if tx:
-            self.tx = tx
-        else:
-            self.tx = CTransaction()
+        self.tx = tx or CTransaction()
         self.inputs: List[PartiallySignedInput] = []
         self.outputs: List[PartiallySignedOutput] = []
         self.unknown: Dict[bytes, bytes] = {}
@@ -826,7 +808,7 @@ class PSBT(object):
             raise PSBTSerializationError("Inputs provided does not match the number of inputs in transaction")
 
         # Read output data
-        for txout in self.tx.vout:
+        for _ in self.tx.vout:
             if f.tell() == end:
                 break
             output = PartiallySignedOutput()
