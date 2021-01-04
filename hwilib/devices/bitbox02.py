@@ -713,7 +713,6 @@ class Bitbox02Client(HardwareWalletClient):
                 script_configs[0].script_config, script_configs[0].keypath
             )
 
-        bip44_network = 1 + HARDENED if self.is_testnet else 0 + HARDENED
         sigs = self.init().btc_sign(
             self._get_coin(),
             script_configs,
