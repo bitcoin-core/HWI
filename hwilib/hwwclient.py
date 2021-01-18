@@ -15,7 +15,7 @@ class HardwareWalletClient(object):
     def __init__(self, path: str, password: str, expert: bool) -> None:
         self.path = path
         self.password = password
-        self.message_magic = b"\x18Bitcoin Signed Message:\n"
+        self.message_magic = b"\x15Qtum Signed Message:\n"
         self.is_testnet = False
         self.fingerprint: Optional[str] = None
         # {bip32_path: <xpub string>}
