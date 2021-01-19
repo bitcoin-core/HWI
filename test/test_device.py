@@ -457,24 +457,18 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
-    def test_display_address_bad_args(self):
-        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
-        self.assertIn('error', result)
-        self.assertIn('code', result)
-        self.assertEqual(result['code'], -7)
-
     def test_display_address_path(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
-        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "sh_wpkh", '--path', 'm/49h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
-        result = self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "wpkh", '--path', 'm/84h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
@@ -573,7 +567,8 @@ class TestDisplayAddress(DeviceTestCase):
                     else:
                         args = ['displayaddress', '--path', path, '--redeem_script', rs]
                         if addrtype != "pkh":
-                            args.append("--{}".format(addrtype))
+                            args.append("--addr-type")
+                            args.append(addrtype)
 
                     result = self.do_command(self.dev_args + args)
                     self.assertNotIn('error', result)

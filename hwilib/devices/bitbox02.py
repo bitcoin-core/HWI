@@ -16,6 +16,7 @@ from functools import wraps
 
 from ..hwwclient import HardwareWalletClient, Descriptor
 from ..serializations import (
+    AddressType,
     PSBT,
     CTxOut,
     is_p2pkh,
@@ -329,19 +330,18 @@ class Bitbox02Client(HardwareWalletClient):
     def display_address(
         self,
         bip32_path: str,
-        p2sh_p2wpkh: bool,
-        bech32: bool,
+        addr_type: AddressType,
         redeem_script: Optional[str] = None,
         descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
         if redeem_script:
             raise NotImplementedError("BitBox02 multisig not integrated into HWI yet")
 
-        if p2sh_p2wpkh:
+        if addr_type == AddressType.SH_WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
             )
-        elif bech32:
+        elif addr_type == AddressType.WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
             )
