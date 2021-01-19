@@ -197,16 +197,11 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
     else:
         return PKHDescriptor(pubkey)
 
-def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True, addr_all=False):
+def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, addr_type: AddressType = AddressType.PKH, addr_all=False):
 
-    if sh_wpkh:
-        addr_types = [AddressType.SH_WPKH]
-    elif wpkh:
-        addr_types = [AddressType.WPKH]
-    elif addr_all:
+    addr_types = [addr_type]
+    if addr_all:
         addr_types = list(AddressType)
-    else:
-        addr_types = [AddressType.PKH]
 
     # When no specific path or internal-ness is specified, create standard types
     chains = []

@@ -35,6 +35,7 @@ from typing import (
     Sequence,
     Tuple,
     TypeVar,
+    Union,
     Callable,
 )
 from typing_extensions import Protocol
@@ -69,6 +70,18 @@ class AddressType(Enum):
     WPKH = 2
     SH_WPKH = 3
 
+    def __str__(self) -> str:
+        return self.name.lower()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s: str) -> Union['AddressType', str]:
+        try:
+            return AddressType[s.upper()]
+        except KeyError:
+            return s
 
 # Serialization/deserialization tools
 def ser_compact_size(size: int) -> bytes:
