@@ -28,6 +28,7 @@ from .errors import (
     NO_DEVICE_TYPE,
     UNAVAILABLE_ACTION,
 )
+from .serializations import AddressType
 from . import __version__
 
 import argparse
@@ -52,7 +53,7 @@ def getxpub_handler(args, client):
     return getxpub(client, path=args.path)
 
 def getkeypool_handler(args, client):
-    return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh, addr_all=args.all)
+    return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, addr_type=args.addr_type, addr_all=args.all)
 
 def getdescriptors_handler(args, client):
     return getdescriptors(client, account=args.account)
@@ -158,11 +159,10 @@ def process_commands(cli_args):
     kparg_group.add_argument('--nokeypool', action='store_false', dest='keypool', help='Indicates that the keys are not to be imported to the keypool', default=False)
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     kp_type_group = getkeypool_parser.add_mutually_exclusive_group()
-    kp_type_group.add_argument('--sh_wpkh', action='store_true', help='Generate p2sh-nested segwit addresses (default path: m/49h/0h/0h/[0,1]/*)')
-    kp_type_group.add_argument('--wpkh', action='store_true', help='Generate bech32 addresses (default path: m/84h/0h/0h/[0,1]/*)')
+    kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH)
     kp_type_group.add_argument('--all', action='store_true', help='Generate addresses for all standard address types (default paths: m/{44,49,84}h/0h/0h/[0,1]/*)')
     getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
-    getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
+    getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --addr-type wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
     getkeypool_parser.add_argument('start', type=int, help='The index to start at.')
     getkeypool_parser.add_argument('end', type=int, help='The index to end at.')
     getkeypool_parser.set_defaults(func=getkeypool_handler)
