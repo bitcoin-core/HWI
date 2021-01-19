@@ -41,7 +41,7 @@ def backup_device_handler(args, client):
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
 def displayaddress_handler(args, client):
-    return displayaddress(client, desc=args.desc, path=args.path, sh_wpkh=args.sh_wpkh, wpkh=args.wpkh, redeem_script=args.redeem_script)
+    return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type, redeem_script=args.redeem_script)
 
 def enumerate_handler(args):
     return enumerate(password=args.password)
@@ -175,8 +175,7 @@ def process_commands(cli_args):
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. m/84h/0h/0h/1/*')
-    displayaddr_parser.add_argument('--sh_wpkh', action='store_true', help='Display the p2sh-nested segwit address associated with this key path')
-    displayaddr_parser.add_argument('--wpkh', action='store_true', help='Display the bech32 version of the address associated with this key path')
+    displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH)
     displayaddr_parser.add_argument('--redeem_script', help='P2SH redeem script')
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 

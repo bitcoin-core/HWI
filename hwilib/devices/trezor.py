@@ -49,6 +49,7 @@ from ..key import (
     parse_path,
 )
 from ..serializations import (
+    AddressType,
     CTxOut,
     is_p2pkh,
     is_p2sh,
@@ -412,7 +413,7 @@ class TrezorClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @trezor_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None, descriptor=None):
+    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
         self._check_unlocked()
 
         # descriptor means multisig with xpubs
@@ -434,9 +435,9 @@ class TrezorClient(HardwareWalletClient):
             multisig = None
 
         # Script type
-        if p2sh_p2wpkh:
+        if addr_type == AddressType.SH_WPKH:
             script_type = proto.InputScriptType.SPENDP2SHWITNESS
-        elif bech32:
+        elif addr_type == AddressType.WPKH:
             script_type = proto.InputScriptType.SPENDWITNESS
         elif redeem_script:
             script_type = proto.InputScriptType.SPENDMULTISIG
