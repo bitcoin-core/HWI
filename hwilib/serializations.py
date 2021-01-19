@@ -24,6 +24,7 @@ import hashlib
 import copy
 import base64
 
+from enum import Enum
 from io import BytesIO, BufferedReader
 from typing import (
     Dict,
@@ -61,6 +62,12 @@ def hash256(s: bytes) -> bytes:
 
 def hash160(s: bytes) -> bytes:
     return ripemd160(sha256(s))
+
+
+class AddressType(Enum):
+    PKH = 1
+    WPKH = 2
+    SH_WPKH = 3
 
 
 # Serialization/deserialization tools

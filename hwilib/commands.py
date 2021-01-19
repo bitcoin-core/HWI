@@ -6,7 +6,7 @@ import binascii
 import importlib
 import platform
 
-from .serializations import PSBT
+from .serializations import AddressType, PSBT
 from .base58 import xpub_to_pub_hex
 from .key import (
     H_,
@@ -33,15 +33,10 @@ from .descriptor import (
 )
 from .devices import __all__ as all_devs
 
-from enum import Enum
 from itertools import count
 
 py_enumerate = enumerate
 
-class AddressType(Enum):
-    PKH = 1
-    WPKH = 2
-    SH_WPKH = 3
 
 # Get the client for the device
 def get_client(device_type, device_path, password='', expert=False):
