@@ -2,20 +2,41 @@
 
 # Hardware wallet interaction script
 
+import binascii
 import importlib
 import platform
 
 from .serializations import PSBT
 from .base58 import xpub_to_pub_hex
+from .key import (
+    H_,
+    HARDENED_FLAG,
+    is_hardened,
+    KeyOriginInfo,
+    parse_path,
+)
 from .errors import (
     UnknownDeviceError,
     UnavailableActionError,
     BAD_ARGUMENT,
     NOT_IMPLEMENTED,
 )
-from .descriptor import Descriptor
+from .descriptor import (
+    Descriptor,
+    parse_descriptor,
+    MultisigDescriptor,
+    PKHDescriptor,
+    PubkeyProvider,
+    SHDescriptor,
+    WPKHDescriptor,
+    WSHDescriptor,
+)
 from .devices import __all__ as all_devs
+
 from enum import Enum
+from itertools import count
+
+py_enumerate = enumerate
 
 class AddressType(Enum):
     PKH = 1
@@ -106,7 +127,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
 
     this_import = {}
 
-    this_import['desc'] = desc.serialize()
+    this_import['desc'] = desc.to_string()
     this_import['range'] = [start, end]
     this_import['timestamp'] = 'now'
     this_import['internal'] = internal
@@ -121,53 +142,65 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
     is_wpkh = addr_type is AddressType.WPKH
     is_sh_wpkh = addr_type is AddressType.SH_WPKH
 
+    parsed_path = []
     if not path:
-        # Master key:
-        path = "m/"
-
         # Purpose
         if is_wpkh:
-            path += "84'/"
+            parsed_path.append(H_(84))
         elif is_sh_wpkh:
-            path += "49'/"
+            parsed_path.append(H_(49))
         else:
             assert addr_type == AddressType.PKH
-            path += "44'/"
+            parsed_path.append(H_(44))
 
         # Coin type
         if testnet:
-            path += "1'/"
+            parsed_path.append(H_(1))
         else:
-            path += "0'/"
+            parsed_path.append(H_(0))
 
         # Account
-        path += str(account) + '\'/'
+        parsed_path.append(H_(account))
 
         # Receive or change
         if internal:
-            path += "1/*"
+            parsed_path.append(1)
         else:
-            path += "0/*"
+            parsed_path.append(0)
     else:
         if path[0] != "m":
             return {'error': 'Path must start with m/', 'code': BAD_ARGUMENT}
         if path[-1] != "*":
             return {'error': 'Path must end with /*', 'code': BAD_ARGUMENT}
+        parsed_path = parse_path(path[:-2])
 
     # Find the last hardened derivation:
-    path = path.replace('\'', 'h')
-    path_suffix = ''
-    for component in path.split("/")[::-1]:
-        if component[-1] == 'h' or component[-1] == 'm':
+    for i, p in zip(count(len(parsed_path) - 1, -1), reversed(parsed_path)):
+        if is_hardened(p):
             break
-        path_suffix = '/' + component + path_suffix
-    path_base = path.rsplit(path_suffix)[0]
+    i += 1
+
+    origin = KeyOriginInfo(binascii.unhexlify(master_fpr), parsed_path[:i])
+    path_base = origin.get_derivation_path()
+
+    path_suffix = ""
+    for p in parsed_path[i:]:
+        hardened = is_hardened(p)
+        p &= ~HARDENED_FLAG
+        path_suffix += "/{}{}".format(p, "h" if hardened else "")
+    path_suffix += "/*"
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
 
-    return Descriptor(master_fpr, path_base.replace('m', ''), client.xpub_cache.get(path_base), path_suffix, client.is_testnet, is_sh_wpkh, is_wpkh)
+    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base), path_suffix)
+    if is_wpkh:
+        return WPKHDescriptor(pubkey)
+    elif is_sh_wpkh:
+        return SHDescriptor(WPKHDescriptor(pubkey))
+    else:
+        return PKHDescriptor(pubkey)
 
 def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True, addr_all=False):
 
@@ -216,7 +249,7 @@ def getdescriptors(client, account=0):
                 continue
             if not isinstance(desc, Descriptor):
                 return desc
-            descriptors.append(desc.serialize())
+            descriptors.append(desc.to_string())
         if internal:
             result["internal"] = descriptors
         else:
@@ -234,32 +267,41 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
             return {'error': ' `--wpkh` and `--sh_wpkh` can not be combined with --desc', 'code': BAD_ARGUMENT}
         if redeem_script:
             return {'error': ' `--redeem_script` can not be combined with --desc', 'code': BAD_ARGUMENT}
-        descriptor = Descriptor.parse(desc, client.is_testnet)
-        if descriptor is None:
-            return {'error': 'Unable to parse descriptor: ' + desc, 'code': BAD_ARGUMENT}
-        if descriptor.sh or descriptor.sh_wsh or descriptor.wsh:
-            path = ''
-            redeem_script = format(80 + int(descriptor.multisig_M), 'x')
-            xpubs_descriptor = False
-            for i in range(0, descriptor.multisig_N):
-                path += descriptor.origin_fingerprint[i] + descriptor.origin_path[i]
-                if not descriptor.path_suffix[i]:
-                    redeem_script += '21' + descriptor.base_key[i]
-                else:
-                    path += descriptor.path_suffix[i]
-                    xpubs_descriptor = True
-                path += ','
-            path = path[0:-1]
-            redeem_script += format(80 + descriptor.multisig_N, 'x') + 'ae'
-            return client.display_address(path, descriptor.sh_wpkh or descriptor.sh_wsh, descriptor.wpkh or descriptor.wsh, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
-        if descriptor.m_path is None:
-            return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
-        if descriptor.origin_fingerprint != client.get_master_fingerprint_hex():
-            return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
-        xpub = client.get_pubkey_at_path(descriptor.m_path_base)['xpub']
-        if descriptor.base_key != xpub and descriptor.base_key != xpub_to_pub_hex(xpub):
-            return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
-        return client.display_address(descriptor.m_path, descriptor.sh_wpkh, descriptor.wpkh)
+        descriptor = parse_descriptor(desc)
+        is_sh = isinstance(descriptor, SHDescriptor)
+        is_wsh = isinstance(descriptor, WSHDescriptor)
+        if is_sh or is_wsh:
+            descriptor = descriptor.subdescriptor
+            if isinstance(descriptor, WSHDescriptor):
+                is_wsh = True
+                descriptor = descriptor.subdescriptor
+            if isinstance(descriptor, MultisigDescriptor):
+                path = ''
+                redeem_script = format(80 + int(descriptor.thresh), 'x')
+                xpubs_descriptor = False
+                for p in descriptor.pubkeys:
+                    path += p.origin.to_string()
+                    if not p.deriv_path:
+                        redeem_script += format(len(p.pubkey) // 2, 'x')
+                        redeem_script += p.pubkey
+                    else:
+                        path += p.deriv_path
+                        xpubs_descriptor = True
+                    path += ','
+                path = path[0:-1]
+                redeem_script += format(80 + len(descriptor.pubkeys), 'x') + 'ae'
+                return client.display_address(path, is_sh and is_wsh, not is_sh and is_wsh, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
+        is_wpkh = isinstance(descriptor, WPKHDescriptor)
+        if isinstance(descriptor, PKHDescriptor) or is_wpkh:
+            pubkey = descriptor.pubkeys[0]
+            if pubkey.origin is None:
+                return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
+            if pubkey.origin.get_fingerprint_hex() != client.get_master_fingerprint_hex():
+                return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
+            xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path())['xpub']
+            if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
+                return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
+            return client.display_address(pubkey.origin.get_derivation_path(), is_sh and is_wpkh, not is_sh and is_wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)

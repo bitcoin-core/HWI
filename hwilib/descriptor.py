@@ -1,9 +1,15 @@
-# mypy: ignore-errors
-import re
+from .key import KeyOriginInfo
+
+from enum import Enum
+from typing import (
+    List,
+    Optional,
+    Tuple,
+)
 
 # From: https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
 
-def PolyMod(c, val):
+def PolyMod(c: int, val: int) -> int:
     c0 = c >> 35
     c = ((c & 0x7ffffffff) << 5) ^ val
     if (c0 & 1):
@@ -18,7 +24,7 @@ def PolyMod(c, val):
         c ^= 0x644d626ffd
     return c
 
-def DescriptorChecksum(desc):
+def DescriptorChecksum(desc: str) -> str:
     INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
     CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
@@ -42,174 +48,207 @@ def DescriptorChecksum(desc):
         c = PolyMod(c, 0)
     c ^= 1
 
-    ret = [None] * 8
+    ret = [''] * 8
     for j in range(0, 8):
         ret[j] = CHECKSUM_CHARSET[(c >> (5 * (7 - j))) & 31]
     return ''.join(ret)
 
-def AddChecksum(desc):
+def AddChecksum(desc: str) -> str:
     return desc + "#" + DescriptorChecksum(desc)
 
-class Descriptor:
+
+class PubkeyProvider(object):
     def __init__(
         self,
-        origin_fingerprint,
-        origin_path,
-        base_key,
-        path_suffix,
-        testnet,
-        sh_wpkh=None,
-        wpkh=None,
-        sh=None,
-        sh_wsh=None,
-        wsh=None,
-        multisig_M=None,
-        multisig_N=None
-    ):
-        self.origin_fingerprint = origin_fingerprint
-        self.origin_path = origin_path
-        self.path_suffix = path_suffix
-        self.base_key = base_key
-        self.testnet = testnet
-        self.sh_wpkh = sh_wpkh
-        self.wpkh = wpkh
-        self.sh = sh
-        self.sh_wsh = sh_wsh
-        self.wsh = wsh
-        self.multisig_M = multisig_M
-        self.multisig_N = multisig_N
-        self.m_path = None
-
-        if origin_path and not isinstance(origin_path, list):
-            self.m_path_base = "m" + origin_path
-            self.m_path = "m" + origin_path + (path_suffix or "")
-        elif isinstance(origin_path, list):
-            self.m_path_base = []
-            self.m_path = []
-            for i in range(0, len(origin_path)):
-                self.m_path_base.append("m" + origin_path[i])
-                self.m_path.append("m" + origin_path[i] + (path_suffix[i] or ""))
+        origin: Optional['KeyOriginInfo'],
+        pubkey: str,
+        deriv_path: Optional[str]
+    ) -> None:
+        self.origin = origin
+        self.pubkey = pubkey
+        self.deriv_path = deriv_path
 
     @classmethod
-    def parse(cls, desc, testnet=False):
-        sh_wpkh = None
-        wpkh = None
-        sh = None
-        sh_wsh = None
-        wsh = None
-        origin_fingerprint = None
-        origin_path = None
-        base_key_and_path_match = None
-        base_key = None
-        path_suffix = None
-        multisig_M = None
-        multisig_N = None
+    def parse(cls, s: str) -> 'PubkeyProvider':
+        origin = None
+        deriv_path = None
 
-        # Check the checksum
-        check_split = desc.split('#')
-        if len(check_split) > 2:
-            return None
-        if len(check_split) == 2:
-            if len(check_split[1]) != 8:
-                return None
-            checksum = DescriptorChecksum(check_split[0])
-            if not checksum.strip():
-                return None
-            if checksum != check_split[1]:
-                return None
-        desc = check_split[0]
+        if s[0] == "[":
+            end = s.index("]")
+            origin = KeyOriginInfo.from_string(s[1:end])
+            s = s[end + 1:]
 
-        if desc.startswith("sh(wpkh("):
-            sh_wpkh = True
-        elif desc.startswith("wpkh("):
-            wpkh = True
-        elif desc.startswith("sh(wsh("):
-            sh_wsh = True
-        elif desc.startswith("wsh("):
-            wsh = True
-        elif desc.startswith("sh("):
-            sh = True
+        pubkey = s
+        slash_idx = s.find("/")
+        if slash_idx != -1:
+            pubkey = s[:slash_idx]
+            deriv_path = s[slash_idx:]
 
-        if sh or sh_wsh or wsh:
-            if 'multi(' not in desc:
-                # only multisig scripts are supported
-                return None
-            # get the list of keys only
-            keys = desc.split(',', 1)[1].split(')', 1)[0].split(',')
-            if 'sortedmulti' in desc:
-                keys.sort(key=lambda x: x if ']' not in x else x.split(']')[1])
-            multisig_M = desc.split(',')[0].split('(')[-1]
-            multisig_N = len(keys)
-        else:
-            keys = [desc.split('(')[-1].split(')', 1)[0]]
+        return cls(origin, pubkey, deriv_path)
 
-        descriptors = []
-        for key in keys:
-            origin_match = re.search(r"\[(.*)\]", key)
-            if origin_match:
-                origin = origin_match.group(1)
-                match = re.search(r"^([0-9a-fA-F]{8})(\/.*)", origin)
-                if match:
-                    origin_fingerprint = match.group(1)
-                    origin_path = match.group(2)
-                    # Replace h with '
-                    origin_path = origin_path.replace('h', '\'')
-                else:
-                    origin_fingerprint = origin
-                    origin_path = ''
+    def to_string(self) -> str:
+        s = ""
+        if self.origin:
+            s += "[{}]".format(self.origin.to_string())
+        s += self.pubkey
+        if self.deriv_path:
+            s += self.deriv_path
+        return s
 
-                base_key_and_path_match = re.search(r"\[.*\](\w+)([\d'\/\*]*)", key)
-            else:
-                base_key_and_path_match = re.search(r"(\w+)([\d'\/\*]*)", key)
+    def __lt__(self, other: 'PubkeyProvider') -> bool:
+        return self.pubkey < other.pubkey
 
-            if base_key_and_path_match:
-                base_key = base_key_and_path_match.group(1)
-                path_suffix = base_key_and_path_match.group(2)
-                if path_suffix == '':
-                    path_suffix = None
-            else:
-                if origin_match is None:
-                    return None
 
-            descriptors.append(cls(origin_fingerprint, origin_path, base_key, path_suffix, testnet, sh_wpkh, wpkh, sh, sh_wsh, wsh))
-        if len(descriptors) == 1:
-            return descriptors[0]
-        else:
-            # for multisig scripts save as lists all keypaths fields
-            return cls(
-                [descriptor.origin_fingerprint for descriptor in descriptors],
-                [descriptor.origin_path for descriptor in descriptors],
-                [descriptor.base_key for descriptor in descriptors],
-                [descriptor.path_suffix for descriptor in descriptors],
-                testnet,
-                sh_wpkh,
-                wpkh,
-                sh,
-                sh_wsh,
-                wsh,
-                multisig_M,
-                multisig_N
-            )
+class Descriptor(object):
+    def __init__(
+        self,
+        pubkeys: List['PubkeyProvider'],
+        subdescriptor: Optional['Descriptor'],
+        name: str
+    ) -> None:
+        self.pubkeys = pubkeys
+        self.subdescriptor = subdescriptor
+        self.name = name
 
-    def serialize(self):
-        descriptor_open = 'pkh('
-        descriptor_close = ')'
-        origin = ''
-        path_suffix = ''
+    def to_string_no_checksum(self) -> str:
+        return "{}({}{})".format(
+            self.name,
+            ",".join([p.to_string() for p in self.pubkeys]),
+            self.subdescriptor.to_string_no_checksum() if self.subdescriptor else ""
+        )
 
-        if self.wpkh:
-            descriptor_open = 'wpkh('
-        elif self.sh_wpkh:
-            descriptor_open = 'sh(wpkh('
-            descriptor_close = '))'
-        elif self.sh or self.sh_wsh or self.wsh:
-            # serialize multisig descriptor is not supported yet.
-            return None
+    def to_string(self) -> str:
+        return AddChecksum(self.to_string_no_checksum())
 
-        if self.origin_fingerprint and self.origin_path:
-            origin = '[' + self.origin_fingerprint + self.origin_path + ']'
 
-        if self.path_suffix:
-            path_suffix = self.path_suffix
+class PKHDescriptor(Descriptor):
+    def __init__(
+        self,
+        pubkey: 'PubkeyProvider'
+    ) -> None:
+        super().__init__([pubkey], None, "pkh")
 
-        return AddChecksum(descriptor_open + origin + self.base_key + path_suffix + descriptor_close)
+
+class WPKHDescriptor(Descriptor):
+    def __init__(
+        self,
+        pubkey: 'PubkeyProvider'
+    ) -> None:
+        super().__init__([pubkey], None, "wpkh")
+
+
+class MultisigDescriptor(Descriptor):
+    def __init__(
+        self,
+        pubkeys: List['PubkeyProvider'],
+        thresh: int,
+        is_sorted: bool
+    ) -> None:
+        super().__init__(pubkeys, None, "sortedmulti" if is_sorted else "multi")
+        self.thresh = thresh
+        if is_sorted:
+            self.pubkeys.sort()
+
+    def to_string_no_checksum(self) -> str:
+        return "{}({},{})".format(self.name, self.thresh, ",".join([p.to_string() for p in self.pubkeys]))
+
+
+class SHDescriptor(Descriptor):
+    def __init__(
+        self,
+        subdescriptor: Optional['Descriptor']
+    ) -> None:
+        super().__init__([], subdescriptor, "sh")
+
+
+class WSHDescriptor(Descriptor):
+    def __init__(
+        self,
+        subdescriptor: Optional['Descriptor']
+    ) -> None:
+        super().__init__([], subdescriptor, "wsh")
+
+
+def _get_func_expr(s: str) -> Tuple[str, str]:
+    """
+    Get the function name and then the expression inside
+    """
+    start = s.index("(")
+    end = s.rindex(")")
+    return s[0:start], s[start + 1:end]
+
+
+def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
+    end = len(expr)
+    comma_idx = expr.find(",")
+    next_expr = ""
+    if comma_idx != -1:
+        end = comma_idx
+        next_expr = expr[end + 1:]
+    return PubkeyProvider.parse(expr[:end]), next_expr
+
+
+class _ParseDescriptorContext(Enum):
+    TOP = 1
+    P2SH = 2
+    P2WSH = 3
+
+
+def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor':
+    func, expr = _get_func_expr(desc)
+    if func == "pkh":
+        pubkey, expr = parse_pubkey(expr)
+        if expr:
+            raise ValueError("More than one pubkey in pkh descriptor")
+        return PKHDescriptor(pubkey)
+    if func == "sortedmulti" or func == "multi":
+        is_sorted = func == "sortedmulti"
+        comma_idx = expr.index(",")
+        thresh = int(expr[:comma_idx])
+        expr = expr[comma_idx + 1:]
+        pubkeys = []
+        while expr:
+            pubkey, expr = parse_pubkey(expr)
+            pubkeys.append(pubkey)
+        if len(pubkeys) == 0 or len(pubkeys) > 16:
+            raise ValueError("Cannot have {} keys in a multisig; must have between 1 and 16 keys, inclusive".format(len(pubkeys)))
+        elif thresh < 1:
+            raise ValueError("Multisig threshold cannot be {}, must be at least 1".format(thresh))
+        elif thresh > len(pubkeys):
+            raise ValueError("Multisig threshold cannot be larger than the number of keys; threshold is {} but only {} keys specified".format(thresh, len(pubkeys)))
+        if ctx == _ParseDescriptorContext.TOP and len(pubkeys) > 3:
+            raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys")
+        return MultisigDescriptor(pubkeys, thresh, is_sorted)
+    if ctx != _ParseDescriptorContext.P2WSH and func == "wpkh":
+        pubkey, expr = parse_pubkey(expr)
+        if expr:
+            raise ValueError("More than one pubkey in pkh descriptor")
+        return WPKHDescriptor(pubkey)
+    elif ctx == _ParseDescriptorContext.P2WSH and func == "wpkh":
+        raise ValueError("Cannot have wpkh within wsh")
+    if ctx == _ParseDescriptorContext.TOP and func == "sh":
+        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2SH)
+        return SHDescriptor(subdesc)
+    elif ctx != _ParseDescriptorContext.TOP and func == "sh":
+        raise ValueError("Cannot have sh in non-top level")
+    if ctx != _ParseDescriptorContext.P2WSH and func == "wsh":
+        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH)
+        return WSHDescriptor(subdesc)
+    elif ctx == _ParseDescriptorContext.P2WSH and func == "wsh":
+        raise ValueError("Cannot have wsh within wsh")
+    if ctx == _ParseDescriptorContext.P2SH:
+        raise ValueError("A function is needed within P2SH")
+    elif ctx == _ParseDescriptorContext.P2WSH:
+        raise ValueError("A function is needed within P2WSH")
+    raise ValueError("{} is not a valid descriptor function".format(func))
+
+
+def parse_descriptor(desc: str) -> 'Descriptor':
+    i = desc.find("#")
+    if i != -1:
+        checksum = desc[i + 1:]
+        desc = desc[:i]
+        computed = DescriptorChecksum(desc)
+        if computed != checksum:
+            raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
+    return _parse_descriptor(desc, _ParseDescriptorContext.TOP)
