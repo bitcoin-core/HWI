@@ -1,4 +1,4 @@
-from .key import KeyOriginInfo
+from .key import ExtendedKey, KeyOriginInfo, parse_path
 
 from enum import Enum
 from typing import (
@@ -67,6 +67,16 @@ class PubkeyProvider(object):
         self.origin = origin
         self.pubkey = pubkey
         self.deriv_path = deriv_path
+
+        # Make ExtendedKey from pubkey if it isn't hex
+        self.extkey = None
+        try:
+            unhexlify(self.pubkey)
+            # Is hex, normal pubkey
+        except Exception:
+            # Not hex, maybe xpub
+            if self.pubkey[0:4] == "xpub" or self.pubkey[0:4] == "tpub":
+                self.extkey = ExtendedKey.deserialize(self.pubkey)
 
     @classmethod
     def parse(cls, s: str) -> 'PubkeyProvider':
