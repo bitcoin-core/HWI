@@ -2,6 +2,14 @@
 
 from typing import Dict, Union
 
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    PKHDescriptor,
+    SHDescriptor,
+    WPKHDescriptor,
+    WSHDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -413,59 +421,90 @@ class TrezorClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @trezor_exception
-    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
+    def display_address_path(self, keypath, addr_type: AddressType) -> Dict[str, str]:
         self._check_unlocked()
-
-        # descriptor means multisig with xpubs
-        if descriptor:
-            pubkeys = []
-            for p in descriptor.pubkeys:
-                xpub = ExtendedKey.deserialize(p.pubkey)
-                hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
-            multisig = proto.MultisigRedeemScriptType(m=descriptor.thresh, signatures=[b''] * len(descriptor.pubkeys), pubkeys=pubkeys)
-        # redeem_script means p2sh/multisig
-        elif redeem_script:
-            # Get multisig object required by Trezor's get_address
-            multisig = parse_multisig(bytes.fromhex(redeem_script))
-            if not multisig[0]:
-                raise BadArgumentError("The redeem script provided is not a multisig. Only multisig scripts can be displayed.")
-            multisig = multisig[1]
-        else:
-            multisig = None
 
         # Script type
         if addr_type == AddressType.SH_WPKH:
             script_type = proto.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WPKH:
             script_type = proto.InputScriptType.SPENDWITNESS
-        elif redeem_script:
-            script_type = proto.InputScriptType.SPENDMULTISIG
         else:
             script_type = proto.InputScriptType.SPENDADDRESS
 
-        # convert device fingerprint to 'm' if exists in path
-        keypath = keypath.replace(self.get_master_fingerprint_hex(), 'm')
+        expanded_path = parse_path(keypath)
+        try:
+            address = btc.get_address(
+                self.client,
+                self.coin_name,
+                expanded_path,
+                show_display=True,
+                script_type=script_type,
+            )
+            return {'address': address}
+        except Exception:
+            raise BadArgumentError("No path supplied matched device keys")
 
-        for path in keypath.split(','):
-            if len(path.split('/')[0]) == 8:
-                path = path.split('/', 1)[1]
-            expanded_path = parse_path(path)
+    @trezor_exception
+    def display_address_descriptor(self, descriptor: Descriptor) -> Dict[str, str]:
+        self._check_unlocked()
 
+        is_sh = False
+        is_wsh = False
+        multisig = None
+        script_type = None
+        if isinstance(descriptor, SHDescriptor):
+            is_sh = True
+            assert descriptor.subdescriptor
+            descriptor = descriptor.subdescriptor
+        if isinstance(descriptor, WSHDescriptor):
+            is_wsh = True
+            assert descriptor.subdescriptor
+            descriptor = descriptor.subdescriptor
+        if isinstance(descriptor, PKHDescriptor):
+            if is_sh or is_wsh:
+                raise BadArgumentError("Trezor does not support P2PKH nested in P2SH or P2WSH")
+            script_type = proto.Input.ScriptType.SPENDADDRESS
+        if isinstance(descriptor, WPKHDescriptor):
+            if is_sh:
+                script_type = proto.InputScriptType.SPENDP2SHWITNESS
+            else:
+                script_type = proto.InputScriptType.SPENDWITNESS
+        if isinstance(descriptor, MultisigDescriptor):
+            if is_sh and is_wsh:
+                script_type = proto.InputScriptType.SPENDP2SHWITNESS
+            elif is_wsh:
+                script_type = proto.InputScriptType.SPENDWITNESS
+            else:
+                script_type = proto.InputScriptType.SPENDMULTISIG
+            pubkeys = []
+            for p in descriptor.pubkeys:
+                xpub = ExtendedKey.deserialize(p.pubkey)
+                hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
+                deriv_path = p.deriv_path if p.deriv_path is not None else ""
+                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + deriv_path)))
+            multisig = proto.MultisigRedeemScriptType(m=descriptor.thresh, signatures=[b''] * len(descriptor.pubkeys), pubkeys=pubkeys)
+
+        assert script_type is not None
+
+        for p in descriptor.pubkeys:
+            keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"
+            path = parse_path(keypath)
             try:
                 address = btc.get_address(
                     self.client,
                     self.coin_name,
-                    expanded_path,
+                    path,
                     show_display=True,
                     script_type=script_type,
                     multisig=multisig,
                 )
-                return {'address': address}
+                return {"address": address}
             except Exception:
                 pass
 
-        raise BadArgumentError("No path supplied matched device keys")
+        raise BadArgumentError("No path in the descriptor matched device keys")
+
 
     # Setup a new device
     @trezor_exception

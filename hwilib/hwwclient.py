@@ -72,18 +72,27 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def display_address(
+    def display_address_path(
         self,
         bip32_path: str,
         addr_type: AddressType,
-        redeem_script: Optional[str] = None,
-        descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
         """Display and return the address of specified type.
 
-        redeem_script is a hex-string.
-
         Retrieve the public key at the specified BIP32 derivation path.
+
+        Return {"address": <base58 or bech32 address string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def display_address_descriptor(
+        self,
+        descriptor: Descriptor,
+    ) -> Dict[str, str]:
+        """Display and return the address of specified type based on the given descriptor.
+
+        Retrieve the public key at the specified BIP32 derivation path from the descriptor.
 
         Return {"address": <base58 or bech32 address string>}.
         """

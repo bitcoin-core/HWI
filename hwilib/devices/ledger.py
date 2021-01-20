@@ -2,6 +2,12 @@
 
 from typing import Dict, Union
 
+from ..descriptor import (
+    Descriptor,
+    PKHDescriptor,
+    SHDescriptor,
+    WPKHDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -347,15 +353,38 @@ class LedgerClient(HardwareWalletClient):
 
     # Display address of specified type on the device. Only supports single-key based addresses.
     @ledger_exception
-    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
+    def display_address_path(self, keypath: str, addr_type: AddressType) -> Dict[str, str]:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
-        if redeem_script is not None:
-            raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
         p2sh_p2wpkh = addr_type == AddressType.SH_WPKH
         bech32 = addr_type == AddressType.WPKH
-        output = self.app.getWalletPublicKey(keypath[2:], True, () (p2sh_p2wpkh or bech32), bech32)
+        output = self.app.getWalletPublicKey(keypath[2:], True, (p2sh_p2wpkh or bech32), bech32)
         return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
+
+    @ledger_exception
+    def display_address_descriptor(self, descriptor: Descriptor) -> Dict[str, str]:
+        is_sh = False
+        if isinstance(descriptor, SHDescriptor):
+            is_sh = True
+            assert descriptor.subdescriptor
+            descriptor = descriptor.subdescriptor
+        if isinstance(descriptor, PKHDescriptor) or isinstance(descriptor, WPKHDescriptor):
+            if isinstance(descriptor, PKHDescriptor) and is_sh:
+                raise BadArgumentError("The Ledger Nano S and X do not support P2PKH nested in P2SH")
+            origin = descriptor.pubkeys[0].origin
+            if origin is None:
+                raise BadArgumentError("Descriptor is missing key origin, cannot display the address")
+            if origin.get_fingerprint_hex() != self.get_master_fingerprint_hex():
+                raise BadArgumentError("Descriptor fingerprint does not match device")
+            keypath = origin.get_derivation_path()[2:]
+            output = None
+            if isinstance(descriptor, PKHDescriptor):
+                output = self.app.getWalletPublicKey(keypath, True)
+            elif isinstance(descriptor, WPKHDescriptor):
+                output = self.app.getWalletPublicKey(keypath, True, True, not is_sh)
+            assert output 
+            return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
+        raise BadArgumentError("The Ledger Nano S and X do not support arbitrary script address display")
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):

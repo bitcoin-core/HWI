@@ -250,6 +250,15 @@ class KeyOriginInfo(object):
         """
         return binascii.hexlify(self.fingerprint).decode()
 
+    def get_full_int_list(self) -> Sequence[int]:
+        """
+        Return a list of ints representing this KeyOriginInfo.
+        The first int is the fingerprint, followed by the path
+        """
+        xfp = [struct.unpack("<I", self.fingerprint)[0]]
+        xfp.extend(self.path)
+        return xfp
+
 
 def parse_path(nstr: str) -> Sequence[int]:
     """

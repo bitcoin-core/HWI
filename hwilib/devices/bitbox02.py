@@ -14,6 +14,14 @@ import builtins
 import sys
 from functools import wraps
 
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    PKHDescriptor,
+    SHDescriptor,
+    WSHDescriptor,
+    WPKHDescriptor,
+)
 from ..hwwclient import HardwareWalletClient, Descriptor
 from ..serializations import (
     AddressType,
@@ -327,16 +335,11 @@ class Bitbox02Client(HardwareWalletClient):
         return {"xpub": xpub}
 
     @bitbox02_exception
-    def display_address(
+    def display_address_path(
         self,
         bip32_path: str,
         addr_type: AddressType,
-        redeem_script: Optional[str] = None,
-        descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
-        if redeem_script:
-            raise NotImplementedError("BitBox02 multisig not integrated into HWI yet")
-
         if addr_type == AddressType.SH_WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
@@ -351,6 +354,58 @@ class Bitbox02Client(HardwareWalletClient):
             )
         address = self.init().btc_address(
             parse_path(bip32_path),
+            coin=self._get_coin(),
+            script_config=script_config,
+            display=True,
+        )
+        return {"address": address}
+
+    @bitbox02_exception
+    def display_address_descriptor(
+        self,
+        descriptor: Descriptor,
+    ) -> Dict[str, str]:
+        is_sh = False
+        is_wsh = False
+        script_config = None
+        path = None
+        if isinstance(descriptor, SHDescriptor):
+            is_sh = True
+            assert descriptor.subdescriptor
+            descriptor = descriptor.subdescriptor
+        if isinstance(descriptor, WSHDescriptor):
+            is_wsh = True
+            assert descriptor.subdescriptor
+            descriptor = descriptor.subdescriptor
+        if isinstance(descriptor, PKHDescriptor):
+            if is_sh or is_wsh:
+                raise BadArgumentError("Bitbox02 does not support P2PKH nested in P2SH or P2WSH")
+            raise BadArgumentError("The Bitbox02 does not support legacy P2PKH addresses")
+        if isinstance(descriptor, WPKHDescriptor):
+            if is_sh:
+                script_config = bitbox02.btc.BTCScriptConfig(
+                    simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
+                )
+            else:
+                script_config = bitbox02.btc.BTCScriptConfig(
+                    simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
+                )
+            origin = descriptor.pubkeys[0].origin
+            if origin is None:
+                raise BadArgumentError("Descriptor is missing key origin, cannot display the address")
+            if origin.get_fingerprint_hex() != self.get_master_fingerprint_hex():
+                raise BadArgumentError("Descriptor fingerprint does not match device")
+            path = origin.path
+        if isinstance(descriptor, MultisigDescriptor):
+            raise NotImplementedError(
+                "BitBox02 multisig not integrated into HWI yet"
+            )
+
+        assert script_config
+        assert path
+
+        address = self.init().btc_address(
+            path,
             coin=self._get_coin(),
             script_config=script_config,
             display=True,
