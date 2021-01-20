@@ -18,10 +18,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
@@ -69,10 +68,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
@@ -104,10 +102,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
@@ -134,10 +131,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
@@ -172,10 +168,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
@@ -204,10 +199,9 @@ else
     git fetch
 
     # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-    UPSTREAM=${1:-'@{u}'}
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "$UPSTREAM")
-    BASE=$(git merge-base @ "$UPSTREAM")
+    REMOTE=$(git rev-parse origin)
+    BASE=$(git merge-base @ origin)
 
     if [ $LOCAL = $REMOTE ]; then
         echo "Up-to-date"
