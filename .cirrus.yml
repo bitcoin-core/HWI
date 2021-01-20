@@ -1,0 +1,206 @@
+container:
+  dockerfile: ci/cirrus.Dockerfile
+
+env:
+  EMAIL: cirrus@cirrus-ci.org
+
+sim_cache_fpr_template: &SIM_CACHE_FPR_TEMPLATE
+    fingerprint_script: echo $CIRRUS_BUILD_ID $DEVICE Simulator
+
+device_matrix_template: &DEVICE_MATRIX_TEMPLATE
+  - env:
+      DEVICE: --trezor-1
+    depends_on:
+      - Trezor 1 Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/trezor-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --trezor-t
+    depends_on:
+      - Trezor T Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/trezor-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --coldcard
+    depends_on:
+      - Coldcard Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+    sim_install_script:
+      - poetry run pip install -r test/work/firmware/requirements.txt
+      - pip install -r test/work/firmware/requirements.txt
+  - env:
+      DEVICE: --bitbox01
+    depends_on:
+      - Bitbox01 Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/mcu
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --ledger
+    depends_on:
+      - Ledger Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/speculos
+      << : *SIM_CACHE_FPR_TEMPLATE
+    sim_install_script:
+      - poetry run pip install construct pyelftools mnemonic jsonschema
+      - pip install construct pyelftools mnemonic jsonschema
+  - env:
+      DEVICE: --keepkey
+    depends_on:
+      - Keepkey Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    sim_work_cache:
+      folder: test/work/keepkey-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+
+sim_build_matrix_template: &SIM_BUILD_MATRIX_TEMPLATE
+  - env:
+      DEVICE: --trezor-1
+    name: Trezor 1 Sim Builder
+    sim_work_cache:
+      folder: test/work/trezor-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --trezor-t
+    name: Trezor T Sim Builder
+    sim_work_cache:
+      folder: test/work/trezor-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --coldcard
+    name: Coldcard Sim Builder
+    sim_work_cache:
+      folder: test/work/firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --bitbox01
+    name: Bitbox01 Sim Builder
+    sim_work_cache:
+      folder: test/work/mcu
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --ledger
+    name: Ledger Sim Builder
+    sim_work_cache:
+      folder: test/work/speculos
+      << : *SIM_CACHE_FPR_TEMPLATE
+  - env:
+      DEVICE: --keepkey
+    name: Keepkey Sim Builder
+    sim_work_cache:
+      folder: test/work/keepkey-firmware
+      << : *SIM_CACHE_FPR_TEMPLATE
+
+bitcoind_cache_template: &BITCOIND_CACHE_TEMPLATE
+  bitcoind_work_cache:
+    folder: test/work/bitcoin
+    fingerprint_script: echo $CIRRUS_BUILD_ID bitcoind
+
+dist_cache_template: &DIST_CACHE_TEMPLATE
+  dist_cache:
+    folder: dist
+    fingerprint_script: echo $CIRRUS_BUILD_ID dist
+
+lint_task:
+  test_script:
+    - flake8
+
+basic_test_task:
+  install_script:
+    - poetry install
+  matrix:
+    - name: Type Check
+      type_check_script: >
+        poetry run
+        mypy --implicit-reexport --strict
+        hwilib/base58.py
+        hwilib/errors.py
+        hwilib/serializations.py
+        hwilib/hwwclient.py
+        hwilib/devices/bitbox02.py
+        hwilib/key.py
+        hwilib/descriptor.py
+    - name: Non-Device Tests
+      test_script: cd test; poetry run ./run_tests.py; cd ..
+
+wine_builder_task:
+  container:
+    dockerfile: contrib/build.Dockerfile
+  build_script:
+    - contrib/build_wine.sh
+    - sha256sum dist/*
+
+bitcoind_builder_task:
+  << : *BITCOIND_CACHE_TEMPLATE
+  bitcoind_cache:
+    folder: test/work/bitcoin
+  ccache_cache:
+    folder: /root/.ccache
+  env:
+    BUILD_BITCOIND: 1
+  build_script: cd test; ./setup_environment.sh --bitcoind; cd ..
+
+sim_builder_task:
+  matrix:
+    << : *SIM_BUILD_MATRIX_TEMPLATE
+  build_script: cd test; ./setup_environment.sh $DEVICE; cd ..
+
+dist_builder_task:
+  container:
+    dockerfile: contrib/build.Dockerfile
+  << : *DIST_CACHE_TEMPLATE
+  build_script:
+    - contrib/build_bin.sh
+    - contrib/build_dist.sh
+    - sha256sum dist/*
+
+dist_test_task:
+  matrix:
+    << : *DEVICE_MATRIX_TEMPLATE
+  << : *DIST_CACHE_TEMPLATE
+  << : *BITCOIND_CACHE_TEMPLATE
+  matrix:
+    - name: $DEVICE Wheel
+      install_script: pip install dist/*.whl
+      test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+    - name: $DEVICE Sdist
+      install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*")
+      test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+    - name: $DEVICE Bindist
+      install_script: poetry install
+      test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
+  on_failure:
+    failed_script: tail -v -n +1 *.std*
+
+device_test_task:
+  matrix:
+    << : *DEVICE_MATRIX_TEMPLATE
+  << : *BITCOIND_CACHE_TEMPLATE
+  matrix:
+    - env:
+        INTERFACE: library
+    - env:
+        INTERFACE: cli
+    - env:
+        INTERFACE: stdin
+  name: $DEVICE $INTERFACE
+  install_script: poetry install
+  test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=$INTERFACE --device-only; cd ..
+  on_failure:
+    failed_script: tail -v -n +1 *.std*
