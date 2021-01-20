@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 # Makes debugging easier
-set -x
+set -ex
 
 # Go into the working directory
 mkdir -p work
