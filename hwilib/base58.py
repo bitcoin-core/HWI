@@ -9,8 +9,13 @@
 #
 
 import hashlib
+
 from binascii import hexlify, unhexlify
 from typing import List
+
+from .errors import BadArgumentError
+
+
 b58_digits: str = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 def sha256(s: bytes) -> bytes:
@@ -52,7 +57,7 @@ def decode(s: str) -> bytes:
     for c in s:
         n *= 58
         if c not in b58_digits:
-            raise ValueError('Character %r is not a valid base58 character' % c)
+            raise BadArgumentError('Character %r is not a valid base58 character' % c)
         digit = b58_digits.index(c)
         n += digit
 

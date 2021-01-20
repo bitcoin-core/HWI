@@ -4,6 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from . import base58
+from .errors import BadArgumentError
 
 import binascii
 import hmac
@@ -109,6 +110,8 @@ class ExtendedKey(object):
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
 
         version = data[0:4]
+        if version not in [ExtendedKey.MAINNET_PRIVATE, ExtendedKey.MAINNET_PUBLIC, ExtendedKey.TESTNET_PRIVATE, ExtendedKey.TESTNET_PUBLIC]:
+            raise BadArgumentError(f"Extended key magic of {version.hex()} is invalid")
         is_private = version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE
         depth = data[4]
         parent_fingerprint = data[5:9]
