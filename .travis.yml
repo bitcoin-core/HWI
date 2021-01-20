@@ -52,7 +52,9 @@ install:
     - unzip "protoc-3.4.0-linux-x86_64.zip" -d protoc
     - export PATH="$(pwd)/protoc/bin:$PATH"
     # Build emulators/simulators and bitcoind
-    - cd test; ./setup_environment.sh; cd ..
+    - cd test
+    - ./setup_environment.sh
+    - cd ..
     - pip uninstall -y trezor # Hack to get rid of master branch version of trezor that is installed for trezor-mcu build
     - poetry install
 after_failure:
