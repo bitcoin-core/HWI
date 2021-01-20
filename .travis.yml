@@ -79,7 +79,7 @@ jobs:
             script: cd test; poetry run ./run_tests.py
         -   name: With process_commands interface
             stage: test
-            script: cd test; travis-wait-enhanced --timeout=40m -- poetry run ./run_tests.py --all --interface=library --bitcoind=/home/travis/build/bitcoin-core/HWI/bitcoin/src/bitcoind
+            script: cd test; travis-wait-enhanced --timeout=40m -- poetry run ./run_tests.py --all --interface=library
         -   name: With command line interface
             stage: test
             script: cd test; travis-wait-enhanced --timeout=40m -- poetry run ./run_tests.py --all --interface=cli
