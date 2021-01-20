@@ -135,6 +135,7 @@ if [[ -n ${build_coldcard} ]]; then
     git am ../../data/coldcard-multisig-setup.patch
 
     # Build the simulator. This is cached, but it is also fast
+    pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
         make setup
@@ -213,6 +214,7 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
+    pip install construct pyelftools
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
         git clone --recursive https://github.com/LedgerHQ/speculos.git
