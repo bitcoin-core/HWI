@@ -19,7 +19,7 @@ import sys
 import time
 from typing import Any, Dict, Iterable
 
-from . import DEV_TREZOR1, DEV_KEEPKEY, UDEV_RULES_STR, TransportException
+from . import DEV_TREZOR1, UDEV_RULES_STR, TransportException
 from .protocol import ProtocolBasedTransport, ProtocolV1
 
 LOG = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ class HidTransport(ProtocolBasedTransport):
         devices = []
         for dev in hid.enumerate(0, 0):
             usb_id = (dev["vendor_id"], dev["product_id"])
-            if usb_id != DEV_TREZOR1 and usb_id != DEV_KEEPKEY:
+            if usb_id != DEV_TREZOR1:
                 continue
             if debug:
                 if not is_debuglink(dev):

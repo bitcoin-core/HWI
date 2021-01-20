@@ -355,7 +355,7 @@ class HWIQt(QMainWindow):
 
         self.ui.setpass_button.setEnabled(self.device_info['type'] != 'bitbox02')
         self.ui.signmsg_button.setEnabled(self.device_info['type'] != 'bitbox02')
-        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] in ('trezor', 'keepkey', 'bitbox02', ))
+        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] in ('trezor', 'bitbox02', ))
 
         self.get_device_info()
 
@@ -449,8 +449,6 @@ class HWIQt(QMainWindow):
     @Slot()
     def toggle_passphrase(self):
         do_command(commands.toggle_passphrase, self.client)
-        if self.device_info['model'] == "keepkey":
-            self.show_sendpindialog(prompt_pin=False)
 
 def process_gui_commands(cli_args):
     parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))

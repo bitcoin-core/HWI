@@ -27,7 +27,7 @@ if sys.version_info.major < 3:
 
 LOG = logging.getLogger(__name__)
 
-VENDORS = ("bitcointrezor.com", "trezor.io", "keepkey.com")
+VENDORS = ("bitcointrezor.com", "trezor.io")
 MAX_PASSPHRASE_LENGTH = 50
 
 DEPRECATION_ERROR = """
@@ -195,7 +195,7 @@ class TrezorClient:
         if not isinstance(resp, messages.Features):
             raise exceptions.TrezorException("Unexpected initial response")
         else:
-            # If this is a Trezor One or Keepkey, do Initialize
+            # If this is a Trezor One, do Initialize
             if resp.model == '1' or resp.model == 'K1-14AM':
                 resp = self.call_raw(messages.Initialize())
                 if not isinstance(resp, messages.Features):

@@ -14,7 +14,6 @@ from test_psbt import TestPSBT
 from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
 from test_digitalbitbox import digitalbitbox_test_suite
-from test_keepkey import keepkey_test_suite
 from test_udevrules import TestUdevRulesInstaller
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
@@ -34,10 +33,6 @@ ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--no-ledger', dest='ledger', help='Do not run Ledger test with emulator', action='store_false')
 ledger_group.add_argument('--ledger', dest='ledger', help='Run Ledger test with emulator', action='store_true')
 
-keepkey_group = parser.add_mutually_exclusive_group()
-keepkey_group.add_argument('--no-keepkey', dest='keepkey', help='Do not run Keepkey test with emulator', action='store_false')
-keepkey_group.add_argument('--keepkey', dest='keepkey', help='Run Keepkey test with emulator', action='store_true')
-
 dbb_group = parser.add_mutually_exclusive_group()
 dbb_group.add_argument('--no_bitbox', dest='bitbox', help='Do not run Digital Bitbox test with simulator', action='store_false')
 dbb_group.add_argument('--bitbox', dest='bitbox', help='Run Digital Bitbox test with simulator', action='store_true')
@@ -45,7 +40,6 @@ dbb_group.add_argument('--bitbox', dest='bitbox', help='Run Digital Bitbox test 
 parser.add_argument('--trezor-path', dest='trezor_path', help='Path to Trezor emulator', default='work/trezor-firmware/legacy/firmware/trezor.elf')
 parser.add_argument('--trezor-t-path', dest='trezor_t_path', help='Path to Trezor T emulator', default='work/trezor-firmware/core/emu.sh')
 parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldcar simulator', default='work/firmware/unix/headless.py')
-parser.add_argument('--keepkey-path', dest='keepkey_path', help='Path to Keepkey emulator', default='work/keepkey-firmware/bin/kkemu')
 parser.add_argument('--bitbox-path', dest='bitbox_path', help='Path to Digital Bitbox simulator', default='work/mcu/build/bin/simulator')
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
 
@@ -53,7 +47,7 @@ parser.add_argument('--all', help='Run tests on all existing simulators', defaul
 parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/src/bitcoind')
 parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist', 'stdin'], default='library')
 
-parser.set_defaults(trezor=None, trezor_t=None, coldcard=None, keepkey=None, bitbox=None, ledger=None)
+parser.set_defaults(trezor=None, trezor_t=None, coldcard=None, bitbox=None, ledger=None)
 args = parser.parse_args()
 
 # Run tests
@@ -73,7 +67,6 @@ if args.all:
     args.trezor = True if args.trezor is None else args.trezor
     args.trezor_t = True if args.trezor_t is None else args.trezor_t
     args.coldcard = True if args.coldcard is None else args.coldcard
-    args.keepkey = True if args.keepkey is None else args.keepkey
     args.bitbox = True if args.bitbox is None else args.bitbox
     args.ledger = True if args.ledger is None else args.ledger
 else:
@@ -81,11 +74,10 @@ else:
     args.trezor = False if args.trezor is None else args.trezor
     args.trezor_t = False if args.trezor_t is None else args.trezor_t
     args.coldcard = False if args.coldcard is None else args.coldcard
-    args.keepkey = False if args.keepkey is None else args.keepkey
     args.bitbox = False if args.bitbox is None else args.bitbox
     args.ledger = False if args.ledger is None else args.ledger
 
-if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox:
+if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.bitbox:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -97,8 +89,6 @@ if args.trezor or args.trezor_t or args.coldcard or args.ledger or args.keepkey 
         success &= trezor_test_suite(args.trezor_path, rpc, userpass, args.interface)
     if success and args.trezor_t:
         success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True)
-    if success and args.keepkey:
-        success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
     if success and args.ledger:
         success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
 

@@ -11,21 +11,19 @@ It implements all of the [BIP 174 serialization test vectors](https://github.com
 - `test_trezor.py` tests the command line interface and the Trezor implementation.
 It uses the [Trezor One firmware emulator](https://github.com/trezor/trezor-mcu/#building-for-development).
 It also tests usage with `bitcoind`.
-- `test_keepkey.py` tests the command line interface and the Keepkey implementation.
-It uses the [Keepkey firmware emulator](https://github.com/keepkey/keepkey-firmware/blob/master/docs/Build.md).
 It also tests usage with `bitcoind`.
 - `test_coldcard.py` tests the command line interface and Coldcard implementation.
 It uses the [Coldcard simulator](https://github.com/Coldcard/firmware/tree/master/unix#coldcard-desktop-simulator).
 It also tests usage with `bitcoind`.
 
-`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`.
-if run in the `test/` directory, these will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Digital Bitbox simulator, and `bitcoind`.
+if run in the `test/` directory, these will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
 
-`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, and bitcoind.
+`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Digital Bitbox simulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
-test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
+test_trezor.py`, `test_coldcard.py`, and `test/test_digitalbitbox.py` can be disabled.
 
-If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
+If you are building the Trezor emulator, the Coldcard simulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
 ```
 $ cd test
@@ -125,40 +123,6 @@ $ cd mcu
 $ mkdir -p build && cd build
 $ cmake .. -DBUILD_TYPE=simulator
 $ make
-```
-
-## KeepKey emulator
-
-### Dependencies
-
-In order to build the KeepKey emulator, the following packages will need to be installed:
-
-```
-build-essential git python2 python2-pip
-```
-
-The python packages can be installed with
-
-```
-pip install protobuf
-```
-
-### Building
-
-Clone the repository and dependencies:
-
-```
-$ git clone https://github.com/keepkey/keepkey-firmware.git
-$ cd keepkey-firmware
-$ git clone https://github.com/nanopb/nanopb.git -b nanopb-0.2.9.2
-```
-
-Build the emulator:
-
-```
-$ export PATH=$PATH:`pwd`/nanopb/generator
-$ cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
-$ make kkemu
 ```
 
 ## Bitcoin Core

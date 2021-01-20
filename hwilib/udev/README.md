@@ -7,7 +7,6 @@ These are necessary for the devices to be reachable on linux environments.
  - `51-coinkite.rules` (Coldcard): https://github.com/Coldcard/ckcc-protocol/blob/master/51-coinkite.rules
  - `51-hid-digitalbitbox.rules`, `52-hid-digitalbitbox.rules` (Digital Bitbox): https://shiftcrypto.ch/start_linux
  - `51-trezor.rules` (Trezor): https://github.com/trezor/trezor-common/blob/master/udev/51-trezor.rules
- - `51-usb-keepkey.rules` (Keepkey): https://github.com/keepkey/udev-rules/blob/master/51-usb-keepkey.rules
 
 # Usage
 

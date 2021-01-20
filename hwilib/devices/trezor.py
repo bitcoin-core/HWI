@@ -542,19 +542,13 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def toggle_passphrase(self):
         self._check_unlocked()
-        try:
-            device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
-        except Exception:
-            if self.type == 'Keepkey':
-                print('Confirm the action by entering your PIN', file=sys.stderr)
-                print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
-                print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
+        device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
         return {'success': True}
 
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
-        # enumerate_devices filters to Trezors and Keepkeys.
+        # enumerate_devices filters to Trezors.
         # Only allow Trezors and unknowns. Unknown devices will reach the check for vendor later
         if dev.get_usb_vendor_id() not in TREZOR_VENDOR_IDS | {-1}:
             continue
