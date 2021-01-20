@@ -50,7 +50,7 @@ parser.add_argument('--bitbox-path', dest='bitbox_path', help='Path to Digital B
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
 
 parser.add_argument('--all', help='Run tests on all existing simulators', default=False, action='store_true')
-parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/src/bitcoind')
+parser.add_argument('--bitcoind', help='Path to bitcoind', default='bitcoin/src/bitcoind')
 parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist', 'stdin'], default='library')
 
 parser.set_defaults(trezor=None, trezor_t=None, coldcard=None, keepkey=None, bitbox=None, ledger=None)
