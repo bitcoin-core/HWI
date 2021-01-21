@@ -25,19 +25,19 @@ class HardwareWalletClient(object):
     def get_master_xpub(self) -> Dict[str, str]:
         """Return the master BIP44 public key.
 
-        Retrieve the public key at the "m/44h/0h/0h" derivation path.
+        Retrieve the public key at the "m/44h/88h/0h" derivation path.
 
         Return {"xpub": <xpub string>}.
         """
         # FIXME testnet is not handled yet
-        return self.get_pubkey_at_path("m/44h/0h/0h")
+        return self.get_pubkey_at_path("m/44h/88h/0h")
 
     def get_master_fingerprint_hex(self) -> str:
         """Return the master public key fingerprint as hex-string.
 
-        Retrieve the master public key at the "m/0h" derivation path.
+        Retrieve the master public key at the "m/44h/88h/0h" derivation path.
         """
-        master_xpub = self.get_pubkey_at_path("m/0h")["xpub"]
+        master_xpub = self.get_pubkey_at_path("m/44h/88h/0h")["xpub"]
         return get_xpub_fingerprint_hex(master_xpub)
 
     def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:

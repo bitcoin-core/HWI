@@ -138,7 +138,7 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
         if testnet:
             path += "1'/"
         else:
-            path += "0'/"
+            path += "88'/"
 
         # Account
         path += str(account) + '\'/'
