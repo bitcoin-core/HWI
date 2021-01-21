@@ -52,11 +52,9 @@ cd work
 
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-mcu if it doesn't exist, or update it if it does
-    trezor_setup_needed=false
     if [ ! -d "trezor-firmware" ]; then
         git clone --recursive https://github.com/trezor/trezor-firmware.git
         cd trezor-firmware
-        trezor_setup_needed=true
     else
         cd trezor-firmware
         git fetch
@@ -71,19 +69,19 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
             echo "Up-to-date"
         elif [ $LOCAL = $BASE ]; then
             git pull
-            trezor_setup_needed=true
         fi
     fi
+
+    # Remove .venv so that poetry can symlink everything correctly
+    rm -rf .venv/
 
     if [[ -n ${build_trezor_1} ]]; then
         # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
+        poetry install
         cd legacy
         export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
-        if [ "$trezor_setup_needed" == true ] ; then
-            poetry install
-            poetry run script/setup
-        fi
+        poetry run script/setup
         poetry run script/cibuild
         # Delete any emulator.img file
         find . -name "emulator.img" -exec rm {} \;
@@ -93,11 +91,9 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     if [[ -n ${build_trezor_t} ]]; then
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
+        poetry install
         cd core
-        if [ "$trezor_setup_needed" == true ] ; then
-            make vendor
-        fi
-        make build_unix
+        poetry run make build_unix
         # Delete any emulator.img file
         rm /var/tmp/trezor.flash
         cd ..
@@ -135,12 +131,13 @@ if [[ -n ${build_coldcard} ]]; then
     git am ../../data/coldcard-multisig-setup.patch
 
     # Build the simulator. This is cached, but it is also fast
+    poetry run pip install -r requirements.txt
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
         make setup
     fi
-    make -j$(nproc)
+    make
     cd ../..
 fi
 
@@ -168,12 +165,14 @@ if [[ -n ${build_bitbox01} ]]; then
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build && cd build
-    cmake .. -DBUILD_TYPE=simulator
-    make -j$(nproc)
+    cmake .. -DBUILD_TYPE=simulator -DCMAKE_C_FLAGS="-Wno-format-truncation"
+    make
     cd ../..
 fi
 
 if [[ -n ${build_keepkey} ]]; then
+    poetry run pip install protobuf
+    pip install protobuf
     # Clone keepkey firmware if it doesn't exist, or update it if it does
     keepkey_setup_needed=false
     if [ ! -d "keepkey-firmware" ]; then
@@ -207,14 +206,15 @@ if [[ -n ${build_keepkey} ]]; then
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
     cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
-    make -j$(nproc) kkemu
+    make
     # Delete any emulator.img file
     find . -name "emulator.img" -exec rm {} \;
     cd ..
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    pip install construct pyelftools
+    poetry run pip install construct mnemonic pyelftools jsonschema
+    pip install construct mnemonic pyelftools jsonschema
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
         git clone --recursive https://github.com/LedgerHQ/speculos.git
