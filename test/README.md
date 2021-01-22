@@ -20,10 +20,13 @@ It also tests usage with `bitcoind`.
 
 `setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`.
 if run in the `test/` directory, these will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+In order to build each simulator/emulator, you will need to use command line arguments.
+These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, and `--bitcoind`.
+If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
 `run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
-test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
+`test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
 
 If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
