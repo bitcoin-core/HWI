@@ -235,8 +235,6 @@ if [[ -n ${build_ledger} ]]; then
             git pull
         fi
     fi
-    # Apply patch to get screen info
-    git am ../../data/speculos-auto-button.patch
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
