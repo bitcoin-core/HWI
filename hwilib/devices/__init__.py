@@ -1,8 +1,8 @@
 __all__ = [
-    'trezor',
+    # 'trezor',
     'ledger',
-    'keepkey',
-    'digitalbitbox',
-    'coldcard',
-    'bitbox02',
+    # 'keepkey',
+    # 'digitalbitbox',
+    # 'coldcard',
+    # 'bitbox02',
 ]
