@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Makes debugging easier
-set -x
+set -ex
 
 # Go into the working directory
 mkdir -p work
@@ -73,7 +73,7 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     # Remove .venv so that poetry can symlink everything correctly
-    rm -rf .venv/
+    find . -type d -name ".venv" -exec rm -rf {} +
 
     if [[ -n ${build_trezor_1} ]]; then
         # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
@@ -95,7 +95,7 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         cd core
         poetry run make build_unix
         # Delete any emulator.img file
-        rm /var/tmp/trezor.flash
+        find . -name "trezor.flash" -exec rm {} \;
         cd ..
     fi
     cd ..
