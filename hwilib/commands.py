@@ -136,7 +136,7 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
 
         # Coin type
         if testnet:
-            path += "1'/"
+            path += "88'/"
         else:
             path += "88'/"
 
