@@ -25,9 +25,11 @@ class LedgerEmulator(DeviceEmulator):
             pass
 
     def start(self):
+        automation_path = os.path.abspath("data/speculos-automation.json")
+
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', '--automation', 'file:{}'.format(automation_path), '--log-level', 'automation:DEBUG', '--log-level', 'seproxyhal:DEBUG', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
         # Wait for simulator to be up
         while True:
             try:
