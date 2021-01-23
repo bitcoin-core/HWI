@@ -17,6 +17,7 @@ from .commands import (
     setup_device,
     signmessage,
     signtx,
+    update_firmware,
     wipe_device,
     install_udev_rules,
 )
@@ -87,6 +88,9 @@ def send_pin_handler(args, client):
 
 def install_udev_rules_handler(args):
     return install_udev_rules('udev', args.location)
+
+def update_firmware_handler(args, client):
+    return update_firmware(client, args.file)
 
 class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
@@ -207,6 +211,10 @@ def process_commands(cli_args):
     sendpin_parser = subparsers.add_parser('sendpin', help='Send the numeric positions for your PIN to the device')
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
     sendpin_parser.set_defaults(func=send_pin_handler)
+
+    update_firmware_parser = subparsers.add_parser('updatefirmware', help='Verify and load firmware from a file onto a device')
+    update_firmware_parser.add_argument('file', help='The path to the firmware file')
+    update_firmware_parser.set_defaults(func=update_firmware_handler)
 
     if sys.platform.startswith("linux"):
         udevrules_parser = subparsers.add_parser('installudevrules', help='Install and load the udev rule files for the hardware wallet devices')

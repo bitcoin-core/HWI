@@ -627,3 +627,7 @@ class Bitbox02Client(HardwareWalletClient):
             bb02.set_device_name(label)
 
         return {"success": bb02.restore_from_mnemonic()}
+ 
+    # Verify firmware file then load it onto device
+    def update_firmware(self, filename: str) -> Dict[str, bool]:
+        raise NotImplementedYet("The BitBox02 does not implement this method yet")
