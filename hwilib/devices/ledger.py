@@ -37,6 +37,12 @@ from ..serializations import (
     is_witness,
     CTransaction,
 )
+from ..script import (
+    decode_opsender_script,
+    update_opsender_sig,
+    push_data,
+    int_to_hex
+)
 import logging
 import re
 
@@ -198,6 +204,7 @@ class LedgerClient(HardwareWalletClient):
 
         has_segwit = False
         has_legacy = False
+        has_opsender = False
 
         script_codes = [[]] * len(c_tx.vin)
 
@@ -215,6 +222,10 @@ class LedgerClient(HardwareWalletClient):
                         for index in path.path:
                             change_path += str(index) + "/"
                         change_path = change_path[:-1]
+
+            # detect op_sender
+            if not has_opsender and decode_opsender_script(txout.scriptPubKey) is not None:
+                has_opsender = True
 
         for txin, psbt_in, i_num in zip(c_tx.vin, tx.inputs, range(len(c_tx.vin))):
 
@@ -287,6 +298,29 @@ class LedgerClient(HardwareWalletClient):
                     signature_attempts.append([keypath_str, pubkey])
 
             all_signature_attempts[i_num] = signature_attempts
+
+        # Sign op_sender sig
+        if has_opsender:
+            self.app.startUntrustedTransaction(True, 0, legacy_inputs, script_codes[0], c_tx.nVersion, qtumOpSender=True)
+            self.app.finalizeInput(b"", 0, 0, change_path, tx_bytes)
+            for i_num, txout in enumerate(c_tx.vout):
+                decoded = decode_opsender_script(txout.scriptPubKey)
+                if (decoded is not None) and (not decoded[3][1]):
+                    sender_pubkey = ""
+                    sender_path = ""
+                    for pubkey, keypath in tx.outputs[i_num].hd_keypaths.items():
+                        if keypath.fingerprint == master_fpr and hash160(pubkey) == decoded[1][1]:
+                            sender_pubkey = pubkey.hex()
+                            sender_path = keypath.get_derivation_path()[2:]
+                            break
+                    if not sender_path:
+                        continue
+                    outputSignature = self.app.untrustedHashSign(sender_path, "", c_tx.nLockTime, 0x01)
+                    sig = bytes.fromhex(push_data((outputSignature + b'\x01').hex()))
+                    sig += bytes.fromhex(push_data(sender_pubkey))
+                    sig = bytes.fromhex(int_to_hex(len(sig))) + sig
+                    c_tx.vout[i_num].scriptPubKey = update_opsender_sig(txout.scriptpubkey, sig)
+            tx_bytes = c_tx.serialize_with_witness()
 
         # Sign any segwit inputs
         if has_segwit:
