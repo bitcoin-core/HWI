@@ -409,10 +409,15 @@ class TestSignTx(DeviceTestCase):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
         supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
         supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
-        self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
-        self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
+        multisig = self.full_type in supports_multisig
+        external = self.full_type in supports_external
+        with self.subTest(addrtype="legacy", multisig=multisig, external=external):
+            self._test_signtx("legacy", multisig, external)
+        with self.subTest(addrtype="segwit", multisig=multisig, external=external):
+            self._test_signtx("segwit", multisig, external)
         if self.full_type in supports_mixed:
-            self._test_signtx("all", self.full_type in supports_multisig, self.full_type in supports_external)
+            with self.subTest(addrtype="all", multisig=multisig, external=external):
+                self._test_signtx("all", multisig, external)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
