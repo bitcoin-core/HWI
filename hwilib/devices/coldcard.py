@@ -1,7 +1,12 @@
 # Coldcard interaction script
 
-from typing import Dict, Union
+from typing import (
+    Dict,
+    List,
+    Union,
+)
 
+from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -51,33 +56,10 @@ import io
 import sys
 import time
 import struct
-from binascii import hexlify, a2b_hex, b2a_hex
+from binascii import hexlify, b2a_hex
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
-
-
-def str_to_int_path(xfp, path):
-    # convert text  m/34'/33/44 into BIP174 binary compat format
-    # - include hex for fingerprint (m) as first arg
-
-    rv = [struct.unpack('<I', a2b_hex(xfp))[0]]
-    for i in path.split('/'):
-        if i == 'm':
-            continue
-        if not i:
-            continue      # trailing or duplicated slashes
-
-        if i[-1] in "'phHP":
-            assert len(i) >= 2, i
-            here = int(i[:-1]) | 0x80000000
-        else:
-            here = int(i)
-            assert 0 <= here < 0x80000000, here
-
-        rv.append(here)
-
-    return rv
 
 
 def coldcard_exception(f):
@@ -233,49 +215,64 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @coldcard_exception
-    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
+    def display_singlesig_address(
+        self,
+        keypath: str,
+        addr_type: AddressType,
+    ) -> Dict[str, str]:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
         if addr_type == AddressType.SH_WPKH:
-            addr_fmt = AF_P2WSH_P2SH if redeem_script else AF_P2WPKH_P2SH
+            addr_fmt = AF_P2WPKH_P2SH
         elif addr_type == AddressType.WPKH:
-            addr_fmt = AF_P2WSH if redeem_script else AF_P2WPKH
+            addr_fmt = AF_P2WPKH
         else:
-            addr_fmt = AF_P2SH if redeem_script else AF_CLASSIC
+            addr_fmt = AF_CLASSIC
 
-        if redeem_script:
-            keypaths = keypath.split(',')
-            script = a2b_hex(redeem_script)
+        payload = CCProtocolPacker.show_address(keypath, addr_fmt=addr_fmt)
 
-            N = len(keypaths)
+        address = self.device.send_recv(payload, timeout=None)
 
-            if not 1 <= N <= 15:
-                raise BadArgumentError("Must provide 1 to 15 keypaths to display a multisig address")
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+        return {'address': address}
 
-            min_signers = script[0] - 80
-            if not 1 <= min_signers <= N:
-                raise BadArgumentError("Either the redeem script provided is invalid or the keypaths provided are insufficient")
+    @coldcard_exception
+    def display_multisig_address(
+        self,
+        threshold: int,
+        pubkeys: List[PubkeyProvider],
+        addr_type: AddressType,
+    ) -> Dict[str, str]:
+        self.device.check_mitm()
 
-            if not script[-1] == 0xAE:
-                raise BadArgumentError("The redeem script provided is not a multisig. Only multisig scripts can be displayed.")
-
-            if not script[-2] == 80 + N:
-                raise BadArgumentError("Invalid redeem script, second last byte should encode N")
-
-            xfp_paths = []
-            for xfp in keypaths:
-                if '/' not in xfp:
-                    raise BadArgumentError('Invalid keypath. Needs a XFP/path: ' + xfp)
-                xfp, p = xfp.split('/', 1)
-
-                xfp_paths.append(str_to_int_path(xfp, p))
-
-            payload = CCProtocolPacker.show_p2sh_address(min_signers, xfp_paths, script, addr_fmt=addr_fmt)
-        # single-sig
+        if addr_type == AddressType.SH_WPKH:
+            addr_fmt = AF_P2WSH_P2SH
+        elif addr_type == AddressType.WPKH:
+            addr_fmt = AF_P2WSH
         else:
-            payload = CCProtocolPacker.show_address(keypath, addr_fmt=addr_fmt)
+            addr_fmt = AF_P2SH
+
+        if not 1 <= len(pubkeys) <= 15:
+            raise BadArgumentError("Must provide 1 to 15 keypaths to display a multisig address")
+
+        redeem_script = (80 + int(threshold)).to_bytes(1, byteorder="little")
+
+        if not 1 <= threshold <= len(pubkeys):
+            raise BadArgumentError("Either the redeem script provided is invalid or the keypaths provided are insufficient")
+
+        xfp_paths = []
+        for p in pubkeys:
+            xfp_paths.append(p.get_full_derivation_int_list(0))
+            pk = p.get_pubkey_bytes(0)
+            redeem_script += len(pk).to_bytes(1, byteorder="little") + pk
+
+        redeem_script += (80 + len(pubkeys)).to_bytes(1, byteorder="little")
+        redeem_script += b"\xae"
+
+        payload = CCProtocolPacker.show_p2sh_address(threshold, xfp_paths, redeem_script, addr_fmt=addr_fmt)
 
         address = self.device.send_recv(payload, timeout=None)
 

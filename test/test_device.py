@@ -570,29 +570,22 @@ class TestDisplayAddress(DeviceTestCase):
             raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
-            for use_desc in [True, False]:
-                with self.subTest(addrtype=addrtype, use_desc=use_desc):
-                    addr, desc, rs, path = self._make_single_multisig(addrtype)
+            with self.subTest(addrtype=addrtype):
+                addr, desc, rs, path = self._make_single_multisig(addrtype)
 
-                    if use_desc:
-                        args = ['displayaddress', '--desc', desc]
-                    else:
-                        args = ['displayaddress', '--path', path, '--redeem_script', rs]
-                        if addrtype != "pkh":
-                            args.append("--addr-type")
-                            args.append(addrtype)
+                args = ['displayaddress', '--desc', desc]
 
-                    result = self.do_command(self.dev_args + args)
-                    self.assertNotIn('error', result)
-                    self.assertNotIn('code', result)
-                    self.assertIn('address', result)
+                result = self.do_command(self.dev_args + args)
+                self.assertNotIn('error', result)
+                self.assertNotIn('code', result)
+                self.assertIn('address', result)
 
-                    if addrtype == "wpkh":
-                        # removes prefix and checksum since regtest gives
-                        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-                        self.assertEqual(addr[4:58], result['address'][2:56])
-                    else:
-                        self.assertEqual(addr, result['address'])
+                if addrtype == "wpkh":
+                    # removes prefix and checksum since regtest gives
+                    # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+                    self.assertEqual(addr[4:58], result['address'][2:56])
+                else:
+                    self.assertEqual(addr, result['address'])
 
     def test_display_address_xpub_multisig(self):
         if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:

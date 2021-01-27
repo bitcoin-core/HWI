@@ -1,7 +1,11 @@
 # Trezor interaction script
 
-from typing import Dict, Union
-
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -416,55 +420,81 @@ class TrezorClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @trezor_exception
-    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
+    def display_singlesig_address(
+        self,
+        keypath: str,
+        addr_type: AddressType,
+    ) -> Dict[str, str]:
         self._check_unlocked()
-
-        # descriptor means multisig with xpubs
-        if descriptor:
-            pubkeys = []
-            for p in descriptor.pubkeys:
-                xpub = ExtendedKey.deserialize(p.pubkey)
-                hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
-            multisig = proto.MultisigRedeemScriptType(m=descriptor.thresh, signatures=[b''] * len(descriptor.pubkeys), pubkeys=pubkeys)
-        # redeem_script means p2sh/multisig
-        elif redeem_script:
-            # Get multisig object required by Trezor's get_address
-            multisig = parse_multisig(bytes.fromhex(redeem_script))
-            if not multisig[0]:
-                raise BadArgumentError("The redeem script provided is not a multisig. Only multisig scripts can be displayed.")
-            multisig = multisig[1]
-        else:
-            multisig = None
 
         # Script type
         if addr_type == AddressType.SH_WPKH:
             script_type = proto.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WPKH:
             script_type = proto.InputScriptType.SPENDWITNESS
-        elif redeem_script:
-            script_type = proto.InputScriptType.SPENDMULTISIG
         else:
             script_type = proto.InputScriptType.SPENDADDRESS
 
-        # convert device fingerprint to 'm' if exists in path
-        keypath = keypath.replace(self.get_master_fingerprint_hex(), 'm')
+        expanded_path = parse_path(keypath)
 
-        for path in keypath.split(','):
-            if len(path.split('/')[0]) == 8:
-                path = path.split('/', 1)[1]
-            expanded_path = parse_path(path)
+        try:
+            address = btc.get_address(
+                self.client,
+                self.coin_name,
+                expanded_path,
+                show_display=True,
+                script_type=script_type,
+                multisig=None,
+            )
+            return {'address': address}
+        except Exception:
+            pass
 
+        raise BadArgumentError("No path supplied matched device keys")
+
+    @trezor_exception
+    def display_multisig_address(
+        self,
+        threshold: int,
+        pubkeys: List[PubkeyProvider],
+        addr_type: AddressType
+    ) -> Dict[str, str]:
+        self._check_unlocked()
+
+        pubkey_objs = []
+        for p in pubkeys:
+            if p.extkey is not None:
+                xpub = p.extkey
+                hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
+                pubkey_objs.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
+            else:
+                hd_node = proto.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=p.get_pubkey_bytes(0))
+                pubkey_objs.append(proto.HDNodePathType(node=hd_node, address_n=[]))
+
+        multisig = proto.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
+
+        # Script type
+        if addr_type == AddressType.SH_WPKH:
+            script_type = proto.InputScriptType.SPENDP2SHWITNESS
+        elif addr_type == AddressType.WPKH:
+            script_type = proto.InputScriptType.SPENDWITNESS
+        else:
+            script_type = proto.InputScriptType.SPENDMULTISIG
+
+        for p in pubkeys:
+            keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"
+            keypath += p.deriv_path if p.deriv_path is not None else ""
+            path = parse_path(keypath)
             try:
                 address = btc.get_address(
                     self.client,
                     self.coin_name,
-                    expanded_path,
+                    path,
                     show_display=True,
                     script_type=script_type,
                     multisig=multisig,
                 )
-                return {'address': address}
+                return {"address": address}
             except Exception:
                 pass
 

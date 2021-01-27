@@ -12,6 +12,7 @@ import hashlib
 import struct
 from typing import (
     Dict,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -252,6 +253,15 @@ class KeyOriginInfo(object):
         Return the hex for just the fingerprint
         """
         return binascii.hexlify(self.fingerprint).decode()
+
+    def get_full_int_list(self) -> List[int]:
+        """
+        Return a list of ints representing this KeyOriginInfo.
+        The first int is the fingerprint, followed by the path
+        """
+        xfp = [struct.unpack("<I", self.fingerprint)[0]]
+        xfp.extend(self.path)
+        return xfp
 
 
 def parse_path(nstr: str) -> Sequence[int]:

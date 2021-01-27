@@ -132,6 +132,27 @@ class PubkeyProvider(object):
             path = path[:-1] + str(pos)
         return path
 
+    def get_full_derivation_int_list(self, pos: int) -> List[int]:
+        """
+        Returns the full derivation path as an integer list at the given position.
+        Includes the origin and master key fingerprint as an int
+        """
+        path: List[int] = self.origin.get_full_int_list() if self.origin is not None else []
+        if self.deriv_path is not None:
+            der_split = self.deriv_path.split("/")
+            for p in der_split:
+                if not p:
+                    continue
+                if p == "*":
+                    i = pos
+                elif p[-1] in "'phHP":
+                    assert len(p) >= 2
+                    i = int(p[:-1]) | 0x80000000
+                else:
+                    i = int(p)
+                path.append(i)
+        return path
+
     def __lt__(self, other: 'PubkeyProvider') -> bool:
         return self.pubkey < other.pubkey
 
