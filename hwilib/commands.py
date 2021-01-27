@@ -301,7 +301,7 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path())['xpub']
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
                 return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
-            return client.display_address(pubkey.origin.get_derivation_path(), is_sh and is_wpkh, not is_sh and is_wpkh)
+            return client.display_address(pubkey.get_full_derivation_path(0), is_sh and is_wpkh, not is_sh and is_wpkh)
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)
