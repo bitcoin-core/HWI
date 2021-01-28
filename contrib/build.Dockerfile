@@ -49,3 +49,7 @@ RUN apt-get install --install-recommends -y \
     wine-stable \
     winehq-stable \
     p7zip-full
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV LANGUAGE=C.UTF-8
