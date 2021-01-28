@@ -374,7 +374,7 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6,<3.10"
-content-hash = "7dc8a4a78469f100b9ad15ad96bc7f12b3996fd57d3860b7549b5e2ab0c7569c"
+content-hash = "fae8cd4ec5fae48e4eed77a42ff209233bf32fff1e7a79854a492f7c06582c4f"
 
 [metadata.files]
 altgraph = [
