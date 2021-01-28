@@ -322,24 +322,32 @@ class TestSignTx(DeviceTestCase):
         return finalize_res['hex']
 
     def _make_multisigs(self):
-        desc_pubkeys = []
-        sorted_pubkeys = []
-        for i in range(0, 3):
-            path = "/48h/1h/{}h/0h/0/0".format(i)
-            origin = '{}{}'.format(self.fingerprint, path)
-            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-            sorted_pubkeys.append(xpub["pubkey"])
-        sorted_pubkeys.sort()
+        def get_pubkeys(t):
+            desc_pubkeys = []
+            sorted_pubkeys = []
+            for i in range(0, 3):
+                path = "/48h/1h/{}h/{}h/0/0".format(i, t)
+                origin = '{}{}'.format(self.fingerprint, path)
+                xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
+                desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
+                sorted_pubkeys.append(xpub["pubkey"])
+            sorted_pubkeys.sort()
+            return desc_pubkeys, sorted_pubkeys
 
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(0)
         sh_desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
         sh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "legacy")
         self.assertEqual(self.rpc.deriveaddresses(sh_desc)[0], sh_ms_info["address"])
 
+        # Trezor requires that each address type uses a different derivation path.
+        # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
+        # So for those other devices, stick to the 0 path.
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.full_type == "trezor_t" else get_pubkeys(0)
         sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
         sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
         self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
 
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.full_type == "trezor_t" else get_pubkeys(0)
         wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
         wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
         self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
