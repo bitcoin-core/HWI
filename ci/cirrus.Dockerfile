@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.6
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -34,3 +34,7 @@ RUN apt-get install -y \
     protobuf-compiler \
     cython3
 RUN pip install poetry flake8
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV LANGUAGE=C.UTF-8
