@@ -95,6 +95,16 @@ class PubkeyProvider(object):
             s += self.deriv_path
         return s
 
+    def get_full_derivation_path(self, pos: int) -> str:
+        """
+        Returns the full derivation path at the given position, including the origin
+        """
+        path = self.origin.get_derivation_path() if self.origin is not None else "m/"
+        path += self.deriv_path if self.deriv_path is not None else ""
+        if path[-1] == "*":
+            path = path[:-1] + str(pos)
+        return path
+
     def __lt__(self, other: 'PubkeyProvider') -> bool:
         return self.pubkey < other.pubkey
 

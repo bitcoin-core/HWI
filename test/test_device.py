@@ -322,24 +322,32 @@ class TestSignTx(DeviceTestCase):
         return finalize_res['hex']
 
     def _make_multisigs(self):
-        desc_pubkeys = []
-        sorted_pubkeys = []
-        for i in range(0, 3):
-            path = "/48h/1h/{}h/0/0".format(i)
-            origin = '{}{}'.format(self.fingerprint, path)
-            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-            sorted_pubkeys.append(xpub["pubkey"])
-        sorted_pubkeys.sort()
+        def get_pubkeys(t):
+            desc_pubkeys = []
+            sorted_pubkeys = []
+            for i in range(0, 3):
+                path = "/48h/1h/{}h/{}h/0/0".format(i, t)
+                origin = '{}{}'.format(self.fingerprint, path)
+                xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
+                desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
+                sorted_pubkeys.append(xpub["pubkey"])
+            sorted_pubkeys.sort()
+            return desc_pubkeys, sorted_pubkeys
 
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(0)
         sh_desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
         sh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "legacy")
         self.assertEqual(self.rpc.deriveaddresses(sh_desc)[0], sh_ms_info["address"])
 
+        # Trezor requires that each address type uses a different derivation path.
+        # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
+        # So for those other devices, stick to the 0 path.
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.full_type == "trezor_t" else get_pubkeys(0)
         sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
         sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
         self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
 
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.full_type == "trezor_t" else get_pubkeys(0)
         wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
         wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
         self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
@@ -409,10 +417,15 @@ class TestSignTx(DeviceTestCase):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
         supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
         supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
-        self._test_signtx("legacy", self.full_type in supports_multisig, self.full_type in supports_external)
-        self._test_signtx("segwit", self.full_type in supports_multisig, self.full_type in supports_external)
+        multisig = self.full_type in supports_multisig
+        external = self.full_type in supports_external
+        with self.subTest(addrtype="legacy", multisig=multisig, external=external):
+            self._test_signtx("legacy", multisig, external)
+        with self.subTest(addrtype="segwit", multisig=multisig, external=external):
+            self._test_signtx("segwit", multisig, external)
         if self.full_type in supports_mixed:
-            self._test_signtx("all", self.full_type in supports_multisig, self.full_type in supports_external)
+            with self.subTest(addrtype="all", multisig=multisig, external=external):
+                self._test_signtx("all", multisig, external)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
@@ -521,7 +534,7 @@ class TestDisplayAddress(DeviceTestCase):
         desc_pubkeys = []
         sorted_pubkeys = []
         for i in range(0, 3):
-            path = "/48h/1h/{}h/0/0".format(i)
+            path = "/48h/1h/{}h/0h/0/0".format(i)
             origin = '{}{}'.format(self.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
             desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
@@ -578,8 +591,8 @@ class TestDisplayAddress(DeviceTestCase):
         if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
             raise unittest.SkipTest("{} does not support multsig display with xpubs".format(self.full_type))
 
-        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/48h/1h/0h'])['xpub']
-        desc = 'wsh(multi(2,[' + self.fingerprint + '/48h/1h/0h]' + account_xpub + '/0/0,[' + self.fingerprint + '/48h/1h/0h]' + account_xpub + '/1/0))'
+        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/48h/1h/0h/0h'])['xpub']
+        desc = 'wsh(multi(2,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/0/0,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/1/0))'
         result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
