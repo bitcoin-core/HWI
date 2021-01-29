@@ -40,6 +40,7 @@ from ..key import (
     ExtendedKey,
 )
 from ..serializations import (
+    AddressType,
     PSBT,
 )
 from hashlib import sha256
@@ -232,14 +233,14 @@ class ColdcardClient(HardwareWalletClient):
 
     # Display address of specified type on the device.
     @coldcard_exception
-    def display_address(self, keypath, p2sh_p2wpkh, bech32, redeem_script=None, descriptor=None):
+    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
-        if p2sh_p2wpkh:
+        if addr_type == AddressType.SH_WPKH:
             addr_fmt = AF_P2WSH_P2SH if redeem_script else AF_P2WPKH_P2SH
-        elif bech32:
+        elif addr_type == AddressType.WPKH:
             addr_fmt = AF_P2WSH if redeem_script else AF_P2WPKH
         else:
             addr_fmt = AF_P2SH if redeem_script else AF_CLASSIC

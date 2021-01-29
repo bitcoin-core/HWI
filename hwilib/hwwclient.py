@@ -2,7 +2,7 @@ from typing import Dict, Optional, Union
 
 from .base58 import get_xpub_fingerprint_hex
 from .descriptor import Descriptor
-from .serializations import PSBT
+from .serializations import AddressType, PSBT
 
 
 class HardwareWalletClient(object):
@@ -75,8 +75,7 @@ class HardwareWalletClient(object):
     def display_address(
         self,
         bip32_path: str,
-        p2sh_p2wpkh: bool,
-        bech32: bool,
+        addr_type: AddressType,
         redeem_script: Optional[str] = None,
         descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:

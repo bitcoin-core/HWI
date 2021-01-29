@@ -192,7 +192,7 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('legacy'))
             self.assertTrue(addr_info['hdkeypath'].startswith("m/44'/1'/0'/1/"))
 
-        shwpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '0', '20'])
+        shwpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "sh_wpkh", '0', '20'])
         import_result = self.wrpc.importdescriptors(shwpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -201,7 +201,7 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/0'/1/"))
 
-        wpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '0', '20'])
+        wpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "wpkh", '0', '20'])
         import_result = self.wrpc.importdescriptors(wpkh_keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -214,7 +214,7 @@ class TestGetKeypool(DeviceTestCase):
         all_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '0', '20'])
         self.assertEqual(all_keypool_desc, pkh_keypool_desc + wpkh_keypool_desc + shwpkh_keypool_desc)
 
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--sh_wpkh', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "sh_wpkh", '--account', '3', '0', '20'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -222,7 +222,7 @@ class TestGetKeypool(DeviceTestCase):
             self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/3'/0/"))
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/3'/1/"))
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--wpkh', '--account', '3', '0', '20'])
+        keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "wpkh", '--account', '3', '0', '20'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -457,24 +457,18 @@ class TestSignTx(DeviceTestCase):
                 pass
 
 class TestDisplayAddress(DeviceTestCase):
-    def test_display_address_bad_args(self):
-        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--wpkh', '--path', 'm/49h/1h/0h/0/0'])
-        self.assertIn('error', result)
-        self.assertIn('code', result)
-        self.assertEqual(result['code'], -7)
-
     def test_display_address_path(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--path', 'm/44h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
-        result = self.do_command(self.dev_args + ['displayaddress', '--sh_wpkh', '--path', 'm/49h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "sh_wpkh", '--path', 'm/49h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
-        result = self.do_command(self.dev_args + ['displayaddress', '--wpkh', '--path', 'm/84h/1h/0h/0/0'])
+        result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "wpkh", '--path', 'm/84h/1h/0h/0/0'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
@@ -573,7 +567,8 @@ class TestDisplayAddress(DeviceTestCase):
                     else:
                         args = ['displayaddress', '--path', path, '--redeem_script', rs]
                         if addrtype != "pkh":
-                            args.append("--{}".format(addrtype))
+                            args.append("--addr-type")
+                            args.append(addrtype)
 
                     result = self.do_command(self.dev_args + args)
                     self.assertNotIn('error', result)

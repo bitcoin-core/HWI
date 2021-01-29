@@ -6,7 +6,7 @@ import binascii
 import importlib
 import platform
 
-from .serializations import PSBT
+from .serializations import AddressType, PSBT
 from .base58 import xpub_to_pub_hex
 from .key import (
     H_,
@@ -33,15 +33,10 @@ from .descriptor import (
 )
 from .devices import __all__ as all_devs
 
-from enum import Enum
 from itertools import count
 
 py_enumerate = enumerate
 
-class AddressType(Enum):
-    PKH = 1
-    WPKH = 2
-    SH_WPKH = 3
 
 # Get the client for the device
 def get_client(device_type, device_path, password='', expert=False):
@@ -202,16 +197,11 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
     else:
         return PKHDescriptor(pubkey)
 
-def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, sh_wpkh=False, wpkh=True, addr_all=False):
+def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, addr_type: AddressType = AddressType.PKH, addr_all=False):
 
-    if sh_wpkh:
-        addr_types = [AddressType.SH_WPKH]
-    elif wpkh:
-        addr_types = [AddressType.WPKH]
-    elif addr_all:
+    addr_types = [addr_type]
+    if addr_all:
         addr_types = list(AddressType)
-    else:
-        addr_types = [AddressType.PKH]
 
     # When no specific path or internal-ness is specified, create standard types
     chains = []
@@ -257,17 +247,14 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, redeem_script=None):
+def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH, redeem_script=None):
     if path is not None:
-        if sh_wpkh and wpkh:
-            return {'error': 'Both `--wpkh` and `--sh_wpkh` can not be selected at the same time.', 'code': BAD_ARGUMENT}
-        return client.display_address(path, sh_wpkh, wpkh, redeem_script=redeem_script)
+        return client.display_address(path, addr_type, redeem_script=redeem_script)
     elif desc is not None:
-        if sh_wpkh or wpkh:
-            return {'error': ' `--wpkh` and `--sh_wpkh` can not be combined with --desc', 'code': BAD_ARGUMENT}
         if redeem_script:
             return {'error': ' `--redeem_script` can not be combined with --desc', 'code': BAD_ARGUMENT}
         descriptor = parse_descriptor(desc)
+        addr_type = AddressType.PKH
         is_sh = isinstance(descriptor, SHDescriptor)
         is_wsh = isinstance(descriptor, WSHDescriptor)
         if is_sh or is_wsh:
@@ -290,7 +277,11 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
                     path += ','
                 path = path[0:-1]
                 redeem_script += format(80 + len(descriptor.pubkeys), 'x') + 'ae'
-                return client.display_address(path, is_sh and is_wsh, not is_sh and is_wsh, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
+                if is_sh and is_wsh:
+                    addr_type = AddressType.SH_WPKH
+                elif not is_sh and is_wsh:
+                    addr_type = AddressType.WPKH
+                return client.display_address(path, addr_type, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]
@@ -301,7 +292,11 @@ def displayaddress(client, path=None, desc=None, sh_wpkh=False, wpkh=False, rede
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path())['xpub']
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
                 return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
-            return client.display_address(pubkey.get_full_derivation_path(0), is_sh and is_wpkh, not is_sh and is_wpkh)
+            if is_sh and is_wpkh:
+                addr_type = AddressType.SH_WPKH
+            elif not is_sh and is_wpkh:
+                addr_type = AddressType.WPKH
+            return client.display_address(pubkey.get_full_derivation_path(0), addr_type)
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)
