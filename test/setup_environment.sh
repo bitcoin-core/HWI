@@ -51,7 +51,7 @@ mkdir -p work
 cd work
 
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
-    # Clone trezor-mcu if it doesn't exist, or update it if it does
+    # Clone trezor-firmware if it doesn't exist, or update it if it does
     if [ ! -d "trezor-firmware" ]; then
         git clone --recursive https://github.com/trezor/trezor-firmware.git
         cd trezor-firmware
