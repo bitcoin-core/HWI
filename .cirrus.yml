@@ -186,7 +186,7 @@ dist_test_task:
       install_script: poetry install
       test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
   on_failure:
-    failed_script: tail -v -n +1 *.std*
+    failed_script: tail -v -n +1 test/*.std*
 
 device_test_task:
   matrix:
@@ -203,4 +203,4 @@ device_test_task:
   install_script: poetry install
   test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=$INTERFACE --device-only; cd ..
   on_failure:
-    failed_script: tail -v -n +1 *.std*
+    failed_script: tail -v -n +1 test/*.std*
