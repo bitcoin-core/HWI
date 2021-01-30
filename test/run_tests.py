@@ -98,9 +98,9 @@ if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepke
     if success and args.coldcard:
         success &= coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface)
     if success and args.trezor_1:
-        success &= trezor_test_suite(args.trezor_1_path, rpc, userpass, args.interface)
+        success &= trezor_test_suite(args.trezor_1_path, rpc, userpass, args.interface, '1')
     if success and args.trezor_t:
-        success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, True)
+        success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, 't')
     if success and args.keepkey:
         success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
     if success and args.ledger:
