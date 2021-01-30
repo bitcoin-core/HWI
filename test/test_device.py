@@ -18,7 +18,7 @@ from hwilib.key import KeyOriginInfo
 from hwilib.serializations import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
-SUPPORTS_XPUB_MS_DISPLAY = {'trezor_t'}
+SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
 
 # Class for emulator control
 class DeviceEmulator():
@@ -584,7 +584,7 @@ class TestDisplayAddress(DeviceTestCase):
 
     def test_display_address_xpub_multisig(self):
         if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-            raise unittest.SkipTest("{} does not support multsig display with xpubs".format(self.full_type))
+            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.full_type))
 
         account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/48h/1h/0h/0h'])['xpub']
         desc = 'wsh(multi(2,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/0/0,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/1/0))'
