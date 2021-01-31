@@ -19,6 +19,10 @@ from hwilib.serializations import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
 SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
+SUPPORTS_MIXED = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
+SUPPORTS_MULTISIG = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
+SUPPORTS_EXTERNAL = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
+SUPPORTS_OP_RETURN = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey'}
 
 # Class for emulator control
 class DeviceEmulator():
@@ -424,18 +428,14 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
-        supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
-        supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
-        supports_op_return = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey'}
-        multisig = self.full_type in supports_multisig
-        external = self.full_type in supports_external
-        op_return = self.full_type in supports_op_return
+        multisig = self.full_type in SUPPORTS_MULTISIG
+        external = self.full_type in SUPPORTS_EXTERNAL
+        op_return = self.full_type in SUPPORTS_OP_RETURN
         with self.subTest(addrtype="legacy", multisig=multisig, external=external):
             self._test_signtx("legacy", multisig, external, op_return)
         with self.subTest(addrtype="segwit", multisig=multisig, external=external):
             self._test_signtx("segwit", multisig, external, op_return)
-        if self.full_type in supports_mixed:
+        if self.full_type in SUPPORTS_MIXED:
             with self.subTest(addrtype="all", multisig=multisig, external=external):
                 self._test_signtx("all", multisig, external, op_return)
 
