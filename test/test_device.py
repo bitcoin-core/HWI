@@ -354,7 +354,7 @@ class TestSignTx(DeviceTestCase):
 
         return sh_desc, sh_ms_info["address"], sh_wsh_desc, sh_wsh_ms_info["address"], wsh_desc, wsh_ms_info["address"]
 
-    def _test_signtx(self, input_type, multisig, external):
+    def _test_signtx(self, input_type, multisig, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -404,7 +404,14 @@ class TestSignTx(DeviceTestCase):
                 self.assertEqual((i + 1) * in_amt, self.wrpc.getbalance("*", 0, True))
                 change_addr = self.wpk_rpc.getrawchangeaddress()
             out_val = (i + 1) * out_amt
-            psbt = self.wrpc.walletcreatefundedpsbt([], [{self.wpk_rpc.getnewaddress('', 'legacy'): out_val}, {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): out_val}, {self.wpk_rpc.getnewaddress('', 'bech32'): out_val}], 0, {'includeWatching': True, "changePosition": 3, "changeAddress": change_addr}, True)
+            outputs = [
+                {self.wpk_rpc.getnewaddress('', 'legacy'): out_val},
+                {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): out_val},
+                {self.wpk_rpc.getnewaddress('', 'bech32'): out_val}
+            ]
+            if op_return:
+                outputs.append({"data": "000102030405060708090a0b0c0d0e0f10111213141516171819101a1b1c1d1e1f"})
+            psbt = self.wrpc.walletcreatefundedpsbt([], outputs, 0, {'includeWatching': True, "changePosition": 3, "changeAddress": change_addr}, True)
 
             if external:
                 # Sign with unknown inputs in two steps
@@ -420,15 +427,17 @@ class TestSignTx(DeviceTestCase):
         supports_mixed = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
         supports_multisig = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
         supports_external = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
+        supports_op_return = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey'}
         multisig = self.full_type in supports_multisig
         external = self.full_type in supports_external
+        op_return = self.full_type in supports_op_return
         with self.subTest(addrtype="legacy", multisig=multisig, external=external):
-            self._test_signtx("legacy", multisig, external)
+            self._test_signtx("legacy", multisig, external, op_return)
         with self.subTest(addrtype="segwit", multisig=multisig, external=external):
-            self._test_signtx("segwit", multisig, external)
+            self._test_signtx("segwit", multisig, external, op_return)
         if self.full_type in supports_mixed:
             with self.subTest(addrtype="all", multisig=multisig, external=external):
-                self._test_signtx("all", multisig, external)
+                self._test_signtx("all", multisig, external, op_return)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
