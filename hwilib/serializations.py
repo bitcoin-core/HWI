@@ -283,6 +283,9 @@ class CTxIn(object):
                self.nSequence)
 
 
+def is_opreturn(script: bytes) -> bool:
+    return script[0] == 0x6a
+
 def is_p2sh(script: bytes) -> bool:
     return len(script) == 23 and script[0] == 0xa9 and script[1] == 0x14 and script[22] == 0x87
 
@@ -335,6 +338,9 @@ class CTxOut(object):
         r += struct.pack("<q", self.nValue)
         r += ser_string(self.scriptPubKey)
         return r
+
+    def is_opreturn(self) -> bool:
+        return is_opreturn(self.scriptPubKey)
 
     def is_p2sh(self) -> bool:
         return is_p2sh(self.scriptPubKey)

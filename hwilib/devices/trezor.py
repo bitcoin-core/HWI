@@ -328,6 +328,9 @@ class TrezorClient(HardwareWalletClient):
                     txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
                 elif out.is_p2sh():
                     txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
+                elif out.is_opreturn():
+                    txoutput.script_type = proto.OutputScriptType.PAYTOOPRETURN
+                    txoutput.op_return_data = out.scriptPubKey[2:]
                 else:
                     wit, ver, prog = out.is_witness()
                     if wit:
