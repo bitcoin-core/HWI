@@ -627,4 +627,5 @@ class Bitbox02Client(HardwareWalletClient):
         if label:
             bb02.set_device_name(label)
 
-        return {"success": bb02.restore_from_mnemonic()}
+        bb02.restore_from_mnemonic()
+        return {"success": True}

@@ -374,7 +374,7 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6,<3.10"
-content-hash = "fae8cd4ec5fae48e4eed77a42ff209233bf32fff1e7a79854a492f7c06582c4f"
+content-hash = "569af9248ab36c24591d50a64650e507928acfcfea8258e08dde06a9659564ab"
 
 [metadata.files]
 altgraph = [
@@ -527,7 +527,6 @@ mypy-extensions = [
 ]
 noiseprotocol = [
     {file = "noiseprotocol-0.3.1-py3-none-any.whl", hash = "sha256:2e1a603a38439636cf0ffd8b3e8b12cee27d368a28b41be7dbe568b2abb23111"},
-    {file = "noiseprotocol-0.3.1.tar.gz", hash = "sha256:b092a871b60f6a8f07f17950dc9f7098c8fe7d715b049bd4c24ee3752b90d645"},
 ]
 pefile = [
     {file = "pefile-2019.4.18.tar.gz", hash = "sha256:a5d6e8305c6b210849b47a6174ddf9c452b2888340b8177874b862ba6c207645"},
