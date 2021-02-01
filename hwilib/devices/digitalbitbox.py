@@ -688,6 +688,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             path = d['path'].decode()
             d_data['type'] = 'digitalbitbox'
             d_data['model'] = 'digitalbitbox_01'
+            d_data['label'] = None
             if path == 'udp:127.0.0.1:35345':
                 d_data['model'] += '_simulator'
             d_data['path'] = path

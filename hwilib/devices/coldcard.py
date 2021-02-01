@@ -396,6 +396,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
         path = d['path'].decode()
         d_data['type'] = 'coldcard'
         d_data['model'] = 'coldcard'
+        d_data['label'] = None
         d_data['path'] = path
         d_data['needs_pin_sent'] = False
         d_data['needs_passphrase_sent'] = False

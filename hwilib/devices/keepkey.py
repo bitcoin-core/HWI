@@ -179,6 +179,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             if 'keepkey' not in client.client.features.vendor:
                 continue
 
+            d_data['label'] = client.client.features.label
             if d_data['path'].startswith('udp:'):
                 d_data['model'] += '_simulator'
 

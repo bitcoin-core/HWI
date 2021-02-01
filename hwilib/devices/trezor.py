@@ -775,6 +775,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             if 'trezor' not in client.client.features.vendor:
                 continue
 
+            d_data['label'] = client.client.features.label
             d_data['model'] = 'trezor_' + client.client.features.model.lower()
             if d_data['path'].startswith('udp:'):
                 d_data['model'] += '_simulator'
