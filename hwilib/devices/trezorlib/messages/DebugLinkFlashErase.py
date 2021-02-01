@@ -2,18 +2,26 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class DebugLinkFlashErase(p.MessageType):
     MESSAGE_WIRE_TYPE = 113
 
     def __init__(
         self,
+        *,
         sector: int = None,
     ) -> None:
         self.sector = sector
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('sector', p.UVarintType, 0),
+            1: ('sector', p.UVarintType, None),
         }

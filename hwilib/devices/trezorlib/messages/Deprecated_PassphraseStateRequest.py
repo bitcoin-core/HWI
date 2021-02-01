@@ -2,18 +2,26 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class Deprecated_PassphraseStateRequest(p.MessageType):
     MESSAGE_WIRE_TYPE = 77
 
     def __init__(
         self,
-        _state: bytes = None,
+        *,
+        state: bytes = None,
     ) -> None:
-        self._state = _state
+        self.state = state
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('_state', p.BytesType, 0),
+            1: ('state', p.BytesType, None),
         }

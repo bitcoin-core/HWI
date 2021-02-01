@@ -8,7 +8,6 @@ from ..errors import (
 )
 from .trezorlib.transport import (
     enumerate_devices,
-    KEEPKEY_VENDOR_IDS,
 )
 from .trezor import TrezorClient
 
@@ -22,10 +21,6 @@ class KeepkeyClient(TrezorClient):
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
-        # enumerate_devices filters to Trezors and Keepkeys.
-        # Only allow Keepkeys and unknowns. Unknown devices will reach the check for vendor later
-        if dev.get_usb_vendor_id() not in KEEPKEY_VENDOR_IDS | {-1}:
-            continue
         d_data = {}
 
         d_data['type'] = 'keepkey'

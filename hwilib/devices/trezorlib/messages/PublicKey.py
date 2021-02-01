@@ -4,21 +4,32 @@ from .. import protobuf as p
 
 from .HDNodeType import HDNodeType
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class PublicKey(p.MessageType):
     MESSAGE_WIRE_TYPE = 12
 
     def __init__(
         self,
+        *,
         node: HDNodeType = None,
         xpub: str = None,
+        root_fingerprint: int = None,
     ) -> None:
         self.node = node
         self.xpub = xpub
+        self.root_fingerprint = root_fingerprint
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('node', HDNodeType, 0),  # required
-            2: ('xpub', p.UnicodeType, 0),
+            1: ('node', HDNodeType, None),
+            2: ('xpub', p.UnicodeType, None),
+            3: ('root_fingerprint', p.UVarintType, None),
         }

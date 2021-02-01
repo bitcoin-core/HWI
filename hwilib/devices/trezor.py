@@ -25,7 +25,6 @@ from .trezorlib.exceptions import Cancelled
 from .trezorlib.transport import (
     enumerate_devices,
     get_transport,
-    TREZOR_VENDOR_IDS,
 )
 from .trezorlib.ui import (
     echo,
@@ -588,10 +587,6 @@ class TrezorClient(HardwareWalletClient):
 def enumerate(password=''):
     results = []
     for dev in enumerate_devices():
-        # enumerate_devices filters to Trezors and Keepkeys.
-        # Only allow Trezors and unknowns. Unknown devices will reach the check for vendor later
-        if dev.get_usb_vendor_id() not in TREZOR_VENDOR_IDS | {-1}:
-            continue
         d_data = {}
 
         d_data['type'] = 'trezor'

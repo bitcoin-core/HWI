@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -14,40 +14,18 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
-import logging
 import os
 import time
-import warnings
 
-from . import messages as proto
+from . import messages
 from .exceptions import Cancelled
 from .tools import expect, session
-from .transport import enumerate_devices, get_transport
 
 RECOVERY_BACK = "\x08"  # backspace character, sent literally
 
-LOG = logging.getLogger(__name__)
 
-
-class TrezorDevice:
-    """
-    This class is deprecated. (There is no reason for it to exist in the first
-    place, it is nothing but a collection of two functions.)
-    Instead, please use functions from the ``trezorlib.transport`` module.
-    """
-
-    @classmethod
-    def enumerate(cls):
-        warnings.warn("TrezorDevice is deprecated.", DeprecationWarning)
-        return enumerate_devices()
-
-    @classmethod
-    def find_by_path(cls, path):
-        warnings.warn("TrezorDevice is deprecated.", DeprecationWarning)
-        return get_transport(path, prefix_search=False)
-
-
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
+@session
 def apply_settings(
     client,
     label=None,
@@ -57,59 +35,76 @@ def apply_settings(
     passphrase_always_on_device=None,
     auto_lock_delay_ms=None,
     display_rotation=None,
+    safety_checks=None,
+    experimental_features=None,
 ):
-    settings = proto.ApplySettings()
-    if label is not None:
-        settings.label = label
-    if language:
-        settings.language = language
-    if use_passphrase is not None:
-        settings.use_passphrase = use_passphrase
-    if homescreen is not None:
-        settings.homescreen = homescreen
-    if passphrase_always_on_device is not None:
-        settings.passphrase_always_on_device = passphrase_always_on_device
-    if auto_lock_delay_ms is not None:
-        settings.auto_lock_delay_ms = auto_lock_delay_ms
-    if display_rotation is not None:
-        settings.display_rotation = display_rotation
+    settings = messages.ApplySettings(
+        label=label,
+        language=language,
+        use_passphrase=use_passphrase,
+        homescreen=homescreen,
+        passphrase_always_on_device=passphrase_always_on_device,
+        auto_lock_delay_ms=auto_lock_delay_ms,
+        display_rotation=display_rotation,
+        safety_checks=safety_checks,
+        experimental_features=experimental_features,
+    )
 
     out = client.call(settings)
-    client.init_device()  # Reload Features
+    client.refresh_features()
     return out
 
 
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
+@session
 def apply_flags(client, flags):
-    out = client.call(proto.ApplyFlags(flags=flags))
-    client.init_device()  # Reload Features
+    out = client.call(messages.ApplyFlags(flags=flags))
+    client.refresh_features()
     return out
 
 
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
+@session
 def change_pin(client, remove=False):
-    ret = client.call(proto.ChangePin(remove=remove))
-    client.init_device()  # Re-read features
+    ret = client.call(messages.ChangePin(remove=remove))
+    client.refresh_features()
     return ret
 
 
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
+@session
+def change_wipe_code(client, remove=False):
+    ret = client.call(messages.ChangeWipeCode(remove=remove))
+    client.refresh_features()
+    return ret
+
+
+@expect(messages.Success, field="message")
+@session
+def sd_protect(client, operation):
+    ret = client.call(messages.SdProtect(operation=operation))
+    client.refresh_features()
+    return ret
+
+
+@expect(messages.Success, field="message")
+@session
 def wipe(client):
-    ret = client.call(proto.WipeDevice())
+    ret = client.call(messages.WipeDevice())
     client.init_device()
     return ret
 
 
-@expect(proto.Success, field="message")
+@session
 def recover(
     client,
     word_count=24,
     passphrase_protection=False,
     pin_protection=True,
     label=None,
-    language="english",
+    language="en-US",
     input_callback=None,
-    type=proto.RecoveryDeviceType.ScrambledWords,
+    type=messages.RecoveryDeviceType.ScrambledWords,
     dry_run=False,
     u2f_counter=None,
 ):
@@ -127,32 +122,32 @@ def recover(
     if u2f_counter is None:
         u2f_counter = int(time.time())
 
-    res = client.call(
-        proto.RecoveryDevice(
-            word_count=word_count,
-            passphrase_protection=bool(passphrase_protection),
-            pin_protection=bool(pin_protection),
-            label=label,
-            language=language,
-            enforce_wordlist=True,
-            type=type,
-            dry_run=dry_run,
-            u2f_counter=u2f_counter,
-        )
+    msg = messages.RecoveryDevice(
+        word_count=word_count, enforce_wordlist=True, type=type, dry_run=dry_run
     )
 
-    while isinstance(res, proto.WordRequest):
+    if not dry_run:
+        # set additional parameters
+        msg.passphrase_protection = passphrase_protection
+        msg.pin_protection = pin_protection
+        msg.label = label
+        msg.language = language
+        msg.u2f_counter = u2f_counter
+
+    res = client.call(msg)
+
+    while isinstance(res, messages.WordRequest):
         try:
             inp = input_callback(res.type)
-            res = client.call(proto.WordAck(word=inp))
+            res = client.call(messages.WordAck(word=inp))
         except Cancelled:
-            res = client.call(proto.Cancel())
+            res = client.call(messages.Cancel())
 
     client.init_device()
     return res
 
 
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
 @session
 def reset(
     client,
@@ -161,10 +156,11 @@ def reset(
     passphrase_protection=False,
     pin_protection=True,
     label=None,
-    language="english",
-    # u2f_counter=0,
-    # skip_backup=False,
-    # no_backup=False,
+    language="en-US",
+    u2f_counter=0,
+    skip_backup=False,
+    no_backup=False,
+    backup_type=messages.BackupType.Bip39,
 ):
     if client.features.initialized:
         raise RuntimeError(
@@ -178,30 +174,38 @@ def reset(
             strength = 128
 
     # Begin with device reset workflow
-    msg = proto.ResetDevice(
+    msg = messages.ResetDevice(
         display_random=bool(display_random),
         strength=strength,
         passphrase_protection=bool(passphrase_protection),
         pin_protection=bool(pin_protection),
         language=language,
         label=label,
-        # u2f_counter=u2f_counter,
-        # skip_backup=bool(skip_backup),
-        # no_backup=bool(no_backup),
+        u2f_counter=u2f_counter,
+        skip_backup=bool(skip_backup),
+        no_backup=bool(no_backup),
+        backup_type=backup_type,
     )
 
     resp = client.call(msg)
-    if not isinstance(resp, proto.EntropyRequest):
+    if not isinstance(resp, messages.EntropyRequest):
         raise RuntimeError("Invalid response, expected EntropyRequest")
 
     external_entropy = os.urandom(32)
-    LOG.debug("Computer generated entropy: " + external_entropy.hex())
-    ret = client.call(proto.EntropyAck(entropy=external_entropy))
+    # LOG.debug("Computer generated entropy: " + external_entropy.hex())
+    ret = client.call(messages.EntropyAck(entropy=external_entropy))
     client.init_device()
     return ret
 
 
-@expect(proto.Success, field="message")
+@expect(messages.Success, field="message")
+@session
 def backup(client):
-    ret = client.call(proto.BackupDevice())
+    ret = client.call(messages.BackupDevice())
+    client.refresh_features()
     return ret
+
+
+@expect(messages.Success, field="message")
+def cancel_authorization(client):
+    return client.call(messages.CancelAuthorization())
