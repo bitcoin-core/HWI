@@ -6,6 +6,10 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
+from ..hwwclient import (
+    DeviceFeature,
+    SupportedFeatures,
+)
 from .trezorlib.transport import (
     enumerate_devices,
     KEEPKEY_VENDOR_IDS,
@@ -15,9 +19,37 @@ from .trezor import TrezorClient
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
 
 class KeepkeyClient(TrezorClient):
+
+    # Setup features
+    features = SupportedFeatures()
+    features.getxpub = DeviceFeature.SUPPORTED
+    features.signmessage = DeviceFeature.SUPPORTED
+    features.setup = DeviceFeature.SUPPORTED
+    features.wipe = DeviceFeature.SUPPORTED
+    features.recover = DeviceFeature.SUPPORTED
+    features.backup = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_p2pkh = DeviceFeature.SUPPORTED
+    features.sign_p2sh_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_bare = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_arbitrary_bare = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_arbitrary_p2sh = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_arbitrary_p2sh_p2wsh = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_arbitrary_p2wsh = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_coinjoin = DeviceFeature.SUPPORTED
+    features.sign_mixed_segwit = DeviceFeature.SUPPORTED
+    features.display_address = DeviceFeature.SUPPORTED
+
     def __init__(self, path, password='', expert=False):
         super(KeepkeyClient, self).__init__(path, password, expert)
         self.type = 'Keepkey'
+
+    @classmethod
+    def get_features(self):
+        return self.features.get_printable_dict()
 
 def enumerate(password=''):
     results = []

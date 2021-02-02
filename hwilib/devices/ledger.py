@@ -2,7 +2,11 @@
 
 from typing import Dict, Union
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import (
+    DeviceFeature,
+    HardwareWalletClient,
+    SupportedFeatures,
+)
 from ..errors import (
     ActionCanceledError,
     BadArgumentError,
@@ -101,8 +105,32 @@ def ledger_exception(f):
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
+    # Setup features
+    features = SupportedFeatures()
+    features.getxpub = DeviceFeature.SUPPORTED
+    features.signmessage = DeviceFeature.SUPPORTED
+    features.setup = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.wipe = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.recover = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.backup = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.sign_p2pkh = DeviceFeature.SUPPORTED
+    features.sign_p2sh_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_coinjoin = DeviceFeature.SUPPORTED
+    features.sign_mixed_segwit = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.display_address = DeviceFeature.SUPPORTED
+
     def __init__(self, path, password='', expert=False):
         super(LedgerClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano S and X'
 
         if path.startswith('tcp'):
             split_path = path.split(':')
@@ -359,19 +387,19 @@ class LedgerClient(HardwareWalletClient):
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
+        raise UnavailableActionError('The {} does not support software setup'.format(self.type))
 
     # Wipe this device
     def wipe_device(self):
-        raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
+        raise UnavailableActionError('The {} does not support wiping via software'.format(self.type))
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label='', word_count=24):
-        raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
+        raise UnavailableActionError('The {} does not support restoring via software'.format(self.type))
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):
-        raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
+        raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
     def close(self):
@@ -379,15 +407,30 @@ class LedgerClient(HardwareWalletClient):
 
     # Prompt pin
     def prompt_pin(self):
-        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
+        raise UnavailableActionError('The {} does not need a PIN sent from the host'.format(self.type))
 
     # Send pin
     def send_pin(self, pin):
-        raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
+        raise UnavailableActionError('The {} does not need a PIN sent from the host'.format(self.type))
 
     # Toggle passphrase
     def toggle_passphrase(self):
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
+
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        return self.features.get_printable_dict()
+
+class LedgerNanoSClient(LedgerClient):
+    def __init__(self, path, password='', expert=False):
+        super(LedgerNanoSClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano S'
+
+class LedgerNanoXClient(LedgerClient):
+    def __init__(self, path, password='', expert=False):
+        super(LedgerNanoXClient, self).__init__(path, password, expert)
+        self.type = 'Ledger Nano X'
 
 def enumerate(password=''):
     results = []

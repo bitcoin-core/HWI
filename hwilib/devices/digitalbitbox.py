@@ -15,7 +15,11 @@ import sys
 import time
 from typing import Dict, Union
 
-from ..hwwclient import HardwareWalletClient
+from ..hwwclient import (
+    DeviceFeature,
+    HardwareWalletClient,
+    SupportedFeatures,
+)
 from ..errors import (
     ActionCanceledError,
     BadArgumentError,
@@ -327,6 +331,29 @@ def format_backup_filename(name):
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
+    # Setup features
+    features = SupportedFeatures()
+    features.getxpub = DeviceFeature.SUPPORTED
+    features.signmessage = DeviceFeature.SUPPORTED
+    features.setup = DeviceFeature.SUPPORTED
+    features.wipe = DeviceFeature.SUPPORTED
+    features.recover = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+    features.backup = DeviceFeature.SUPPORTED
+    features.sign_p2pkh = DeviceFeature.SUPPORTED
+    features.sign_p2sh_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_p2wpkh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_multi_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_bare = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2sh_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_arbitrary_p2wsh = DeviceFeature.SUPPORTED
+    features.sign_coinjoin = DeviceFeature.SUPPORTED
+    features.sign_mixed_segwit = DeviceFeature.SUPPORTED
+    features.display_address = DeviceFeature.FIRMWARE_NOT_SUPPORTED
+
     def __init__(self, path, password, expert=False):
         super(DigitalbitboxClient, self).__init__(path, password, expert)
         if not password:
@@ -617,6 +644,16 @@ class DigitalbitboxClient(HardwareWalletClient):
     # Toggle passphrase
     def toggle_passphrase(self):
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
+
+    # Get HWI features for this device
+    @classmethod
+    def get_features(self):
+        return self.features.get_printable_dict()
+
+class Digitalbitbox01Client(DigitalbitboxClient):
+    def __init__(self, path, password='', expert=False):
+        super(Digitalbitbox01Client, self).__init__(path, password, expert)
+        self.type = 'Digital BitBox01'
 
 def enumerate(password=''):
     results = []

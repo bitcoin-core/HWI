@@ -38,21 +38,32 @@ from itertools import count
 py_enumerate = enumerate
 
 
-# Get the client for the device
-def get_client(device_type, device_path, password='', expert=False):
-    device_type = device_type.split('_')[0]
-    class_name = device_type.capitalize()
-    module = device_type.lower()
+def get_client_class(device_type):
+    device_type_split = device_type.split('_')
+    if device_type_split[-1].lower() == 'simulator':
+        del device_type_split[-1]
+    device_type_split = [x.capitalize() for x in device_type_split]
+    device_model = ''.join(device_type_split)
+    module = device_type_split[0].lower()
 
-    client = None
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
-        client_constructor = getattr(imported_dev, class_name + 'Client')
+        client_constructor = getattr(imported_dev, device_model + 'Client')
+    except (ImportError, AttributeError):
+        raise UnknownDeviceError('Unknown device type specified')
+
+    return client_constructor
+
+# Get the client for the device
+def get_client(device_type, device_path, password='', expert=False):
+    client = None
+    try:
+        client_constructor = get_client_class(device_type)
         client = client_constructor(device_path, password, expert)
-    except ImportError:
+    except:
         if client:
             client.close()
-        raise UnknownDeviceError('Unknown device type specified')
+        raise
 
     return client
 
@@ -76,7 +87,7 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
             continue
         client = None
         try:
-            client = get_client(d['type'], d['path'], password, expert)
+            client = get_client(d['model'], d['path'], password, expert)
 
             if fingerprint:
                 master_fpr = d.get('fingerprint', None)
