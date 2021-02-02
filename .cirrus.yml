@@ -71,37 +71,37 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
 
 sim_build_matrix_template: &SIM_BUILD_MATRIX_TEMPLATE
   - env:
-      DEVICE: --trezor-1
+      DEVICE: trezor_1
     name: Trezor 1 Sim Builder
     sim_work_cache:
       folder: test/work/trezor-firmware
       << : *SIM_CACHE_FPR_TEMPLATE
   - env:
-      DEVICE: --trezor-t
+      DEVICE: trezor_t
     name: Trezor T Sim Builder
     sim_work_cache:
       folder: test/work/trezor-firmware
       << : *SIM_CACHE_FPR_TEMPLATE
   - env:
-      DEVICE: --coldcard
+      DEVICE: coldcard
     name: Coldcard Sim Builder
     sim_work_cache:
       folder: test/work/firmware
       << : *SIM_CACHE_FPR_TEMPLATE
   - env:
-      DEVICE: --bitbox01
+      DEVICE: bitbox01
     name: Bitbox01 Sim Builder
     sim_work_cache:
       folder: test/work/mcu
       << : *SIM_CACHE_FPR_TEMPLATE
   - env:
-      DEVICE: --ledger
+      DEVICE: ledger
     name: Ledger Sim Builder
     sim_work_cache:
       folder: test/work/speculos
       << : *SIM_CACHE_FPR_TEMPLATE
   - env:
-      DEVICE: --keepkey
+      DEVICE: keepkey
     name: Keepkey Sim Builder
     sim_work_cache:
       folder: test/work/keepkey-firmware
@@ -154,12 +154,12 @@ bitcoind_builder_task:
     folder: /root/.ccache
   env:
     BUILD_BITCOIND: 1
-  build_script: cd test; ./setup_environment.sh --bitcoind; cd ..
+  build_script: cd test && ./setup/setup_bitcoind.sh && cd ..
 
 sim_builder_task:
   matrix:
     << : *SIM_BUILD_MATRIX_TEMPLATE
-  build_script: cd test; ./setup_environment.sh $DEVICE; cd ..
+  build_script: cd test && ./setup/setup_${DEVICE}.sh && cd ..
 
 dist_builder_task:
   container:
