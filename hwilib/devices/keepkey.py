@@ -7,11 +7,20 @@ from ..errors import (
     handle_errors,
 )
 from .trezorlib.transport import (
-    enumerate_devices,
+    hid,
+    udp,
+    webusb,
 )
-from .trezor import TrezorClient
+from .trezor import TrezorClient, HID_IDS, WEBUSB_IDS
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
+
+KEEPKEY_HID_IDS = {(0x2B24, 0x0001)}
+KEEPKEY_WEBUSB_IDS = {(0x2B24, 0x0002)}
+
+HID_IDS.update(KEEPKEY_HID_IDS)
+WEBUSB_IDS.update(KEEPKEY_WEBUSB_IDS)
+
 
 class KeepkeyClient(TrezorClient):
     def __init__(self, path, password='', expert=False):
@@ -20,7 +29,10 @@ class KeepkeyClient(TrezorClient):
 
 def enumerate(password=''):
     results = []
-    for dev in enumerate_devices():
+    devs = hid.HidTransport.enumerate(usb_ids=KEEPKEY_HID_IDS)
+    devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=KEEPKEY_WEBUSB_IDS))
+    devs.extend(udp.UdpTransport.enumerate())
+    for dev in devs:
         d_data = {}
 
         d_data['type'] = 'keepkey'
@@ -31,7 +43,7 @@ def enumerate(password=''):
 
         with handle_errors(common_err_msgs["enumerate"], d_data):
             client = KeepkeyClient(d_data['path'], password)
-            client.client.init_device()
+            client.client.refresh_features()
             if 'keepkey' not in client.client.features.vendor:
                 continue
 

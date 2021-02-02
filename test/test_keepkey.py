@@ -13,7 +13,7 @@ import unittest
 
 from hwilib.devices.trezorlib.transport import enumerate_devices
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
-from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic, load_device_by_xprv
+from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
@@ -137,9 +137,9 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
             vectors = json.load(f)
         for vec in vectors:
             with self.subTest(vector=vec):
-                # Setup with xprv
+                # Setup with mnemonic
                 device.wipe(self.client)
-                load_device_by_xprv(client=self.client, xprv=vec['xprv'], pin='', passphrase_protection=False, label='test', language='english')
+                load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
                 gmxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
@@ -212,7 +212,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         # Set a PIN
         device.wipe(self.client)
         load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
-        self.client.call(messages.ClearSession())
+        self.client.call(messages.EndSession())
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
@@ -234,7 +234,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertEqual(result['error'], 'Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
         # Prompt pin
-        self.client.call(messages.ClearSession())
+        self.client.call(messages.EndSession())
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
@@ -279,7 +279,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
                 self.assertNotEqual(dev['fingerprint'], fpr)
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
-        self.client.call(messages.ClearSession())
+        self.client.call(messages.EndSession())
         result = self.do_command(self.dev_args + ['-p', 'pass3', 'enumerate'])
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:21324':
