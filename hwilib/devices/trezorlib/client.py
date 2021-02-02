@@ -93,7 +93,6 @@ class TrezorClient:
         self.ui = ui
         self.session_counter = 0
         self.session_id = session_id
-        self.init_device(session_id=session_id)
 
     def open(self):
         if self.session_counter == 0:
