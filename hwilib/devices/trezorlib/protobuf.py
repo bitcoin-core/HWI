@@ -202,8 +202,8 @@ class UnicodeType:
 class _MessageTypeMeta(type):
     def __init__(cls, name, bases, d) -> None:
         super().__init__(name, bases, d)
-        if name != "MessageType":
-            cls.__init__ = MessageType.__init__
+        #if name != "MessageType":
+        #    cls.__init__ = MessageType.__init__
 
 
 class MessageType(metaclass=_MessageTypeMeta):
