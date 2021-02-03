@@ -4,6 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from . import base58
+from .errors import BadArgumentError
 
 import binascii
 import hmac
@@ -11,6 +12,7 @@ import hashlib
 import struct
 from typing import (
     Dict,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -109,6 +111,8 @@ class ExtendedKey(object):
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
 
         version = data[0:4]
+        if version not in [ExtendedKey.MAINNET_PRIVATE, ExtendedKey.MAINNET_PUBLIC, ExtendedKey.TESTNET_PRIVATE, ExtendedKey.TESTNET_PUBLIC]:
+            raise BadArgumentError(f"Extended key magic of {version.hex()} is invalid")
         is_private = version == ExtendedKey.MAINNET_PRIVATE or version == ExtendedKey.TESTNET_PRIVATE
         depth = data[4]
         parent_fingerprint = data[5:9]
@@ -249,6 +253,15 @@ class KeyOriginInfo(object):
         Return the hex for just the fingerprint
         """
         return binascii.hexlify(self.fingerprint).decode()
+
+    def get_full_int_list(self) -> List[int]:
+        """
+        Return a list of ints representing this KeyOriginInfo.
+        The first int is the fingerprint, followed by the path
+        """
+        xfp = [struct.unpack("<I", self.fingerprint)[0]]
+        xfp.extend(self.path)
+        return xfp
 
 
 def parse_path(nstr: str) -> Sequence[int]:

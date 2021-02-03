@@ -247,12 +247,10 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH, redeem_script=None):
+def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH):
     if path is not None:
-        return client.display_address(path, addr_type, redeem_script=redeem_script)
+        return client.display_singlesig_address(path, addr_type)
     elif desc is not None:
-        if redeem_script:
-            return {'error': ' `--redeem_script` can not be combined with --desc', 'code': BAD_ARGUMENT}
         descriptor = parse_descriptor(desc)
         addr_type = AddressType.PKH
         is_sh = isinstance(descriptor, SHDescriptor)
@@ -263,25 +261,11 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 is_wsh = True
                 descriptor = descriptor.subdescriptor
             if isinstance(descriptor, MultisigDescriptor):
-                path = ''
-                redeem_script = format(80 + int(descriptor.thresh), 'x')
-                xpubs_descriptor = False
-                for p in descriptor.pubkeys:
-                    path += p.origin.to_string()
-                    if not p.deriv_path:
-                        redeem_script += format(len(p.pubkey) // 2, 'x')
-                        redeem_script += p.pubkey
-                    else:
-                        path += p.deriv_path
-                        xpubs_descriptor = True
-                    path += ','
-                path = path[0:-1]
-                redeem_script += format(80 + len(descriptor.pubkeys), 'x') + 'ae'
                 if is_sh and is_wsh:
                     addr_type = AddressType.SH_WPKH
                 elif not is_sh and is_wsh:
                     addr_type = AddressType.WPKH
-                return client.display_address(path, addr_type, redeem_script, descriptor=descriptor if xpubs_descriptor else None)
+                return client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]
@@ -296,7 +280,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 addr_type = AddressType.SH_WPKH
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WPKH
-            return client.display_address(pubkey.get_full_derivation_path(0), addr_type)
+            return client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)

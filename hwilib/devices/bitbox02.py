@@ -14,7 +14,8 @@ import builtins
 import sys
 from functools import wraps
 
-from ..hwwclient import HardwareWalletClient, Descriptor
+from ..descriptor import PubkeyProvider
+from ..hwwclient import HardwareWalletClient
 from ..serializations import (
     AddressType,
     PSBT,
@@ -327,16 +328,11 @@ class Bitbox02Client(HardwareWalletClient):
         return {"xpub": xpub}
 
     @bitbox02_exception
-    def display_address(
+    def display_singlesig_address(
         self,
         bip32_path: str,
         addr_type: AddressType,
-        redeem_script: Optional[str] = None,
-        descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
-        if redeem_script:
-            raise NotImplementedError("BitBox02 multisig not integrated into HWI yet")
-
         if addr_type == AddressType.SH_WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
@@ -356,6 +352,15 @@ class Bitbox02Client(HardwareWalletClient):
             display=True,
         )
         return {"address": address}
+
+    @bitbox02_exception
+    def display_multisig_address(
+        self,
+        threshold: int,
+        pubkeys: List[PubkeyProvider],
+        addr_type: AddressType,
+    ) -> Dict[str, str]:
+        raise NotImplementedError("BitBox02 multisig not integrated into HWI yet")
 
     @bitbox02_exception
     def sign_tx(self, psbt: PSBT) -> Dict[str, str]:

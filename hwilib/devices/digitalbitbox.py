@@ -13,8 +13,13 @@ import logging
 import socket
 import sys
 import time
-from typing import Dict, Union
+from typing import (
+    Dict,
+    List,
+    Union,
+)
 
+from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -547,7 +552,10 @@ class DigitalbitboxClient(HardwareWalletClient):
         return {"signature": base64.b64encode(compact_sig).decode('utf-8')}
 
     # Display address of specified type on the device.
-    def display_address(self, keypath, addr_type: AddressType, redeem_script=None, descriptor=None):
+    def display_singlesig_address(self, keypath: str, addr_type: AddressType) -> Dict[str, str]:
+        raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
+
+    def display_multisig_address(self, threshold: int, pubkeys: List[PubkeyProvider], addr_type: AddressType) -> Dict[str, str]:
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     # Setup a new device

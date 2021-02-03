@@ -1,7 +1,11 @@
-from typing import Dict, Optional, Union
-
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Union,
+)
 from .base58 import get_xpub_fingerprint_hex
-from .descriptor import Descriptor
+from .descriptor import PubkeyProvider
 from .serializations import AddressType, PSBT
 
 
@@ -72,18 +76,27 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def display_address(
+    def display_singlesig_address(
         self,
         bip32_path: str,
         addr_type: AddressType,
-        redeem_script: Optional[str] = None,
-        descriptor: Optional[Descriptor] = None,
     ) -> Dict[str, str]:
-        """Display and return the address of specified type.
-
-        redeem_script is a hex-string.
+        """Display and return the single sig address of specified type.
 
         Retrieve the public key at the specified BIP32 derivation path.
+
+        Return {"address": <base58 or bech32 address string>}.
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def display_multisig_address(
+        self,
+        threshold: int,
+        pubkeys: List[PubkeyProvider],
+        addr_type: AddressType,
+    ) -> Dict[str, str]:
+        """Display and return the multisig address of specified type given the threshold and pubkeys.
 
         Return {"address": <base58 or bech32 address string>}.
         """
