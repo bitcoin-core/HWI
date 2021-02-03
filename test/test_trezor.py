@@ -12,7 +12,6 @@ import sys
 import time
 import unittest
 
-from hwilib.devices.trezorlib.transport import enumerate_devices
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
@@ -62,11 +61,7 @@ class TrezorEmulator(DeviceEmulator):
                 time.sleep(0.05)
 
         # Setup the emulator
-        for dev in enumerate_devices():
-            # Find the udp transport, that's the emulator
-            if isinstance(dev, UdpTransport):
-                wirelink = dev
-                break
+        wirelink = UdpTransport.enumerate()[0]
         client = TrezorClientDebugLink(wirelink)
         client.init_device()
         device.wipe(client)
