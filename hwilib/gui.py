@@ -9,6 +9,7 @@ from typing import Callable
 from . import commands, __version__
 from .cli import HWIArgumentParser
 from .errors import handle_errors, DEVICE_NOT_INITIALIZED
+from .serializations import AddressType
 
 try:
     from .ui.ui_bitbox02pairing import Ui_BitBox02PairingDialog
@@ -170,7 +171,12 @@ class DisplayAddressDialog(QDialog):
     @Slot()
     def go_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        res = do_command(commands.displayaddress, self.client, path, sh_wpkh=self.ui.sh_wpkh_radio.isChecked(), wpkh=self.ui.wpkh_radio.isChecked())
+        addrtype = AddressType.PKH
+        if self.ui.sh_wpkh_radio.isChecked():
+            addrtype = AddressType.SH_WPKH
+        elif self.ui.wpkh_radio.isChecked():
+            addrtype = AddressType.WPKH
+        res = do_command(commands.displayaddress, self.client, path, addr_type=addrtype)
         self.ui.address_lineedit.setText(res['address'])
 
 class GetKeypoolOptionsDialog(QDialog):
@@ -198,8 +204,9 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
             self.ui.path_lineedit.setText(opts['path'])
-        self.ui.sh_wpkh_radio.setChecked(opts['sh_wpkh'])
-        self.ui.wpkh_radio.setChecked(opts['wpkh'])
+        self.ui.sh_wpkh_radio.setChecked(opts['addrtype'] == AddressType.SH_WPKH)
+        self.ui.wpkh_radio.setChecked(opts['addrtype'] == AddressType.WPKH)
+        self.ui.pkh_radio.setChecked(opts['addrtype'] == AddressType.PKH)
 
         self.ui.account_radio.toggled.connect(self.toggle_account)
 
@@ -275,8 +282,7 @@ class HWIQt(QMainWindow):
             'account': 0,
             'internal': False,
             'keypool': True,
-            'sh_wpkh': True,
-            'wpkh': False,
+            'addrtype': AddressType.SH_WPKH,
             'path': None,
             'account_used': True
         }
@@ -382,8 +388,7 @@ class HWIQt(QMainWindow):
                              self.getkeypool_opts['internal'],
                              self.getkeypool_opts['keypool'],
                              self.getkeypool_opts['account'],
-                             self.getkeypool_opts['sh_wpkh'],
-                             self.getkeypool_opts['wpkh'])
+                             self.getkeypool_opts['addrtype'])
         descriptors = do_command(commands.getdescriptors, self.client, self.getkeypool_opts['account'])
 
         self.ui.keypool_textedit.setPlainText(json.dumps(keypool, indent=2))
@@ -435,8 +440,11 @@ class HWIQt(QMainWindow):
         self.getkeypool_opts['end'] = self.current_dialog.ui.end_spinbox.value()
         self.getkeypool_opts['internal'] = self.current_dialog.ui.internal_checkbox.isChecked()
         self.getkeypool_opts['keypool'] = self.current_dialog.ui.keypool_checkbox.isChecked()
-        self.getkeypool_opts['sh_wpkh'] = self.current_dialog.ui.sh_wpkh_radio.isChecked()
-        self.getkeypool_opts['wpkh'] = self.current_dialog.ui.wpkh_radio.isChecked()
+        self.getkeypool_opts['addrtype'] = AddressType.PKH
+        if self.current_dialog.ui.sh_wpkh_radio.isChecked():
+            self.getkeypool_opts['addrtype'] = AddressType.SH_WPKH
+        if self.current_dialog.ui.wpkh_radio.isChecked():
+            self.getkeypool_opts['addrtype'] = AddressType.WPKH
         if self.current_dialog.ui.account_radio.isChecked():
             self.getkeypool_opts['account'] = self.current_dialog.ui.account_spinbox.value()
             self.getkeypool_opts['account_used'] = True
