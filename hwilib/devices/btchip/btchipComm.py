@@ -146,33 +146,6 @@ class HIDDongleHIDAPI(Dongle, DongleWait):
 				pass
 		self.opened = False
 
-class DongleSmartcard(Dongle):
-
-	def __init__(self, device, debug=False):
-		self.device = device
-		self.debug = debug
-		self.waitImpl = self
-		self.opened = True
-
-	def exchange(self, apdu, timeout=20000):
-		if self.debug:
-			print("=> %s" % hexlify(apdu))
-		response, sw1, sw2 = self.device.transmit(toBytes(hexlify(apdu)))
-		sw = (sw1 << 8) | sw2
-		if self.debug:
-			print("<= %s%.2x" % (toHexString(response).replace(" ", ""), sw))
-		if sw != 0x9000:
-			raise BTChipException("Invalid status %04x" % sw, sw)
-		return bytearray(response)
-
-	def close(self):
-		if self.opened:
-			try:
-				self.device.disconnect()
-			except Exception:
-				pass
-		self.opened = False
-
 class DongleServer(Dongle):
 
 	def __init__(self, server, port, debug=False):
@@ -204,51 +177,3 @@ class DongleServer(Dongle):
 			self.socket.close()
 		except Exception:
 			pass
-
-def getDongle(debug=False):
-	dev = None
-	hidDevicePath = None
-	ledger = False	
-	if HID:
-		for hidDevice in hid.enumerate(0, 0):
-			if hidDevice['vendor_id'] == 0x2581 and hidDevice['product_id'] == 0x2b7c:
-				hidDevicePath = hidDevice['path']
-			if hidDevice['vendor_id'] == 0x2581 and hidDevice['product_id'] == 0x3b7c:
-				hidDevicePath = hidDevice['path']			
-				ledger = True
-			if hidDevice['vendor_id'] == 0x2581 and hidDevice['product_id'] == 0x4b7c:
-				hidDevicePath = hidDevice['path']
-				ledger = True
-			if hidDevice['vendor_id'] == 0x2c97:
-				if ('interface_number' in hidDevice and hidDevice['interface_number'] == 0) or ('usage_page' in hidDevice and hidDevice['usage_page'] == 0xffa0):
-					hidDevicePath = hidDevice['path']
-					ledger = True
-			if hidDevice['vendor_id'] == 0x2581 and hidDevice['product_id'] == 0x1807:
-				hidDevicePath = hidDevice['path']
-	if hidDevicePath is not None:
-		dev = hid.device()
-		dev.open_path(hidDevicePath)
-		dev.set_nonblocking(True)
-		return HIDDongleHIDAPI(dev, ledger, debug)
-
-	if SCARD:
-		connection = None
-		for reader in readers():
-			try:
-				connection = reader.createConnection()
-				connection.connect()				
-				response, sw1, sw2 = connection.transmit(toBytes("00A4040010FF4C4547522E57414C5430312E493031"))																  
-				sw = (sw1 << 8) | sw2
-				if sw == 0x9000:
-					break
-				else:
-					connection.disconnect()
-					connection = None
-			except Exception:
-				connection = None
-				pass
-		if connection is not None:
-			return DongleSmartcard(connection, debug)
-	if (os.getenv("LEDGER_PROXY_ADDRESS") is not None) and (os.getenv("LEDGER_PROXY_PORT") is not None):
-		return DongleServer(os.getenv("LEDGER_PROXY_ADDRESS"), int(os.getenv("LEDGER_PROXY_PORT")), debug)
-	raise BTChipException("No dongle found")
