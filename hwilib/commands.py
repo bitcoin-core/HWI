@@ -33,6 +33,7 @@ from .descriptor import (
 )
 from .devices import __all__ as all_devs
 from .common import Chain
+from .hwwclient import HardwareWalletClient
 
 from itertools import count
 from typing import Dict
@@ -95,8 +96,8 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
-def getmasterxpub(client):
-    return client.get_master_xpub()
+def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
+    return {"xpub": client.get_master_xpub().to_string()}
 
 def signtx(client, psbt):
     # Deserialize the transaction
@@ -104,8 +105,12 @@ def signtx(client, psbt):
     tx.deserialize(psbt)
     return client.sign_tx(tx)
 
-def getxpub(client, path):
-    return client.get_pubkey_at_path(path)
+def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, str]:
+    xpub = client.get_pubkey_at_path(path)
+    result = {"xpub": xpub.to_string()}
+    if expert:
+        result.update(xpub.get_printable_dict())
+    return result
 
 def signmessage(client, message, path):
     return client.sign_message(message, path)
@@ -187,7 +192,7 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
-        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
+        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
     pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base), path_suffix)
     if is_wpkh:
@@ -273,7 +278,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
             if pubkey.origin.get_fingerprint_hex() != client.get_master_fingerprint_hex():
                 return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
-            xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path())['xpub']
+            xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
                 return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
             if is_sh and is_wpkh:

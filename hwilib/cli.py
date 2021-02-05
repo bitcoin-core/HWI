@@ -41,6 +41,7 @@ import logging
 import json
 import sys
 
+
 def backup_device_handler(args, client):
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
@@ -50,11 +51,11 @@ def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClien
 def enumerate_handler(args):
     return enumerate(password=args.password)
 
-def getmasterxpub_handler(args, client):
+def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getmasterxpub(client)
 
-def getxpub_handler(args, client):
-    return getxpub(client, path=args.path)
+def getxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+    return getxpub(client, path=args.path, expert=args.expert)
 
 def getkeypool_handler(args, client):
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, addr_type=args.addr_type, addr_all=args.all)

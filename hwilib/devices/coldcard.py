@@ -39,7 +39,6 @@ from .ckcc.constants import (
 )
 from ..base58 import (
     get_xpub_fingerprint,
-    xpub_main_2_test,
 )
 from ..key import (
     ExtendedKey,
@@ -88,22 +87,16 @@ class ColdcardClient(HardwareWalletClient):
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @coldcard_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self.device.check_mitm()
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
-        xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
+        xpub_str = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
+        xpub = ExtendedKey.deserialize(xpub_str)
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(xpub)}
-        else:
-            result = {'xpub': xpub}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(xpub)
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
     def get_master_fingerprint_hex(self):
         # quick method to get fingerprint of wallet

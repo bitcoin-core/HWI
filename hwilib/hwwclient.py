@@ -4,8 +4,8 @@ from typing import (
     Optional,
     Union,
 )
-from .base58 import get_xpub_fingerprint_hex
 from .descriptor import PubkeyProvider
+from .key import ExtendedKey
 from .serializations import AddressType, PSBT
 from .common import Chain
 
@@ -27,28 +27,35 @@ class HardwareWalletClient(object):
         self.xpub_cache: Dict[str, str] = {}
         self.expert = expert
 
-    def get_master_xpub(self) -> Dict[str, str]:
-        """Return the master BIP44 public key.
+    def get_master_xpub(self) -> ExtendedKey:
+        """
+        Get the master BIP 44 public key.
 
-        Retrieve the public key at the "m/44h/0h/0h" derivation path.
+        Retrieves the public key at the "m/44h/0h/0h" derivation path.
 
-        Return {"xpub": <xpub string>}.
+        :return: The extended public key at "m/44h/0h/0h"
         """
         # FIXME testnet is not handled yet
         return self.get_pubkey_at_path("m/44h/0h/0h")
 
     def get_master_fingerprint_hex(self) -> str:
-        """Return the master public key fingerprint as hex-string.
-
-        Retrieve the master public key at the "m/0h" derivation path.
         """
-        master_xpub = self.get_pubkey_at_path("m/0h")["xpub"]
-        return get_xpub_fingerprint_hex(master_xpub)
+        Get the master public key fingerprint as a hex string.
 
-    def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
-        """Return the public key at the BIP32 derivation path.
+        Retrieves the fingerprint of the master public key of a device.
+        Typically implemented by fetching the extended public key at "m/0h"
+        and extracting the parent fingerprint from it.
 
-        Return {"xpub": <xpub string>}.
+        :return: The fingerprint as a hex string
+        """
+        return self.get_pubkey_at_path("m/0h").parent_fingerprint.hex()
+
+    def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
+        """
+        Get the public key at the BIP 32 derivation path.
+
+        :param bip32_path: The BIP 32 derivation path
+        :return: The extended public key
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

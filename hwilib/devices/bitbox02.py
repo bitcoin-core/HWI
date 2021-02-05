@@ -19,6 +19,7 @@ import base58
 
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
+from ..key import ExtendedKey
 from ..serializations import (
     AddressType,
     PSBT,
@@ -342,13 +343,14 @@ class Bitbox02Client(HardwareWalletClient):
             keypath, coin=self._get_coin(), xpub_type=xpub_type, display=False
         )
 
-    def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
+    def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
         path_uint32s = parse_path(bip32_path)
         try:
-            xpub = self._get_xpub(path_uint32s)
+            xpub_str = self._get_xpub(path_uint32s)
         except Bitbox02Exception as exc:
             raise BitBox02Error(str(exc))
-        return {"xpub": xpub}
+        xpub = ExtendedKey.deserialize(xpub_str)
+        return xpub
 
     def _maybe_register_script_config(
         self, script_config: bitbox02.btc.BTCScriptConfig, keypath: Sequence[int]

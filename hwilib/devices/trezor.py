@@ -37,7 +37,6 @@ from .trezorlib import messages
 from ..base58 import (
     get_xpub_fingerprint,
     to_address,
-    xpub_main_2_test,
 )
 
 from ..key import (
@@ -254,24 +253,18 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @trezor_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self._check_unlocked()
         try:
             expanded_path = parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
+        xpub = ExtendedKey.deserialize(output.xpub)
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(output.xpub)}
-        else:
-            result = {'xpub': output.xpub}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(output.xpub)
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
     # Must return a hex string with the signed transaction
     # The tx must be in the psbt format

@@ -51,10 +51,6 @@ from ..serializations import (
     ser_string,
     ser_compact_size,
 )
-from ..base58 import (
-    get_xpub_fingerprint,
-    xpub_main_2_test,
-)
 from ..common import Chain
 
 applen = 225280 # flash size minus bootloader length
@@ -348,24 +344,18 @@ class DigitalbitboxClient(HardwareWalletClient):
             self.device.open_path(path.encode())
         self.password = password
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @digitalbitbox_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         if '\'' not in path and 'h' not in path and 'H' not in path:
             raise BadArgumentError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
         if 'error' in reply:
             raise DBBError(reply)
 
+        xpub = ExtendedKey.deserialize(reply["xpub"])
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(reply['xpub'])}
-        else:
-            result = {'xpub': reply['xpub']}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(reply['xpub'])
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
     # Must return a hex string with the signed transaction
     # The tx must be in the PSBT format
@@ -376,7 +366,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = get_xpub_fingerprint(self.get_pubkey_at_path('m/0h')['xpub'])
+        master_fp = self.get_master_fingerprint_hex()
 
         # create sighashes
         sighash_tuples = []
@@ -465,7 +455,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
-                if master_fp == keypath.fingerprint:
+                if master_fp == keypath.fingerprint.hex():
                     # Add the keypath strings
                     keypath_str = keypath.get_derivation_path()
 
