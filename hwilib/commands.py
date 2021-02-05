@@ -113,8 +113,8 @@ def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Di
         result.update(xpub.get_printable_dict())
     return result
 
-def signmessage(client, message, path):
-    return client.sign_message(message, path)
+def signmessage(client: HardwareWalletClient, message: str, path: str) -> Dict[str, str]:
+    return {"signature": client.sign_message(message, path)}
 
 def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, addr_type=AddressType.WPKH):
 

@@ -304,7 +304,7 @@ class LedgerClient(HardwareWalletClient):
         return tx
 
     @ledger_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
         if isinstance(message, str):
@@ -329,7 +329,7 @@ class LedgerClient(HardwareWalletClient):
 
         sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return {"signature": base64.b64encode(sig).decode('utf-8')}
+        return base64.b64encode(sig).decode('utf-8')
 
     @ledger_exception
     def display_singlesig_address(

@@ -738,7 +738,7 @@ class Bitbox02Client(HardwareWalletClient):
 
     def sign_message(
         self, message: Union[str, bytes], bip32_path: str
-    ) -> Dict[str, str]:
+    ) -> str:
         raise UnavailableActionError("The BitBox02 does not support 'signmessage'")
 
     @bitbox02_exception

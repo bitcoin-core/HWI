@@ -72,16 +72,16 @@ class HardwareWalletClient(object):
 
     def sign_message(
         self, message: Union[str, bytes], bip32_path: str
-    ) -> Dict[str, str]:
-        """Sign a message (bitcoin message signing).
+    ) -> str:
+        """
+        Sign a message (bitcoin message signing).
 
-        Sign the message according to the bitcoin message signing standard:
-        usually, the message is a string that is encoded to bytes;
-        anyway, if the message is already bytes it is processed untouched.
+        Signs a message using the legacy Bitcoin Core signed message format.
+        The message is signed with the key at the given path.
 
-        Retrieve the signing key at the specified BIP32 derivation path.
-
-        Return {"signature": <base64 signature string>}.
+        :param message: The message to be signed. First encoded as bytes if not already.
+        :param bip32_path: The BIP 32 derivation for the key to sign the message with.
+        :return: The signature
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

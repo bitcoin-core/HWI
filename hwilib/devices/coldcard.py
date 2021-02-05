@@ -175,7 +175,7 @@ class ColdcardClient(HardwareWalletClient):
         return tx
 
     @coldcard_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
@@ -204,7 +204,7 @@ class ColdcardClient(HardwareWalletClient):
         _, raw = done
 
         sig = str(base64.b64encode(raw), 'ascii').replace('\n', '')
-        return {"signature": sig}
+        return sig
 
     @coldcard_exception
     def display_singlesig_address(

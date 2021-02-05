@@ -73,7 +73,7 @@ def setup_device_handler(args, client):
         return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
     return {'error': 'setup requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
-def signmessage_handler(args, client):
+def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signmessage(client, message=args.message, path=args.path)
 
 def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:

@@ -497,11 +497,11 @@ class TrezorClient(HardwareWalletClient):
         return tx
 
     @trezor_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         self._check_unlocked()
         path = parse_path(keypath)
         result = btc.sign_message(self.client, self.coin_name, path, message)
-        return {'signature': base64.b64encode(result.signature).decode('utf-8')}
+        return base64.b64encode(result.signature).decode('utf-8')
 
     @trezor_exception
     def display_singlesig_address(

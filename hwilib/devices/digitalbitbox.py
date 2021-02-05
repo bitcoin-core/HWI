@@ -506,7 +506,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         return tx
 
     @digitalbitbox_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         to_hash = b""
         to_hash += self.message_magic
         to_hash += ser_compact_size(len(message))
@@ -540,7 +540,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         compact_sig = ser_sig_compact(r, s, recid)
         logging.debug(binascii.hexlify(compact_sig))
 
-        return {"signature": base64.b64encode(compact_sig).decode('utf-8')}
+        return base64.b64encode(compact_sig).decode('utf-8')
 
     def display_singlesig_address(self, keypath: str, addr_type: AddressType) -> str:
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
