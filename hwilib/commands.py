@@ -38,6 +38,7 @@ from .hwwclient import HardwareWalletClient
 from itertools import count
 from typing import Dict
 
+
 py_enumerate = enumerate
 
 
@@ -99,11 +100,11 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
 def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
     return {"xpub": client.get_master_xpub().to_string()}
 
-def signtx(client, psbt):
+def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    return client.sign_tx(tx)
+    return {"psbt": client.sign_tx(tx).serialize()}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, str]:
     xpub = client.get_pubkey_at_path(path)

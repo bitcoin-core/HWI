@@ -102,10 +102,8 @@ class ColdcardClient(HardwareWalletClient):
         # quick method to get fingerprint of wallet
         return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the combined unsigned transaction format
     @coldcard_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
@@ -173,7 +171,8 @@ class ColdcardClient(HardwareWalletClient):
 
             tx = PSBT()
             tx.deserialize(base64.b64encode(result).decode())
-        return {'psbt': tx.serialize()}
+
+        return tx
 
     @coldcard_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:

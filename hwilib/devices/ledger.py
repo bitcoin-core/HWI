@@ -36,12 +36,13 @@ from ..key import (
 )
 from ..serializations import (
     AddressType,
+    CTransaction,
     hash160,
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
-    CTransaction,
+    PSBT,
 )
 import logging
 import re
@@ -160,11 +161,8 @@ class LedgerClient(HardwareWalletClient):
         )
         return xpub
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the combined unsigned transaction format
-    # Current only supports segwit signing
     @ledger_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         c_tx = CTransaction(tx.tx)
         tx_bytes = c_tx.serialize_with_witness()
 
@@ -303,7 +301,7 @@ class LedgerClient(HardwareWalletClient):
                     first_input = False
 
         # Send PSBT back
-        return {'psbt': tx.serialize()}
+        return tx
 
     @ledger_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:

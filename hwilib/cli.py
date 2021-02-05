@@ -76,7 +76,7 @@ def setup_device_handler(args, client):
 def signmessage_handler(args, client):
     return signmessage(client, message=args.message, path=args.path)
 
-def signtx_handler(args, client):
+def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signtx(client, psbt=args.psbt)
 
 def wipe_device_handler(args, client):

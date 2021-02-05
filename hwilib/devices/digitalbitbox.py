@@ -46,6 +46,7 @@ from ..serializations import (
     is_p2wpkh,
     is_p2wsh,
     is_witness,
+    PSBT,
     ser_sig_der,
     ser_sig_compact,
     ser_string,
@@ -357,10 +358,8 @@ class DigitalbitboxClient(HardwareWalletClient):
             xpub.version = ExtendedKey.TESTNET_PUBLIC
         return xpub
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the PSBT format
     @digitalbitbox_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
 
         # Create a transaction with all scriptsigs blanekd out
         blank_tx = CTransaction(tx.tx)
@@ -465,7 +464,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Return early if nothing to do
         if len(sighash_tuples) == 0:
-            return {'psbt': tx.serialize()}
+            return tx
 
         # Sign the sighashes
         to_send = '{"sign":{"data":['
@@ -504,7 +503,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return {'psbt': tx.serialize()}
+        return tx
 
     @digitalbitbox_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:

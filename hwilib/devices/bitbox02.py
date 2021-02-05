@@ -485,7 +485,7 @@ class Bitbox02Client(HardwareWalletClient):
         return address
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
+    def sign_tx(self, psbt: PSBT) -> PSBT:
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
@@ -734,7 +734,7 @@ class Bitbox02Client(HardwareWalletClient):
             # ser_sig_der() adds SIGHASH_ALL
             psbt_in.partial_sigs[pubkey] = ser_sig_der(r, s)
 
-        return {"psbt": psbt.serialize()}
+        return psbt
 
     def sign_message(
         self, message: Union[str, bytes], bip32_path: str

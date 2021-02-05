@@ -50,6 +50,7 @@ from ..serializations import (
     is_p2sh,
     is_p2wsh,
     is_witness,
+    PSBT,
     ser_uint256,
 )
 from ..common import Chain
@@ -266,10 +267,8 @@ class TrezorClient(HardwareWalletClient):
             xpub.version = ExtendedKey.TESTNET_PUBLIC
         return xpub
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the psbt format
     @trezor_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         self._check_unlocked()
 
         # Get this devices master key fingerprint
@@ -495,7 +494,7 @@ class TrezorClient(HardwareWalletClient):
 
             p += 1
 
-        return {'psbt': tx.serialize()}
+        return tx
 
     @trezor_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
