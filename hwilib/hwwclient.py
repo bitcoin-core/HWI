@@ -81,12 +81,14 @@ class HardwareWalletClient(object):
         self,
         bip32_path: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
-        """Display and return the single sig address of specified type.
+    ) -> str:
+        """
+        Display and return the single sig address of specified type
+        at the given derivation path.
 
-        Retrieve the public key at the specified BIP32 derivation path.
-
-        Return {"address": <base58 or bech32 address string>}.
+        :param bip32_path: The BIP 32 derivation path to get the address for
+        :param addr_type: The address type
+        :return: The retrieved address also being shown by the device
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
@@ -96,10 +98,14 @@ class HardwareWalletClient(object):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
-        """Display and return the multisig address of specified type given the threshold and pubkeys.
+    ) -> str:
+        """
+        Display and return the multisig address of specified type given the threshold and pubkeys.
 
-        Return {"address": <base58 or bech32 address string>}.
+        :param threshold: The number of signers required in the multisig
+        :param pubkeys: The public keys, as found in a descriptor, in the multisig
+        :param addr_type: The address type
+        :return: The retrieved address also being shown by the device
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

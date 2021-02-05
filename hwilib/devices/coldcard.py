@@ -214,13 +214,12 @@ class ColdcardClient(HardwareWalletClient):
         sig = str(base64.b64encode(raw), 'ascii').replace('\n', '')
         return {"signature": sig}
 
-    # Display address of specified type on the device.
     @coldcard_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
@@ -238,7 +237,7 @@ class ColdcardClient(HardwareWalletClient):
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        return {'address': address}
+        return address
 
     @coldcard_exception
     def display_multisig_address(
@@ -279,7 +278,7 @@ class ColdcardClient(HardwareWalletClient):
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        return {'address': address}
+        return address
 
     # Setup a new device
     def setup_device(self, label='', passphrase=''):

@@ -29,8 +29,11 @@ from .errors import (
     NO_DEVICE_TYPE,
     UNAVAILABLE_ACTION,
 )
+from .hwwclient import HardwareWalletClient
 from .serializations import AddressType
 from . import __version__
+
+from typing import Dict
 
 import argparse
 import getpass
@@ -41,7 +44,7 @@ import sys
 def backup_device_handler(args, client):
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
-def displayaddress_handler(args, client):
+def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
 def enumerate_handler(args):

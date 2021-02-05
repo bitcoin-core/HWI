@@ -418,7 +418,7 @@ class Bitbox02Client(HardwareWalletClient):
         self,
         bip32_path: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         if addr_type == AddressType.SH_WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
@@ -437,7 +437,7 @@ class Bitbox02Client(HardwareWalletClient):
             script_config=script_config,
             display=True,
         )
-        return {"address": address}
+        return address
 
     @bitbox02_exception
     def display_multisig_address(
@@ -445,7 +445,7 @@ class Bitbox02Client(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         path_suffixes = set(p.deriv_path for p in pubkeys)
         if len(path_suffixes) != 1:
             # Path suffix refers to the path after the account-level xpub, usually /<change>/<address>.
@@ -480,7 +480,7 @@ class Bitbox02Client(HardwareWalletClient):
         address = bb02.btc_address(
             keypath, coin=self._get_coin(), script_config=script_config, display=True
         )
-        return {"address": address}
+        return address
 
     @bitbox02_exception
     def sign_tx(self, psbt: PSBT) -> Dict[str, str]:

@@ -351,19 +351,18 @@ class LedgerClient(HardwareWalletClient):
 
         return {"signature": base64.b64encode(sig).decode('utf-8')}
 
-    # Display address of specified type on the device. Only supports single-key based addresses.
     @ledger_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
         p2sh_p2wpkh = addr_type == AddressType.SH_WPKH
         bech32 = addr_type == AddressType.WPKH
         output = self.app.getWalletPublicKey(keypath[2:], True, p2sh_p2wpkh or bech32, bech32)
-        return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
+        return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
     @ledger_exception
     def display_multisig_address(
@@ -371,7 +370,7 @@ class LedgerClient(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
 
     # Setup a new device

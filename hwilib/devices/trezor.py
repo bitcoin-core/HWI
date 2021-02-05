@@ -511,13 +511,12 @@ class TrezorClient(HardwareWalletClient):
         result = btc.sign_message(self.client, self.coin_name, path, message)
         return {'signature': base64.b64encode(result.signature).decode('utf-8')}
 
-    # Display address of specified type on the device.
     @trezor_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         self._check_unlocked()
 
         # Script type
@@ -539,7 +538,7 @@ class TrezorClient(HardwareWalletClient):
                 script_type=script_type,
                 multisig=None,
             )
-            return {'address': address}
+            return address
         except Exception:
             pass
 
@@ -551,7 +550,7 @@ class TrezorClient(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType
-    ) -> Dict[str, str]:
+    ) -> str:
         self._check_unlocked()
 
         pubkey_objs = []
@@ -587,7 +586,7 @@ class TrezorClient(HardwareWalletClient):
                     script_type=script_type,
                     multisig=multisig,
                 )
-                return {"address": address}
+                return address
             except Exception:
                 pass
 

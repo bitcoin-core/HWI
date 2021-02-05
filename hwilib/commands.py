@@ -35,6 +35,7 @@ from .devices import __all__ as all_devs
 from .common import Chain
 
 from itertools import count
+from typing import Dict
 
 py_enumerate = enumerate
 
@@ -246,9 +247,9 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH):
+def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH) -> Dict[str, str]:
     if path is not None:
-        return client.display_singlesig_address(path, addr_type)
+        return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
         descriptor = parse_descriptor(desc)
         addr_type = AddressType.PKH
@@ -264,7 +265,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                     addr_type = AddressType.SH_WPKH
                 elif not is_sh and is_wsh:
                     addr_type = AddressType.WPKH
-                return client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)
+                return {"address": client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]
@@ -279,7 +280,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 addr_type = AddressType.SH_WPKH
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WPKH
-            return client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)
+            return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
 
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)
