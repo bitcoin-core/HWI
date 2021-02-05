@@ -217,7 +217,7 @@ class LedgerClient(HardwareWalletClient):
                     # For possible matches, check if pubkey matches possible template
                     if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014") + hash160(pubkey)) in txout.scriptPubKey:
                         change_path = ''
-                        for index in origin.path[1:]:
+                        for index in origin.path:
                             change_path += str(index) + "/"
                         change_path = change_path[:-1]
 
