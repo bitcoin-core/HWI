@@ -230,7 +230,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertEqual(result['code'], -7)
 
         result = self.do_command(self.dev_args + ['sendpin', '00000'])
-        self.assertFalse(result['success'])
+        self.assertFalse(result["success"])
 
         # Make sure we get a needs pin message
         result = self.do_command(self.dev_args + ['getxpub', 'm/0h'])

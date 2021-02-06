@@ -548,9 +548,8 @@ class DigitalbitboxClient(HardwareWalletClient):
     def display_multisig_address(self, threshold: int, pubkeys: List[PubkeyProvider], addr_type: AddressType) -> Dict[str, str]:
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
-    # Setup a new device
     @digitalbitbox_exception
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         # Make sure this is not initialized
         reply = send_encrypt('{"device" : "info"}', self.password, self.device)
         if 'error' not in reply or ('error' in reply and (reply['error']['code'] != 101 and reply['error']['code'] != '101')):
@@ -570,8 +569,8 @@ class DigitalbitboxClient(HardwareWalletClient):
         to_send = {'seed': {'source': 'create', 'key': key, 'filename': backup_filename}}
         reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
         if 'error' in reply:
-            return {'success': False, 'error': reply['error']['message']}
-        return {'success': True}
+            raise DeviceFailureError(reply['error']['message'])
+        return True
 
     @digitalbitbox_exception
     def wipe_device(self) -> bool:

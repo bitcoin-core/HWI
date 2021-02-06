@@ -272,8 +272,7 @@ class ColdcardClient(HardwareWalletClient):
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return address
 
-    # Setup a new device
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Coldcard does not support software setup')
 
     def wipe_device(self) -> bool:

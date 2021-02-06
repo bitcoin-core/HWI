@@ -131,14 +131,12 @@ class HardwareWalletClient(object):
 
     def setup_device(
         self, label: str = "", passphrase: str = ""
-    ) -> Dict[str, Union[bool, str, int]]:
-        """Setup the HID device.
+    ) -> bool:
+        """
+        Setup the device.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": str, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the setup was successful
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

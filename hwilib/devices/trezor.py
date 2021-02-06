@@ -583,9 +583,8 @@ class TrezorClient(HardwareWalletClient):
 
         raise BadArgumentError("No path supplied matched device keys")
 
-    # Setup a new device
     @trezor_exception
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
@@ -594,7 +593,7 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         device.reset(self.client, passphrase_protection=bool(self.password))
-        return {'success': True}
+        return True
 
     @trezor_exception
     def wipe_device(self) -> bool:

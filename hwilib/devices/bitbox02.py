@@ -754,7 +754,7 @@ class Bitbox02Client(HardwareWalletClient):
     @bitbox02_exception
     def setup_device(
         self, label: str = "", passphrase: str = ""
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         if passphrase:
             raise UnavailableActionError(
                 "Passphrase not needed when setting up a BitBox02."
@@ -765,8 +765,8 @@ class Bitbox02Client(HardwareWalletClient):
         if label:
             bb02.set_device_name(label)
         if not bb02.set_password():
-            return {"success": False}
-        return {"success": bb02.create_backup()}
+            return False
+        return bb02.create_backup()
 
     @bitbox02_exception
     def wipe_device(self) -> bool:

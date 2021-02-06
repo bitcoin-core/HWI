@@ -352,8 +352,7 @@ class LedgerClient(HardwareWalletClient):
     ) -> str:
         raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
 
-    # Setup a new device
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
 
     def wipe_device(self) -> bool:

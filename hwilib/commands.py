@@ -288,8 +288,8 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 addr_type = AddressType.WPKH
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
 
-def setup_device(client, label='', backup_passphrase=''):
-    return client.setup_device(label, backup_passphrase)
+def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    return {"success": client.setup_device(label, backup_passphrase)}
 
 def wipe_device(client: HardwareWalletClient) -> Dict[str, bool]:
     return {"success": client.wipe_device()}

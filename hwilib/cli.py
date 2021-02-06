@@ -68,7 +68,7 @@ def restore_device_handler(args, client):
         return restore_device(client, label=args.label, word_count=args.word_count)
     return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
-def setup_device_handler(args, client):
+def setup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
     return {'error': 'setup requires interactive mode', 'code': UNAVAILABLE_ACTION}
