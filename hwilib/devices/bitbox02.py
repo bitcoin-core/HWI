@@ -769,8 +769,8 @@ class Bitbox02Client(HardwareWalletClient):
         return {"success": bb02.create_backup()}
 
     @bitbox02_exception
-    def wipe_device(self) -> Dict[str, Union[bool, str, int]]:
-        return {"success": self.init().reset()}
+    def wipe_device(self) -> bool:
+        return self.init().reset()
 
     @bitbox02_exception
     def backup_device(

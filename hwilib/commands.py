@@ -291,8 +291,8 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
 def setup_device(client, label='', backup_passphrase=''):
     return client.setup_device(label, backup_passphrase)
 
-def wipe_device(client):
-    return client.wipe_device()
+def wipe_device(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.wipe_device()}
 
 def restore_device(client, label='', word_count=24):
     return client.restore_device(label, word_count)

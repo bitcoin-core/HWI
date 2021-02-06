@@ -573,13 +573,12 @@ class DigitalbitboxClient(HardwareWalletClient):
             return {'success': False, 'error': reply['error']['message']}
         return {'success': True}
 
-    # Wipe this device
     @digitalbitbox_exception
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         reply = send_encrypt('{"reset" : "__ERASE__"}', self.password, self.device)
         if 'error' in reply:
-            return {'success': False, 'error': reply['error']['message']}
-        return {'success': True}
+            raise DeviceFailureError(reply["error"]["message"])
+        return True
 
     # Restore device from mnemonic or xprv
     def restore_device(self, label='', word_count=24):

@@ -276,8 +276,7 @@ class ColdcardClient(HardwareWalletClient):
     def setup_device(self, label='', passphrase=''):
         raise UnavailableActionError('The Coldcard does not support software setup')
 
-    # Wipe this device
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         raise UnavailableActionError('The Coldcard does not support wiping via software')
 
     # Restore device from mnemonic or xprv

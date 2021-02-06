@@ -1,7 +1,6 @@
 # Trezor interaction script
 
 from typing import (
-    Dict,
     List,
     Union,
 )
@@ -597,12 +596,11 @@ class TrezorClient(HardwareWalletClient):
         device.reset(self.client, passphrase_protection=bool(self.password))
         return {'success': True}
 
-    # Wipe this device
     @trezor_exception
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         self._check_unlocked()
         device.wipe(self.client)
-        return {'success': True}
+        return True
 
     # Restore device from mnemonic or xprv
     @trezor_exception

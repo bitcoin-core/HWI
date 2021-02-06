@@ -1,7 +1,6 @@
 # Ledger interaction script
 
 from typing import (
-    Dict,
     List,
     Union,
 )
@@ -357,8 +356,7 @@ class LedgerClient(HardwareWalletClient):
     def setup_device(self, label='', passphrase=''):
         raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
 
-    # Wipe this device
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
 
     # Restore device from mnemonic or xprv

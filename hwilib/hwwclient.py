@@ -119,14 +119,12 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def wipe_device(self) -> Dict[str, Union[bool, str, int]]:
-        """Wipe the HID device.
+    def wipe_device(self) -> bool:
+        """
+        Wipe the device.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": srt, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the wipe was successful
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
