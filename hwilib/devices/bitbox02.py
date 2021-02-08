@@ -787,11 +787,11 @@ class Bitbox02Client(HardwareWalletClient):
     @bitbox02_exception
     def restore_device(
         self, label: str = "", word_count: int = 24
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         bb02 = self.init(expect_initialized=False)
 
         if label:
             bb02.set_device_name(label)
 
         bb02.restore_from_mnemonic()
-        return {"success": True}
+        return True

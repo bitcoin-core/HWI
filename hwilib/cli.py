@@ -63,7 +63,7 @@ def getkeypool_handler(args, client):
 def getdescriptors_handler(args, client):
     return getdescriptors(client, account=args.account)
 
-def restore_device_handler(args, client):
+def restore_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return restore_device(client, label=args.label, word_count=args.word_count)
     return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}

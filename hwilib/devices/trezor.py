@@ -601,16 +601,15 @@ class TrezorClient(HardwareWalletClient):
         device.wipe(self.client)
         return True
 
-    # Restore device from mnemonic or xprv
     @trezor_exception
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
 
         device.recover(self.client, word_count=word_count, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
-        return {'success': True}
+        return True
 
     # Begin backup process
     def backup_device(self, label='', passphrase=''):

@@ -579,8 +579,7 @@ class DigitalbitboxClient(HardwareWalletClient):
             raise DeviceFailureError(reply["error"]["message"])
         return True
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
 
     # Begin backup process

@@ -143,14 +143,12 @@ class HardwareWalletClient(object):
 
     def restore_device(
         self, label: str = "", word_count: int = 24
-    ) -> Dict[str, Union[bool, str, int]]:
-        """Restore the HID device from mnemonic.
+    ) -> bool:
+        """
+        Restore the device.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": srt, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the restore was successful
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

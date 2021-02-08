@@ -358,8 +358,7 @@ class LedgerClient(HardwareWalletClient):
     def wipe_device(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
 
     # Begin backup process
