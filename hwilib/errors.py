@@ -91,6 +91,10 @@ class DeviceBusyError(HWWError):
     def __init__(self, msg: str):
         HWWError.__init__(self, msg, DEVICE_BUSY)
 
+class NeedsRootError(HWWError):
+    def __init__(self, msg: str):
+        HWWError.__init__(self, msg, NEED_TO_BE_ROOT)
+
 @contextmanager
 def handle_errors(
     msg: Optional[str] = None,

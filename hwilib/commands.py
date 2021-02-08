@@ -309,8 +309,8 @@ def send_pin(client: HardwareWalletClient, pin: str) -> Dict[str, bool]:
 def toggle_passphrase(client: HardwareWalletClient) -> Dict[str, bool]:
     return {"success": client.toggle_passphrase()}
 
-def install_udev_rules(source, location):
+def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller
-        return UDevInstaller.install(source, location)
+        return {"success": UDevInstaller.install(source, location)}
     return {'error': 'udev rules are not needed on your platform', 'code': NOT_IMPLEMENTED}

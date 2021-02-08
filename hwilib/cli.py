@@ -91,7 +91,7 @@ def toggle_passphrase_handler(args: argparse.Namespace, client: HardwareWalletCl
 def send_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return send_pin(client, pin=args.pin)
 
-def install_udev_rules_handler(args):
+def install_udev_rules_handler(args: argparse.Namespace) -> Dict[str, bool]:
     return install_udev_rules('udev', args.location)
 
 class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):

@@ -1,11 +1,12 @@
+from .errors import NeedsRootError
+
 from subprocess import check_call, CalledProcessError, DEVNULL
-from .errors import NEED_TO_BE_ROOT
 from shutil import copy
 from os import path, listdir, getlogin, geteuid
 
 class UDevInstaller(object):
     @staticmethod
-    def install(source, location):
+    def install(source: str, location: str) -> bool:
         try:
             udev_installer = UDevInstaller()
             udev_installer.copy_udev_rule_files(source, location)
@@ -14,9 +15,9 @@ class UDevInstaller(object):
             udev_installer.add_user_plugdev_group()
         except CalledProcessError:
             if geteuid() != 0:
-                return {'error': 'Need to be root.', 'code': NEED_TO_BE_ROOT}
+                raise NeedsRootError("Need to be root.")
             raise
-        return {"success": True}
+        return True
 
     def __init__(self):
         self._udevadm = '/sbin/udevadm'
