@@ -521,9 +521,10 @@ def DeserializeHDKeypath(
     f: Readable,
     key: bytes,
     hd_keypaths: MutableMapping[bytes, KeyOriginInfo],
+    expected_sizes: Sequence[int],
 ) -> None:
-    if len(key) != 34 and len(key) != 66:
-        raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
+    if len(key) not in expected_sizes:
+        raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey. Length: {}".format(len(key)))
     pubkey = key[1:]
     if pubkey in hd_keypaths:
         raise PSBTSerializationError("Duplicate key, input partial signature for pubkey already provided")
@@ -630,7 +631,7 @@ class PartiallySignedInput:
                 self.witness_script = deser_string(f)
 
             elif key_type == 6:
-                DeserializeHDKeypath(f, key, self.hd_keypaths)
+                DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
 
             elif key_type == 7:
                 if len(self.final_script_sig) != 0:
@@ -745,7 +746,7 @@ class PartiallySignedOutput:
                 self.witness_script = deser_string(f)
 
             elif key_type == 2:
-                DeserializeHDKeypath(f, key, self.hd_keypaths)
+                DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
 
             else:
                 if key in self.unknown:
@@ -783,6 +784,7 @@ class PSBT(object):
         self.inputs: List[PartiallySignedInput] = []
         self.outputs: List[PartiallySignedOutput] = []
         self.unknown: Dict[bytes, bytes] = {}
+        self.xpub: Dict[bytes, KeyOriginInfo] = {}
 
     def deserialize(self, psbt: str) -> None:
         psbt_bytes = base64.b64decode(psbt.strip())
@@ -825,7 +827,8 @@ class PSBT(object):
                 for txin in self.tx.vin:
                     if len(txin.scriptSig) != 0 or not self.tx.wit.is_null():
                         raise PSBTSerializationError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
-
+            elif key_type == 0x01:
+                DeserializeHDKeypath(f, key, self.xpub, [79])
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
@@ -876,6 +879,9 @@ class PSBT(object):
         tx = self.tx.serialize_with_witness()
         r += ser_compact_size(len(tx))
         r += tx
+
+        # write xpubs
+        r += SerializeHDKeypath(self.xpub, b"\x01")
 
         # unknowns
         for key, value in sorted(self.unknown.items()):
