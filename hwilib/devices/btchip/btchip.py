@@ -85,7 +85,7 @@ class btchip:
 			else:
 				self.scriptBlockLength = 255
 		except Exception:
-			pass			
+			pass				
 
 	def getWalletPublicKey(self, path, showOnScreen=False, segwit=False, segwitNative=False, cashAddr=False):
 		result = {}
@@ -233,9 +233,9 @@ class btchip:
 				self.dongle.exchange(bytearray(apdu))
 				offset += blockLength
 			if len(script) == 0:
-			    apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00, len(sequence) ]
-			    apdu.extend(sequence)
-			    self.dongle.exchange(bytearray(apdu))
+				apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00, len(sequence) ]
+				apdu.extend(sequence)
+				self.dongle.exchange(bytearray(apdu))				
 			currentIndex += 1
 
 	def finalizeInput(self, outputAddress, amount, fees, changePath, rawTx=None):
@@ -322,6 +322,27 @@ class btchip:
 		apdu.extend(params)
 		result = self.dongle.exchange(bytearray(apdu))
 		result[0] = 0x30
+		return result
+
+	def signMessagePrepareV1(self, path, message):
+		donglePath = parse_bip32_path(path)
+		if self.needKeyCache:
+			self.resolvePublicKeysInPath(path)		
+		result = {}
+		apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_SIGN_MESSAGE, 0x00, 0x00 ]
+		params = []
+		params.extend(donglePath)
+		params.append(len(message))
+		params.extend(bytearray(message))
+		apdu.append(len(params))
+		apdu.extend(params)
+		response = self.dongle.exchange(bytearray(apdu))
+		result['confirmationNeeded'] = response[0] != 0x00
+		result['confirmationType'] = response[0]
+		if result['confirmationType'] == 0x02:
+			result['keycardData'] = response[1:]
+		if result['confirmationType'] == 0x03:
+			result['secureScreenData'] = response[1:]
 		return result
 
 	def signMessagePrepareV2(self, path, message):
