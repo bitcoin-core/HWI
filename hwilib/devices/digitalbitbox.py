@@ -582,9 +582,8 @@ class DigitalbitboxClient(HardwareWalletClient):
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
 
-    # Begin backup process
     @digitalbitbox_exception
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         # Need a wallet name and backup passphrase
         if not label or not passphrase:
             raise BadArgumentError('The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
@@ -595,7 +594,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
         if 'error' in reply:
             raise DBBError(reply)
-        return {'success': True}
+        return True
 
     # Close the device
     def close(self):

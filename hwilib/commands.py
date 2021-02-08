@@ -297,8 +297,8 @@ def wipe_device(client: HardwareWalletClient) -> Dict[str, bool]:
 def restore_device(client: HardwareWalletClient, label: str = "", word_count: int = 24) -> Dict[str, bool]:
     return {"success": client.restore_device(label, word_count)}
 
-def backup_device(client, label='', backup_passphrase=''):
-    return client.backup_device(label, backup_passphrase)
+def backup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    return {"success": client.backup_device(label, backup_passphrase)}
 
 def prompt_pin(client):
     return client.prompt_pin()

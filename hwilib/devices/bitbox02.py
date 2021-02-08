@@ -775,14 +775,14 @@ class Bitbox02Client(HardwareWalletClient):
     @bitbox02_exception
     def backup_device(
         self, label: str = "", passphrase: str = ""
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         if label or passphrase:
             raise UnavailableActionError(
                 "Label/passphrase not needed when exporting mnemonic from the BitBox02."
             )
 
         self.init().show_mnemonic()
-        return {"success": True}
+        return True
 
     @bitbox02_exception
     def restore_device(

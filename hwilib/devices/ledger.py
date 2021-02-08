@@ -361,8 +361,7 @@ class LedgerClient(HardwareWalletClient):
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
 
-    # Begin backup process
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
 
     # Close the device

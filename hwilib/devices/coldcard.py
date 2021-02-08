@@ -281,9 +281,8 @@ class ColdcardClient(HardwareWalletClient):
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Coldcard does not support restoring via software')
 
-    # Begin backup process
     @coldcard_exception
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         self.device.check_mitm()
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
@@ -309,7 +308,7 @@ class ColdcardClient(HardwareWalletClient):
         result = self.device.download_file(result_len, result_sha, file_number=0)
         filename = time.strftime('backup-%Y%m%d-%H%M.7z')
         open(filename, 'wb').write(result)
-        return {'success': True, 'message': 'The backup has been written to {}'.format(filename)}
+        return True
 
     # Close the device
     def close(self):

@@ -42,7 +42,7 @@ import json
 import sys
 
 
-def backup_device_handler(args, client):
+def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
 def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:

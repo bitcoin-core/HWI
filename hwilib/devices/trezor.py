@@ -611,8 +611,7 @@ class TrezorClient(HardwareWalletClient):
         device.recover(self.client, word_count=word_count, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
         return True
 
-    # Begin backup process
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
