@@ -170,14 +170,12 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
-        """Prompt for PIN.
+    def prompt_pin(self) -> bool:
+        """
+        Prompt for PIN.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": srt, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the PIN prompt was successful
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

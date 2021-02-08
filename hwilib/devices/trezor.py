@@ -619,9 +619,8 @@ class TrezorClient(HardwareWalletClient):
     def close(self):
         self.client.close()
 
-    # Prompt for a pin on device
     @trezor_exception
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'
         self.client.open()
         self._prepare_device()
@@ -632,7 +631,7 @@ class TrezorClient(HardwareWalletClient):
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         self.client.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=messages.InputScriptType.SPENDADDRESS))
-        return {'success': True}
+        return True
 
     # Send the pin
     @trezor_exception

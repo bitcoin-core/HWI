@@ -368,8 +368,7 @@ class LedgerClient(HardwareWalletClient):
     def close(self):
         self.dongle.close()
 
-    # Prompt pin
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
     # Send pin

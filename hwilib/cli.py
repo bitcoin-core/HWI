@@ -82,7 +82,7 @@ def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Di
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
 
-def prompt_pin_handler(args, client):
+def prompt_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return prompt_pin(client)
 
 def toggle_passphrase_handler(args, client):

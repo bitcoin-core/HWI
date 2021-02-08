@@ -318,7 +318,7 @@ class Bitbox02Client(HardwareWalletClient):
     def get_master_fingerprint_hex(self) -> str:
         return self.get_master_fingerprint().hex()
 
-    def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError(
             "The BitBox02 does not need a PIN sent from the host"
         )

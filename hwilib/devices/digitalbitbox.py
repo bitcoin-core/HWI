@@ -600,8 +600,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     def close(self):
         self.device.close()
 
-    # Prompt pin
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
     # Send pin

@@ -300,8 +300,8 @@ def restore_device(client: HardwareWalletClient, label: str = "", word_count: in
 def backup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
     return {"success": client.backup_device(label, backup_passphrase)}
 
-def prompt_pin(client):
-    return client.prompt_pin()
+def prompt_pin(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.prompt_pin()}
 
 def send_pin(client, pin):
     return client.send_pin(pin)
