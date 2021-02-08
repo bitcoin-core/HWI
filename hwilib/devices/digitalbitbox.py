@@ -606,8 +606,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
 def enumerate(password=''):

@@ -306,8 +306,8 @@ def prompt_pin(client: HardwareWalletClient) -> Dict[str, bool]:
 def send_pin(client: HardwareWalletClient, pin: str) -> Dict[str, bool]:
     return {"success": client.send_pin(pin)}
 
-def toggle_passphrase(client):
-    return client.toggle_passphrase()
+def toggle_passphrase(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.toggle_passphrase()}
 
 def install_udev_rules(source, location):
     if platform.system() == "Linux":

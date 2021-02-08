@@ -85,7 +85,7 @@ def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) 
 def prompt_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return prompt_pin(client)
 
-def toggle_passphrase_handler(args, client):
+def toggle_passphrase_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return toggle_passphrase(client)
 
 def send_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:

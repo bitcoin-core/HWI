@@ -742,14 +742,14 @@ class Bitbox02Client(HardwareWalletClient):
         raise UnavailableActionError("The BitBox02 does not support 'signmessage'")
 
     @bitbox02_exception
-    def toggle_passphrase(self) -> Dict[str, Union[bool, str, int]]:
+    def toggle_passphrase(self) -> bool:
         bb02 = self.init()
         info = bb02.device_info()
         if info["mnemonic_passphrase_enabled"]:
             bb02.disable_mnemonic_passphrase()
         else:
             bb02.enable_mnemonic_passphrase()
-        return {"success": True}
+        return True
 
     @bitbox02_exception
     def setup_device(

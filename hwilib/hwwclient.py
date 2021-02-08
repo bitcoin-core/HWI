@@ -190,14 +190,12 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def toggle_passphrase(self) -> Dict[str, Union[bool, str, int]]:
-        """Toggle passphrase.
+    def toggle_passphrase(self) -> bool:
+        """
+        Toggle passphrase.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": srt, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the passphrase was successfully toggled
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

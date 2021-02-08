@@ -374,8 +374,7 @@ class LedgerClient(HardwareWalletClient):
     def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
 def enumerate(password=''):

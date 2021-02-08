@@ -649,9 +649,8 @@ class TrezorClient(HardwareWalletClient):
             return False
         return True
 
-    # Toggle passphrase
     @trezor_exception
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         self._check_unlocked()
         try:
             device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
@@ -660,7 +659,7 @@ class TrezorClient(HardwareWalletClient):
                 print('Confirm the action by entering your PIN', file=sys.stderr)
                 print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        return {'success': True}
+        return True
 
 def enumerate(password=''):
     results = []
