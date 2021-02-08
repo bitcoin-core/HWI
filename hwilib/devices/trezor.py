@@ -633,9 +633,8 @@ class TrezorClient(HardwareWalletClient):
         self.client.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=messages.InputScriptType.SPENDADDRESS))
         return True
 
-    # Send the pin
     @trezor_exception
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         self.client.open()
         if not pin.isdigit():
             raise BadArgumentError("Non-numeric PIN provided")
@@ -647,8 +646,8 @@ class TrezorClient(HardwareWalletClient):
                     raise DeviceAlreadyUnlockedError('This device does not need a PIN')
                 if self.client.features.unlocked:
                     raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
-            return {'success': False}
-        return {'success': True}
+            return False
+        return True
 
     # Toggle passphrase
     @trezor_exception

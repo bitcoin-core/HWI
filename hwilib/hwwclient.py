@@ -180,14 +180,12 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def send_pin(self, pin: str) -> Dict[str, Union[bool, str, int]]:
-        """Send PIN.
+    def send_pin(self, pin: str) -> bool:
+        """
+        Send PIN.
 
-        Must return a dictionary with the "success" key,
-        possibly including also "error" and "code", e.g.:
-        {"success": bool, "error": srt, "code": int}.
-
-        Raise UnavailableActionError if appropriate for the device.
+        :return: Whether the PIN successfully unlocked the device
+        :raises UnavailableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

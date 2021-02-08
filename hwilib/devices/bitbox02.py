@@ -323,7 +323,7 @@ class Bitbox02Client(HardwareWalletClient):
             "The BitBox02 does not need a PIN sent from the host"
         )
 
-    def send_pin(self, pin: str) -> Dict[str, Union[bool, str, int]]:
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError(
             "The BitBox02 does not need a PIN sent from the host"
         )

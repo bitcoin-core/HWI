@@ -303,8 +303,8 @@ def backup_device(client: HardwareWalletClient, label: str = "", backup_passphra
 def prompt_pin(client: HardwareWalletClient) -> Dict[str, bool]:
     return {"success": client.prompt_pin()}
 
-def send_pin(client, pin):
-    return client.send_pin(pin)
+def send_pin(client: HardwareWalletClient, pin: str) -> Dict[str, bool]:
+    return {"success": client.send_pin(pin)}
 
 def toggle_passphrase(client):
     return client.toggle_passphrase()

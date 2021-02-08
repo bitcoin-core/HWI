@@ -88,7 +88,7 @@ def prompt_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -
 def toggle_passphrase_handler(args, client):
     return toggle_passphrase(client)
 
-def send_pin_handler(args, client):
+def send_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return send_pin(client, pin=args.pin)
 
 def install_udev_rules_handler(args):

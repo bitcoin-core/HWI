@@ -603,8 +603,7 @@ class DigitalbitboxClient(HardwareWalletClient):
     def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
-    # Send pin
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
     # Toggle passphrase
