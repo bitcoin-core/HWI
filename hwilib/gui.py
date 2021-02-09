@@ -461,9 +461,11 @@ class HWIQt(QMainWindow):
             self.show_sendpindialog(prompt_pin=False)
 
 def process_gui_commands(cli_args):
+    CHAINS = ['main', 'test', 'regtest', 'signet']
+
     parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
-    parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
+    parser.add_argument('--chain', help='Select chain to work with ({})'.format(', '.join(CHAINS)), default='main', choices=CHAINS)
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
 
@@ -478,7 +480,8 @@ def process_gui_commands(cli_args):
     # Qt setup
     app = QApplication()
 
-    window = HWIQt(args.password, args.testnet)
+    is_testnet = args.chain in ['test', 'regtest', 'signet']
+    window = HWIQt(args.password, is_testnet)
 
     window.refresh_clicked()
 
