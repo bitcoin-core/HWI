@@ -56,14 +56,19 @@ import io
 import sys
 import time
 import struct
+
 from binascii import hexlify, b2a_hex
+from typing import (
+    Any,
+    Callable,
+)
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
 
 
-def coldcard_exception(f):
-    def func(*args, **kwargs):
+def coldcard_exception(f: Callable[..., Any]) -> Callable[..., Any]:
+    def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
         except CCProtoError as e:
@@ -77,7 +82,7 @@ def coldcard_exception(f):
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
         super(ColdcardClient, self).__init__(path, password, expert)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
@@ -98,7 +103,7 @@ class ColdcardClient(HardwareWalletClient):
             xpub.version = ExtendedKey.TESTNET_PUBLIC
         return xpub
 
-    def get_master_fingerprint_hex(self):
+    def get_master_fingerprint_hex(self) -> str:
         # quick method to get fingerprint of wallet
         return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
 
@@ -226,6 +231,7 @@ class ColdcardClient(HardwareWalletClient):
         payload = CCProtocolPacker.show_address(keypath, addr_fmt=addr_fmt)
 
         address = self.device.send_recv(payload, timeout=None)
+        assert isinstance(address, str)
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
@@ -237,7 +243,7 @@ class ColdcardClient(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         self.device.check_mitm()
 
         if addr_type == AddressType.SH_WPKH:
@@ -267,6 +273,7 @@ class ColdcardClient(HardwareWalletClient):
         payload = CCProtocolPacker.show_p2sh_address(threshold, xfp_paths, redeem_script, addr_fmt=addr_fmt)
 
         address = self.device.send_recv(payload, timeout=None)
+        assert isinstance(address, str)
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
@@ -310,8 +317,7 @@ class ColdcardClient(HardwareWalletClient):
         open(filename, 'wb').write(result)
         return True
 
-    # Close the device
-    def close(self):
+    def close(self) -> None:
         self.device.close()
 
     def prompt_pin(self) -> bool:
@@ -323,12 +329,12 @@ class ColdcardClient(HardwareWalletClient):
     def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
-def enumerate(password=''):
+def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
     devices.append({'path': CC_SIMULATOR_SOCK.encode()})
     for d in devices:
-        d_data = {}
+        d_data: Dict[str, Any] = {}
 
         path = d['path'].decode()
         d_data['type'] = 'coldcard'
