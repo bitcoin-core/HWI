@@ -122,7 +122,7 @@ def process_commands(cli_args):
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
     parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
-    parser.add_argument('--testnet', help='Use testnet prefixes', action='store_true')
+    parser.add_argument('--testnet', '--signet', dest='testnet', help='Use testnet prefixes (identical to signet)', action='store_true')
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
