@@ -16,10 +16,10 @@ from .key import (
     parse_path,
 )
 from .errors import (
+    BadArgumentError,
+    NotImplementedError,
     UnknownDeviceError,
     UnavailableActionError,
-    BAD_ARGUMENT,
-    NOT_IMPLEMENTED,
 )
 from .descriptor import (
     Descriptor,
@@ -117,11 +117,7 @@ def signmessage(client: HardwareWalletClient, message: str, path: str) -> Dict[s
     return {"signature": client.sign_message(message, path)}
 
 def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, addr_type=AddressType.WPKH):
-
-    try:
-        master_fpr = client.get_master_fingerprint_hex()
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+    master_fpr = client.get_master_fingerprint_hex()
 
     desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
 
@@ -170,9 +166,9 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
             parsed_path.append(0)
     else:
         if path[0] != "m":
-            return {'error': 'Path must start with m/', 'code': BAD_ARGUMENT}
+            raise BadArgumentError("Path must start with m/")
         if path[-1] != "*":
-            return {'error': 'Path must end with /*', 'code': BAD_ARGUMENT}
+            raise BadArgumentError("Path must end with /*")
         parsed_path = parse_path(path[:-2])
 
     # Find the last hardened derivation:
@@ -215,12 +211,6 @@ def getkeypool(client, path, start, end, internal=False, keypool=True, account=0
         for addr_type in addr_types:
             for internal_addr in [False, True]:
                 chains = chains + getkeypool_inner(client, None, start, end, internal_addr, keypool, account, addr_type)
-
-        # Report the first error we encounter
-        for chain in chains:
-            if 'error' in chain:
-                return chain
-        # No errors, return pair
         return chains
     else:
         assert len(addr_types) == 1
@@ -228,10 +218,7 @@ def getkeypool(client, path, start, end, internal=False, keypool=True, account=0
 
 
 def getdescriptors(client, account=0):
-    try:
-        master_fpr = client.get_master_fingerprint_hex()
-    except NotImplementedError as e:
-        return {'error': str(e), 'code': NOT_IMPLEMENTED}
+    master_fpr = client.get_master_fingerprint_hex()
 
     result = {}
 
@@ -276,12 +263,12 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]
             if pubkey.origin is None:
-                return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
+                raise BadArgumentError(f"Descriptor missing origin info: {desc}")
             if pubkey.origin.get_fingerprint_hex() != client.get_master_fingerprint_hex():
-                return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
+                raise BadArgumentError(f"Descriptor fingerprint does not match device: {desc}")
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
-                return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
+                raise BadArgumentError(f"Key in descriptor does not match device: {desc}")
             if is_sh and is_wpkh:
                 addr_type = AddressType.SH_WPKH
             elif not is_sh and is_wpkh:
@@ -313,4 +300,4 @@ def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller
         return {"success": UDevInstaller.install(source, location)}
-    return {'error': 'udev rules are not needed on your platform', 'code': NOT_IMPLEMENTED}
+    raise NotImplementedError("udev rules are not needed on your platform")
