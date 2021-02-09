@@ -264,7 +264,7 @@ class KeyOriginInfo(object):
         return xfp
 
 
-def parse_path(nstr: str) -> Sequence[int]:
+def parse_path(nstr: str) -> List[int]:
     """
     Convert BIP32 path string to list of uint32 integers with hardened flags.
     Several conventions are supported to set the hardened flag: -1, 1', 1h

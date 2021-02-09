@@ -36,19 +36,24 @@ from .common import Chain
 from .hwwclient import HardwareWalletClient
 
 from itertools import count
-from typing import Dict
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+)
 
 
 py_enumerate = enumerate
 
 
 # Get the client for the device
-def get_client(device_type, device_path, password='', expert=False):
+def get_client(device_type: str, device_path: str, password: str = "", expert: bool = False) -> Optional[HardwareWalletClient]:
     device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
 
-    client = None
+    client: Optional[HardwareWalletClient] = None
     try:
         imported_dev = importlib.import_module('.devices.' + module, __package__)
         client_constructor = getattr(imported_dev, class_name + 'Client')
@@ -61,26 +66,35 @@ def get_client(device_type, device_path, password='', expert=False):
     return client
 
 # Get a list of all available hardware wallets
-def enumerate(password=''):
-    result = []
+def enumerate(password: str = "") -> List[Dict[str, Any]]:
+    result: List[Dict[str, Any]] = []
 
     for module in all_devs:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
-            result.extend(imported_dev.enumerate(password))
+            result.extend(imported_dev.enumerate(password)) # type: ignore
         except ImportError:
             pass # Ignore ImportErrors, the user may not have all device dependencies installed
     return result
 
 # Fingerprint or device type required
-def find_device(password='', device_type=None, fingerprint=None, expert=False):
+def find_device(
+    password: str = "",
+    device_type: Optional[str] = None,
+    fingerprint: Optional[str] = None,
+    expert: bool = False,
+) -> Optional[HardwareWalletClient]:
     devices = enumerate(password)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
             continue
         client = None
         try:
+            assert isinstance(d["type"], str)
+            assert isinstance(d["path"], str)
             client = get_client(d['type'], d['path'], password, expert)
+            if client is None:
+                raise Exception()
 
             if fingerprint:
                 master_fpr = d.get('fingerprint', None)
@@ -106,9 +120,9 @@ def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
     tx.deserialize(psbt)
     return {"psbt": client.sign_tx(tx).serialize()}
 
-def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, str]:
+def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:
     xpub = client.get_pubkey_at_path(path)
-    result = {"xpub": xpub.to_string()}
+    result: Dict[str, Any] = {"xpub": xpub.to_string()}
     if expert:
         result.update(xpub.get_printable_dict())
     return result
@@ -116,7 +130,16 @@ def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Di
 def signmessage(client: HardwareWalletClient, message: str, path: str) -> Dict[str, str]:
     return {"signature": client.sign_message(message, path)}
 
-def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, addr_type=AddressType.WPKH):
+def getkeypool_inner(
+    client: HardwareWalletClient,
+    path: str,
+    start: int,
+    end: int,
+    internal: bool = False,
+    keypool: bool = True,
+    account: int = 0,
+    addr_type: AddressType = AddressType.WPKH
+) -> List[Dict[str, Any]]:
     master_fpr = client.get_master_fingerprint_hex()
 
     desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
@@ -124,7 +147,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     if not isinstance(desc, Descriptor):
         return desc
 
-    this_import = {}
+    this_import: Dict[str, Any] = {}
 
     this_import['desc'] = desc.to_string()
     this_import['range'] = [start, end]
@@ -135,7 +158,16 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     this_import['watchonly'] = True
     return [this_import]
 
-def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=AddressType.WPKH, account=0, start=None, end=None):
+def getdescriptor(
+    client: HardwareWalletClient,
+    master_fpr: str,
+    path: Optional[str] = None,
+    internal: bool = False,
+    addr_type: AddressType = AddressType.WPKH,
+    account: int = 0,
+    start: Optional[int] = None,
+    end: Optional[int] = None
+) -> Descriptor:
     is_wpkh = addr_type is AddressType.WPKH
     is_sh_wpkh = addr_type is AddressType.SH_WPKH
 
@@ -191,7 +223,7 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
-    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base), path_suffix)
+    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix)
     if is_wpkh:
         return WPKHDescriptor(pubkey)
     elif is_sh_wpkh:
@@ -199,14 +231,24 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
     else:
         return PKHDescriptor(pubkey)
 
-def getkeypool(client, path, start, end, internal=False, keypool=True, account=0, addr_type: AddressType = AddressType.PKH, addr_all=False):
+def getkeypool(
+    client: HardwareWalletClient,
+    path: str,
+    start: int,
+    end: int,
+    internal: bool = False,
+    keypool: bool = True,
+    account: int = 0,
+    addr_type: AddressType = AddressType.PKH,
+    addr_all: bool = False
+) -> List[Dict[str, Any]]:
 
     addr_types = [addr_type]
     if addr_all:
         addr_types = list(AddressType)
 
     # When no specific path or internal-ness is specified, create standard types
-    chains = []
+    chains: List[Dict[str, Any]] = []
     if path is None and not internal:
         for addr_type in addr_types:
             for internal_addr in [False, True]:
@@ -217,7 +259,10 @@ def getkeypool(client, path, start, end, internal=False, keypool=True, account=0
         return getkeypool_inner(client, path, start, end, internal, keypool, account, addr_types[0])
 
 
-def getdescriptors(client, account=0):
+def getdescriptors(
+    client: HardwareWalletClient,
+    account: int = 0
+) -> Dict[str, List[str]]:
     master_fpr = client.get_master_fingerprint_hex()
 
     result = {}
@@ -240,7 +285,12 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH) -> Dict[str, str]:
+def displayaddress(
+    client: HardwareWalletClient,
+    path: Optional[str] = None,
+    desc: Optional[str] = None,
+    addr_type: AddressType = AddressType.PKH
+) -> Dict[str, str]:
     if path is not None:
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
@@ -249,9 +299,11 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
         is_sh = isinstance(descriptor, SHDescriptor)
         is_wsh = isinstance(descriptor, WSHDescriptor)
         if is_sh or is_wsh:
+            assert descriptor.subdescriptor
             descriptor = descriptor.subdescriptor
             if isinstance(descriptor, WSHDescriptor):
                 is_wsh = True
+                assert descriptor.subdescriptor
                 descriptor = descriptor.subdescriptor
             if isinstance(descriptor, MultisigDescriptor):
                 if is_sh and is_wsh:
@@ -274,6 +326,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WPKH
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
+    raise BadArgumentError("Missing both path and descriptor")
 
 def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
     return {"success": client.setup_device(label, backup_passphrase)}
