@@ -32,7 +32,7 @@ The only accepted keypaths for xpubs are (as of firmware v9.4.0):
 For address keypaths, append `/0/<address index>` for a receive and `/1/<change index>` for a change
 address. Up to `10000` addresses are supported.
 
-In `--testnet` mode, the second element must be `1'` (e.g. `m/49'/1'/...`).
+In `--chain test` mode, the second element must be `1'` (e.g. `m/49'/1'/...`).
 
 ## Signing with mixed input types
 

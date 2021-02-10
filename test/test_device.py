@@ -75,7 +75,7 @@ class DeviceTestCase(unittest.TestCase):
         self.fingerprint = fingerprint
         self.master_xpub = master_xpub
         self.password = password
-        self.dev_args = ['-t', self.type, '-d', self.path, '--testnet']
+        self.dev_args = ['-t', self.type, '-d', self.path, '--chain', 'test']
         if emulator:
             self.emulator = emulator
         else:

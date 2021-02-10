@@ -134,7 +134,8 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
 
     class TestBitboxGetXpub(DeviceTestCase):
         def setUp(self):
-            self.dev_args.remove('--testnet')
+            self.dev_args.remove('--chain')
+            self.dev_args.remove('test')
 
         def test_getxpub(self):
             result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])

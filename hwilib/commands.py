@@ -115,7 +115,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     except NotImplementedError as e:
         return {'error': str(e), 'code': NOT_IMPLEMENTED}
 
-    desc = getdescriptor(client, master_fpr, client.is_testnet, path, internal, addr_type, account, start, end)
+    desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
 
     if not isinstance(desc, Descriptor):
         return desc
@@ -131,9 +131,7 @@ def getkeypool_inner(client, path, start, end, internal=False, keypool=True, acc
     this_import['watchonly'] = True
     return [this_import]
 
-def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, addr_type=AddressType.WPKH, account=0, start=None, end=None):
-    testnet = client.is_testnet
-
+def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=AddressType.WPKH, account=0, start=None, end=None):
     is_wpkh = addr_type is AddressType.WPKH
     is_sh_wpkh = addr_type is AddressType.SH_WPKH
 
@@ -149,10 +147,10 @@ def getdescriptor(client, master_fpr, testnet=False, path=None, internal=False, 
             parsed_path.append(H_(44))
 
         # Coin type
-        if testnet:
-            parsed_path.append(H_(1))
-        else:
+        if client.chain == 'main':
             parsed_path.append(H_(0))
+        else:
+            parsed_path.append(H_(1))
 
         # Account
         parsed_path.append(H_(account))
@@ -233,7 +231,7 @@ def getdescriptors(client, account=0):
         descriptors = []
         for addr_type in (AddressType.PKH, AddressType.SH_WPKH, AddressType.WPKH):
             try:
-                desc = getdescriptor(client, master_fpr=master_fpr, testnet=client.is_testnet, internal=internal, addr_type=addr_type, account=account)
+                desc = getdescriptor(client, master_fpr=master_fpr, internal=internal, addr_type=addr_type, account=account)
             except UnavailableActionError:
                 # Device does not support this address type or network. Skip.
                 continue
