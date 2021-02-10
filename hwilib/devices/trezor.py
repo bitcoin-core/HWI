@@ -53,6 +53,7 @@ from ..serializations import (
     is_witness,
     ser_uint256,
 )
+from ..common import Chain
 from .. import bech32
 from mnemonic import Mnemonic
 from usb1 import USBErrorNoDevice
@@ -234,7 +235,7 @@ class TrezorClient(HardwareWalletClient):
         self.type = 'Trezor'
 
     def _prepare_device(self):
-        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
+        self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'
         resp = self.client.refresh_features()
         # If this is a Trezor One or Keepkey, do Initialize
         if resp.model == '1' or resp.model == 'K1-14AM':
@@ -263,7 +264,7 @@ class TrezorClient(HardwareWalletClient):
         except ValueError as e:
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
-        if self.is_testnet:
+        if self.chain != Chain.MAIN:
             result = {'xpub': xpub_main_2_test(output.xpub)}
         else:
             result = {'xpub': output.xpub}
@@ -341,7 +342,7 @@ class TrezorClient(HardwareWalletClient):
                     p2wsh = True
 
                 def ignore_input():
-                    txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (1 if self.is_testnet else 0), 0x80000000, 0, 0]
+                    txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (0 if self.chain == Chain.MAIN else 1), 0x80000000, 0, 0]
                     txinputtype.multisig = None
                     txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
@@ -399,7 +400,7 @@ class TrezorClient(HardwareWalletClient):
                 inputs.append(txinputtype)
 
             # address version byte
-            if self.is_testnet:
+            if self.chain != Chain.MAIN:
                 p2pkh_version = b'\x6f'
                 p2sh_version = b'\xc4'
                 bech32_hrp = 'tb'
@@ -635,7 +636,7 @@ class TrezorClient(HardwareWalletClient):
     # Prompt for a pin on device
     @trezor_exception
     def prompt_pin(self):
-        self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
+        self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'
         self.client.open()
         self._prepare_device()
         if not self.client.features.pin_protection:

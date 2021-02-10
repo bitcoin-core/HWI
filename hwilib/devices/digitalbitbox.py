@@ -55,6 +55,8 @@ from ..base58 import (
     get_xpub_fingerprint,
     xpub_main_2_test,
 )
+from ..common import Chain
+
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512
 usb_report_size = 64 # firmware > v2.0
@@ -356,7 +358,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         if 'error' in reply:
             raise DBBError(reply)
 
-        if self.is_testnet:
+        if self.chain != Chain.MAIN:
             result = {'xpub': xpub_main_2_test(reply['xpub'])}
         else:
             result = {'xpub': reply['xpub']}

@@ -17,6 +17,7 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
+from ..common import Chain
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
 from .btchip.btchipComm import (
@@ -162,7 +163,7 @@ class LedgerClient(HardwareWalletClient):
         depth = len(path.split("/")) if len(path) > 0 else 0
         depth = struct.pack("B", depth)
 
-        if self.is_testnet:
+        if self.chain != Chain.MAIN:
             version = bytearray.fromhex("043587CF")
         else:
             version = bytearray.fromhex("0488B21E")
