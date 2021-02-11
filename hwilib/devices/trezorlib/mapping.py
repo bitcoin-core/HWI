@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -14,7 +14,10 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
-from . import messages
+import io
+from typing import Tuple
+
+from . import messages, protobuf
 
 map_type_to_class = {}
 map_class_to_type = {}
@@ -23,6 +26,10 @@ map_class_to_type = {}
 def build_map():
     for msg_name in dir(messages.MessageType):
         if msg_name.startswith("__"):
+            continue
+
+        if msg_name == "Literal":
+            # TODO: remove this when we have a good implementation of enums
             continue
 
         try:
@@ -55,8 +62,21 @@ def get_type(msg):
     return map_class_to_type[msg.__class__]
 
 
-def get_class(t):
-    return map_type_to_class[t]
+def get_class(t, map_type_to_class_override):
+    return map_type_to_class_override.get(t, map_type_to_class[t])
+
+
+def encode(msg: protobuf.MessageType) -> Tuple[int, bytes]:
+    message_type = msg.MESSAGE_WIRE_TYPE
+    buf = io.BytesIO()
+    protobuf.dump_message(buf, msg)
+    return message_type, buf.getvalue()
+
+
+def decode(message_type: int, message_bytes: bytes, map_type_to_class_override={}) -> protobuf.MessageType:
+    cls = get_class(message_type, map_type_to_class_override)
+    buf = io.BytesIO(message_bytes)
+    return protobuf.load_message(buf, cls)
 
 
 build_map()

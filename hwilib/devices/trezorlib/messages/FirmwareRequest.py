@@ -2,12 +2,20 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class FirmwareRequest(p.MessageType):
     MESSAGE_WIRE_TYPE = 8
 
     def __init__(
         self,
+        *,
         offset: int = None,
         length: int = None,
     ) -> None:
@@ -15,8 +23,8 @@ class FirmwareRequest(p.MessageType):
         self.length = length
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('offset', p.UVarintType, 0),
-            2: ('length', p.UVarintType, 0),
+            1: ('offset', p.UVarintType, None),
+            2: ('length', p.UVarintType, None),
         }

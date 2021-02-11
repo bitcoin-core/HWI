@@ -12,7 +12,6 @@ import sys
 import time
 import unittest
 
-from hwilib.devices.trezorlib.transport import enumerate_devices
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
@@ -62,11 +61,7 @@ class TrezorEmulator(DeviceEmulator):
                 time.sleep(0.05)
 
         # Setup the emulator
-        for dev in enumerate_devices():
-            # Find the udp transport, that's the emulator
-            if isinstance(dev, UdpTransport):
-                wirelink = dev
-                break
+        wirelink = UdpTransport.enumerate()[0]
         client = TrezorClientDebugLink(wirelink)
         client.init_device()
         device.wipe(client)
@@ -148,7 +143,7 @@ class TestTrezorGetxpub(TrezorTestCase):
             vectors = json.load(f)
         for vec in vectors:
             with self.subTest(vector=vec):
-                # Setup with xprv
+                # Setup with mnemonic
                 device.wipe(self.client)
                 load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
@@ -223,7 +218,8 @@ class TestTrezorManCommands(TrezorTestCase):
         # Set a PIN
         device.wipe(self.client)
         load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
-        self.client.call(messages.ClearSession())
+        self.client.lock(_refresh_features=False)
+        self.client.end_session()
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
@@ -245,7 +241,7 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertEqual(result['error'], 'Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
         # Prompt pin
-        self.client.call(messages.ClearSession())
+        self.client.call(messages.EndSession())
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 

@@ -6,27 +6,32 @@ from .MultisigRedeemScriptType import MultisigRedeemScriptType
 
 if __debug__:
     try:
-        from typing import List
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+        EnumTypeInputScriptType = Literal[0, 1, 2, 3, 4]
     except ImportError:
-        List = None  # type: ignore
+        pass
 
 
 class TxInputType(p.MessageType):
 
     def __init__(
         self,
+        *,
+        prev_hash: bytes,
+        prev_index: int,
         address_n: List[int] = None,
-        prev_hash: bytes = None,
-        prev_index: int = None,
         script_sig: bytes = None,
-        sequence: int = None,
-        script_type: int = None,
+        sequence: int = 4294967295,
+        script_type: EnumTypeInputScriptType = 0,
         multisig: MultisigRedeemScriptType = None,
         amount: int = None,
         decred_tree: int = None,
-        decred_script_version: int = None,
-        prev_block_hash_bip115: bytes = None,
-        prev_block_height_bip115: int = None,
+        witness: bytes = None,
+        ownership_proof: bytes = None,
+        commitment_data: bytes = None,
+        orig_hash: bytes = None,
+        orig_index: int = None,
     ) -> None:
         self.address_n = address_n if address_n is not None else []
         self.prev_hash = prev_hash
@@ -37,23 +42,27 @@ class TxInputType(p.MessageType):
         self.multisig = multisig
         self.amount = amount
         self.decred_tree = decred_tree
-        self.decred_script_version = decred_script_version
-        self.prev_block_hash_bip115 = prev_block_hash_bip115
-        self.prev_block_height_bip115 = prev_block_height_bip115
+        self.witness = witness
+        self.ownership_proof = ownership_proof
+        self.commitment_data = commitment_data
+        self.orig_hash = orig_hash
+        self.orig_index = orig_index
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
             1: ('address_n', p.UVarintType, p.FLAG_REPEATED),
-            2: ('prev_hash', p.BytesType, 0),  # required
-            3: ('prev_index', p.UVarintType, 0),  # required
-            4: ('script_sig', p.BytesType, 0),
-            5: ('sequence', p.UVarintType, 0),  # default=4294967295
-            6: ('script_type', p.UVarintType, 0),  # default=SPENDADDRESS
-            7: ('multisig', MultisigRedeemScriptType, 0),
-            8: ('amount', p.UVarintType, 0),
-            9: ('decred_tree', p.UVarintType, 0),
-            10: ('decred_script_version', p.UVarintType, 0),
-            11: ('prev_block_hash_bip115', p.BytesType, 0),
-            12: ('prev_block_height_bip115', p.UVarintType, 0),
+            2: ('prev_hash', p.BytesType, p.FLAG_REQUIRED),
+            3: ('prev_index', p.UVarintType, p.FLAG_REQUIRED),
+            4: ('script_sig', p.BytesType, None),
+            5: ('sequence', p.UVarintType, 4294967295),  # default=4294967295
+            6: ('script_type', p.EnumType("InputScriptType", (0, 1, 2, 3, 4)), 0),  # default=SPENDADDRESS
+            7: ('multisig', MultisigRedeemScriptType, None),
+            8: ('amount', p.UVarintType, None),
+            9: ('decred_tree', p.UVarintType, None),
+            13: ('witness', p.BytesType, None),
+            14: ('ownership_proof', p.BytesType, None),
+            15: ('commitment_data', p.BytesType, None),
+            16: ('orig_hash', p.BytesType, None),
+            17: ('orig_index', p.UVarintType, None),
         }

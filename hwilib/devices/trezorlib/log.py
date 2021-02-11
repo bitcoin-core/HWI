@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -19,7 +19,13 @@ from typing import Optional, Set, Type
 
 from . import protobuf
 
-OMITTED_MESSAGES = set()  # type: Set[Type[protobuf.MessageType]]
+OMITTED_MESSAGES: Set[Type[protobuf.MessageType]] = set()
+
+DUMP_BYTES = 5
+DUMP_PACKETS = 4
+
+logging.addLevelName(DUMP_BYTES, "BYTES")
+logging.addLevelName(DUMP_PACKETS, "PACKETS")
 
 
 class PrettyProtobufFormatter(logging.Formatter):
@@ -39,13 +45,20 @@ class PrettyProtobufFormatter(logging.Formatter):
         return message
 
 
-def enable_debug_output(handler: Optional[logging.Handler] = None):
+def enable_debug_output(verbosity: int = 1, handler: Optional[logging.Handler] = None):
     if handler is None:
         handler = logging.StreamHandler()
 
     formatter = PrettyProtobufFormatter()
     handler.setFormatter(formatter)
 
+    if verbosity > 0:
+        level = logging.DEBUG
+    if verbosity > 1:
+        level = DUMP_BYTES
+    if verbosity > 2:
+        level = DUMP_PACKETS
+
     logger = logging.getLogger("trezorlib")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level)
     logger.addHandler(handler)

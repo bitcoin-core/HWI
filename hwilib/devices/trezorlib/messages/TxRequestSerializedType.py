@@ -2,11 +2,19 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class TxRequestSerializedType(p.MessageType):
 
     def __init__(
         self,
+        *,
         signature_index: int = None,
         signature: bytes = None,
         serialized_tx: bytes = None,
@@ -16,9 +24,9 @@ class TxRequestSerializedType(p.MessageType):
         self.serialized_tx = serialized_tx
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('signature_index', p.UVarintType, 0),
-            2: ('signature', p.BytesType, 0),
-            3: ('serialized_tx', p.BytesType, 0),
+            1: ('signature_index', p.UVarintType, None),
+            2: ('signature', p.BytesType, None),
+            3: ('serialized_tx', p.BytesType, None),
         }

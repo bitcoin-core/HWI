@@ -21,27 +21,19 @@ from ..errors import (
 )
 from .trezorlib.client import TrezorClient as Trezor
 from .trezorlib.debuglink import TrezorClientDebugLink
-from .trezorlib.exceptions import Cancelled
+from .trezorlib.exceptions import Cancelled, TrezorFailure
 from .trezorlib.transport import (
-    enumerate_devices,
-    get_transport,
-    TREZOR_VENDOR_IDS,
-)
-from .trezorlib.ui import (
-    echo,
-    PassphraseUI,
-    mnemonic_words,
-    PIN_CURRENT,
-    PIN_NEW,
-    PIN_CONFIRM,
-    PIN_MATRIX_DESCRIPTION,
-    prompt,
+    DEV_TREZOR1,
+    TREZORS,
+    hid,
+    udp,
+    webusb,
 )
 from .trezorlib import (
     btc,
     device,
 )
-from .trezorlib import messages as proto
+from .trezorlib import messages
 from ..base58 import (
     get_xpub_fingerprint,
     to_address,
@@ -62,14 +54,23 @@ from ..serializations import (
     ser_uint256,
 )
 from .. import bech32
+from mnemonic import Mnemonic
 from usb1 import USBErrorNoDevice
 from types import MethodType
 
 import base64
+import getpass
 import logging
 import sys
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
+
+PIN_MATRIX_DESCRIPTION = """
+Use the numeric keypad to describe number positions. The layout is:
+    7 8 9
+    4 5 6
+    1 2 3
+""".strip()
 
 # Only handles up to 15 of 15
 def parse_multisig(script):
@@ -89,8 +90,8 @@ def parse_multisig(script):
         key = script[offset:offset + 33]
         offset += 33
 
-        hd_node = proto.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=key)
-        pubkeys.append(proto.HDNodePathType(node=hd_node, address_n=[]))
+        hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=key)
+        pubkeys.append(messages.HDNodePathType(node=hd_node, address_n=[]))
 
     # Check things at the end
     n = script[offset] - 80
@@ -102,8 +103,9 @@ def parse_multisig(script):
         return (False, None)
 
     # Build MultisigRedeemScriptType and return it
-    multisig = proto.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
+    multisig = messages.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
+
 
 def trezor_exception(f):
     def func(*args, **kwargs):
@@ -117,24 +119,97 @@ def trezor_exception(f):
             raise DeviceConnectionError('Device disconnected')
     return func
 
+
 def interactive_get_pin(self, code=None):
-    if code == PIN_CURRENT:
+    if code == messages.PinMatrixRequestType.Currrent:
         desc = "current PIN"
-    elif code == PIN_NEW:
+    elif code == messages.PinMatrixRequestType.NewFirst:
         desc = "new PIN"
-    elif code == PIN_CONFIRM:
+    elif code == messages.PinMatrixRequestType.NewSecond:
         desc = "new PIN again"
     else:
         desc = "PIN"
 
-    echo(PIN_MATRIX_DESCRIPTION)
+    print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
 
     while True:
-        pin = prompt("Please enter {}".format(desc), hide_input=True)
+        pin = getpass.getpass(f"Please entire {desc}:\n")
         if not pin.isdigit():
-            echo("Non-numerical PIN provided, please try again")
+            print("Non-numerical PIN provided, please try again", file=sys.stderr)
         else:
             return pin
+
+
+def mnemonic_words(expand=False, language="english"):
+    if expand:
+        wordlist = Mnemonic(language).wordlist
+    else:
+        wordlist = set()
+
+    def expand_word(word):
+        if not expand:
+            return word
+        if word in wordlist:
+            return word
+        matches = [w for w in wordlist if w.startswith(word)]
+        if len(matches) == 1:
+            return matches[0]
+        print("Choose one of: " + ", ".join(matches), file=sys.stderr)
+        raise KeyError(word)
+
+    def get_word(type):
+        assert type == messages.WordRequestType.Plain
+        while True:
+            try:
+                word = input("Enter one word of mnemonic:\n")
+                return expand_word(word)
+            except KeyError:
+                pass
+            except Exception:
+                raise Cancelled from None
+
+    return get_word
+
+
+class PassphraseUI:
+    def __init__(self, passphrase):
+        self.passphrase = passphrase
+        self.pinmatrix_shown = False
+        self.prompt_shown = False
+        self.always_prompt = False
+        self.return_passphrase = True
+
+    def button_request(self, code):
+        if not self.prompt_shown:
+            print("Please confirm action on your Trezor device", file=sys.stderr)
+        if not self.always_prompt:
+            self.prompt_shown = True
+
+    def get_pin(self, code=None):
+        raise NotImplementedError('get_pin is not needed')
+
+    def disallow_passphrase(self):
+        self.return_passphrase = False
+
+    def get_passphrase(self):
+        if self.return_passphrase:
+            return self.passphrase
+        raise ValueError('Passphrase from Host is not allowed for Trezor T')
+
+
+HID_IDS = {DEV_TREZOR1}
+WEBUSB_IDS = TREZORS.copy()
+
+
+def get_path_transport(path: str):
+    devs = hid.HidTransport.enumerate(usb_ids=HID_IDS)
+    devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=WEBUSB_IDS))
+    devs.extend(udp.UdpTransport.enumerate())
+    for dev in devs:
+        if path == dev.get_path():
+            return dev
+    raise BadArgumentError(f"Could not find device by path: {path}")
+
 
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
@@ -142,14 +217,14 @@ class TrezorClient(HardwareWalletClient):
     def __init__(self, path, password='', expert=False):
         super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
+        transport = get_path_transport(path)
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
-            transport = get_transport(path)
             self.client = TrezorClientDebugLink(transport=transport)
             self.simulator = True
-            self.client.set_passphrase(password)
+            self.client.use_passphrase(password)
         else:
-            self.client = Trezor(transport=get_transport(path), ui=PassphraseUI(password))
+            self.client = Trezor(transport=transport, ui=PassphraseUI(password))
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
@@ -158,12 +233,24 @@ class TrezorClient(HardwareWalletClient):
         self.password = password
         self.type = 'Trezor'
 
-    def _check_unlocked(self):
+    def _prepare_device(self):
         self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
-        self.client.init_device()
-        if self.client.features.model == 'T':
+        resp = self.client.refresh_features()
+        # If this is a Trezor One or Keepkey, do Initialize
+        if resp.model == '1' or resp.model == 'K1-14AM':
+            self.client.init_device()
+        # For the T, we need to check if a passphrase needs to be entered
+        elif resp.model == 'T':
+            try:
+                self.client.ensure_unlocked()
+            except TrezorFailure:
+                self.client.init_device()
+
+    def _check_unlocked(self):
+        self._prepare_device()
+        if self.client.features.model == 'T' and isinstance(self.client.ui, PassphraseUI):
             self.client.ui.disallow_passphrase()
-        if self.client.features.pin_protection and not self.client.features.pin_cached:
+        if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
     # Must return a dict with the xpub
@@ -204,12 +291,11 @@ class TrezorClient(HardwareWalletClient):
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
             for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
-                txinputtype = proto.TxInputType()
-
-                # Set the input stuff
-                txinputtype.prev_hash = ser_uint256(txin.prevout.hash)[::-1]
-                txinputtype.prev_index = txin.prevout.n
-                txinputtype.sequence = txin.nSequence
+                txinputtype = messages.TxInputType(
+                    prev_hash=ser_uint256(txin.prevout.hash)[::-1],
+                    prev_index=txin.prevout.n,
+                    sequence=txin.nSequence,
+                )
 
                 # Detrermine spend type
                 scriptcode = b''
@@ -238,11 +324,11 @@ class TrezorClient(HardwareWalletClient):
 
                 if is_wit:
                     if p2sh:
-                        txinputtype.script_type = proto.InputScriptType.SPENDP2SHWITNESS
+                        txinputtype.script_type = messages.InputScriptType.SPENDP2SHWITNESS
                     else:
-                        txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                        txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
                 else:
-                    txinputtype.script_type = proto.InputScriptType.SPENDADDRESS
+                    txinputtype.script_type = messages.InputScriptType.SPENDADDRESS
                 txinputtype.amount = utxo.nValue
 
                 # Check if P2WSH
@@ -257,7 +343,7 @@ class TrezorClient(HardwareWalletClient):
                 def ignore_input():
                     txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (1 if self.is_testnet else 0), 0x80000000, 0, 0]
                     txinputtype.multisig = None
-                    txinputtype.script_type = proto.InputScriptType.SPENDWITNESS
+                    txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
                     to_ignore.append(input_num)
 
@@ -268,7 +354,7 @@ class TrezorClient(HardwareWalletClient):
                     txinputtype.multisig = multisig
                     if not is_wit:
                         if utxo.is_p2sh:
-                            txinputtype.script_type = proto.InputScriptType.SPENDMULTISIG
+                            txinputtype.script_type = messages.InputScriptType.SPENDMULTISIG
                         else:
                             # Cannot sign bare multisig, ignore it
                             ignore_input()
@@ -325,15 +411,14 @@ class TrezorClient(HardwareWalletClient):
             # prepare outputs
             outputs = []
             for i, out in py_enumerate(tx.tx.vout):
-                txoutput = proto.TxOutputType()
-                txoutput.amount = out.nValue
-                txoutput.script_type = proto.OutputScriptType.PAYTOADDRESS
+                txoutput = messages.TxOutputType(amount=out.nValue)
+                txoutput.script_type = messages.OutputScriptType.PAYTOADDRESS
                 if out.is_p2pkh():
                     txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
                 elif out.is_p2sh():
                     txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
                 elif out.is_opreturn():
-                    txoutput.script_type = proto.OutputScriptType.PAYTOOPRETURN
+                    txoutput.script_type = messages.OutputScriptType.PAYTOOPRETURN
                     txoutput.op_return_data = out.scriptPubKey[2:]
                 else:
                     wit, ver, prog = out.is_witness()
@@ -352,13 +437,13 @@ class TrezorClient(HardwareWalletClient):
                             txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif wit:
-                            txoutput.script_type = proto.OutputScriptType.PAYTOWITNESS
+                            txoutput.script_type = messages.OutputScriptType.PAYTOWITNESS
                             txoutput.address_n = keypath.path
                             txoutput.address = None
                         elif out.is_p2sh() and psbt_out.redeem_script:
                             wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
                             if wit and len(prog) == 20:
-                                txoutput.script_type = proto.OutputScriptType.PAYTOP2SHWITNESS
+                                txoutput.script_type = messages.OutputScriptType.PAYTOP2SHWITNESS
                                 txoutput.address_n = keypath.path
                                 txoutput.address = None
 
@@ -371,31 +456,38 @@ class TrezorClient(HardwareWalletClient):
                 if psbt_in.non_witness_utxo:
                     prev = psbt_in.non_witness_utxo
 
-                    t = proto.TransactionType()
+                    t = messages.TransactionType()
                     t.version = prev.nVersion
                     t.lock_time = prev.nLockTime
 
                     for vin in prev.vin:
-                        i = proto.TxInputType()
-                        i.prev_hash = ser_uint256(vin.prevout.hash)[::-1]
-                        i.prev_index = vin.prevout.n
-                        i.script_sig = vin.scriptSig
-                        i.sequence = vin.nSequence
+                        i = messages.TxInputType(
+                            prev_hash=ser_uint256(vin.prevout.hash)[::-1],
+                            prev_index=vin.prevout.n,
+                            script_sig=vin.scriptSig,
+                            sequence=vin.nSequence,
+                        )
                         t.inputs.append(i)
 
                     for vout in prev.vout:
-                        o = proto.TxOutputBinType()
-                        o.amount = vout.nValue
-                        o.script_pubkey = vout.scriptPubKey
+                        o = messages.TxOutputBinType(
+                            amount=vout.nValue,
+                            script_pubkey=vout.scriptPubKey,
+                        )
                         t.bin_outputs.append(o)
                     logging.debug(psbt_in.non_witness_utxo.hash)
                     prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
             # Sign the transaction
-            tx_details = proto.SignTx()
-            tx_details.version = tx.tx.nVersion
-            tx_details.lock_time = tx.tx.nLockTime
-            signed_tx = btc.sign_tx(self.client, self.coin_name, inputs, outputs, tx_details, prevtxs)
+            signed_tx = btc.sign_tx(
+                client=self.client,
+                coin_name=self.coin_name,
+                inputs=inputs,
+                outputs=outputs,
+                prev_txes=prevtxs,
+                version=tx.tx.nVersion,
+                lock_time=tx.tx.nLockTime,
+            )
 
             # Each input has one signature
             for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
@@ -429,11 +521,11 @@ class TrezorClient(HardwareWalletClient):
 
         # Script type
         if addr_type == AddressType.SH_WPKH:
-            script_type = proto.InputScriptType.SPENDP2SHWITNESS
+            script_type = messages.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WPKH:
-            script_type = proto.InputScriptType.SPENDWITNESS
+            script_type = messages.InputScriptType.SPENDWITNESS
         else:
-            script_type = proto.InputScriptType.SPENDADDRESS
+            script_type = messages.InputScriptType.SPENDADDRESS
 
         expanded_path = parse_path(keypath)
 
@@ -465,21 +557,21 @@ class TrezorClient(HardwareWalletClient):
         for p in pubkeys:
             if p.extkey is not None:
                 xpub = p.extkey
-                hd_node = proto.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkey_objs.append(proto.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
+                hd_node = messages.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
+                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
             else:
-                hd_node = proto.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=p.get_pubkey_bytes(0))
-                pubkey_objs.append(proto.HDNodePathType(node=hd_node, address_n=[]))
+                hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=p.get_pubkey_bytes(0))
+                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=[]))
 
-        multisig = proto.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
+        multisig = messages.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
 
         # Script type
         if addr_type == AddressType.SH_WPKH:
-            script_type = proto.InputScriptType.SPENDP2SHWITNESS
+            script_type = messages.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WPKH:
-            script_type = proto.InputScriptType.SPENDWITNESS
+            script_type = messages.InputScriptType.SPENDWITNESS
         else:
-            script_type = proto.InputScriptType.SPENDMULTISIG
+            script_type = messages.InputScriptType.SPENDMULTISIG
 
         for p in pubkeys:
             keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"
@@ -503,7 +595,7 @@ class TrezorClient(HardwareWalletClient):
     # Setup a new device
     @trezor_exception
     def setup_device(self, label='', passphrase=''):
-        self.client.init_device()
+        self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
@@ -523,7 +615,7 @@ class TrezorClient(HardwareWalletClient):
     # Restore device from mnemonic or xprv
     @trezor_exception
     def restore_device(self, label='', word_count=24):
-        self.client.init_device()
+        self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
@@ -545,14 +637,14 @@ class TrezorClient(HardwareWalletClient):
     def prompt_pin(self):
         self.coin_name = 'Testnet' if self.is_testnet else 'Bitcoin'
         self.client.open()
-        self.client.init_device()
+        self._prepare_device()
         if not self.client.features.pin_protection:
             raise DeviceAlreadyUnlockedError('This device does not need a PIN')
-        if self.client.features.pin_cached:
+        if self.client.features.unlocked:
             raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        self.client.call_raw(proto.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=proto.InputScriptType.SPENDADDRESS))
+        self.client.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=messages.InputScriptType.SPENDADDRESS))
         return {'success': True}
 
     # Send the pin
@@ -561,13 +653,13 @@ class TrezorClient(HardwareWalletClient):
         self.client.open()
         if not pin.isdigit():
             raise BadArgumentError("Non-numeric PIN provided")
-        resp = self.client.call_raw(proto.PinMatrixAck(pin=pin))
-        if isinstance(resp, proto.Failure):
-            self.client.features = self.client.call_raw(proto.GetFeatures())
-            if isinstance(self.client.features, proto.Features):
+        resp = self.client.call_raw(messages.PinMatrixAck(pin=pin))
+        if isinstance(resp, messages.Failure):
+            self.client.features = self.client.call_raw(messages.GetFeatures())
+            if isinstance(self.client.features, messages.Features):
                 if not self.client.features.pin_protection:
                     raise DeviceAlreadyUnlockedError('This device does not need a PIN')
-                if self.client.features.pin_cached:
+                if self.client.features.unlocked:
                     raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
             return {'success': False}
         return {'success': True}
@@ -587,11 +679,10 @@ class TrezorClient(HardwareWalletClient):
 
 def enumerate(password=''):
     results = []
-    for dev in enumerate_devices():
-        # enumerate_devices filters to Trezors and Keepkeys.
-        # Only allow Trezors and unknowns. Unknown devices will reach the check for vendor later
-        if dev.get_usb_vendor_id() not in TREZOR_VENDOR_IDS | {-1}:
-            continue
+    devs = hid.HidTransport.enumerate()
+    devs.extend(webusb.WebUsbTransport.enumerate())
+    devs.extend(udp.UdpTransport.enumerate())
+    for dev in devs:
         d_data = {}
 
         d_data['type'] = 'trezor'
@@ -600,7 +691,10 @@ def enumerate(password=''):
         client = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
             client = TrezorClient(d_data['path'], password)
-            client.client.init_device()
+            try:
+                client._prepare_device()
+            except TypeError:
+                continue
             if 'trezor' not in client.client.features.vendor:
                 continue
 
@@ -608,7 +702,7 @@ def enumerate(password=''):
             if d_data['path'] == 'udp:127.0.0.1:21324':
                 d_data['model'] += '_simulator'
 
-            d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.pin_cached
+            d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.unlocked
             if client.client.features.model == '1':
                 d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Trezor One if it has passphrase protection enabled
             else:
