@@ -370,7 +370,7 @@ class Bitbox02Client(HardwareWalletClient):
         threshold: int,
         origin_infos: Mapping[bytes, KeyOriginInfo],
         script_type: bitbox02.btc.BTCScriptConfig.Multisig.ScriptType,
-    ) -> Tuple[str, bitbox02.btc.BTCScriptConfigWithKeypath]:
+    ) -> Tuple[bytes, bitbox02.btc.BTCScriptConfigWithKeypath]:
         """
         From a threshold, {xpub: KeyOriginInfo} mapping and multisig script type,
         return our xpub and the BitBox02 multisig script config.
@@ -380,9 +380,9 @@ class Bitbox02Client(HardwareWalletClient):
         our_xpub_index = None
         our_account_keypath = None
 
-        xpubs: List[str] = []
+        xpubs: List[bytes] = []
         for i, (xpub, keyinfo) in builtins.enumerate(origin_infos.items()):
-            xpubs.append(base58.b58encode_check(xpub).decode())
+            xpubs.append(xpub)
             if device_fingerprint == keyinfo.fingerprint and keyinfo.path:
                 if _xpubs_equal_ignoring_version(
                     base58.b58decode_check(self._get_xpub(keyinfo.path)), xpub
@@ -403,7 +403,7 @@ class Bitbox02Client(HardwareWalletClient):
                 script_config=bitbox02.btc.BTCScriptConfig(
                     multisig=bitbox02.btc.BTCScriptConfig.Multisig(
                         threshold=threshold,
-                        xpubs=map(util.parse_xpub, xpubs),
+                        xpubs=[util.parse_xpub(base58.b58encode_check(xpub).decode()) for xpub in xpubs],
                         our_xpub_index=our_xpub_index,
                         script_type=script_type,
                     )
@@ -445,7 +445,41 @@ class Bitbox02Client(HardwareWalletClient):
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
     ) -> Dict[str, str]:
-        raise NotImplementedError("BitBox02 multisig not integrated into HWI yet")
+        path_suffixes = set(p.deriv_path for p in pubkeys)
+        if len(path_suffixes) != 1:
+            # Path suffix refers to the path after the account-level xpub, usually /<change>/<address>.
+            # The BitBox02 currently enforces that all of them are the same.
+            raise BadArgumentError("All multisig path suffixes must be the same")
+
+        # Figure out which of the cosigners is us.
+        key_origin_infos = {}
+        keypaths = {}
+        for pk in pubkeys:
+            assert pk.extkey and pk.origin
+            key_origin_infos[pk.extkey.serialize()] = pk.origin
+            keypaths[pk.extkey.serialize()] = pk.get_full_derivation_path(0)
+
+        if addr_type == AddressType.SH_WPKH:
+            script_type = bitbox02.btc.BTCScriptConfig.Multisig.P2WSH_P2SH
+        elif addr_type == AddressType.WPKH:
+            script_type = bitbox02.btc.BTCScriptConfig.Multisig.P2WSH
+        else:
+            raise BadArgumentError(
+                "BitBox02 currently only supports the following multisig script types: P2WSH, P2WSH_P2SH"
+            )
+        our_xpub, script_config_with_keypath = self._multisig_scriptconfig(
+            threshold, key_origin_infos, script_type
+        )
+        script_config = script_config_with_keypath.script_config
+        account_keypath: Sequence[int] = script_config_with_keypath.keypath
+        self._maybe_register_script_config(script_config, account_keypath)
+        keypath = parse_path(keypaths[our_xpub])
+
+        bb02 = self.init()
+        address = bb02.btc_address(
+            keypath, coin=self._get_coin(), script_config=script_config, display=True
+        )
+        return {"address": address}
 
     @bitbox02_exception
     def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
