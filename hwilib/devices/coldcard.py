@@ -48,6 +48,7 @@ from ..serializations import (
     AddressType,
     PSBT,
 )
+from ..common import Chain
 from hashlib import sha256
 
 import base64
@@ -95,7 +96,7 @@ class ColdcardClient(HardwareWalletClient):
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
         xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
-        if self.is_testnet:
+        if self.chain != Chain.MAIN:
             result = {'xpub': xpub_main_2_test(xpub)}
         else:
             result = {'xpub': xpub}

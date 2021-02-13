@@ -20,6 +20,7 @@ from .commands import (
     wipe_device,
     install_udev_rules,
 )
+from .common import Chain
 from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
@@ -117,14 +118,12 @@ class HWIArgumentParser(argparse.ArgumentParser):
         self.exit(2)
 
 def process_commands(cli_args):
-    CHAINS = ['main', 'test', 'regtest', 'signet']
-
     parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
     parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
-    parser.add_argument('--chain', help='Select chain to work with ({})'.format(', '.join(CHAINS)), default='main', choices=CHAINS)
+    parser.add_argument('--chain', help='Select chain to work with', type=Chain.argparse, choices=list(Chain), default=Chain.MAIN)
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
@@ -268,7 +267,6 @@ def process_commands(cli_args):
         return {'error': 'You must specify a device type or fingerprint for all commands except enumerate', 'code': NO_DEVICE_TYPE}
 
     client.chain = args.chain
-    client.is_testnet = args.chain in ['test', 'regtest', 'signet']
 
     # Do the commands
     with handle_errors(result=result, debug=args.debug):

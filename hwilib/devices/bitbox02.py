@@ -44,6 +44,7 @@ from ..key import (
     KeyOriginInfo,
     parse_path,
 )
+from ..common import Chain
 
 import hid  # type: ignore
 
@@ -327,14 +328,14 @@ class Bitbox02Client(HardwareWalletClient):
         )
 
     def _get_coin(self) -> bitbox02.btc.BTCCoin:
-        if self.is_testnet:
+        if self.chain != Chain.MAIN:
             return bitbox02.btc.TBTC
         return bitbox02.btc.BTC
 
     def _get_xpub(self, keypath: Sequence[int]) -> str:
         xpub_type = (
             bitbox02.btc.BTCPubRequest.TPUB
-            if self.is_testnet
+            if self.chain != Chain.MAIN
             else bitbox02.btc.BTCPubRequest.XPUB
         )
         return self.init().btc_xpub(

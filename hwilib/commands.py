@@ -32,6 +32,7 @@ from .descriptor import (
     WSHDescriptor,
 )
 from .devices import __all__ as all_devs
+from .common import Chain
 
 from itertools import count
 
@@ -147,7 +148,7 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
             parsed_path.append(H_(44))
 
         # Coin type
-        if client.chain == 'main':
+        if client.chain == Chain.MAIN:
             parsed_path.append(H_(0))
         else:
             parsed_path.append(H_(1))

@@ -7,6 +7,7 @@ from typing import (
 from .base58 import get_xpub_fingerprint_hex
 from .descriptor import PubkeyProvider
 from .serializations import AddressType, PSBT
+from .common import Chain
 
 
 class HardwareWalletClient(object):
@@ -20,7 +21,7 @@ class HardwareWalletClient(object):
         self.path = path
         self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
-        self.is_testnet = False
+        self.chain = Chain.MAIN
         self.fingerprint: Optional[str] = None
         # {bip32_path: <xpub string>}
         self.xpub_cache: Dict[str, str] = {}
