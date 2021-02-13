@@ -339,15 +339,10 @@ class LedgerClient(HardwareWalletClient):
 
         # Make signature into standard bitcoin format
         rLength = signature[3]
-        r = signature[4: 4 + rLength]
-        sLength = signature[4 + rLength + 1]
-        s = signature[4 + rLength + 2:]
-        if rLength == 33:
-            r = r[1:]
-        if sLength == 33:
-            s = s[1:]
+        r = int.from_bytes(signature[4: 4 + rLength], byteorder="big", signed=True)
+        s = int.from_bytes(signature[4 + rLength + 2:], byteorder="big", signed=True)
 
-        sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
+        sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r.to_bytes(32, byteorder="big", signed=False) + s.to_bytes(32, byteorder="big", signed=False)
 
         return {"signature": base64.b64encode(sig).decode('utf-8')}
 
