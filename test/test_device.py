@@ -11,7 +11,7 @@ import time
 import unittest
 
 from authproxy import AuthServiceProxy, JSONRPCException
-from hwilib.base58 import xpub_to_pub_hex
+from hwilib.base58 import xpub_to_pub_hex, to_address, decode
 from hwilib.cli import process_commands
 from hwilib.descriptor import AddChecksum
 from hwilib.key import KeyOriginInfo
@@ -106,6 +106,7 @@ class DeviceTestCase(unittest.TestCase):
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'stdin':
+            args = [f'"{arg}"' for arg in args]
             input_str = '\n'.join(args) + '\n'
             proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             result = proc.communicate(input_str.encode())
@@ -603,9 +604,23 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEqual(addr[4:58], result['address'][2:56])
 
 class TestSignMessage(DeviceTestCase):
+    def _check_sign_msg(self, msg):
+        addr_path = "m/44h/1h/0h/0/0"
+        sign_res = self.do_command(self.dev_args + ['signmessage', msg, addr_path])
+        self.assertNotIn("error", sign_res)
+        self.assertNotIn("code", sign_res)
+        self.assertIn("signature", sign_res)
+        sig = sign_res["signature"]
+
+        addr = self.do_command(self.dev_args + ['displayaddress', '--path', addr_path])["address"]
+        addr = to_address(decode(addr)[1:-4], b"\x6F")
+
+        self.assertTrue(self.rpc.verifymessage(addr, sig, msg))
+
     def test_sign_msg(self):
-        self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'm/44h/1h/0h/0/0'])
+        self._check_sign_msg("Message signing test")
+        self._check_sign_msg("285") # Specific test case for Ledger shorter S
 
     def test_bad_path(self):
-        result = self.do_command(self.dev_args + ['signmessage', '"Message signing test"', 'f'])
+        result = self.do_command(self.dev_args + ['signmessage', "Message signing test", 'f'])
         self.assertEquals(result['code'], -7)
