@@ -1,3 +1,8 @@
+"""
+BitBox02
+********
+"""
+
 from typing import (
     cast,
     Any,
@@ -347,6 +352,28 @@ class Bitbox02Client(HardwareWalletClient):
         )
 
     def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
+        """
+        Fetch the public key at the derivation path.
+
+        The BitBox02 has strict keypath validation.
+
+        The only accepted keypaths for xpubs are (as of firmware v9.4.0):
+
+        - `m/49'/0'/<account'>` for `p2wpkh-p2sh` (segwit wrapped in P2SH)
+        - `m/84'/0'/<account'>` for `p2wpkh` (native segwit v0)
+        - `m/48'/0'/<account'>/2'` for p2wsh multisig (native segwit v0 multisig).
+        - `m/48'/0'/<account'>/1'` for p2wsh-p2sh multisig (p2sh-wrapped segwit v0 multisig).
+        - `m/48'/0'/<account'>` for p2wsh and p2wsh-p2sh multisig.
+
+        `account'` can be between `0'` and `99'`.
+
+        For address keypaths, append `/0/<address index>` for a receive and `/1/<change index>` for a change
+        address. Up to `10000` addresses are supported.
+
+        In testnet mode, the second element must be `1'` (e.g. `m/49'/1'/...`).
+
+        Public keys for the Legacy address type (i.e. P2WPKH and P2SH multisig) derivation path is unsupported.
+        """
         path_uint32s = parse_path(bip32_path)
         try:
             xpub_str = self._get_xpub(path_uint32s)
@@ -489,6 +516,15 @@ class Bitbox02Client(HardwareWalletClient):
 
     @bitbox02_exception
     def sign_tx(self, psbt: PSBT) -> PSBT:
+        """
+        Sign a transaction with the BitBox02.
+
+        he BitBox02 allows mixing inputs of different script types (e.g. and `p2wpkh-p2sh` `p2wpkh`), as
+        long as the keypaths use the appropriate bip44 purpose field per input (e.g. `49'` and `84'`) and
+        all account indexes are the same.
+
+        Transactions with legacy inputs are not supported.
+        """
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
