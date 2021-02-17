@@ -46,14 +46,11 @@ from ..serializations import (
     is_p2wpkh,
     is_p2wsh,
     is_witness,
+    PSBT,
     ser_sig_der,
     ser_sig_compact,
     ser_string,
     ser_compact_size,
-)
-from ..base58 import (
-    get_xpub_fingerprint,
-    xpub_main_2_test,
 )
 from ..common import Chain
 
@@ -348,35 +345,27 @@ class DigitalbitboxClient(HardwareWalletClient):
             self.device.open_path(path.encode())
         self.password = password
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @digitalbitbox_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         if '\'' not in path and 'h' not in path and 'H' not in path:
             raise BadArgumentError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
         if 'error' in reply:
             raise DBBError(reply)
 
+        xpub = ExtendedKey.deserialize(reply["xpub"])
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(reply['xpub'])}
-        else:
-            result = {'xpub': reply['xpub']}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(reply['xpub'])
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the PSBT format
     @digitalbitbox_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
 
         # Create a transaction with all scriptsigs blanekd out
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = get_xpub_fingerprint(self.get_pubkey_at_path('m/0h')['xpub'])
+        master_fp = self.get_master_fingerprint_hex()
 
         # create sighashes
         sighash_tuples = []
@@ -465,7 +454,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
-                if master_fp == keypath.fingerprint:
+                if master_fp == keypath.fingerprint.hex():
                     # Add the keypath strings
                     keypath_str = keypath.get_derivation_path()
 
@@ -475,7 +464,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Return early if nothing to do
         if len(sighash_tuples) == 0:
-            return {'psbt': tx.serialize()}
+            return tx
 
         # Sign the sighashes
         to_send = '{"sign":{"data":['
@@ -514,10 +503,10 @@ class DigitalbitboxClient(HardwareWalletClient):
         for tup, sig in zip(sighash_tuples, der_sigs):
             tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return {'psbt': tx.serialize()}
+        return tx
 
     @digitalbitbox_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         to_hash = b""
         to_hash += self.message_magic
         to_hash += ser_compact_size(len(message))
@@ -551,18 +540,16 @@ class DigitalbitboxClient(HardwareWalletClient):
         compact_sig = ser_sig_compact(r, s, recid)
         logging.debug(binascii.hexlify(compact_sig))
 
-        return {"signature": base64.b64encode(compact_sig).decode('utf-8')}
+        return base64.b64encode(compact_sig).decode('utf-8')
 
-    # Display address of specified type on the device.
-    def display_singlesig_address(self, keypath: str, addr_type: AddressType) -> Dict[str, str]:
+    def display_singlesig_address(self, keypath: str, addr_type: AddressType) -> str:
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     def display_multisig_address(self, threshold: int, pubkeys: List[PubkeyProvider], addr_type: AddressType) -> Dict[str, str]:
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
-    # Setup a new device
     @digitalbitbox_exception
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         # Make sure this is not initialized
         reply = send_encrypt('{"device" : "info"}', self.password, self.device)
         if 'error' not in reply or ('error' in reply and (reply['error']['code'] != 101 and reply['error']['code'] != '101')):
@@ -582,24 +569,21 @@ class DigitalbitboxClient(HardwareWalletClient):
         to_send = {'seed': {'source': 'create', 'key': key, 'filename': backup_filename}}
         reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
         if 'error' in reply:
-            return {'success': False, 'error': reply['error']['message']}
-        return {'success': True}
+            raise DeviceFailureError(reply['error']['message'])
+        return True
 
-    # Wipe this device
     @digitalbitbox_exception
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         reply = send_encrypt('{"reset" : "__ERASE__"}', self.password, self.device)
         if 'error' in reply:
-            return {'success': False, 'error': reply['error']['message']}
-        return {'success': True}
+            raise DeviceFailureError(reply["error"]["message"])
+        return True
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
 
-    # Begin backup process
     @digitalbitbox_exception
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         # Need a wallet name and backup passphrase
         if not label or not passphrase:
             raise BadArgumentError('The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
@@ -610,22 +594,19 @@ class DigitalbitboxClient(HardwareWalletClient):
         reply = send_encrypt(json.dumps(to_send).encode(), self.password, self.device)
         if 'error' in reply:
             raise DBBError(reply)
-        return {'success': True}
+        return True
 
     # Close the device
     def close(self):
         self.device.close()
 
-    # Prompt pin
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
-    # Send pin
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
 def enumerate(password=''):

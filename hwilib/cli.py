@@ -29,8 +29,11 @@ from .errors import (
     NO_DEVICE_TYPE,
     UNAVAILABLE_ACTION,
 )
+from .hwwclient import HardwareWalletClient
 from .serializations import AddressType
 from . import __version__
+
+from typing import Dict
 
 import argparse
 import getpass
@@ -38,20 +41,21 @@ import logging
 import json
 import sys
 
-def backup_device_handler(args, client):
+
+def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
-def displayaddress_handler(args, client):
+def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
 def enumerate_handler(args):
     return enumerate(password=args.password)
 
-def getmasterxpub_handler(args, client):
+def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getmasterxpub(client)
 
-def getxpub_handler(args, client):
-    return getxpub(client, path=args.path)
+def getxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+    return getxpub(client, path=args.path, expert=args.expert)
 
 def getkeypool_handler(args, client):
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, addr_type=args.addr_type, addr_all=args.all)
@@ -59,35 +63,35 @@ def getkeypool_handler(args, client):
 def getdescriptors_handler(args, client):
     return getdescriptors(client, account=args.account)
 
-def restore_device_handler(args, client):
+def restore_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return restore_device(client, label=args.label, word_count=args.word_count)
     return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
-def setup_device_handler(args, client):
+def setup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
     return {'error': 'setup requires interactive mode', 'code': UNAVAILABLE_ACTION}
 
-def signmessage_handler(args, client):
+def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signmessage(client, message=args.message, path=args.path)
 
-def signtx_handler(args, client):
+def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signtx(client, psbt=args.psbt)
 
-def wipe_device_handler(args, client):
+def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
 
-def prompt_pin_handler(args, client):
+def prompt_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return prompt_pin(client)
 
-def toggle_passphrase_handler(args, client):
+def toggle_passphrase_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return toggle_passphrase(client)
 
-def send_pin_handler(args, client):
+def send_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return send_pin(client, pin=args.pin)
 
-def install_udev_rules_handler(args):
+def install_udev_rules_handler(args: argparse.Namespace) -> Dict[str, bool]:
     return install_udev_rules('udev', args.location)
 
 class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):

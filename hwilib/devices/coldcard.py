@@ -39,7 +39,6 @@ from .ckcc.constants import (
 )
 from ..base58 import (
     get_xpub_fingerprint,
-    xpub_main_2_test,
 )
 from ..key import (
     ExtendedKey,
@@ -88,31 +87,23 @@ class ColdcardClient(HardwareWalletClient):
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @coldcard_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self.device.check_mitm()
         path = path.replace('h', '\'')
         path = path.replace('H', '\'')
-        xpub = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
+        xpub_str = self.device.send_recv(CCProtocolPacker.get_xpub(path), timeout=None)
+        xpub = ExtendedKey.deserialize(xpub_str)
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(xpub)}
-        else:
-            result = {'xpub': xpub}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(xpub)
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
     def get_master_fingerprint_hex(self):
         # quick method to get fingerprint of wallet
         return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the combined unsigned transaction format
     @coldcard_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
@@ -180,10 +171,11 @@ class ColdcardClient(HardwareWalletClient):
 
             tx = PSBT()
             tx.deserialize(base64.b64encode(result).decode())
-        return {'psbt': tx.serialize()}
+
+        return tx
 
     @coldcard_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
@@ -212,15 +204,14 @@ class ColdcardClient(HardwareWalletClient):
         _, raw = done
 
         sig = str(base64.b64encode(raw), 'ascii').replace('\n', '')
-        return {"signature": sig}
+        return sig
 
-    # Display address of specified type on the device.
     @coldcard_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         self.device.check_mitm()
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
@@ -238,7 +229,7 @@ class ColdcardClient(HardwareWalletClient):
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        return {'address': address}
+        return address
 
     @coldcard_exception
     def display_multisig_address(
@@ -279,23 +270,19 @@ class ColdcardClient(HardwareWalletClient):
 
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
-        return {'address': address}
+        return address
 
-    # Setup a new device
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Coldcard does not support software setup')
 
-    # Wipe this device
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         raise UnavailableActionError('The Coldcard does not support wiping via software')
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Coldcard does not support restoring via software')
 
-    # Begin backup process
     @coldcard_exception
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         self.device.check_mitm()
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
@@ -321,22 +308,19 @@ class ColdcardClient(HardwareWalletClient):
         result = self.device.download_file(result_len, result_sha, file_number=0)
         filename = time.strftime('backup-%Y%m%d-%H%M.7z')
         open(filename, 'wb').write(result)
-        return {'success': True, 'message': 'The backup has been written to {}'.format(filename)}
+        return True
 
     # Close the device
     def close(self):
         self.device.close()
 
-    # Prompt pin
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
-    # Send pin
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
 def enumerate(password=''):

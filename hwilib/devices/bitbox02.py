@@ -19,6 +19,7 @@ import base58
 
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
+from ..key import ExtendedKey
 from ..serializations import (
     AddressType,
     PSBT,
@@ -317,12 +318,12 @@ class Bitbox02Client(HardwareWalletClient):
     def get_master_fingerprint_hex(self) -> str:
         return self.get_master_fingerprint().hex()
 
-    def prompt_pin(self) -> Dict[str, Union[bool, str, int]]:
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError(
             "The BitBox02 does not need a PIN sent from the host"
         )
 
-    def send_pin(self, pin: str) -> Dict[str, Union[bool, str, int]]:
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError(
             "The BitBox02 does not need a PIN sent from the host"
         )
@@ -342,13 +343,14 @@ class Bitbox02Client(HardwareWalletClient):
             keypath, coin=self._get_coin(), xpub_type=xpub_type, display=False
         )
 
-    def get_pubkey_at_path(self, bip32_path: str) -> Dict[str, str]:
+    def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
         path_uint32s = parse_path(bip32_path)
         try:
-            xpub = self._get_xpub(path_uint32s)
+            xpub_str = self._get_xpub(path_uint32s)
         except Bitbox02Exception as exc:
             raise BitBox02Error(str(exc))
-        return {"xpub": xpub}
+        xpub = ExtendedKey.deserialize(xpub_str)
+        return xpub
 
     def _maybe_register_script_config(
         self, script_config: bitbox02.btc.BTCScriptConfig, keypath: Sequence[int]
@@ -418,7 +420,7 @@ class Bitbox02Client(HardwareWalletClient):
         self,
         bip32_path: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         if addr_type == AddressType.SH_WPKH:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
@@ -437,7 +439,7 @@ class Bitbox02Client(HardwareWalletClient):
             script_config=script_config,
             display=True,
         )
-        return {"address": address}
+        return address
 
     @bitbox02_exception
     def display_multisig_address(
@@ -445,7 +447,7 @@ class Bitbox02Client(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         path_suffixes = set(p.deriv_path for p in pubkeys)
         if len(path_suffixes) != 1:
             # Path suffix refers to the path after the account-level xpub, usually /<change>/<address>.
@@ -480,10 +482,10 @@ class Bitbox02Client(HardwareWalletClient):
         address = bb02.btc_address(
             keypath, coin=self._get_coin(), script_config=script_config, display=True
         )
-        return {"address": address}
+        return address
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> Dict[str, str]:
+    def sign_tx(self, psbt: PSBT) -> PSBT:
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
@@ -732,27 +734,27 @@ class Bitbox02Client(HardwareWalletClient):
             # ser_sig_der() adds SIGHASH_ALL
             psbt_in.partial_sigs[pubkey] = ser_sig_der(r, s)
 
-        return {"psbt": psbt.serialize()}
+        return psbt
 
     def sign_message(
         self, message: Union[str, bytes], bip32_path: str
-    ) -> Dict[str, str]:
+    ) -> str:
         raise UnavailableActionError("The BitBox02 does not support 'signmessage'")
 
     @bitbox02_exception
-    def toggle_passphrase(self) -> Dict[str, Union[bool, str, int]]:
+    def toggle_passphrase(self) -> bool:
         bb02 = self.init()
         info = bb02.device_info()
         if info["mnemonic_passphrase_enabled"]:
             bb02.disable_mnemonic_passphrase()
         else:
             bb02.enable_mnemonic_passphrase()
-        return {"success": True}
+        return True
 
     @bitbox02_exception
     def setup_device(
         self, label: str = "", passphrase: str = ""
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         if passphrase:
             raise UnavailableActionError(
                 "Passphrase not needed when setting up a BitBox02."
@@ -763,33 +765,33 @@ class Bitbox02Client(HardwareWalletClient):
         if label:
             bb02.set_device_name(label)
         if not bb02.set_password():
-            return {"success": False}
-        return {"success": bb02.create_backup()}
+            return False
+        return bb02.create_backup()
 
     @bitbox02_exception
-    def wipe_device(self) -> Dict[str, Union[bool, str, int]]:
-        return {"success": self.init().reset()}
+    def wipe_device(self) -> bool:
+        return self.init().reset()
 
     @bitbox02_exception
     def backup_device(
         self, label: str = "", passphrase: str = ""
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         if label or passphrase:
             raise UnavailableActionError(
                 "Label/passphrase not needed when exporting mnemonic from the BitBox02."
             )
 
         self.init().show_mnemonic()
-        return {"success": True}
+        return True
 
     @bitbox02_exception
     def restore_device(
         self, label: str = "", word_count: int = 24
-    ) -> Dict[str, Union[bool, str, int]]:
+    ) -> bool:
         bb02 = self.init(expect_initialized=False)
 
         if label:
             bb02.set_device_name(label)
 
         bb02.restore_from_mnemonic()
-        return {"success": True}
+        return True

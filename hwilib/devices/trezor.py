@@ -1,7 +1,6 @@
 # Trezor interaction script
 
 from typing import (
-    Dict,
     List,
     Union,
 )
@@ -37,7 +36,6 @@ from .trezorlib import messages
 from ..base58 import (
     get_xpub_fingerprint,
     to_address,
-    xpub_main_2_test,
 )
 
 from ..key import (
@@ -51,6 +49,7 @@ from ..serializations import (
     is_p2sh,
     is_p2wsh,
     is_witness,
+    PSBT,
     ser_uint256,
 )
 from ..common import Chain
@@ -254,29 +253,21 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @trezor_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self._check_unlocked()
         try:
             expanded_path = parse_path(path)
         except ValueError as e:
             raise BadArgumentError(str(e))
         output = btc.get_public_node(self.client, expanded_path, coin_name=self.coin_name)
+        xpub = ExtendedKey.deserialize(output.xpub)
         if self.chain != Chain.MAIN:
-            result = {'xpub': xpub_main_2_test(output.xpub)}
-        else:
-            result = {'xpub': output.xpub}
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(output.xpub)
-            result.update(xpub_obj.get_printable_dict())
-        return result
+            xpub.version = ExtendedKey.TESTNET_PUBLIC
+        return xpub
 
-    # Must return a hex string with the signed transaction
-    # The tx must be in the psbt format
     @trezor_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         self._check_unlocked()
 
         # Get this devices master key fingerprint
@@ -502,22 +493,21 @@ class TrezorClient(HardwareWalletClient):
 
             p += 1
 
-        return {'psbt': tx.serialize()}
+        return tx
 
     @trezor_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         self._check_unlocked()
         path = parse_path(keypath)
         result = btc.sign_message(self.client, self.coin_name, path, message)
-        return {'signature': base64.b64encode(result.signature).decode('utf-8')}
+        return base64.b64encode(result.signature).decode('utf-8')
 
-    # Display address of specified type on the device.
     @trezor_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         self._check_unlocked()
 
         # Script type
@@ -539,7 +529,7 @@ class TrezorClient(HardwareWalletClient):
                 script_type=script_type,
                 multisig=None,
             )
-            return {'address': address}
+            return address
         except Exception:
             pass
 
@@ -551,7 +541,7 @@ class TrezorClient(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType
-    ) -> Dict[str, str]:
+    ) -> str:
         self._check_unlocked()
 
         pubkey_objs = []
@@ -587,15 +577,14 @@ class TrezorClient(HardwareWalletClient):
                     script_type=script_type,
                     multisig=multisig,
                 )
-                return {"address": address}
+                return address
             except Exception:
                 pass
 
         raise BadArgumentError("No path supplied matched device keys")
 
-    # Setup a new device
     @trezor_exception
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
@@ -604,28 +593,25 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
         device.reset(self.client, passphrase_protection=bool(self.password))
-        return {'success': True}
+        return True
 
-    # Wipe this device
     @trezor_exception
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         self._check_unlocked()
         device.wipe(self.client)
-        return {'success': True}
+        return True
 
-    # Restore device from mnemonic or xprv
     @trezor_exception
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         self._prepare_device()
         if not self.simulator:
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
 
         device.recover(self.client, word_count=word_count, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
-        return {'success': True}
+        return True
 
-    # Begin backup process
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
     # Close the device
@@ -633,9 +619,8 @@ class TrezorClient(HardwareWalletClient):
     def close(self):
         self.client.close()
 
-    # Prompt for a pin on device
     @trezor_exception
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'
         self.client.open()
         self._prepare_device()
@@ -646,11 +631,10 @@ class TrezorClient(HardwareWalletClient):
         print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
         print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         self.client.call_raw(messages.GetPublicKey(address_n=[0x8000002c, 0x80000001, 0x80000000], ecdsa_curve_name=None, show_display=False, coin_name=self.coin_name, script_type=messages.InputScriptType.SPENDADDRESS))
-        return {'success': True}
+        return True
 
-    # Send the pin
     @trezor_exception
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         self.client.open()
         if not pin.isdigit():
             raise BadArgumentError("Non-numeric PIN provided")
@@ -662,12 +646,11 @@ class TrezorClient(HardwareWalletClient):
                     raise DeviceAlreadyUnlockedError('This device does not need a PIN')
                 if self.client.features.unlocked:
                     raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
-            return {'success': False}
-        return {'success': True}
+            return False
+        return True
 
-    # Toggle passphrase
     @trezor_exception
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         self._check_unlocked()
         try:
             device.apply_settings(self.client, use_passphrase=not self.client.features.passphrase_protection)
@@ -676,7 +659,7 @@ class TrezorClient(HardwareWalletClient):
                 print('Confirm the action by entering your PIN', file=sys.stderr)
                 print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
-        return {'success': True}
+        return True
 
 def enumerate(password=''):
     results = []

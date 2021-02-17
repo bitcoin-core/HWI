@@ -33,8 +33,11 @@ from .descriptor import (
 )
 from .devices import __all__ as all_devs
 from .common import Chain
+from .hwwclient import HardwareWalletClient
 
 from itertools import count
+from typing import Dict
+
 
 py_enumerate = enumerate
 
@@ -94,20 +97,24 @@ def find_device(password='', device_type=None, fingerprint=None, expert=False):
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
-def getmasterxpub(client):
-    return client.get_master_xpub()
+def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
+    return {"xpub": client.get_master_xpub().to_string()}
 
-def signtx(client, psbt):
+def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    return client.sign_tx(tx)
+    return {"psbt": client.sign_tx(tx).serialize()}
 
-def getxpub(client, path):
-    return client.get_pubkey_at_path(path)
+def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, str]:
+    xpub = client.get_pubkey_at_path(path)
+    result = {"xpub": xpub.to_string()}
+    if expert:
+        result.update(xpub.get_printable_dict())
+    return result
 
-def signmessage(client, message, path):
-    return client.sign_message(message, path)
+def signmessage(client: HardwareWalletClient, message: str, path: str) -> Dict[str, str]:
+    return {"signature": client.sign_message(message, path)}
 
 def getkeypool_inner(client, path, start, end, internal=False, keypool=True, account=0, addr_type=AddressType.WPKH):
 
@@ -186,7 +193,7 @@ def getdescriptor(client, master_fpr, path=None, internal=False, addr_type=Addre
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
-        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base)['xpub']
+        client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
     pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base), path_suffix)
     if is_wpkh:
@@ -246,9 +253,9 @@ def getdescriptors(client, account=0):
 
     return result
 
-def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH):
+def displayaddress(client, path=None, desc=None, addr_type: AddressType = AddressType.PKH) -> Dict[str, str]:
     if path is not None:
-        return client.display_singlesig_address(path, addr_type)
+        return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
         descriptor = parse_descriptor(desc)
         addr_type = AddressType.PKH
@@ -264,7 +271,7 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                     addr_type = AddressType.SH_WPKH
                 elif not is_sh and is_wsh:
                     addr_type = AddressType.WPKH
-                return client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)
+                return {"address": client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]
@@ -272,38 +279,38 @@ def displayaddress(client, path=None, desc=None, addr_type: AddressType = Addres
                 return {'error': 'Descriptor missing origin info: ' + desc, 'code': BAD_ARGUMENT}
             if pubkey.origin.get_fingerprint_hex() != client.get_master_fingerprint_hex():
                 return {'error': 'Descriptor fingerprint does not match device: ' + desc, 'code': BAD_ARGUMENT}
-            xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path())['xpub']
+            xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
                 return {'error': 'Key in descriptor does not match device: ' + desc, 'code': BAD_ARGUMENT}
             if is_sh and is_wpkh:
                 addr_type = AddressType.SH_WPKH
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WPKH
-            return client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)
+            return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
 
-def setup_device(client, label='', backup_passphrase=''):
-    return client.setup_device(label, backup_passphrase)
+def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    return {"success": client.setup_device(label, backup_passphrase)}
 
-def wipe_device(client):
-    return client.wipe_device()
+def wipe_device(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.wipe_device()}
 
-def restore_device(client, label='', word_count=24):
-    return client.restore_device(label, word_count)
+def restore_device(client: HardwareWalletClient, label: str = "", word_count: int = 24) -> Dict[str, bool]:
+    return {"success": client.restore_device(label, word_count)}
 
-def backup_device(client, label='', backup_passphrase=''):
-    return client.backup_device(label, backup_passphrase)
+def backup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    return {"success": client.backup_device(label, backup_passphrase)}
 
-def prompt_pin(client):
-    return client.prompt_pin()
+def prompt_pin(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.prompt_pin()}
 
-def send_pin(client, pin):
-    return client.send_pin(pin)
+def send_pin(client: HardwareWalletClient, pin: str) -> Dict[str, bool]:
+    return {"success": client.send_pin(pin)}
 
-def toggle_passphrase(client):
-    return client.toggle_passphrase()
+def toggle_passphrase(client: HardwareWalletClient) -> Dict[str, bool]:
+    return {"success": client.toggle_passphrase()}
 
-def install_udev_rules(source, location):
+def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller
-        return UDevInstaller.install(source, location)
+        return {"success": UDevInstaller.install(source, location)}
     return {'error': 'udev rules are not needed on your platform', 'code': NOT_IMPLEMENTED}

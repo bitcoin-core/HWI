@@ -188,7 +188,7 @@ class TestTrezorManCommands(TrezorTestCase):
         t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
         t_client.client.ui.pin = '1234'
         result = t_client.setup_device()
-        self.assertTrue(result['success'])
+        self.assertTrue(result)
 
         # Make sure device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup'])

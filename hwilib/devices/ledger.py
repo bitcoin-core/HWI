@@ -1,7 +1,6 @@
 # Ledger interaction script
 
 from typing import (
-    Dict,
     List,
     Union,
 )
@@ -29,20 +28,20 @@ from .btchip.btchipUtils import compress_public_key
 import base64
 import hid
 import struct
-from .. import base58
 
 from ..key import (
     ExtendedKey,
+    parse_path,
 )
 from ..serializations import (
     AddressType,
-    hash256,
+    CTransaction,
     hash160,
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
-    CTransaction,
+    PSBT,
 )
 import logging
 import re
@@ -124,10 +123,8 @@ class LedgerClient(HardwareWalletClient):
 
         self.app = btchip(self.dongle)
 
-    # Must return a dict with the xpub
-    # Retrieves the public key at the specified BIP 32 derivation path
     @ledger_exception
-    def get_pubkey_at_path(self, path):
+    def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         if not check_keypath(path):
             raise BadArgumentError("Invalid keypath")
         path = path[2:]
@@ -135,7 +132,8 @@ class LedgerClient(HardwareWalletClient):
         path = path.replace('H', '\'')
         # This call returns raw uncompressed pubkey, chaincode
         pubkey = self.app.getWalletPublicKey(path)
-        if path != "":
+        int_path = parse_path(path)
+        if len(path) > 0:
             parent_path = ""
             for ind in path.split("/")[:-1]:
                 parent_path += ind + "/"
@@ -145,44 +143,25 @@ class LedgerClient(HardwareWalletClient):
             parent = self.app.getWalletPublicKey(parent_path)
             fpr = hash160(compress_public_key(parent["publicKey"]))[:4]
 
-            # Compute child info
-            childstr = path.split("/")[-1]
-            hard = 0
-            if childstr[-1] == "'" or childstr[-1] == "h" or childstr[-1] == "H":
-                childstr = childstr[:-1]
-                hard = 0x80000000
-            child = struct.pack(">I", int(childstr) + hard)
+            child = int_path[-1]
         # Special case for m
         else:
-            child = bytearray.fromhex("00000000")
+            child = 0
             fpr = child
 
-        chainCode = pubkey["chainCode"]
-        publicKey = compress_public_key(pubkey["publicKey"])
+        xpub = ExtendedKey(
+            version=ExtendedKey.MAINNET_PUBLIC if self.chain == Chain.MAIN else ExtendedKey.TESTNET_PUBLIC,
+            depth=len(path.split("/")) if len(path) > 0 else 0,
+            parent_fingerprint=fpr,
+            child_num=child,
+            chaincode=pubkey["chainCode"],
+            privkey=None,
+            pubkey=compress_public_key(pubkey["publicKey"]),
+        )
+        return xpub
 
-        depth = len(path.split("/")) if len(path) > 0 else 0
-        depth = struct.pack("B", depth)
-
-        if self.chain != Chain.MAIN:
-            version = bytearray.fromhex("043587CF")
-        else:
-            version = bytearray.fromhex("0488B21E")
-        extkey = version + depth + fpr + child + chainCode + publicKey
-        checksum = hash256(extkey)[:4]
-
-        xpub = base58.encode(extkey + checksum)
-        result = {"xpub": xpub}
-
-        if self.expert:
-            xpub_obj = ExtendedKey.deserialize(xpub)
-            result.update(xpub_obj.get_printable_dict())
-        return result
-
-    # Must return a hex string with the signed transaction
-    # The tx must be in the combined unsigned transaction format
-    # Current only supports segwit signing
     @ledger_exception
-    def sign_tx(self, tx):
+    def sign_tx(self, tx: PSBT) -> PSBT:
         c_tx = CTransaction(tx.tx)
         tx_bytes = c_tx.serialize_with_witness()
 
@@ -321,10 +300,10 @@ class LedgerClient(HardwareWalletClient):
                     first_input = False
 
         # Send PSBT back
-        return {'psbt': tx.serialize()}
+        return tx
 
     @ledger_exception
-    def sign_message(self, message: Union[str, bytes], keypath: str) -> Dict[str, str]:
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
         if isinstance(message, str):
@@ -349,21 +328,20 @@ class LedgerClient(HardwareWalletClient):
 
         sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r + s
 
-        return {"signature": base64.b64encode(sig).decode('utf-8')}
+        return base64.b64encode(sig).decode('utf-8')
 
-    # Display address of specified type on the device. Only supports single-key based addresses.
     @ledger_exception
     def display_singlesig_address(
         self,
         keypath: str,
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
         p2sh_p2wpkh = addr_type == AddressType.SH_WPKH
         bech32 = addr_type == AddressType.WPKH
         output = self.app.getWalletPublicKey(keypath[2:], True, p2sh_p2wpkh or bech32, bech32)
-        return {'address': output['address'][12:-2]} # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
+        return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
     @ledger_exception
     def display_multisig_address(
@@ -371,39 +349,32 @@ class LedgerClient(HardwareWalletClient):
         threshold: int,
         pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
-    ) -> Dict[str, str]:
+    ) -> str:
         raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
 
-    # Setup a new device
-    def setup_device(self, label='', passphrase=''):
+    def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
 
-    # Wipe this device
-    def wipe_device(self):
+    def wipe_device(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
 
-    # Restore device from mnemonic or xprv
-    def restore_device(self, label='', word_count=24):
+    def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
 
-    # Begin backup process
-    def backup_device(self, label='', passphrase=''):
+    def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
 
     # Close the device
     def close(self):
         self.dongle.close()
 
-    # Prompt pin
-    def prompt_pin(self):
+    def prompt_pin(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
-    # Send pin
-    def send_pin(self, pin):
+    def send_pin(self, pin: str) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
-    # Toggle passphrase
-    def toggle_passphrase(self):
+    def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
 def enumerate(password=''):
