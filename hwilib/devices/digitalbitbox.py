@@ -1,4 +1,7 @@
-# Digital Bitbox interaction script
+"""
+BitBox01
+********
+"""
 
 import hid
 import struct
@@ -13,6 +16,7 @@ import logging
 import socket
 import sys
 import time
+from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -152,6 +156,7 @@ class DBBError(Exception):
         return 'Error: {}, Code: {}'.format(self.error['error']['message'], self.error['error']['code'])
 
 def digitalbitbox_exception(f: Callable[..., Any]) -> Any:
+    @wraps(f)
     def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
@@ -344,6 +349,13 @@ def format_backup_filename(name: str) -> str:
 class DigitalbitboxClient(HardwareWalletClient):
 
     def __init__(self, path: str, password: str, expert: bool = False) -> None:
+        """
+        The `DigitalbitboxClient` is a `HardwareWalletClient` for interacting with BitBox01 devices (previously known as the Digital BitBox).
+
+        :param path: Path to the device as given by `enumerate`
+        :param password: The password required to communicate with the device. Must be provided.
+        :param expert: Whether to be in expert mode and return additional information.
+        """
         super(DigitalbitboxClient, self).__init__(path, password, expert)
         if not password:
             raise NoPasswordError('Password must be supplied for digital BitBox')
@@ -359,6 +371,12 @@ class DigitalbitboxClient(HardwareWalletClient):
 
     @digitalbitbox_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
+        """
+        Retrieve the public key at the path.
+        The BitBox01 requires that at least one of the levels in the path is hardened.
+
+        :param path: Path to retrieve the public key at.
+        """
         if '\'' not in path and 'h' not in path and 'H' not in path:
             raise BadArgumentError('The digital bitbox requires one part of the derivation path to be derived using hardened keys')
         reply = send_encrypt('{"xpub":"' + path + '"}', self.password, self.device)
@@ -556,9 +574,19 @@ class DigitalbitboxClient(HardwareWalletClient):
         return base64.b64encode(compact_sig).decode('utf-8')
 
     def display_singlesig_address(self, keypath: str, addr_type: AddressType) -> str:
+        """
+        The BitBox01 does not have a screen to display addresses on.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     def display_multisig_address(self, threshold: int, pubkeys: List[PubkeyProvider], addr_type: AddressType) -> str:
+        """
+        The BitBox01 does not have a screen to display addresses on.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
     @digitalbitbox_exception
@@ -593,6 +621,11 @@ class DigitalbitboxClient(HardwareWalletClient):
         return True
 
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
+        """
+        The BitBox01 does not support restoring via software.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
 
     @digitalbitbox_exception
@@ -613,12 +646,27 @@ class DigitalbitboxClient(HardwareWalletClient):
         self.device.close()
 
     def prompt_pin(self) -> bool:
+        """
+        The BitBox01 does not need a PIN sent from the host.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
     def send_pin(self, pin: str) -> bool:
+        """
+        The BitBox01 does not need a PIN sent from the host.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
     def toggle_passphrase(self) -> bool:
+        """
+        The BitBox01 does not support toggling passphrase from the host.
+
+        :raises UnaavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
