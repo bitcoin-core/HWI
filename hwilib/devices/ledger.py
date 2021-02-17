@@ -1,5 +1,9 @@
-# Ledger interaction script
+"""
+Ledger Devices
+**************
+"""
 
+from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -93,6 +97,7 @@ cancels = [
 ]
 
 def ledger_exception(f: Callable[..., Any]) -> Any:
+    @wraps(f)
     def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
@@ -170,6 +175,11 @@ class LedgerClient(HardwareWalletClient):
 
     @ledger_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
+        """
+        Sign a transaction with a Ledger device. Not all transactiosn can be signed by a Ledger.
+
+        - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs wil lbe signed in this case.
+        """
         c_tx = CTransaction(tx.tx)
         tx_bytes = c_tx.serialize_with_witness()
 
@@ -354,27 +364,62 @@ class LedgerClient(HardwareWalletClient):
         raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
+        """
+        The Coldcard does not support setup via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not support software setup')
 
     def wipe_device(self) -> bool:
+        """
+        The Coldcard does not support wiping via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not support wiping via software')
 
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
+        """
+        The Coldcard does not support restoring via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not support restoring via software')
 
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
+        """
+        The Coldcard does not support backing up via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
 
     def close(self) -> None:
         self.dongle.close()
 
     def prompt_pin(self) -> bool:
+        """
+        The Coldcard does not need a PIN sent from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
     def send_pin(self, pin: str) -> bool:
+        """
+        The Coldcard does not need a PIN sent from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not need a PIN sent from the host')
 
     def toggle_passphrase(self) -> bool:
+        """
+        The Coldcard does not support toggling passphrase from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
 def enumerate(password: str = '') -> List[Dict[str, Any]]:
