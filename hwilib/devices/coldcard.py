@@ -1,4 +1,7 @@
-# Coldcard interaction script
+"""
+Coldcard
+********
+"""
 
 from typing import (
     Dict,
@@ -50,6 +53,7 @@ from ..common import (
     AddressType,
     Chain,
 )
+from functools import wraps
 from hashlib import sha256
 
 import base64
@@ -70,6 +74,7 @@ CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 
 
 def coldcard_exception(f: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(f)
     def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
@@ -111,6 +116,13 @@ class ColdcardClient(HardwareWalletClient):
 
     @coldcard_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
+        """
+        Sign a transaction with the Coldcard.
+
+        - The Coldcard firmware only supports signing single key and multisig transactions. It cannot sign arbitrary scripts.
+        - Multisigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
+        - Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
+        """
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
@@ -282,16 +294,38 @@ class ColdcardClient(HardwareWalletClient):
         return address
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
+        """
+        The Coldcard does not support setup via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not support software setup')
 
     def wipe_device(self) -> bool:
+        """
+        The Coldcard does not support wiping via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not support wiping via software')
 
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
+        """
+        The Coldcard does not support restoring via software.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not support restoring via software')
 
     @coldcard_exception
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
+        """
+        Creates a backup file in the current working directory. This file is protected by the
+        passphrase shown on the Coldcard.
+
+        :param label: Value is ignored
+        :param passphrase: Value is ignored
+        """
         self.device.check_mitm()
 
         ok = self.device.send_recv(CCProtocolPacker.start_backup())
@@ -323,12 +357,27 @@ class ColdcardClient(HardwareWalletClient):
         self.device.close()
 
     def prompt_pin(self) -> bool:
+        """
+        The Coldcard does not need a PIN sent from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
     def send_pin(self, pin: str) -> bool:
+        """
+        The Coldcard does not need a PIN sent from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not need a PIN sent from the host')
 
     def toggle_passphrase(self) -> bool:
+        """
+        The Coldcard does not support toggling passphrase from the host.
+
+        :raises UnavailableActionError: Always, this function is unavailable
+        """
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
