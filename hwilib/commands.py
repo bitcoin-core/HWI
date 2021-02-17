@@ -1,6 +1,22 @@
 #! /usr/bin/env python3
 
-# Hardware wallet interaction script
+"""
+Commands
+********
+
+The functions in this module are the primary way to interact with hardware wallets.
+Each function that takes a ``client`` uses a :class:`~hwilib.hwwclient.HardwareWalletClient`.
+The functions then call public members of that client to retrieve the data needed.
+
+Clients can be constructed using :func:`~find_device` or :func:`~get_client`.
+
+The :func:`~enumerate` function returns information about what devices are available to be connected to.
+These information can then be used with :func:`~find_device` or :func:`~get_client` to get a :class:`~hwilib.hwwclient.HardwareWalletClient`.
+
+Note that this documentation does not specify every exception that can be raised.
+Many exceptions are buried within the functions implemented by each device's :class:`~hwilib.hwwclient.HardwareWalletClient`.
+For more information about the exceptions that those can raise, please see the specific client documentation.
+"""
 
 import importlib
 import platform
@@ -51,6 +67,17 @@ py_enumerate = enumerate
 
 # Get the client for the device
 def get_client(device_type: str, device_path: str, password: str = "", expert: bool = False) -> Optional[HardwareWalletClient]:
+    """
+    Returns a HardwareWalletClient for the given device type at the device path
+
+    :param device_type: The type of device
+    :param device_path: The path specifying where the device can be accessed as returned by :func:`~enumerate`
+    :param password: The password to use for this device
+    :param expert: Whether the device should be opened in expert mode (prints more information for some commands)
+    :return: A :class:`~hwilib.hwwclient.HardwareWalletClient` to interact with the device
+    :raises: UnknownDeviceError: if the device type is not known by HWI
+    """
+
     device_type = device_type.split('_')[0]
     class_name = device_type.capitalize()
     module = device_type.lower()
@@ -69,6 +96,13 @@ def get_client(device_type: str, device_path: str, password: str = "", expert: b
 
 # Get a list of all available hardware wallets
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
+    """
+    Enumerate all of the devices that HWI can potentially access.
+
+    :param password: The password to use for devices which take passwords from the host.
+    :return: A list of devices for which clients can be created for.
+    """
+
     result: List[Dict[str, Any]] = []
 
     for module in all_devs:
@@ -86,6 +120,20 @@ def find_device(
     fingerprint: Optional[str] = None,
     expert: bool = False,
 ) -> Optional[HardwareWalletClient]:
+    """
+    Find a device from the device type or fingerprint and get a client to access it.
+    This is used as an alternative to :func:`~get_client` if the device path is not known.
+
+    :param password: A password that may be needed to access the device if it can take passwords from the host
+    :param device_type: The type of device. The client returned will be for this type of device.
+        If not provided, the fingerprint must be provided
+    :param fingerprint: The fingerprint of the master public key for the device.
+        The client returned will have a master public key fingerprint matching this.
+        If not provided, device_type must be provided.
+    :param expert: Whether the device should be opened in expert mode (enables additional output for some actions)
+    :return: A client to interact with the found device
+    """
+
     devices = enumerate(password)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
@@ -114,15 +162,40 @@ def find_device(
     return None
 
 def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
+    """
+    Get the master extended public key from a client
+
+    :param client: The client to interact with
+    :return: A dictionary containing the public key at the ``m/44'/0'/0'`` derivation path.
+        Returned as ``{"xpub": <xpub string>}``.
+    """
     return {"xpub": client.get_master_xpub().to_string()}
 
 def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
+    """
+    Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
+
+    :param client: The client to interact with
+    :param psbt: The PSBT to sign
+    :return: A dictionary containing the processed PSBT serialized in Base64.
+        Returned as ``{"psbt": <base64 psbt string>}``.
+    """
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
     return {"psbt": client.sign_tx(tx).serialize()}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:
+    """
+    Get the master public key at a path from a client
+
+    :param client: The client to interact with
+    :param path: The derivation path for the public key to retrieve
+    :param expert: Whether to provide more information intended for experts.
+    :return: A dictionary containing the public key at the ``bip32_path``.
+        With expert mode, the information contained within the xpub are decoded and displayed.
+        Returned as ``{"xpub": <xpub string>}``.
+    """
     xpub = client.get_pubkey_at_path(path)
     result: Dict[str, Any] = {"xpub": xpub.to_string()}
     if expert:
@@ -130,6 +203,18 @@ def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Di
     return result
 
 def signmessage(client: HardwareWalletClient, message: str, path: str) -> Dict[str, str]:
+    """
+    Sign a message using the key at the derivation path with the client.
+
+    The message will be signed using the Bitcoin signed message standard used by Bitcoin Core.
+    The message can be either a string which is then encoded to bytes, or bytes.
+
+    :param client: The client to interact with
+    :param message: The message to sign
+    :param path: The derivation path for the key to sign with
+    :return: A dictionary containing the signature.
+        Returned as ``{"signature": <base64 signature string>}``.
+    """
     return {"signature": client.sign_message(message, path)}
 
 def getkeypool_inner(
@@ -142,6 +227,19 @@ def getkeypool_inner(
     account: int = 0,
     addr_type: AddressType = AddressType.WPKH
 ) -> List[Dict[str, Any]]:
+    """
+    :meta private:
+
+    Construct a single dictionary that specifies a single descriptor and the extra fields needed for ``importmulti`` or ``importdescriptors`` to import it.
+
+    :param path: The derivation path for the key in the descriptor
+    :param start: The start index of the range, inclusive
+    :param end: The end index of the range, inclusive
+    :param internal: Whether to specify this import is change
+    :param keypool: Whether to specify this import should be added to the keypool
+    :param account: The BIP 44 account to use if ``path`` is not specified
+    :param addr_type: The type of address the descriptor should create
+    """
     master_fpr = client.get_master_fingerprint()
 
     desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
@@ -170,6 +268,20 @@ def getdescriptor(
     start: Optional[int] = None,
     end: Optional[int] = None
 ) -> Descriptor:
+    """
+    Get a descriptor from the client.
+
+    :param client: The client to interact with
+    :param master_fpr: The hex string for the master fingerprint of the device to use in the descriptor
+    :param path: The derivation path for the xpub from which additional keys will be derived.
+    :param internal: Whether the dictionary should indicate that the descriptor should be for change addresses
+    :param addr_type: The type of address the descriptor should create
+    :param account: The BIP 44 account to use if ``path`` is not specified
+    :param start: The start of the range to import, inclusive
+    :param end: The end of the range to import, inclusive
+    :return: The descriptor constructed given the above arguments and key fetched from the device
+    :raises: BadArgumentError: if an argument is malformed or missing.
+    """
     is_wpkh = addr_type is AddressType.WPKH
     is_sh_wpkh = addr_type is AddressType.SH_WPKH
 
@@ -244,6 +356,23 @@ def getkeypool(
     addr_type: AddressType = AddressType.PKH,
     addr_all: bool = False
 ) -> List[Dict[str, Any]]:
+    """
+    Get a dictionary which can be passed to Bitcoin Core's ``importmulti`` or ``importdescriptors`` RPCs to import a watchonly wallet based on the client.
+    By default, a descriptor for legacy addresses is returned.
+
+    :param client: The client to interact with
+    :param path: The derivation path for the xpub from which additional keys will be derived.
+    :param start: The start of the range to import, inclusive
+    :param end: The end of the range to import, inclusive
+    :param internal: Whether the dictionary should indicate that the descriptor should be for change addresses
+    :param keypool: Whether the dictionary should indicate that the dsecriptor should be added to the Bitcoin Core keypool/addresspool
+    :param account: The BIP 44 account to use if ``path`` is not specified
+    :param sh_wpkh: Whether to return a descriptor specifying p2sh-segwit addresses
+    :param wpkh: Whether to return a descriptor specifying native segwit addresses
+    :param addr_all: Whether to return a multiple descriptors for every address type
+    :return: The dictionary containing the descriptor and all of the arguments for ``importmulti`` or ``importdescriptors``
+    :raises: BadArgumentError: if an argument is malformed or missing.
+    """
 
     addr_types = [addr_type]
     if addr_all:
@@ -265,6 +394,14 @@ def getdescriptors(
     client: HardwareWalletClient,
     account: int = 0
 ) -> Dict[str, List[str]]:
+    """
+    Get descriptors from the client.
+
+    :param client: The client to interact with
+    :param account: The BIP 44 account to use
+    :return: Multiple descriptors from the device matching the BIP 44 standard paths and the given ``account``.
+    :raises: BadArgumentError: if an argument is malformed or missing.
+    """
     master_fpr = client.get_master_fingerprint()
 
     result = {}
@@ -293,6 +430,18 @@ def displayaddress(
     desc: Optional[str] = None,
     addr_type: AddressType = AddressType.PKH
 ) -> Dict[str, str]:
+    """
+    Display an address on the device for client.
+    The address can be specified by the path with additional parameters, or by a descriptor.
+
+    :param client: The client to interact with
+    :param path: The path of the address to display. Mutually exclusive with ``desc``
+    :param desc: The descriptor to display the address for. Mutually exclusive with ``path``
+    :param addr_type: The address type to return. Only works with ``path``
+    :return: A dictionary containing the address displayed.
+        Returned as ``{"address": <base58 or bech32 address string>}``.
+    :raises: BadArgumentError: if an argument is malformed, missing, or conflicts.
+    """
     if path is not None:
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
@@ -331,27 +480,97 @@ def displayaddress(
     raise BadArgumentError("Missing both path and descriptor")
 
 def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    """
+    Setup a device that has not yet been initialized.
+
+    :param client: The client to interact with
+    :param label: The label to apply to the newly setup device
+    :param backup_passphrase: The passphrase to use for the backup, if backups are encrypted for that device
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.setup_device(label, backup_passphrase)}
 
 def wipe_device(client: HardwareWalletClient) -> Dict[str, bool]:
+    """
+    Wipe a device
+
+    :param client: The client to interact with
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.wipe_device()}
 
 def restore_device(client: HardwareWalletClient, label: str = "", word_count: int = 24) -> Dict[str, bool]:
+    """
+    Restore a backup to a device that has not yet been initialized.
+
+    :param client: The client to interact with
+    :param label: The label to apply to the newly setup device
+    :param word_count: The number of words in the recovery phrase
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.restore_device(label, word_count)}
 
 def backup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
+    """
+    Create a backup of the device
+
+    :param client: The client to interact with
+    :param label: The label to apply to the newly setup device
+    :param backup_passphrase: The passphrase to use for the backup, if backups are encrypted for that device
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.backup_device(label, backup_passphrase)}
 
 def prompt_pin(client: HardwareWalletClient) -> Dict[str, bool]:
+    """
+    Trigger the device to show the setup for PIN entry.
+
+    :param client: The client to interact with
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.prompt_pin()}
 
 def send_pin(client: HardwareWalletClient, pin: str) -> Dict[str, bool]:
+    """
+    Send a PIN to the device after :func:`prompt_pin` has been called.
+
+    :param client: The client to interact with
+    :param pin: The PIN to send
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.send_pin(pin)}
 
 def toggle_passphrase(client: HardwareWalletClient) -> Dict[str, bool]:
+    """
+    Toggle whether the device is using a BIP 39 passphrase.
+
+    :param client: The client to interact with
+    :return: A dictionary with the ``success`` key.
+    """
     return {"success": client.toggle_passphrase()}
 
 def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
+    """
+    Install the udev rules to the local machine.
+    The rules will be copied from the source to the location.
+    ``udevadm`` will also be triggered and the rules reloaded so that the devices can be plugged in and used immediately.
+    A ``plugdev`` group will also be created if it does not exist and the user will be added to it.
+
+    The recommended source location is ``hwilib/udev``. The recommended destination location is ``/etc/udev/rules.d``
+
+    This function is equivalent to::
+
+        sudo cp hwilib/udev/*rules /etc/udev/rules.d/
+        sudo udevadm trigger
+        sudo udevadm control --reload-rules
+        sudo groupadd plugdev
+        sudo usermod -aG plugdev `whoami`
+
+    :param source: The directory containing the udev rules to install
+    :param location: The directory to install the udev rules to
+    :return: A dictionary with the ``success`` key.
+    :raises: NotImplementedError: if udev rules cannot be installed on this system, i.e. it is not linux.
+    """
     if platform.system() == "Linux":
         from .udevinstaller import UDevInstaller
         return {"success": UDevInstaller.install(source, location)}
