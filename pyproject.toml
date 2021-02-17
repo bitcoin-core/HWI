@@ -25,6 +25,8 @@ typing-extensions = "^3.7"
 libusb1 = ">=1.7,<3"
 pyside2 = { version = "^5.14.0", optional = true, python = "<3.10" }
 bitbox02 = ">=5.3.0,<6.0.0"
+cbor = "^1.0.0"
+pyserial = "^3.5"
 
 [tool.poetry.extras]
 qt = ["pyside2"]

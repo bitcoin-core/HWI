@@ -5,4 +5,5 @@ __all__ = [
     'digitalbitbox',
     'coldcard',
     'bitbox02',
+    'jade'
 ]

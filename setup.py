@@ -17,11 +17,13 @@ modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
 ['bitbox02>=5.3.0,<6.0.0',
+ 'cbor>=1.0.0,<2.0.0',
  'ecdsa>=0,<1',
  'hidapi>=0,<1',
  'libusb1>=1.7,<3',
  'mnemonic>=0,<1',
  'pyaes>=1.6,<2.0',
+ 'pyserial>=3.4.0,<4.0.0',
  'typing-extensions>=3.7,<4.0']
 
 extras_require = \

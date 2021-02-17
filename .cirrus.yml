@@ -102,6 +102,7 @@ task:
         hwilib/devices/bitbox02.py
         hwilib/devices/coldcard.py
         hwilib/devices/digitalbitbox.py
+        hwilib/devices/jade.py
         hwilib/devices/__init__.py
         hwilib/devices/keepkey.py
         hwilib/devices/ledger.py
