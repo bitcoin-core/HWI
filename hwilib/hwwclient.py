@@ -1,3 +1,10 @@
+"""
+Hardware Wallet Client Interface
+********************************
+
+The :class:`HardwareWalletClient` is the class which all of the specific device implementations subclass.
+"""
+
 from typing import (
     Dict,
     List,
@@ -18,6 +25,13 @@ class HardwareWalletClient(object):
     """
 
     def __init__(self, path: str, password: str, expert: bool) -> None:
+        """
+        :param path: Path to the device as returned by :func:`~hwilib.commands.enumerate`
+        :param password: A password/passphrase to use with the device.
+            Typically a BIP 39 passphrase, but not always.
+            See device specific documentation for further details.
+        :param expert: Whether to return additional information intended for experts.
+        """
         self.path = path
         self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
@@ -135,6 +149,11 @@ class HardwareWalletClient(object):
         """
         Setup the device.
 
+        :param label: A label to apply to the device.
+            See device specific documentation for details as to what this actually does.
+        :param passphrase: A passphrase to apply to the device.
+            Typically a BIP 39 passphrase.
+            See device specific documentation for details as to what this actually does.
         :return: Whether the setup was successful
         :raises UnavailableActionError: if appropriate for the device.
         """
@@ -147,6 +166,9 @@ class HardwareWalletClient(object):
         """
         Restore the device.
 
+        :param label: A label to apply to the device.
+            See device specific documentation for details as to what this actually does.
+        :param word_count: The number of BIP 39 mnemonic words.
         :return: Whether the restore was successful
         :raises UnavailableActionError: if appropriate for the device.
         """
@@ -159,6 +181,10 @@ class HardwareWalletClient(object):
         """
         Backup the device.
 
+        :param label: A label to apply to the backup.
+            See device specific documentation for details as to what this actually does.
+        :param passphrase: A passphrase to apply to the backup.
+            See device specific documentation for details as to what this actually does.
         :return: Whether the backup was successful
         :raises UnavailableActionError: if appropriate for the device.
         """
@@ -184,6 +210,7 @@ class HardwareWalletClient(object):
         """
         Send PIN.
 
+        :param pin: The PIN
         :return: Whether the PIN successfully unlocked the device
         :raises UnavailableActionError: if appropriate for the device.
         """
