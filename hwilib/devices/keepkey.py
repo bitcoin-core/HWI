@@ -1,4 +1,7 @@
-# KeepKey interaction script
+"""
+Keepkey
+*******
+"""
 
 from ..errors import (
     DEVICE_NOT_INITIALIZED,
@@ -137,6 +140,11 @@ class KeepkeyDebugLinkState(DebugLinkState): # type: ignore
 
 class KeepkeyClient(TrezorClient):
     def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
+        """
+        The `KeepkeyClient` is a `HardwareWalletClient` for interacting with the Keepkey.
+
+        As Keepkeys are clones of the Trezor 1, please refer to `TrezorClient` for documentation.
+        """
         super(KeepkeyClient, self).__init__(path, password, expert)
         self.type = 'Keepkey'
         self.client.vendors = ("keepkey.com")
