@@ -1,3 +1,8 @@
+"""
+Common Classes and Utilities
+****************************
+"""
+
 import hashlib
 
 from enum import Enum
@@ -6,10 +11,13 @@ from typing import Union
 
 
 class Chain(Enum):
-    MAIN = 0
-    TEST = 1
-    REGTEST = 2
-    SIGNET = 3
+    """
+    The blockchain network to use
+    """
+    MAIN = 0 #: Bitcoin Main network
+    TEST = 1 #: Bitcoin Test network
+    REGTEST = 2 #: Bitcoin Core Regression Test network
+    SIGNET = 3 #: Bitcoin Signet
 
     def __str__(self) -> str:
         return self.name.lower()
@@ -26,9 +34,12 @@ class Chain(Enum):
 
 
 class AddressType(Enum):
-    PKH = 1
-    WPKH = 2
-    SH_WPKH = 3
+    """
+    The type of address to use
+    """
+    PKH = 1 #: Legacy address type. P2PKH for single sig, P2SH for scripts.
+    WPKH = 2 #: Native segwit address type. P2WPKH for single sig, P2WPSH for scripts.
+    SH_WPKH = 3 #: Nested segwit address type. P2SH-P2WPKH for single sig, P2SH-P2WPSH for scripts.
 
     def __str__(self) -> str:
         return self.name.lower()
@@ -45,16 +56,42 @@ class AddressType(Enum):
 
 
 def sha256(s: bytes) -> bytes:
+    """
+    Perform a single SHA256 hash.
+
+    :param s: Bytes to hash
+    :return: The hash
+    """
     return hashlib.new('sha256', s).digest()
 
 
 def ripemd160(s: bytes) -> bytes:
+    """
+    Perform a single RIPEMD160 hash.
+
+    :param s: Bytes to hash
+    :return: The hash
+    """
     return hashlib.new('ripemd160', s).digest()
 
 
 def hash256(s: bytes) -> bytes:
+    """
+    Perform a double SHA256 hash.
+    A SHA256 is performed on the input, and then a second
+    SHA256 is performed on the result of the first SHA256
+
+    :param s: Bytes to hash
+    :return: The hash
+    """
     return sha256(sha256(s))
 
 
 def hash160(s: bytes) -> bytes:
+    """
+    perform a single SHA256 hash followed by a single RIPEMD160 hash on the result of the SHA256 hash.
+
+    :param s: Bytes to hash
+    :return: The hash
+    """
     return ripemd160(sha256(s))
