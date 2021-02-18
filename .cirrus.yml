@@ -132,7 +132,7 @@ basic_test_task:
         hwi.py
         hwilib/base58.py
         hwilib/bech32.py
-        hwilib/cli.py
+        hwilib/_cli.py
         hwilib/commands.py
         hwilib/descriptor.py
         hwilib/devices/bitbox02.py

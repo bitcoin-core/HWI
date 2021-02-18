@@ -17,7 +17,7 @@ from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_devic
 from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 from hwilib.devices.trezor import TrezorClient
 
 from types import MethodType

@@ -10,7 +10,7 @@ import sys
 import time
 import unittest
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
