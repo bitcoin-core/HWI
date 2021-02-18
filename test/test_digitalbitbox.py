@@ -9,7 +9,7 @@ import sys
 import time
 import unittest
 
-from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestGetDescriptors, TestSignTx, TestSignMessage
+from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestGetKeypool, TestGetDescriptors, TestSignTx
 
 from hwilib.devices.digitalbitbox import BitboxSimulator, send_plain, send_encrypt
 
@@ -157,7 +157,6 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     cleanup_simulator()
