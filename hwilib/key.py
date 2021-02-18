@@ -4,6 +4,10 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from . import _base58 as base58
+from .common import (
+    hash256,
+    hash160,
+)
 from .errors import BadArgumentError
 
 import binascii
@@ -139,7 +143,7 @@ class ExtendedKey(object):
 
     def to_string(self) -> str:
         data = self.serialize()
-        checksum = hashlib.sha256(hashlib.sha256(data).digest()).digest()[0:4]
+        checksum = hash256(data)[0:4]
         return base58.encode(data + checksum)
 
     def get_printable_dict(self) -> Dict[str, object]:
@@ -174,7 +178,7 @@ class ExtendedKey(object):
         # Construct and return a new BIP32Key
         pubkey = point_to_bytes(child_pubkey)
         chaincode = Ir
-        fingerprint = hashlib.new('ripemd160', hashlib.sha256(self.pubkey).digest()).digest()[0:4]
+        fingerprint = hash160(self.pubkey)[0:4]
         return ExtendedKey(ExtendedKey.TESTNET_PUBLIC if self.is_testnet else ExtendedKey.MAINNET_PUBLIC, self.depth + 1, fingerprint, i, chaincode, None, pubkey)
 
     def derive_pub_path(self, path: Sequence[int]) -> 'ExtendedKey':

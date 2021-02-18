@@ -189,16 +189,13 @@ def decrypt_aes(secret: bytes, e: bytes) -> bytes:
     s = aes_decrypt_with_iv(secret, iv, e)
     return s
 
-def sha256(x: bytes) -> bytes:
-    return hashlib.sha256(x).digest()
-
 def sha512(x: bytes) -> bytes:
     return hashlib.sha512(x).digest()
 
 def double_hash(x: Union[str, bytes]) -> bytes:
     if not isinstance(x, bytes):
         x = x.encode('utf-8')
-    return sha256(sha256(x))
+    return hash256(x)
 
 def derive_keys(x: str) -> Tuple[bytes, bytes]:
     h = double_hash(x)
