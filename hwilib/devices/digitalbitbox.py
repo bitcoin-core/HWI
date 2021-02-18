@@ -25,6 +25,7 @@ from typing import (
 from ..common import (
     AddressType,
     Chain,
+    hash256,
 )
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
@@ -45,7 +46,6 @@ from ..key import (
 )
 from ..serializations import (
     CTransaction,
-    hash256,
     is_p2pk,
     is_p2pkh,
     is_p2sh,

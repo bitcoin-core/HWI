@@ -134,6 +134,7 @@ basic_test_task:
         hwilib/_bech32.py
         hwilib/_cli.py
         hwilib/commands.py
+        hwilib/common.py
         hwilib/descriptor.py
         hwilib/devices/bitbox02.py
         hwilib/devices/coldcard.py

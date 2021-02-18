@@ -15,12 +15,14 @@ CTransaction,CTxIn, CTxOut, etc....:
 ser_*, deser_*: functions that handle serialization/deserialization
 """
 
+from .common import (
+    hash256,
+)
 from .errors import PSBTSerializationError
 from .key import KeyOriginInfo
 
 import struct
 import binascii
-import hashlib
 import copy
 import base64
 
@@ -49,18 +51,6 @@ class Deserializable(Protocol):
 class Serializable(Protocol):
     def serialize(self) -> bytes:
         ...
-
-def sha256(s: bytes) -> bytes:
-    return hashlib.new('sha256', s).digest()
-
-def ripemd160(s: bytes) -> bytes:
-    return hashlib.new('ripemd160', s).digest()
-
-def hash256(s: bytes) -> bytes:
-    return sha256(sha256(s))
-
-def hash160(s: bytes) -> bytes:
-    return ripemd160(sha256(s))
 
 
 # Serialization/deserialization tools

@@ -23,6 +23,7 @@ from ..errors import (
 from ..common import (
     AddressType,
     Chain,
+    hash160,
 )
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
@@ -42,7 +43,6 @@ from ..key import (
 )
 from ..serializations import (
     CTransaction,
-    hash160,
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
