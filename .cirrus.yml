@@ -146,6 +146,7 @@ basic_test_task:
         hwilib/errors.py
         hwilib/_script.py
         hwilib/serializations.py
+        hwilib/tx.py
         hwilib/hwwclient.py
         hwilib/__init__.py
         hwilib/key.py

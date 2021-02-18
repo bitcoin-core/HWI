@@ -13,10 +13,12 @@ from typing import (
 
 from .key import KeyOriginInfo
 from .errors import PSBTSerializationError
-from .serializations import (
+from .tx import (
     CTransaction,
     CTxInWitness,
     CTxOut,
+)
+from .serializations import (
     deser_string,
     Readable,
     ser_compact_size,

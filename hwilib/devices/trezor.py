@@ -56,8 +56,10 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..serializations import (
+from ..tx import (
     CTxOut,
+)
+from ..serializations import (
     ser_uint256,
 )
 from ..common import (

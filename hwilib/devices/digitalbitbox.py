@@ -53,8 +53,10 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..serializations import (
+from ..tx import (
     CTransaction,
+)
+from ..serializations import (
     ser_sig_der,
     ser_sig_compact,
     ser_string,

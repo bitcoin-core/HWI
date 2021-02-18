@@ -48,7 +48,7 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..serializations import (
+from ..tx import (
     CTransaction,
 )
 import logging

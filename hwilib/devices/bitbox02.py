@@ -27,8 +27,10 @@ from .._script import (
     parse_multisig,
 )
 from ..psbt import PSBT
-from ..serializations import (
+from ..tx import (
     CTxOut,
+)
+from ..serializations import (
     ser_uint256,
     ser_sig_der,
 )
