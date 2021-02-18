@@ -131,7 +131,7 @@ basic_test_task:
         mypy
         hwi.py
         hwilib/_base58.py
-        hwilib/bech32.py
+        hwilib/_bech32.py
         hwilib/_cli.py
         hwilib/commands.py
         hwilib/descriptor.py
