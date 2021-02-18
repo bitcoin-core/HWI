@@ -18,7 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-"""Reference implementation for Bech32 and segwit addresses."""
+"""
+Bech32 Conversion Utilities
+***************************
+
+Reference implementation for Bech32 and segwit addresses.
+"""
 
 from typing import (
     List,
