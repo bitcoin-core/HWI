@@ -41,12 +41,14 @@ from ..key import (
     ExtendedKey,
     parse_path,
 )
-from ..serializations import (
-    CTransaction,
+from .._script import (
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
+)
+from ..serializations import (
+    CTransaction,
     PSBT,
 )
 import logging

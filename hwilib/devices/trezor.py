@@ -49,12 +49,14 @@ from ..key import (
     ExtendedKey,
     parse_path,
 )
-from ..serializations import (
-    CTxOut,
+from .._script import (
     is_p2pkh,
     is_p2sh,
     is_p2wsh,
     is_witness,
+)
+from ..serializations import (
+    CTxOut,
     PSBT,
     ser_uint256,
 )

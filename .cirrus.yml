@@ -144,6 +144,8 @@ basic_test_task:
         hwilib/devices/ledger.py
         hwilib/devices/trezor.py
         hwilib/errors.py
+        hwilib/_script.py
+        hwilib/serializations.py
         hwilib/hwwclient.py
         hwilib/__init__.py
         hwilib/key.py

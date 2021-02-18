@@ -44,14 +44,16 @@ from ..errors import (
 from ..key import (
     ExtendedKey,
 )
-from ..serializations import (
-    CTransaction,
+from .._script import (
     is_p2pk,
     is_p2pkh,
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
+)
+from ..serializations import (
+    CTransaction,
     PSBT,
     ser_sig_der,
     ser_sig_compact,

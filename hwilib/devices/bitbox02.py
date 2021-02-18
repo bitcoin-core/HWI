@@ -20,15 +20,17 @@ import base58
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
-from ..serializations import (
-    PSBT,
-    CTxOut,
+from .._script import (
     is_p2pkh,
     is_p2wpkh,
     is_p2wsh,
+    parse_multisig,
+)
+from ..serializations import (
+    PSBT,
+    CTxOut,
     ser_uint256,
     ser_sig_der,
-    parse_multisig,
 )
 from ..errors import (
     HWWError,
