@@ -44,10 +44,12 @@ from ..key import (
     ExtendedKey,
 )
 from ..serializations import (
-    AddressType,
     PSBT,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+)
 from hashlib import sha256
 
 import base64

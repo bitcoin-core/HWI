@@ -21,7 +21,6 @@ from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
 from ..serializations import (
-    AddressType,
     PSBT,
     CTxOut,
     is_p2pkh,
@@ -45,7 +44,10 @@ from ..key import (
     KeyOriginInfo,
     parse_path,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+)
 
 import hid
 

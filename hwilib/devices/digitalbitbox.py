@@ -22,6 +22,10 @@ from typing import (
     Union,
 )
 
+from ..common import (
+    AddressType,
+    Chain,
+)
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -40,7 +44,6 @@ from ..key import (
     ExtendedKey,
 )
 from ..serializations import (
-    AddressType,
     CTransaction,
     hash256,
     is_p2pk,
@@ -55,7 +58,6 @@ from ..serializations import (
     ser_string,
     ser_compact_size,
 )
-from ..common import Chain
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512

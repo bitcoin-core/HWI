@@ -50,7 +50,6 @@ from ..key import (
     parse_path,
 )
 from ..serializations import (
-    AddressType,
     CTxOut,
     is_p2pkh,
     is_p2sh,
@@ -59,7 +58,10 @@ from ..serializations import (
     PSBT,
     ser_uint256,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+)
 from .. import _bech32 as bech32
 from mnemonic import Mnemonic
 from usb1 import USBErrorNoDevice

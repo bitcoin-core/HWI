@@ -21,3 +21,22 @@ class Chain(Enum):
             return Chain[s.upper()]
         except KeyError:
             return s
+
+
+class AddressType(Enum):
+    PKH = 1
+    WPKH = 2
+    SH_WPKH = 3
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s: str) -> Union['AddressType', str]:
+        try:
+            return AddressType[s.upper()]
+        except KeyError:
+            return s
