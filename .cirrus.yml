@@ -130,7 +130,7 @@ basic_test_task:
         poetry run
         mypy
         hwi.py
-        hwilib/base58.py
+        hwilib/_base58.py
         hwilib/bech32.py
         hwilib/_cli.py
         hwilib/commands.py

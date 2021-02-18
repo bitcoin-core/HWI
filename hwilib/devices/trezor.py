@@ -40,7 +40,7 @@ from .trezorlib import (
     device,
 )
 from .trezorlib import messages
-from ..base58 import (
+from .._base58 import (
     get_xpub_fingerprint,
     to_address,
 )

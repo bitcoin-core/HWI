@@ -37,7 +37,7 @@ from .ckcc.constants import (
     AF_P2SH,
     AF_P2WSH_P2SH,
 )
-from ..base58 import (
+from .._base58 import (
     get_xpub_fingerprint,
 )
 from ..key import (
