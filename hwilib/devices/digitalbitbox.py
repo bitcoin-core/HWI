@@ -374,7 +374,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = self.get_master_fingerprint().hex()
+        master_fp = self.get_master_fingerprint()
 
         # create sighashes
         sighash_tuples = []
@@ -464,7 +464,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
-                if master_fp == keypath.fingerprint.hex():
+                if master_fp == keypath.fingerprint:
                     # Add the keypath strings
                     keypath_str = keypath.get_derivation_path()
 

@@ -2,7 +2,6 @@
 
 # Hardware wallet interaction script
 
-import binascii
 import importlib
 import platform
 
@@ -140,7 +139,7 @@ def getkeypool_inner(
     account: int = 0,
     addr_type: AddressType = AddressType.WPKH
 ) -> List[Dict[str, Any]]:
-    master_fpr = client.get_master_fingerprint().hex()
+    master_fpr = client.get_master_fingerprint()
 
     desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
 
@@ -160,7 +159,7 @@ def getkeypool_inner(
 
 def getdescriptor(
     client: HardwareWalletClient,
-    master_fpr: str,
+    master_fpr: bytes,
     path: Optional[str] = None,
     internal: bool = False,
     addr_type: AddressType = AddressType.WPKH,
@@ -209,7 +208,7 @@ def getdescriptor(
             break
     i += 1
 
-    origin = KeyOriginInfo(binascii.unhexlify(master_fpr), parsed_path[:i])
+    origin = KeyOriginInfo(master_fpr, parsed_path[:i])
     path_base = origin.get_derivation_path()
 
     path_suffix = ""
@@ -263,7 +262,7 @@ def getdescriptors(
     client: HardwareWalletClient,
     account: int = 0
 ) -> Dict[str, List[str]]:
-    master_fpr = client.get_master_fingerprint().hex()
+    master_fpr = client.get_master_fingerprint()
 
     result = {}
 
