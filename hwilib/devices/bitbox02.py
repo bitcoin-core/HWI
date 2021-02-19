@@ -26,8 +26,8 @@ from .._script import (
     is_p2wsh,
     parse_multisig,
 )
+from ..psbt import PSBT
 from ..serializations import (
-    PSBT,
     CTxOut,
     ser_uint256,
     ser_sig_der,

@@ -55,9 +55,9 @@ from .._script import (
     is_p2wsh,
     is_witness,
 )
+from ..psbt import PSBT
 from ..serializations import (
     CTxOut,
-    PSBT,
     ser_uint256,
 )
 from ..common import (

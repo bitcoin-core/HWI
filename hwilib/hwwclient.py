@@ -6,7 +6,7 @@ from typing import (
 )
 from .descriptor import PubkeyProvider
 from .key import ExtendedKey
-from .serializations import PSBT
+from .psbt import PSBT
 from .common import AddressType, Chain
 
 

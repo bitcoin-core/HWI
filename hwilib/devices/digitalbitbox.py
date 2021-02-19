@@ -52,9 +52,9 @@ from .._script import (
     is_p2wsh,
     is_witness,
 )
+from ..psbt import PSBT
 from ..serializations import (
     CTransaction,
-    PSBT,
     ser_sig_der,
     ser_sig_compact,
     ser_string,

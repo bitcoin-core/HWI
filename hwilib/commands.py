@@ -5,7 +5,6 @@
 import importlib
 import platform
 
-from .serializations import PSBT
 from ._base58 import xpub_to_pub_hex
 from .key import (
     H_,
@@ -36,6 +35,7 @@ from .common import (
     Chain,
 )
 from .hwwclient import HardwareWalletClient
+from .psbt import PSBT
 
 from itertools import count
 from typing import (

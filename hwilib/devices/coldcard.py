@@ -43,7 +43,7 @@ from .._base58 import (
 from ..key import (
     ExtendedKey,
 )
-from ..serializations import (
+from ..psbt import (
     PSBT,
 )
 from ..common import (

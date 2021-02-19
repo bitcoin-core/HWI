@@ -47,9 +47,9 @@ from .._script import (
     is_p2wsh,
     is_witness,
 )
+from ..psbt import PSBT
 from ..serializations import (
     CTransaction,
-    PSBT,
 )
 import logging
 import re
