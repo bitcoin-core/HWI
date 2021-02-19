@@ -248,12 +248,6 @@ class KeyOriginInfo(object):
         """
         return "m" + self._path_string()
 
-    def get_fingerprint_hex(self) -> str:
-        """
-        Return the hex for just the fingerprint
-        """
-        return binascii.hexlify(self.fingerprint).decode()
-
     def get_full_int_list(self) -> List[int]:
         """
         Return a list of ints representing this KeyOriginInfo.
