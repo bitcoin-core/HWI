@@ -28,7 +28,7 @@ from ._script import (
     is_witness,
     is_p2wsh,
 )
-from .serializations import (
+from ._serialize import (
     deser_uint256,
     deser_string,
     deser_string_vector,

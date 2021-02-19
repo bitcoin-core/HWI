@@ -18,7 +18,7 @@ from .tx import (
     CTxInWitness,
     CTxOut,
 )
-from .serializations import (
+from ._serialize import (
     deser_string,
     Readable,
     ser_compact_size,

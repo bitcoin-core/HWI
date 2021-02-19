@@ -145,12 +145,11 @@ basic_test_task:
         hwilib/devices/trezor.py
         hwilib/errors.py
         hwilib/_script.py
-        hwilib/serializations.py
+        hwilib/_serialize.py
         hwilib/tx.py
         hwilib/hwwclient.py
         hwilib/__init__.py
         hwilib/key.py
-        hwilib/serializations.py
         hwilib/udevinstaller.py
     - name: Non-Device Tests
       test_script: cd test; poetry run ./run_tests.py; cd ..

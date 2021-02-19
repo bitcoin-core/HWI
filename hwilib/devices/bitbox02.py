@@ -30,7 +30,7 @@ from ..psbt import PSBT
 from ..tx import (
     CTxOut,
 )
-from ..serializations import (
+from .._serialize import (
     ser_uint256,
     ser_sig_der,
 )

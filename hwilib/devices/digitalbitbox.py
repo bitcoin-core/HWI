@@ -56,7 +56,7 @@ from ..psbt import PSBT
 from ..tx import (
     CTransaction,
 )
-from ..serializations import (
+from .._serialize import (
     ser_sig_der,
     ser_sig_compact,
     ser_string,
