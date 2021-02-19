@@ -402,7 +402,7 @@ def enumerate(password: str = '') -> List[Dict[str, Any]]:
             with handle_errors(common_err_msgs["enumerate"], d_data):
                 try:
                     client = LedgerClient(path, password)
-                    d_data['fingerprint'] = client.get_master_fingerprint_hex()
+                    d_data['fingerprint'] = client.get_master_fingerprint().hex()
                     d_data['needs_pin_sent'] = False
                     d_data['needs_passphrase_sent'] = False
                 except BTChipException:

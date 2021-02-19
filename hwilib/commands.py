@@ -99,7 +99,7 @@ def find_device(
             if fingerprint:
                 master_fpr = d.get('fingerprint', None)
                 if master_fpr is None:
-                    master_fpr = client.get_master_fingerprint_hex()
+                    master_fpr = client.get_master_fingerprint().hex()
 
                 if master_fpr != fingerprint:
                     client.close()
@@ -140,7 +140,7 @@ def getkeypool_inner(
     account: int = 0,
     addr_type: AddressType = AddressType.WPKH
 ) -> List[Dict[str, Any]]:
-    master_fpr = client.get_master_fingerprint_hex()
+    master_fpr = client.get_master_fingerprint().hex()
 
     desc = getdescriptor(client, master_fpr, path, internal, addr_type, account, start, end)
 
@@ -263,7 +263,7 @@ def getdescriptors(
     client: HardwareWalletClient,
     account: int = 0
 ) -> Dict[str, List[str]]:
-    master_fpr = client.get_master_fingerprint_hex()
+    master_fpr = client.get_master_fingerprint().hex()
 
     result = {}
 
@@ -316,7 +316,7 @@ def displayaddress(
             pubkey = descriptor.pubkeys[0]
             if pubkey.origin is None:
                 raise BadArgumentError(f"Descriptor missing origin info: {desc}")
-            if pubkey.origin.get_fingerprint_hex() != client.get_master_fingerprint_hex():
+            if pubkey.origin.fingerprint != client.get_master_fingerprint():
                 raise BadArgumentError(f"Descriptor fingerprint does not match device: {desc}")
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
