@@ -27,19 +27,27 @@ from .errors import (
     HELP_TEXT,
     MISSING_ARGUMENTS,
     NO_DEVICE_TYPE,
-    UNAVAILABLE_ACTION,
+    UnavailableActionError,
+    UNKNOWN_ERROR,
 )
 from .hwwclient import HardwareWalletClient
 from .serializations import AddressType
 from . import __version__
-
-from typing import Dict
 
 import argparse
 import getpass
 import logging
 import json
 import sys
+
+from typing import (
+    Any,
+    Dict,
+    IO,
+    List,
+    NoReturn,
+    Optional,
+)
 
 
 def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
@@ -48,7 +56,7 @@ def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient
 def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
-def enumerate_handler(args):
+def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password)
 
 def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
@@ -57,21 +65,21 @@ def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient
 def getxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getxpub(client, path=args.path, expert=args.expert)
 
-def getkeypool_handler(args, client):
+def getkeypool_handler(args: argparse.Namespace, client: HardwareWalletClient) -> List[Dict[str, Any]]:
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, addr_type=args.addr_type, addr_all=args.all)
 
-def getdescriptors_handler(args, client):
+def getdescriptors_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, List[str]]:
     return getdescriptors(client, account=args.account)
 
 def restore_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return restore_device(client, label=args.label, word_count=args.word_count)
-    return {'error': 'restore requires interactive mode', 'code': UNAVAILABLE_ACTION}
+    raise UnavailableActionError("restore requires interactive mode")
 
 def setup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return setup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
-    return {'error': 'setup requires interactive mode', 'code': UNAVAILABLE_ACTION}
+    raise UnavailableActionError("setup requires interactive mode")
 
 def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signmessage(client, message=args.message, path=args.path)
@@ -98,36 +106,36 @@ class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescr
     pass
 
 class HWIArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.formatter_class = HWIHelpFormatter
 
-    def print_usage(self, file=None):
+    def print_usage(self, file: Optional[IO[str]] = None) -> None:
         if file is None:
             file = sys.stderr
         super().print_usage(file)
 
-    def print_help(self, file=None):
+    def print_help(self, file: Optional[IO[str]] = None) -> None:
         if file is None:
             file = sys.stderr
         super().print_help(file)
         error = {'error': 'Help text requested', 'code': HELP_TEXT}
         print(json.dumps(error))
 
-    def error(self, message):
+    def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
         args = {'prog': self.prog, 'message': message}
         error = {'error': '%(prog)s: error: %(message)s' % args, 'code': MISSING_ARGUMENTS}
         print(json.dumps(error))
         self.exit(2)
 
-def process_commands(cli_args):
+def process_commands(cli_args: List[str]) -> Any:
     parser = HWIArgumentParser(description='Hardware Wallet Interface, version {}.\nAccess and send commands to a hardware wallet device. Responses are in JSON format.'.format(__version__))
     parser.add_argument('--device-path', '-d', help='Specify the device path of the device to connect to')
     parser.add_argument('--device-type', '-t', help='Specify the type of device that will be connected. If `--device-path` not given, the first device of this type enumerated is used.')
     parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
     parser.add_argument('--stdinpass', help='Enter the device password on the command line', action='store_true')
-    parser.add_argument('--chain', help='Select chain to work with', type=Chain.argparse, choices=list(Chain), default=Chain.MAIN)
+    parser.add_argument('--chain', help='Select chain to work with', type=Chain.argparse, choices=list(Chain), default=Chain.MAIN) # type: ignore
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
@@ -164,7 +172,7 @@ def process_commands(cli_args):
     kparg_group.add_argument('--nokeypool', action='store_false', dest='keypool', help='Indicates that the keys are not to be imported to the keypool', default=False)
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     kp_type_group = getkeypool_parser.add_mutually_exclusive_group()
-    kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH)
+    kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
     kp_type_group.add_argument('--all', action='store_true', help='Generate addresses for all standard address types (default paths: m/{44,49,84}h/0h/0h/[0,1]/*)')
     getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. m/84h/0h/0h/1/* with --addr-type wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
@@ -180,7 +188,7 @@ def process_commands(cli_args):
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. m/84h/0h/0h/1/*')
-    displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH)
+    displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')
@@ -237,7 +245,7 @@ def process_commands(cli_args):
     device_type = args.device_type
     password = args.password
     command = args.command
-    result = {}
+    result: Dict[str, Any] = {}
 
     # Setup debug logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
@@ -270,6 +278,9 @@ def process_commands(cli_args):
     else:
         return {'error': 'You must specify a device type or fingerprint for all commands except enumerate', 'code': NO_DEVICE_TYPE}
 
+    if client is None:
+        return {"error": "Unable to communicated with device", "code": UNKNOWN_ERROR}
+
     client.chain = args.chain
 
     # Do the commands
@@ -281,6 +292,6 @@ def process_commands(cli_args):
 
     return result
 
-def main():
+def main() -> None:
     result = process_commands(sys.argv[1:])
     print(json.dumps(result))

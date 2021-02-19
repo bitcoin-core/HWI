@@ -20,11 +20,18 @@
 
 """Reference implementation for Bech32 and segwit addresses."""
 
+from typing import (
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
+
 
 CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 
-def bech32_polymod(values):
+def bech32_polymod(values: List[int]) -> int:
     """Internal function that computes the Bech32 checksum."""
     generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
     chk = 1
@@ -36,30 +43,30 @@ def bech32_polymod(values):
     return chk
 
 
-def bech32_hrp_expand(hrp):
+def bech32_hrp_expand(hrp: str) -> List[int]:
     """Expand the HRP into values for checksum computation."""
     return [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp]
 
 
-def bech32_verify_checksum(hrp, data):
+def bech32_verify_checksum(hrp: str, data: List[int]) -> bool:
     """Verify a checksum given HRP and converted data characters."""
     return bech32_polymod(bech32_hrp_expand(hrp) + data) == 1
 
 
-def bech32_create_checksum(hrp, data):
+def bech32_create_checksum(hrp: str, data: List[int]) -> List[int]:
     """Compute the checksum values given HRP and data."""
     values = bech32_hrp_expand(hrp) + data
     polymod = bech32_polymod(values + [0, 0, 0, 0, 0, 0]) ^ 1
     return [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
 
 
-def bech32_encode(hrp, data):
+def bech32_encode(hrp: str, data: List[int]) -> str:
     """Compute a Bech32 string given HRP and data values."""
     combined = data + bech32_create_checksum(hrp, data)
     return hrp + '1' + ''.join([CHARSET[d] for d in combined])
 
 
-def bech32_decode(bech):
+def bech32_decode(bech: str) -> Tuple[Optional[str], Optional[List[int]]]:
     """Validate a Bech32 string, and determine HRP and data."""
     if ((any(ord(x) < 33 or ord(x) > 126 for x in bech)) or
             (bech.lower() != bech and bech.upper() != bech)):
@@ -77,7 +84,7 @@ def bech32_decode(bech):
     return (hrp, data[:-6])
 
 
-def convertbits(data, frombits, tobits, pad=True):
+def convertbits(data: Union[bytes, List[int]], frombits: int, tobits: int, pad: bool = True) -> Optional[List[int]]:
     """General power-of-2 base conversion."""
     acc = 0
     bits = 0
@@ -100,10 +107,10 @@ def convertbits(data, frombits, tobits, pad=True):
     return ret
 
 
-def decode(hrp, addr):
+def decode(hrp: str, addr: str) -> Tuple[Optional[int], Optional[List[int]]]:
     """Decode a segwit address."""
     hrpgot, data = bech32_decode(addr)
-    if hrpgot != hrp:
+    if hrpgot != hrp or hrpgot is None or data is None:
         return (None, None)
     decoded = convertbits(data[1:], 5, 8, False)
     if decoded is None or len(decoded) < 2 or len(decoded) > 40:
@@ -115,9 +122,12 @@ def decode(hrp, addr):
     return (data[0], decoded)
 
 
-def encode(hrp, witver, witprog):
+def encode(hrp: str, witver: int, witprog: bytes) -> Optional[str]:
     """Encode a segwit address."""
-    ret = bech32_encode(hrp, [witver] + convertbits(witprog, 8, 5))
+    conv_bits = convertbits(witprog, 8, 5)
+    if conv_bits is None:
+        return None
+    ret = bech32_encode(hrp, [witver] + conv_bits)
     if decode(hrp, ret) == (None, None):
         return None
     return ret

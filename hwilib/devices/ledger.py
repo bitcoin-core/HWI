@@ -1,8 +1,12 @@
 # Ledger interaction script
 
 from typing import (
+    Any,
+    Callable,
+    Dict,
     List,
     Union,
+    Tuple,
 )
 
 from ..descriptor import PubkeyProvider
@@ -59,7 +63,7 @@ LEDGER_LEGACY_PRODUCT_IDS = {
 }
 
 # minimal checking of string keypath
-def check_keypath(key_path):
+def check_keypath(key_path: str) -> bool:
     parts = re.split("/", key_path)
     if parts[0] != "m":
         return False
@@ -84,8 +88,8 @@ cancels = [
     0x6985, # BTCHIP_SW_CONDITIONS_OF_USE_NOT_SATISFIED
 ]
 
-def ledger_exception(f):
-    def func(*args, **kwargs):
+def ledger_exception(f: Callable[..., Any]) -> Any:
+    def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
         except ValueError as e:
@@ -106,7 +110,7 @@ def ledger_exception(f):
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
         super(LedgerClient, self).__init__(path, password, expert)
 
         if path.startswith('tcp'):
@@ -147,7 +151,7 @@ class LedgerClient(HardwareWalletClient):
         # Special case for m
         else:
             child = 0
-            fpr = child
+            fpr = b"\x00\x00\x00\x00"
 
         xpub = ExtendedKey(
             version=ExtendedKey.MAINNET_PUBLIC if self.chain == Chain.MAIN else ExtendedKey.TESTNET_PUBLIC,
@@ -168,7 +172,7 @@ class LedgerClient(HardwareWalletClient):
         # Master key fingerprint
         master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey('')["publicKey"]))[:4]
         # An entry per input, each with 0 to many keys to sign with
-        all_signature_attempts = [[]] * len(c_tx.vin)
+        all_signature_attempts: List[List[Tuple[str, bytes]]] = [[]] * len(c_tx.vin)
 
         # Get the app version to determine whether to use Trusted Input for segwit
         version = self.app.getFirmwareVersion()
@@ -184,7 +188,7 @@ class LedgerClient(HardwareWalletClient):
         has_segwit = False
         has_legacy = False
 
-        script_codes = [[]] * len(c_tx.vin)
+        script_codes: List[bytes] = [b""] * len(c_tx.vin)
 
         # Detect changepath, (p2sh-)p2(w)pkh only
         change_path = ''
@@ -203,11 +207,7 @@ class LedgerClient(HardwareWalletClient):
 
         for txin, psbt_in, i_num in zip(c_tx.vin, tx.inputs, range(len(c_tx.vin))):
 
-            seq = format(txin.nSequence, 'x')
-            seq = seq.zfill(8)
-            seq = bytearray.fromhex(seq)
-            seq.reverse()
-            seq_hex = ''.join('{:02x}'.format(x) for x in seq)
+            seq_hex = txin.nSequence.to_bytes(4, byteorder="little").hex()
 
             scriptcode = b""
             utxo = None
@@ -243,6 +243,7 @@ class LedgerClient(HardwareWalletClient):
             else:
                 # We only need legacy inputs in the case where all inputs are legacy, we check
                 # later
+                assert psbt_in.non_witness_utxo is not None
                 ledger_prevtx = bitcoinTransaction(psbt_in.non_witness_utxo.serialize())
                 legacy_inputs.append(self.app.getTrustedInput(ledger_prevtx, txin.prevout.n))
                 legacy_inputs[-1]["sequence"] = seq_hex
@@ -269,7 +270,7 @@ class LedgerClient(HardwareWalletClient):
                 if master_fpr == keypath.fingerprint:
                     # Add the keypath strings
                     keypath_str = keypath.get_derivation_path()[2:] # Drop the leading m/
-                    signature_attempts.append([keypath_str, pubkey])
+                    signature_attempts.append((keypath_str, pubkey))
 
             all_signature_attempts[i_num] = signature_attempts
 
@@ -336,6 +337,7 @@ class LedgerClient(HardwareWalletClient):
         p2sh_p2wpkh = addr_type == AddressType.SH_WPKH
         bech32 = addr_type == AddressType.WPKH
         output = self.app.getWalletPublicKey(keypath[2:], True, p2sh_p2wpkh or bech32, bech32)
+        assert isinstance(output["address"], str)
         return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
     @ledger_exception
@@ -359,8 +361,7 @@ class LedgerClient(HardwareWalletClient):
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support creating a backup via software')
 
-    # Close the device
-    def close(self):
+    def close(self) -> None:
         self.dongle.close()
 
     def prompt_pin(self) -> bool:
@@ -372,7 +373,7 @@ class LedgerClient(HardwareWalletClient):
     def toggle_passphrase(self) -> bool:
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
-def enumerate(password=''):
+def enumerate(password: str = '') -> List[Dict[str, Any]]:
     results = []
     devices = []
     devices.extend(hid.enumerate(LEDGER_VENDOR_ID, 0))
@@ -381,7 +382,7 @@ def enumerate(password=''):
     for d in devices:
         if ('interface_number' in d and d['interface_number'] == 0
                 or ('usage_page' in d and d['usage_page'] == 0xffa0)):
-            d_data = {}
+            d_data: Dict[str, Any] = {}
 
             path = d['path'].decode()
             d_data['type'] = 'ledger'

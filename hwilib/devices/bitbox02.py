@@ -47,7 +47,7 @@ from ..key import (
 )
 from ..common import Chain
 
-import hid  # type: ignore
+import hid
 
 from bitbox02 import util
 from bitbox02 import bitbox02

@@ -1,7 +1,14 @@
 # Trezor interaction script
 
 from typing import (
+    Any,
+    Callable,
+    Dict,
     List,
+    NoReturn,
+    Optional,
+    Sequence,
+    Tuple,
     Union,
 )
 from ..descriptor import PubkeyProvider
@@ -72,8 +79,11 @@ Use the numeric keypad to describe number positions. The layout is:
     1 2 3
 """.strip()
 
+Device = Union[hid.HidTransport, webusb.WebUsbTransport, udp.UdpTransport]
+
+
 # Only handles up to 15 of 15
-def parse_multisig(script):
+def parse_multisig(script: bytes) -> Tuple[bool, Optional[messages.MultisigRedeemScriptType]]:
     # Get m
     m = script[0] - 80
     if m < 1 or m > 15:
@@ -107,8 +117,8 @@ def parse_multisig(script):
     return (True, multisig)
 
 
-def trezor_exception(f):
-    def func(*args, **kwargs):
+def trezor_exception(f: Callable[..., Any]) -> Any:
+    def func(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
         except ValueError as e:
@@ -120,7 +130,7 @@ def trezor_exception(f):
     return func
 
 
-def interactive_get_pin(self, code=None):
+def interactive_get_pin(self: object, code: Optional[int] = None) -> str:
     if code == messages.PinMatrixRequestType.Currrent:
         desc = "current PIN"
     elif code == messages.PinMatrixRequestType.NewFirst:
@@ -140,13 +150,12 @@ def interactive_get_pin(self, code=None):
             return pin
 
 
-def mnemonic_words(expand=False, language="english"):
+def mnemonic_words(expand: bool = False, language: str = "english") -> Callable[[Any], str]:
+    wordlist: Sequence[str] = []
     if expand:
         wordlist = Mnemonic(language).wordlist
-    else:
-        wordlist = set()
 
-    def expand_word(word):
+    def expand_word(word: str) -> str:
         if not expand:
             return word
         if word in wordlist:
@@ -157,7 +166,7 @@ def mnemonic_words(expand=False, language="english"):
         print("Choose one of: " + ", ".join(matches), file=sys.stderr)
         raise KeyError(word)
 
-    def get_word(type):
+    def get_word(type: messages.WordRequestType) -> str:
         assert type == messages.WordRequestType.Plain
         while True:
             try:
@@ -172,26 +181,26 @@ def mnemonic_words(expand=False, language="english"):
 
 
 class PassphraseUI:
-    def __init__(self, passphrase):
+    def __init__(self, passphrase: str) -> None:
         self.passphrase = passphrase
         self.pinmatrix_shown = False
         self.prompt_shown = False
         self.always_prompt = False
         self.return_passphrase = True
 
-    def button_request(self, code):
+    def button_request(self, code: Optional[int]) -> None:
         if not self.prompt_shown:
             print("Please confirm action on your Trezor device", file=sys.stderr)
         if not self.always_prompt:
             self.prompt_shown = True
 
-    def get_pin(self, code=None):
+    def get_pin(self, code: Optional[int] = None) -> NoReturn:
         raise NotImplementedError('get_pin is not needed')
 
-    def disallow_passphrase(self):
+    def disallow_passphrase(self) -> None:
         self.return_passphrase = False
 
-    def get_passphrase(self):
+    def get_passphrase(self) -> str:
         if self.return_passphrase:
             return self.passphrase
         raise ValueError('Passphrase from Host is not allowed for Trezor T')
@@ -201,7 +210,7 @@ HID_IDS = {DEV_TREZOR1}
 WEBUSB_IDS = TREZORS.copy()
 
 
-def get_path_transport(path: str):
+def get_path_transport(path: str) -> Device:
     devs = hid.HidTransport.enumerate(usb_ids=HID_IDS)
     devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=WEBUSB_IDS))
     devs.extend(udp.UdpTransport.enumerate())
@@ -214,7 +223,7 @@ def get_path_transport(path: str):
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
-    def __init__(self, path, password='', expert=False):
+    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
         super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
         transport = get_path_transport(path)
@@ -233,7 +242,7 @@ class TrezorClient(HardwareWalletClient):
         self.password = password
         self.type = 'Trezor'
 
-    def _prepare_device(self):
+    def _prepare_device(self) -> None:
         self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'
         resp = self.client.refresh_features()
         # If this is a Trezor One or Keepkey, do Initialize
@@ -246,7 +255,7 @@ class TrezorClient(HardwareWalletClient):
             except TrezorFailure:
                 self.client.init_device()
 
-    def _check_unlocked(self):
+    def _check_unlocked(self) -> None:
         self._prepare_device()
         if self.client.features.model == 'T' and isinstance(self.client.ui, PassphraseUI):
             self.client.ui.disallow_passphrase()
@@ -332,7 +341,7 @@ class TrezorClient(HardwareWalletClient):
                     scriptcode = psbt_in.witness_script
                     p2wsh = True
 
-                def ignore_input():
+                def ignore_input() -> None:
                     txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (0 if self.chain == Chain.MAIN else 1), 0x80000000, 0, 0]
                     txinputtype.multisig = None
                     txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
@@ -468,6 +477,7 @@ class TrezorClient(HardwareWalletClient):
                         )
                         t.bin_outputs.append(o)
                     logging.debug(psbt_in.non_witness_utxo.hash)
+                    assert psbt_in.non_witness_utxo.sha256 is not None
                     prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
             # Sign the transaction
@@ -529,6 +539,7 @@ class TrezorClient(HardwareWalletClient):
                 script_type=script_type,
                 multisig=None,
             )
+            assert isinstance(address, str)
             return address
         except Exception:
             pass
@@ -549,7 +560,7 @@ class TrezorClient(HardwareWalletClient):
             if p.extkey is not None:
                 xpub = p.extkey
                 hd_node = messages.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path)))
+                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path if p.deriv_path is not None else "")))
             else:
                 hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=p.get_pubkey_bytes(0))
                 pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=[]))
@@ -577,6 +588,7 @@ class TrezorClient(HardwareWalletClient):
                     script_type=script_type,
                     multisig=multisig,
                 )
+                assert isinstance(address, str)
                 return address
             except Exception:
                 pass
@@ -614,9 +626,8 @@ class TrezorClient(HardwareWalletClient):
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         raise UnavailableActionError('The {} does not support creating a backup via software'.format(self.type))
 
-    # Close the device
     @trezor_exception
-    def close(self):
+    def close(self) -> None:
         self.client.close()
 
     @trezor_exception
@@ -661,13 +672,13 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return True
 
-def enumerate(password=''):
+def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate()
     devs.extend(webusb.WebUsbTransport.enumerate())
     devs.extend(udp.UdpTransport.enumerate())
     for dev in devs:
-        d_data = {}
+        d_data: Dict[str, Any] = {}
 
         d_data['type'] = 'trezor'
         d_data['path'] = dev.get_path()
