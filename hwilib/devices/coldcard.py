@@ -57,7 +57,7 @@ import sys
 import time
 import struct
 
-from binascii import hexlify, b2a_hex
+from binascii import b2a_hex
 from typing import (
     Any,
     Callable,
@@ -103,9 +103,9 @@ class ColdcardClient(HardwareWalletClient):
             xpub.version = ExtendedKey.TESTNET_PUBLIC
         return xpub
 
-    def get_master_fingerprint_hex(self) -> str:
+    def get_master_fingerprint(self) -> bytes:
         # quick method to get fingerprint of wallet
-        return hexlify(struct.pack('<I', self.device.master_fingerprint)).decode()
+        return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
@@ -350,7 +350,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
         with handle_errors(common_err_msgs["enumerate"], d_data):
             try:
                 client = ColdcardClient(path)
-                d_data['fingerprint'] = client.get_master_fingerprint_hex()
+                d_data['fingerprint'] = client.get_master_fingerprint().hex()
             except RuntimeError as e:
                 # Skip the simulator if it's not there
                 if str(e) == 'Cannot connect to simulator. Is it running?':

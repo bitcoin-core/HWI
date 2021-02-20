@@ -374,7 +374,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         blank_tx = CTransaction(tx.tx)
 
         # Get the master key fingerprint
-        master_fp = self.get_master_fingerprint_hex()
+        master_fp = self.get_master_fingerprint()
 
         # create sighashes
         sighash_tuples = []
@@ -464,7 +464,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # Figure out which keypath thing is for this input
             for pubkey, keypath in psbt_in.hd_keypaths.items():
-                if master_fp == keypath.fingerprint.hex():
+                if master_fp == keypath.fingerprint:
                     # Add the keypath strings
                     keypath_str = keypath.get_derivation_path()
 
@@ -651,7 +651,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                     d_data['error'] = 'Not initialized'
                     d_data['code'] = DEVICE_NOT_INITIALIZED
                 else:
-                    d_data['fingerprint'] = client.get_master_fingerprint_hex()
+                    d_data['fingerprint'] = client.get_master_fingerprint().hex()
                 d_data['needs_pin_sent'] = False
                 d_data['needs_passphrase_sent'] = True
 

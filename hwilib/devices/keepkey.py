@@ -180,7 +180,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             if d_data['needs_passphrase_sent'] and not password:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
-                d_data['fingerprint'] = client.get_master_fingerprint_hex()
+                d_data['fingerprint'] = client.get_master_fingerprint().hex()
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
             else:
                 d_data['error'] = 'Not initialized'

@@ -211,7 +211,7 @@ def enumerate(password: str = "") -> List[Dict[str, object]]:
                         if _using_external_gui
                         else "Please use any subcommand to unlock"
                     )
-                d_data["fingerprint"] = client.get_master_fingerprint_hex()
+                d_data["fingerprint"] = client.get_master_fingerprint().hex()
 
         result.append(d_data)
 
@@ -314,9 +314,6 @@ class Bitbox02Client(HardwareWalletClient):
         """
         bb02 = self.init()
         return bb02.root_fingerprint()
-
-    def get_master_fingerprint_hex(self) -> str:
-        return self.get_master_fingerprint().hex()
 
     def prompt_pin(self) -> bool:
         raise UnavailableActionError(

@@ -38,17 +38,17 @@ class HardwareWalletClient(object):
         # FIXME testnet is not handled yet
         return self.get_pubkey_at_path("m/44h/0h/0h")
 
-    def get_master_fingerprint_hex(self) -> str:
+    def get_master_fingerprint(self) -> bytes:
         """
-        Get the master public key fingerprint as a hex string.
+        Get the master public key fingerprint as bytes.
 
         Retrieves the fingerprint of the master public key of a device.
         Typically implemented by fetching the extended public key at "m/0h"
         and extracting the parent fingerprint from it.
 
-        :return: The fingerprint as a hex string
+        :return: The fingerprint as bytes
         """
-        return self.get_pubkey_at_path("m/0h").parent_fingerprint.hex()
+        return self.get_pubkey_at_path("m/0h").parent_fingerprint
 
     def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
         """
