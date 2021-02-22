@@ -321,6 +321,7 @@ class LedgerClient(HardwareWalletClient):
                     sig += bytes.fromhex(push_data(sender_pubkey))
                     sig = bytes.fromhex(int_to_hex(len(sig))) + sig
                     c_tx.vout[i_num].scriptPubKey = update_opsender_sig(txout.scriptPubKey, sig)
+                    tx.tx.vout[i_num].scriptPubKey = c_tx.vout[i_num].scriptPubKey
             tx_bytes = c_tx.serialize_with_witness()
 
         # Sign any segwit inputs
