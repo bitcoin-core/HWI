@@ -303,7 +303,8 @@ class LedgerClient(HardwareWalletClient):
         if has_opsender:
             self.app.startUntrustedTransaction(True, 0, legacy_inputs, script_codes[0], c_tx.nVersion, qtumOpSender=True)
             self.app.finalizeInput(b"", 0, 0, change_path, tx_bytes)
-            for i_num, txout in enumerate(c_tx.vout):
+            for i_num in range(len(c_tx.vout)):
+                txout = c_tx.vout[i_num]
                 decoded = decode_opsender_script(txout.scriptPubKey)
                 if (decoded is not None) and (not decoded[3][1]):
                     sender_pubkey = ""
@@ -319,7 +320,7 @@ class LedgerClient(HardwareWalletClient):
                     sig = bytes.fromhex(push_data((outputSignature + b'\x01').hex()))
                     sig += bytes.fromhex(push_data(sender_pubkey))
                     sig = bytes.fromhex(int_to_hex(len(sig))) + sig
-                    c_tx.vout[i_num].scriptPubKey = update_opsender_sig(txout.scriptpubkey, sig)
+                    c_tx.vout[i_num].scriptPubKey = update_opsender_sig(txout.scriptPubKey, sig)
             tx_bytes = c_tx.serialize_with_witness()
 
         # Sign any segwit inputs
