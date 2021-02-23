@@ -4,12 +4,12 @@
 # Copyright (c) 2010-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Bitcoin Object Python Serializations
+"""
+Bitcoin Object Python Serializations
+************************************
 
 Modified from the test/test_framework/mininode.py file from the
 Bitcoin repository
-
-ser_*, deser_*: functions that handle serialization/deserialization
 """
 
 import struct
@@ -37,6 +37,12 @@ class Serializable(Protocol):
 
 # Serialization/deserialization tools
 def ser_compact_size(size: int) -> bytes:
+    """
+    Serialize an integer using Bitcoin's compact size unsigned integer serialization.
+
+    :param size: The int to serialize
+    :returns: The int serialized as a compact size unsigned integer
+    """
     r = b""
     if size < 253:
         r = struct.pack("B", size)
@@ -49,6 +55,12 @@ def ser_compact_size(size: int) -> bytes:
     return r
 
 def deser_compact_size(f: Readable) -> int:
+    """
+    Deserialize a compact size unsigned integer from the beginning of the byte stream.
+
+    :param f: The byte stream
+    :returns: The integer that was serialized
+    """
     nit: int = struct.unpack("<B", f.read(1))[0]
     if nit == 253:
         nit = struct.unpack("<H", f.read(2))[0]
@@ -59,13 +71,31 @@ def deser_compact_size(f: Readable) -> int:
     return nit
 
 def deser_string(f: Readable) -> bytes:
+    """
+    Deserialize a variable length byte string serialized with Bitcoin's variable length string serialization from a byte stream.
+
+    :param f: The byte stream
+    :returns: The byte string that was serialized
+    """
     nit = deser_compact_size(f)
     return f.read(nit)
 
 def ser_string(s: bytes) -> bytes:
+    """
+    Serialize a byte string with Bitcoin's variable length string serialization.
+
+    :param s: The byte string to be serialized
+    :returns: The serialized byte string
+    """
     return ser_compact_size(len(s)) + s
 
 def deser_uint256(f: Readable) -> int:
+    """
+    Deserialize a 256 bit integer serialized with Bitcoin's 256 bit integer serialization from a byte stream.
+
+    :param f: The byte stream.
+    :returns: The integer that was serialized
+    """
     r = 0
     for i in range(8):
         t = struct.unpack("<I", f.read(4))[0]
@@ -74,6 +104,12 @@ def deser_uint256(f: Readable) -> int:
 
 
 def ser_uint256(u: int) -> bytes:
+    """
+    Serialize a 256 bit integer with Bitcoin's 256 bit integer serialization.
+
+    :param u: The integer to serialize
+    :returns: The serialized 256 bit integer
+    """
     rs = b""
     for _ in range(8):
         rs += struct.pack("<I", u & 0xFFFFFFFF)
@@ -82,6 +118,12 @@ def ser_uint256(u: int) -> bytes:
 
 
 def uint256_from_str(s: bytes) -> int:
+    """
+    Deserialize a 256 bit integer serialized with Bitcoin's 256 bit integer serialization from a byte string.
+
+    :param s: The byte string
+    :returns: The integer that was serialized
+    """
     r = 0
     t = struct.unpack("<IIIIIIII", s[:32])
     for i in range(8):
@@ -91,6 +133,13 @@ def uint256_from_str(s: bytes) -> int:
 D = TypeVar("D", bound=Deserializable)
 
 def deser_vector(f: Readable, c: Callable[[], D]) -> List[D]:
+    """
+    Deserialize a vector of objects with Bitcoin's object vector serialization from a byte stream.
+
+    :param f: The byte stream
+    :param c: The class of object to deserialize for each object in the vector
+    :returns: A list of objects that were serialized
+    """
     nit = deser_compact_size(f)
     r = []
     for _ in range(nit):
@@ -101,6 +150,12 @@ def deser_vector(f: Readable, c: Callable[[], D]) -> List[D]:
 
 
 def ser_vector(v: Sequence[Serializable]) -> bytes:
+    """
+    Serialize a vector of objects with Bitcoin's object vector serialzation.
+
+    :param v: The list of objects to serialize
+    :returns: The serialized objects
+    """
     r = ser_compact_size(len(v))
     for i in v:
         r += i.serialize()
@@ -108,6 +163,12 @@ def ser_vector(v: Sequence[Serializable]) -> bytes:
 
 
 def deser_string_vector(f: Readable) -> List[bytes]:
+    """
+    Deserialize a vector of byte strings from a byte stream.
+
+    :param f: The byte stream
+    :returns: The list of byte strings that were serialized
+    """
     nit = deser_compact_size(f)
     r = []
     for _ in range(nit):
@@ -117,12 +178,25 @@ def deser_string_vector(f: Readable) -> List[bytes]:
 
 
 def ser_string_vector(v: List[bytes]) -> bytes:
+    """
+    Serialize a list of byte strings as a vector of byte strings.
+
+    :param v: The list of byte strings to serialize
+    :returns: The serialized list of byte strings
+    """
     r = ser_compact_size(len(v))
     for sv in v:
         r += ser_string(sv)
     return r
 
 def ser_sig_der(r: bytes, s: bytes) -> bytes:
+    """
+    Serialize the ``r`` and ``s`` values of an ECDSA signature using DER.
+
+    :param r: The ``r`` value bytes
+    :param s: The ``s`` value bytes
+    :returns: The DER encoded signature
+    """
     sig = b"\x30"
 
     # Make r and s as short as possible
@@ -167,6 +241,13 @@ def ser_sig_der(r: bytes, s: bytes) -> bytes:
     return sig
 
 def ser_sig_compact(r: bytes, s: bytes, recid: bytes) -> bytes:
+    """
+    Serialize the ``r`` and ``s`` values of an ECDSA signature using the compact signature serialization scheme.
+
+    :param r: The ``r`` value bytes
+    :param s: The ``s`` value bytes
+    :returns: The compact signature
+    """
     rec = struct.unpack("B", recid)[0]
     prefix = struct.pack("B", 27 + 4 + rec)
 
