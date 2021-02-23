@@ -1,3 +1,8 @@
+"""
+PSBT Classes and Utilities
+**************************
+"""
+
 import base64
 import struct
 
@@ -31,6 +36,16 @@ def DeserializeHDKeypath(
     hd_keypaths: MutableMapping[bytes, KeyOriginInfo],
     expected_sizes: Sequence[int],
 ) -> None:
+    """
+    :meta private:
+
+    Deserialize a serialized PSBT public key and keypath key-value pair.
+
+    :param f: The byte stream to read the value from.
+    :param key: The bytes of the key of the key-value pair.
+    :param hd_keypaths: Dictionary of public key bytes to their :class:`~hwilib.key.KeyOriginInfo`.
+    :param expected_sizes: List of key lengths expected for the keypair being deserialized.
+    """
     if len(key) not in expected_sizes:
         raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey. Length: {}".format(len(key)))
     pubkey = key[1:]
@@ -40,6 +55,15 @@ def DeserializeHDKeypath(
     hd_keypaths[pubkey] = KeyOriginInfo.deserialize(deser_string(f))
 
 def SerializeHDKeypath(hd_keypaths: Mapping[bytes, KeyOriginInfo], type: bytes) -> bytes:
+    """
+    :meta private:
+
+    Serialize a public key to :class:`~hwilib.key.KeyOriginInfo` mapping as a PSBT key-value pair.
+
+    :param hd_keypaths: The mapping of public key to keypath
+    :param type: The PSBT type bytes to use
+    :returns: The serialized keypaths
+    """
     r = b""
     for pubkey, path in sorted(hd_keypaths.items()):
         r += ser_string(type + pubkey)
@@ -48,6 +72,9 @@ def SerializeHDKeypath(hd_keypaths: Mapping[bytes, KeyOriginInfo], type: bytes) 
     return r
 
 class PartiallySignedInput:
+    """
+    An object for a PSBT input map.
+    """
     def __init__(self) -> None:
         self.non_witness_utxo: Optional[CTransaction] = None
         self.witness_utxo: Optional[CTxOut] = None
@@ -61,6 +88,9 @@ class PartiallySignedInput:
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
+        """
+        Clear all values in this PSBT input map.
+        """
         self.non_witness_utxo = None
         self.witness_utxo = None
         self.partial_sigs.clear()
@@ -73,6 +103,11 @@ class PartiallySignedInput:
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
+        """
+        Deserialize a serialized PSBT input.
+
+        :param f: A byte stream containing the serialized PSBT input
+        """
         while True:
             # read the key
             try:
@@ -163,6 +198,11 @@ class PartiallySignedInput:
                 self.unknown[key] = unknown_bytes
 
     def serialize(self) -> bytes:
+        """
+        Serialize this PSBT input
+
+        :returns: The serialized PSBT input
+        """
         r = b""
 
         if self.non_witness_utxo:
@@ -212,6 +252,9 @@ class PartiallySignedInput:
         return r
 
 class PartiallySignedOutput:
+    """
+    An object for a PSBT output map.
+    """
     def __init__(self) -> None:
         self.redeem_script = b""
         self.witness_script = b""
@@ -219,12 +262,20 @@ class PartiallySignedOutput:
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
+        """
+        Clear this PSBT output map
+        """
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths.clear()
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
+        """
+        Deserialize a serialized PSBT output map
+
+        :param f: A byte stream containing the serialized PSBT output
+        """
         while True:
             # read the key
             try:
@@ -263,6 +314,11 @@ class PartiallySignedOutput:
                 self.unknown[key] = value
 
     def serialize(self) -> bytes:
+        """
+        Serialize this PSBT output
+
+        :returns: The serialized PSBT output
+        """
         r = b""
         if len(self.redeem_script) != 0:
             r += ser_string(b"\x00")
@@ -283,8 +339,14 @@ class PartiallySignedOutput:
         return r
 
 class PSBT(object):
+    """
+    A class representing a PSBT
+    """
 
     def __init__(self, tx: Optional[CTransaction] = None) -> None:
+        """
+        :param tx: A Bitcoin transaction that specifies the inputs and outputs to use
+        """
         if tx:
             self.tx = tx
         else:
@@ -295,6 +357,11 @@ class PSBT(object):
         self.xpub: Dict[bytes, KeyOriginInfo] = {}
 
     def deserialize(self, psbt: str) -> None:
+        """
+        Deserialize a base 64 encoded PSBT.
+
+        :param psbt: A base 64 PSBT.
+        """
         psbt_bytes = base64.b64decode(psbt.strip())
         f = BufferedReader(BytesIO(psbt_bytes)) # type: ignore
         end = len(psbt_bytes)
@@ -375,6 +442,11 @@ class PSBT(object):
             raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
 
     def serialize(self) -> str:
+        """
+        Serialize the PSBT as a base 64 encoded string.
+
+        :returns: The base 64 encoded string.
+        """
         r = b""
 
         # magic bytes
