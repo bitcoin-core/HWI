@@ -20,7 +20,11 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+    hash160,
+)
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
 from .btchip.btchipComm import (
@@ -37,15 +41,15 @@ from ..key import (
     ExtendedKey,
     parse_path,
 )
-from ..serializations import (
-    AddressType,
-    CTransaction,
-    hash160,
+from .._script import (
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
-    PSBT,
+)
+from ..psbt import PSBT
+from ..tx import (
+    CTransaction,
 )
 import logging
 import re

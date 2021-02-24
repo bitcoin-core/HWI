@@ -20,7 +20,10 @@ from .commands import (
     wipe_device,
     install_udev_rules,
 )
-from .common import Chain
+from .common import (
+    AddressType,
+    Chain,
+)
 from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
@@ -31,7 +34,6 @@ from .errors import (
     UNKNOWN_ERROR,
 )
 from .hwwclient import HardwareWalletClient
-from .serializations import AddressType
 from . import __version__
 
 import argparse

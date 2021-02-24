@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-from hwilib.serializations import PSBT
+from hwilib.psbt import PSBT
 from hwilib.errors import PSBTSerializationError
 import json
 import os

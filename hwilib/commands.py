@@ -5,7 +5,6 @@
 import importlib
 import platform
 
-from .serializations import AddressType, PSBT
 from ._base58 import xpub_to_pub_hex
 from .key import (
     H_,
@@ -31,8 +30,12 @@ from .descriptor import (
     WSHDescriptor,
 )
 from .devices import __all__ as all_devs
-from .common import Chain
+from .common import (
+    AddressType,
+    Chain,
+)
 from .hwwclient import HardwareWalletClient
+from .psbt import PSBT
 
 from itertools import count
 from typing import (

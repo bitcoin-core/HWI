@@ -22,6 +22,11 @@ from typing import (
     Union,
 )
 
+from ..common import (
+    AddressType,
+    Chain,
+    hash256,
+)
 from ..descriptor import PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -39,23 +44,24 @@ from ..errors import (
 from ..key import (
     ExtendedKey,
 )
-from ..serializations import (
-    AddressType,
-    CTransaction,
-    hash256,
+from .._script import (
     is_p2pk,
     is_p2pkh,
     is_p2sh,
     is_p2wpkh,
     is_p2wsh,
     is_witness,
-    PSBT,
+)
+from ..psbt import PSBT
+from ..tx import (
+    CTransaction,
+)
+from .._serialize import (
     ser_sig_der,
     ser_sig_compact,
     ser_string,
     ser_compact_size,
 )
-from ..common import Chain
 
 applen = 225280 # flash size minus bootloader length
 chunksize = 8 * 512
@@ -187,16 +193,13 @@ def decrypt_aes(secret: bytes, e: bytes) -> bytes:
     s = aes_decrypt_with_iv(secret, iv, e)
     return s
 
-def sha256(x: bytes) -> bytes:
-    return hashlib.sha256(x).digest()
-
 def sha512(x: bytes) -> bytes:
     return hashlib.sha512(x).digest()
 
 def double_hash(x: Union[str, bytes]) -> bytes:
     if not isinstance(x, bytes):
         x = x.encode('utf-8')
-    return sha256(sha256(x))
+    return hash256(x)
 
 def derive_keys(x: str) -> Tuple[bytes, bytes]:
     h = double_hash(x)

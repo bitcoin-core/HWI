@@ -6,8 +6,8 @@ from typing import (
 )
 from .descriptor import PubkeyProvider
 from .key import ExtendedKey
-from .serializations import AddressType, PSBT
-from .common import Chain
+from .psbt import PSBT
+from .common import AddressType, Chain
 
 
 class HardwareWalletClient(object):

@@ -1,5 +1,5 @@
 from .key import ExtendedKey, KeyOriginInfo, parse_path
-from .serializations import hash160, sha256
+from .common import hash160, sha256
 
 from binascii import unhexlify
 from collections import namedtuple

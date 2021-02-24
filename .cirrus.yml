@@ -134,6 +134,7 @@ basic_test_task:
         hwilib/_bech32.py
         hwilib/_cli.py
         hwilib/commands.py
+        hwilib/common.py
         hwilib/descriptor.py
         hwilib/devices/bitbox02.py
         hwilib/devices/coldcard.py
@@ -143,10 +144,12 @@ basic_test_task:
         hwilib/devices/ledger.py
         hwilib/devices/trezor.py
         hwilib/errors.py
+        hwilib/_script.py
+        hwilib/_serialize.py
+        hwilib/tx.py
         hwilib/hwwclient.py
         hwilib/__init__.py
         hwilib/key.py
-        hwilib/serializations.py
         hwilib/udevinstaller.py
     - name: Non-Device Tests
       test_script: cd test; poetry run ./run_tests.py; cd ..

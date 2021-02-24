@@ -15,7 +15,7 @@ from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
 from hwilib.descriptor import AddChecksum
 from hwilib.key import KeyOriginInfo
-from hwilib.serializations import PSBT
+from hwilib.psbt import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
 SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}

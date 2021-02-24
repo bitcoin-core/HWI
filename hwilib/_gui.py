@@ -9,8 +9,7 @@ from typing import Callable
 from . import commands, __version__
 from ._cli import HWIArgumentParser
 from .errors import handle_errors, DEVICE_NOT_INITIALIZED
-from .serializations import AddressType
-from .common import Chain
+from .common import AddressType, Chain
 
 try:
     from .ui.ui_bitbox02pairing import Ui_BitBox02PairingDialog

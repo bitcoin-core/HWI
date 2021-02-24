@@ -49,17 +49,23 @@ from ..key import (
     ExtendedKey,
     parse_path,
 )
-from ..serializations import (
-    AddressType,
-    CTxOut,
+from .._script import (
     is_p2pkh,
     is_p2sh,
     is_p2wsh,
     is_witness,
-    PSBT,
+)
+from ..psbt import PSBT
+from ..tx import (
+    CTxOut,
+)
+from .._serialize import (
     ser_uint256,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+)
 from .. import _bech32 as bech32
 from mnemonic import Mnemonic
 from usb1 import USBErrorNoDevice

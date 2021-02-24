@@ -43,11 +43,13 @@ from .._base58 import (
 from ..key import (
     ExtendedKey,
 )
-from ..serializations import (
-    AddressType,
+from ..psbt import (
     PSBT,
 )
-from ..common import Chain
+from ..common import (
+    AddressType,
+    Chain,
+)
 from hashlib import sha256
 
 import base64
