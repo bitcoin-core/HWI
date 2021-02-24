@@ -1,7 +1,7 @@
 Using Bitcoin Core with Hardware Wallets
 ****************************************
 
-This approach is fairly manual, requires the command line, and Bitcoin Core >=0.18.0.
+This approach is fairly manual, requires the command line, and Bitcoin Core >=0.21.0.
 
 Note: For this guide, code lines prefixed with ``$`` means that the command is typed in the terminal. Lines without ``$`` are output of the commands.
 
@@ -18,7 +18,8 @@ Bitcoin Core
 
 This method of using hardware wallets uses Bitcoin Core as the wallet for monitoring the blockchain. It allows a user to use their own full node instead of relying on an SPV wallet or vendor provided software.
 
-HWI works with Bitcoin Core as of commit `c576979b78b541bf3b4a7cbeee989b55d268e3e1 <https://github.com/bitcoin/bitcoin/commit/c576979b78b541bf3b4a7cbeee989b55d268e3e1>`_ It is usable with Bitcoin Core >=0.18.0.
+HWI works with Bitcoin Core >=0.18.0.
+However this guide will require Bitcoin Core >=0.21.0 as it uses Descriptor Wallets.
 
 Setup
 =====
@@ -43,28 +44,27 @@ You may need some dependencies, on ubuntu install ``libudev-dev`` and ``libusb-1
 Now we need to find our hardware wallet. We do this using::
 
     $ ./hwi.py enumerate
-    [{"fingerprint": "8038ecd9", "serial_number": "205A32753042", "type": "coldcard", "path": "0001:0005:00"}]
+    [{"type": "coldcard", "model": "coldcard", "path": "0003:0005:00", "needs_pin_sent": false, "needs_passphrase_sent": false, "fingerprint": "e5dbc9cb"}]
 
-For this example, we will use the Coldcard. As we can see, the device path is ``0001:0005:00``. The fingerprint of the master key is ``8038ecd9``. Now that we have the device, we can issue commands to it. So now we want to get some keys and import them into Core.
+For this example, we will use the Coldcard. As we can see, the device path is ``0003:0005:00``. The fingerprint of the master key is ``e5dbc9cb``. Now that we have the device, we can issue commands to it. So now we want to get some keys and import them into Core.
 We will be fetching keys at the BIP 84 default. If ``--path`` and ``--internal`` are not
 specified, both receiving and change address descriptors are generated.
 
 ::
 
-    $ ./hwi.py -f 8038ecd9 getkeypool --addr-type wpkh 0 1000
-    [{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}, {"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#nl2rc26w", "internal": true, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]
+    $ ./hwi.py -f e5dbc9cb getkeypool --addr-type wpkh 0 1000
+    [{"desc": "wpkh([e5dbc9cb/84'/0'/0']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3", "range": [0, 1000], "timestamp": "now", "internal": false, "keypool": true, "active": true, "watchonly": true}, {"desc": "wpkh([e5dbc9cb/84'/0'/0']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/1/*)#f6puu03f", "range": [0, 1000], "timestamp": "now", "internal": true, "keypool": true, "active": true, "watchonly": true}]
 
-We now create a new Bitcoin Core wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
+We now create a new Bitcoin Core Descriptor Wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
 
 ::
 
-    $ ../bitcoin/src/bitcoin-cli createwallet "coldcard" true
+    $ ../bitcoin/src/bitcoin-cli -named createwallet wallet_name=hwicoldcard disable_private_keys=true descriptors=true
     {
-      "name": "coldcard",
-      "warning": ""
+      "name": "hwicoldcard",
+      "warning": "Wallet is an experimental descriptor wallet"
     }
-    $ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/0/*)#36sal9a4", "internal": false, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}, {"desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#nl2rc26w", "internal": true, "range": [0, 1000], "timestamp": "now", "keypool": true, "watchonly": true}]'
-
+    $ ../bitcoin/src/bitcoin-cli -rpcwallet=hwicoldcard importdescriptors '[{"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3", "range": [0, 1000], "timestamp": "now", "internal": false, "keypool": true, "active": true, "watchonly": true}, {"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/1/*)#f6puu03f", "range": [0, 1000], "timestamp": "now", "internal": true, "keypool": true, "active": true, "watchonly": true}]'
     [
       {
         "success": true
@@ -76,7 +76,7 @@ We now create a new Bitcoin Core wallet and import the keys into Bitcoin Core. T
 
 The Bitcoin Core wallet is now setup to watch two thousand keys (1000 normal, 1000 change) from your hardware wallet and you can use it to track your balances and create transactions. The transactions will need to be signed through HWI.
 
-If the wallet was previously used, you will need to rescan the blockchain. You can either do this using the ``rescanblockchain`` command or editing the ``timestamp`` in the ``importmulti`` command.
+If the wallet was previously used, you will need to rescan the blockchain. You can either do this using the ``rescanblockchain`` command or editing the ``timestamp`` in the ``importdescriptors`` command.
 Here are some examples (``<blockheight>`` refers to a block height before the wallet was created).
 
 ::
@@ -84,8 +84,8 @@ Here are some examples (``<blockheight>`` refers to a block height before the wa
     $ ../bitcoin/src/bitcoin-cli rescanblockchain <blockheight>
     $ ../bitcoin/src/bitcoin-cli rescanblockchain 500000 # Rescan from block 500000
 
-    $ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": <blockheight>, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": [0, 1000], "watchonly": true}]'
-    $ ../bitcoin/src/bitcoin-cli -rpcwallet=coldcard importmulti '[{"internal": true, "timestamp": 500000, "desc": "wpkh([8038ecd9/84h/0h/0h]xpub6DR4rqx16YnCcfwFqgwvJdKiWrjDRzqxYTY44aoyHwZDSeSB5n2tqt42aYr9qPKhSKUdftPdTjhHrKKD6WGKVbuyhMvGH76VyKKZubg8o4P/1/*)#qw4uzsdd", "keypool": true, "range": [0, 1000], "watchonly": true}]' # Imports and rescans from block 500000
+    $ ../bitcoin/src/bitcoin-cli -rpcwallet=hwicoldcard importdescriptors '[{"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3", "range": [0, 1000], "timestamp": <blockheight>, "internal": false, "keypool": true, "active": true, "watchonly": true}, {"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/1/*)#f6puu03f", "range": [0, 1000], "timestamp": <blockheight>, "internal": true, "keypool": true, "active": true, "watchonly": true}]'
+    $ ../bitcoin/src/bitcoin-cli -rpcwallet=hwicoldcard importdescriptors '[{"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3", "range": [0, 1000], "timestamp": 500000, "internal": false, "keypool": true, "active": true, "watchonly": true}, {"desc": "wpkh([e5dbc9cb/84\'/0\'/0\']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/1/*)#f6puu03f", "range": [0, 1000], "timestamp": 500000, "internal": true, "keypool": true, "active": true, "watchonly": true}]' # Imports and rescans from block 500000
 
 Usage
 =====
@@ -105,38 +105,34 @@ To get a new address, use ``getnewaddress`` as you normally would
 
 ::
 
-    $ src/bitcoin-cli -rpcwallet=coldcard getnewaddress
-    bcrt1qu8qe24zq5e2ahh4nkl6g5ysxlpn3nyf0xt026s
+    $ src/bitcoin-cli -rpcwallet=hwicoldcard getnewaddress
+    bc1q2xsn08w749d2tfm7qrkvztlxfmq2564sly4dwl
 
 This address belongs to your hardware wallet. You can check this by doing ``getaddressinfo``::
 
-    $ src/bitcoin-cli -rpcwallet=coldcard getaddressinfo bcrt1qu8qe24zq5e2ahh4nkl6g5ysxlpn3nyf0xt026s
+    $ src/bitcoin-cli -rpcwallet=hwicoldcard getaddressinfo bc1q2xsn08w749d2tfm7qrkvztlxfmq2564sly4dwl
     {
-      "address": "bcrt1qu8qe24zq5e2ahh4nkl6g5ysxlpn3nyf0xt026s",
-      "scriptPubKey": "0014e1c1955440a655dbdeb3b7f48a1206f86719912f",
-      "ismine": false,
-      "iswatchonly": true,
+      "address": "bc1q2xsn08w749d2tfm7qrkvztlxfmq2564sly4dwl",
+      "scriptPubKey": "001451a1379ddea95aa5a77e00ecc12fe64ec0aa6ab0",
+      "ismine": true,
       "solvable": true,
+      "desc": "wpkh([e5dbc9cb/84'/0'/0'/0/0]0325ccb1f60a3d0640cbc3bfa1cefc34512d50c32d0e7c102b62e18f23ab69fbc5)#je3ch2kg",
+      "parent_desc": "wpkh([e5dbc9cb/84'/0'/0']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3",
+      "iswatchonly": false,
       "isscript": false,
       "iswitness": true,
       "witness_version": 0,
-      "witness_program": "e1c1955440a655dbdeb3b7f48a1206f86719912f",
-      "pubkey": "022320f1cf72e7ba2cef6be32d7493ce3bd4c6a2575fe51ce260377adc165603d4",
-      "label": "",
+      "witness_program": "51a1379ddea95aa5a77e00ecc12fe64ec0aa6ab0",
+      "pubkey": "0325ccb1f60a3d0640cbc3bfa1cefc34512d50c32d0e7c102b62e18f23ab69fbc5",
       "ischange": false,
-      "timestamp": 1541688305,
-      "hdkeypath": "m/84'/1'/0'/0/0",
+      "timestamp": 1614190663,
+      "hdkeypath": "m/84'/0'/0'/0/0",
       "hdseedid": "0000000000000000000000000000000000000000",
-      "hdmasterkeyid": "00000000000000000000000000000000d9ec3880",
+      "hdmasterfingerprint": "e5dbc9cb",
       "labels": [
-        {
-          "name": "",
-          "purpose": "receive"
-        }
+        ""
       ]
     }
-
-Notice how the pubkey is the one that was specified as the very first thing being imported to your wallet.
 
 You can give this out to people as you normally would. When coins are sent to it, you will see them in your Bitcoin Core wallet as watch-only.
 
@@ -148,7 +144,7 @@ This PSBT can be used with HWI to produce a signed PSBT which can then be finali
 
 For example, suppose I am sending to 1 BTC to bc1q257z5t76hedc36wmmzva05890ny3kxd7xfwrgy. First I create a funded psbt with BIP 32 derivation paths to be included::
 
-    $ src/bitcoin-cli -rpcwallet=coldcard walletcreatefundedpsbt '[]' '[{"bc1q257z5t76hedc36wmmzva05890ny3kxd7xfwrgy":1}]' 0 '{"includeWatching":true}' true
+    $ src/bitcoin-cli -rpcwallet=hwicoldcard walletcreatefundedpsbt '[]' '[{"bc1q257z5t76hedc36wmmzva05890ny3kxd7xfwrgy":1}]' 0 '{"includeWatching":true}' true
     {
       "psbt": "cHNidP8BAHECAAAAAU8KWkCU7H4MYBiZHmLey6FavV3L3xLfy4tVEZoubx+2AAAAAAD+////AgDh9QUAAAAAFgAUVTwqL9q+W4jp29iZ19DlfMkbGb78eNcXAAAAABYAFLHuX3WRuPs3ypeQOziNw5qFlBH8AAAAAAABAR8AZc0dAAAAABYAFOHBlVRAplXb3rO39IoSBvhnGZEvIgYCIyDxz3Lnuizva+MtdJPOO9TGoldf5RziYDd63BZWA9QYgDjs2VQAAIABAACAAAAAgAAAAAAAAAAAAAAiAgP0HMQ2K693zCXTCudBUzemDhxLmFGETOnAV7vgDz2r9RiAOOzZVAAAgAEAAIAAAACAAQAAAAAAAAAA",
       "fee": 0.00002820,
@@ -251,7 +247,7 @@ Once the transaction has been inspected and everything looks good, the transacti
 ::
 
     $ cd ../HWI
-    $ ./hwi.py -f 8038ecd9 --testnet signtx cHNidP8BAHECAAAAAU8KWkCU7H4MYBiZHmLey6FavV3L3xLfy4tVEZoubx+2AAAAAAD+////AgDh9QUAAAAAFgAUVTwqL9q+W4jp29iZ19DlfMkbGb78eNcXAAAAABYAFLHuX3WRuPs3ypeQOziNw5qFlBH8AAAAAAABAR8AZc0dAAAAABYAFOHBlVRAplXb3rO39IoSBvhnGZEvIgYCIyDxz3Lnuizva+MtdJPOO9TGoldf5RziYDd63BZWA9QYgDjs2VQAAIABAACAAAAAgAAAAAAAAAAAAAAiAgP0HMQ2K693zCXTCudBUzemDhxLmFGETOnAV7vgDz2r9RiAOOzZVAAAgAEAAIAAAACAAQAAAAAAAAAA
+    $ ./hwi.py -f e5dbc9cb --testnet signtx cHNidP8BAHECAAAAAU8KWkCU7H4MYBiZHmLey6FavV3L3xLfy4tVEZoubx+2AAAAAAD+////AgDh9QUAAAAAFgAUVTwqL9q+W4jp29iZ19DlfMkbGb78eNcXAAAAABYAFLHuX3WRuPs3ypeQOziNw5qFlBH8AAAAAAABAR8AZc0dAAAAABYAFOHBlVRAplXb3rO39IoSBvhnGZEvIgYCIyDxz3Lnuizva+MtdJPOO9TGoldf5RziYDd63BZWA9QYgDjs2VQAAIABAACAAAAAgAAAAAAAAAAAAAAiAgP0HMQ2K693zCXTCudBUzemDhxLmFGETOnAV7vgDz2r9RiAOOzZVAAAgAEAAIAAAACAAQAAAAAAAAAA
 
 Follow the onscreen instructions, check everything, and approve the transaction. The result will look like::
 
@@ -273,12 +269,8 @@ We can now take the PSBT, finalize it, and broadcast it with Bitcoin Core
 Refilling the keypools
 ----------------------
 
-When the keypools run out, they can be refilled by using the ``getkeypool`` commands as done in the beginning, but with different starting and ending indexes. For example, to refill my keypools, I would use the following ``getkeypool`` commands::
-
-    $ ./hwi.py -f 8038ecd9 getkeypool --addr-type wpkh 1000 2000
-    $ ./hwi.py -f 8038ecd9 getkeypool --addr-type wpkh --internal 1000 2000
-
-The output can be imported with ``importmulti`` as shown in the Setup steps.
+Descriptor wallets will constantly generate new addresses from the imported descriptors.
+It is not necessary to import additional keys or descriptors to refresh the keypool, Bitcoin Core will do so automatically by using the descriptors.
 
 Derivation Path BIP Compliance
 ==============================
