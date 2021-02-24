@@ -40,7 +40,7 @@ from .trezorlib import (
     device,
 )
 from .trezorlib import messages
-from ..base58 import (
+from .._base58 import (
     get_xpub_fingerprint,
     to_address,
 )
@@ -60,7 +60,7 @@ from ..serializations import (
     ser_uint256,
 )
 from ..common import Chain
-from .. import bech32
+from .. import _bech32 as bech32
 from mnemonic import Mnemonic
 from usb1 import USBErrorNoDevice
 from types import MethodType

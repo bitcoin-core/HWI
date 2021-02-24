@@ -25,7 +25,7 @@
 
 import binascii
 import unittest
-import hwilib.bech32 as segwit_addr
+import hwilib._bech32 as segwit_addr
 
 def segwit_scriptpubkey(witver, witprog):
     """Construct a Segwit scriptPubKey for a given witness program."""

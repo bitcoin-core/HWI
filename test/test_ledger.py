@@ -11,7 +11,7 @@ import unittest
 
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 
 class LedgerEmulator(DeviceEmulator):
     def __init__(self, path):

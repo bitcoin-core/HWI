@@ -39,8 +39,8 @@ flake8 = "^3.7"
 mypy = "^0.790"
 
 [tool.poetry.scripts]
-hwi = 'hwilib.cli:main'
-hwi-qt = 'hwilib.gui:main'
+hwi = 'hwilib._cli:main'
+hwi-qt = 'hwilib._gui:main'
 
 [build-system]
 requires = ["poetry>=0.12"]

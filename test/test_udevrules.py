@@ -3,7 +3,7 @@
 import unittest
 import filecmp
 from os import makedirs, remove, removedirs, walk, path
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
     INSTALLATION_FOLDER = 'rules.d'

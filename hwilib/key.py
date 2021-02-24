@@ -3,7 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from . import base58
+from . import _base58 as base58
 from .errors import BadArgumentError
 
 import binascii

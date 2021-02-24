@@ -11,8 +11,8 @@ import time
 import unittest
 
 from authproxy import AuthServiceProxy, JSONRPCException
-from hwilib.base58 import xpub_to_pub_hex, to_address, decode
-from hwilib.cli import process_commands
+from hwilib._base58 import xpub_to_pub_hex, to_address, decode
+from hwilib._cli import process_commands
 from hwilib.descriptor import AddChecksum
 from hwilib.key import KeyOriginInfo
 from hwilib.serializations import PSBT

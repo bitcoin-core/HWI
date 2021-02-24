@@ -6,7 +6,7 @@ import importlib
 import platform
 
 from .serializations import AddressType, PSBT
-from .base58 import xpub_to_pub_hex
+from ._base58 import xpub_to_pub_hex
 from .key import (
     H_,
     HARDENED_FLAG,
