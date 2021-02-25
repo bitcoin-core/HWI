@@ -459,10 +459,12 @@ class Bitbox02Client(HardwareWalletClient):
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
             )
-        else:
+        elif addr_type == AddressType.LEGACY:
             raise UnavailableActionError(
                 "The BitBox02 does not support legacy p2pkh addresses"
             )
+        else:
+            raise BadArgumentError("Unknown address type")
         address = self.init().btc_address(
             parse_path(bip32_path),
             coin=self._get_coin(),

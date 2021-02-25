@@ -52,7 +52,7 @@ specified, both receiving and change address descriptors are generated.
 
 ::
 
-    $ ./hwi.py -f e5dbc9cb getkeypool --addr-type wit 0 1000
+    $ ./hwi.py -f e5dbc9cb getkeypool 0 1000
     [{"desc": "wpkh([e5dbc9cb/84'/0'/0']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/0/*)#cwyap6p3", "range": [0, 1000], "timestamp": "now", "internal": false, "keypool": true, "active": true, "watchonly": true}, {"desc": "wpkh([e5dbc9cb/84'/0'/0']xpub6CbtS57jivMSuzcvp5YZxp6JhUU8YWup2axi2xkQRVHY8w4otp8YkEvfWBHgE5rA2AJYNHquuRoLFFdWeSi1UgVohcUeM7SkE9c8NftRwRJ/1/*)#f6puu03f", "range": [0, 1000], "timestamp": "now", "internal": true, "keypool": true, "active": true, "watchonly": true}]
 
 We now create a new Bitcoin Core Descriptor Wallet and import the keys into Bitcoin Core. The output is formatted properly for Bitcoin Core so it can be copy and pasted.
@@ -276,8 +276,8 @@ Derivation Path BIP Compliance
 ==============================
 
 The instructions above use BIP 84 to derive keys used for P2WPKH addresses (bech32 addresses).
-HWI follows BIPs 44, 84, and 49. By default, descriptors will be for P2PKH addresses with keys derived at ``m/44h/0h/0h/0`` for normal receiving keys and ``m/44h/0h/0h/1`` for change keys.
-Using the ``--addr-type wit`` option will result in P2WPKH addresses with keys derived at ``m/84h/0h/0h/0`` for normal receiving keys and ``m/84h/0h/0h/1`` for change keys.
+HWI follows BIPs 44, 84, and 49. By default, descriptors will be for P2WPKH addresses with keys derived at ``m/84h/0h/0h/0`` for normal receiving keys and ``m/84h/0h/0h/1`` for change keys.
+Using the ``--addr-type legacy`` option will result in P2PKH addresses with keys derived at ``m/44h/0h/0h/0`` for normal receiving keys and ``m/44h/0h/0h/1`` for change keys.
 Using the ``--addr-type sh_wit`` option will result in P2SH nested P2WPKH addresses with keys derived at ``m/49h/0h/0h/0`` for normal receiving keys and ``m/49h/0h/0h/1`` for change keys.
 
 To actually get the correct address type when using ``getnewaddress`` from Bitcoin Core, you will need to additionally set ``-addresstype=p2sh-segwit`` and ``-changetype=p2sh-segwit``.

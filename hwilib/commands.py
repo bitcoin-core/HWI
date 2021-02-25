@@ -353,7 +353,7 @@ def getkeypool(
     internal: bool = False,
     keypool: bool = True,
     account: int = 0,
-    addr_type: AddressType = AddressType.LEGACY,
+    addr_type: AddressType = AddressType.WIT,
     addr_all: bool = False
 ) -> List[Dict[str, Any]]:
     """
@@ -428,7 +428,7 @@ def displayaddress(
     client: HardwareWalletClient,
     path: Optional[str] = None,
     desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.LEGACY
+    addr_type: AddressType = AddressType.WIT
 ) -> Dict[str, str]:
     """
     Display an address on the device for client.

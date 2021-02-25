@@ -543,8 +543,10 @@ class TrezorClient(HardwareWalletClient):
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
-        else:
+        elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
+        else:
+            raise BadArgumentError("Unknown address type")
 
         expanded_path = parse_path(keypath)
 
@@ -590,8 +592,10 @@ class TrezorClient(HardwareWalletClient):
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
         elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
-        else:
+        elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDMULTISIG
+        else:
+            raise BadArgumentError("Unknown address type")
 
         for p in pubkeys:
             keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"

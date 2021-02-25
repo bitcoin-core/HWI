@@ -171,11 +171,14 @@ class DisplayAddressDialog(QDialog):
     @Slot()
     def go_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        addrtype = AddressType.LEGACY
         if self.ui.sh_wpkh_radio.isChecked():
             addrtype = AddressType.SH_WIT
         elif self.ui.wpkh_radio.isChecked():
             addrtype = AddressType.WIT
+        elif self.ui.pkh_radio.isChecked():
+            addrtype = AddressType.LEGACY
+        else:
+            assert False # How did this happen?
         res = do_command(commands.displayaddress, self.client, path, addr_type=addrtype)
         self.ui.address_lineedit.setText(res['address'])
 
@@ -445,6 +448,8 @@ class HWIQt(QMainWindow):
             self.getkeypool_opts['addrtype'] = AddressType.SH_WIT
         if self.current_dialog.ui.wpkh_radio.isChecked():
             self.getkeypool_opts['addrtype'] = AddressType.WIT
+        if self.current_dialog.ui.pkh_radio.isChecked():
+            self.getkeypool_opts['addrtype'] = AddressType.LEGACY
         if self.current_dialog.ui.account_radio.isChecked():
             self.getkeypool_opts['account'] = self.current_dialog.ui.account_spinbox.value()
             self.getkeypool_opts['account_used'] = True

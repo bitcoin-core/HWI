@@ -239,8 +239,10 @@ class ColdcardClient(HardwareWalletClient):
             addr_fmt = AF_P2WPKH_P2SH
         elif addr_type == AddressType.WIT:
             addr_fmt = AF_P2WPKH
-        else:
+        elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
+        else:
+            raise BadArgumentError("Unknown address type")
 
         payload = CCProtocolPacker.show_address(keypath, addr_fmt=addr_fmt)
 
@@ -264,8 +266,10 @@ class ColdcardClient(HardwareWalletClient):
             addr_fmt = AF_P2WSH_P2SH
         elif addr_type == AddressType.WIT:
             addr_fmt = AF_P2WSH
-        else:
+        elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_P2SH
+        else:
+            raise BadArgumentError("Unknown address type")
 
         if not 1 <= len(pubkeys) <= 15:
             raise BadArgumentError("Must provide 1 to 15 keypaths to display a multisig address")
