@@ -1,3 +1,15 @@
+"""
+Output Script Descriptors
+*************************
+
+HWI has a more limited implementation of descriptors.
+See `Bitcoin Core's documentation <https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md>`_ for more details on descriptors.
+
+This implementation only supports ``sh()``, ``wsh()``, ``pkh()``, ``wpkh()``, ``multi()``, and ``sortedmulti()`` descriptors.
+Descriptors can be parsed, however the actual scripts are not generated.
+"""
+
+
 from .key import ExtendedKey, KeyOriginInfo, parse_path
 from .common import hash160, sha256
 
@@ -10,11 +22,15 @@ from typing import (
     Tuple,
 )
 
-# From: https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
 
 ExpandedScripts = namedtuple("ExpandedScripts", ["output_script", "redeem_script", "witness_script"])
 
 def PolyMod(c: int, val: int) -> int:
+    """
+    :meta private:
+    Function to compute modulo over the polynomial used for descriptor checksums
+    From: https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
+    """
     c0 = c >> 35
     c = ((c & 0x7ffffffff) << 5) ^ val
     if (c0 & 1):
@@ -30,6 +46,12 @@ def PolyMod(c: int, val: int) -> int:
     return c
 
 def DescriptorChecksum(desc: str) -> str:
+    """
+    Compute the checksum for a descriptor
+
+    :param desc: The descriptor string to compute a checksum for
+    :return: A checksum
+    """
     INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
     CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
@@ -59,16 +81,32 @@ def DescriptorChecksum(desc: str) -> str:
     return ''.join(ret)
 
 def AddChecksum(desc: str) -> str:
+    """
+    Compute and attach the checksum for a descriptor
+
+    :param desc: The descriptor string to add a checksum to
+    :return: Descriptor with checksum
+    """
     return desc + "#" + DescriptorChecksum(desc)
 
 
 class PubkeyProvider(object):
+    """
+    A public key expression in a descriptor.
+    Can contain the key origin info, the pubkey itself, and subsequent derivation paths for derivation from the pubkey
+    The pubkey can be a typical pubkey or an extended pubkey.
+    """
     def __init__(
         self,
         origin: Optional['KeyOriginInfo'],
         pubkey: str,
         deriv_path: Optional[str]
     ) -> None:
+        """
+        :param origin: The key origin if one is available
+        :param pubkey: The public key. Either a hex string or a serialized extended pubkey
+        :param deriv_path: Additional derivation path if the pubkey is an extended pubkey
+        """
         self.origin = origin
         self.pubkey = pubkey
         self.deriv_path = deriv_path
@@ -84,6 +122,12 @@ class PubkeyProvider(object):
 
     @classmethod
     def parse(cls, s: str) -> 'PubkeyProvider':
+        """
+        Deserialize a key expression from the string into a ``PubkeyProvider``.
+
+        :param s: String containing the key expression
+        :return: A new ``PubkeyProvider`` containing the details given by ``s``
+        """
         origin = None
         deriv_path = None
 
@@ -101,6 +145,11 @@ class PubkeyProvider(object):
         return cls(origin, pubkey, deriv_path)
 
     def to_string(self) -> str:
+        """
+        Serialize the pubkey expression to a string to be used in a descriptor
+
+        :return: The pubkey expression as a string
+        """
         s = ""
         if self.origin:
             s += "[{}]".format(self.origin.to_string())
@@ -158,17 +207,31 @@ class PubkeyProvider(object):
 
 
 class Descriptor(object):
+    r"""
+    An abstract class for Descriptors themselves.
+    Descriptors can contain multiple :class:`PubkeyProvider`\ s and no more than one ``Descriptor`` as a subdescriptor.
+    """
     def __init__(
         self,
         pubkeys: List['PubkeyProvider'],
         subdescriptor: Optional['Descriptor'],
         name: str
     ) -> None:
+        r"""
+        :param pubkeys: The :class:`PubkeyProvider`\ s that are part of this descriptor
+        :param subdescriptor: The ``Descriptor`` that is part of this descriptor
+        :param name: The name of the function for this descriptor
+        """
         self.pubkeys = pubkeys
         self.subdescriptor = subdescriptor
         self.name = name
 
     def to_string_no_checksum(self) -> str:
+        """
+        Serializes the descriptor as a string without the descriptor checksum
+
+        :return: The descriptor string
+        """
         return "{}({}{})".format(
             self.name,
             ",".join([p.to_string() for p in self.pubkeys]),
@@ -176,6 +239,11 @@ class Descriptor(object):
         )
 
     def to_string(self) -> str:
+        """
+        Serializes the descriptor as a string wtih the checksum
+
+        :return: The descriptor with a checksum
+        """
         return AddChecksum(self.to_string_no_checksum())
 
     def expand(self, pos: int) -> "ExpandedScripts":
@@ -186,10 +254,16 @@ class Descriptor(object):
 
 
 class PKHDescriptor(Descriptor):
+    """
+    A descriptor for ``pkh()`` descriptors
+    """
     def __init__(
         self,
         pubkey: 'PubkeyProvider'
     ) -> None:
+        """
+        :param pubkey: The :class:`PubkeyProvider` for this descriptor
+        """
         super().__init__([pubkey], None, "pkh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
@@ -198,10 +272,16 @@ class PKHDescriptor(Descriptor):
 
 
 class WPKHDescriptor(Descriptor):
+    """
+    A descriptor for ``wpkh()`` descriptors
+    """
     def __init__(
         self,
         pubkey: 'PubkeyProvider'
     ) -> None:
+        """
+        :param pubkey: The :class:`PubkeyProvider` for this descriptor
+        """
         super().__init__([pubkey], None, "wpkh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
@@ -210,12 +290,20 @@ class WPKHDescriptor(Descriptor):
 
 
 class MultisigDescriptor(Descriptor):
+    """
+    A descriptor for ``multi()`` and ``sortedmulti()`` descriptors
+    """
     def __init__(
         self,
         pubkeys: List['PubkeyProvider'],
         thresh: int,
         is_sorted: bool
     ) -> None:
+        r"""
+        :param pubkeys: The :class:`PubkeyProvider`\ s for this descriptor
+        :param thresh: The number of keys required to sign this multisig
+        :param is_sorted: Whether this is a ``sortedmulti()`` descriptor
+        """
         super().__init__(pubkeys, None, "sortedmulti" if is_sorted else "multi")
         self.thresh = thresh
         if is_sorted:
@@ -240,10 +328,16 @@ class MultisigDescriptor(Descriptor):
 
 
 class SHDescriptor(Descriptor):
+    """
+    A descriptor for ``sh()`` descriptors
+    """
     def __init__(
         self,
         subdescriptor: Optional['Descriptor']
     ) -> None:
+        """
+        :param subdescriptor: The :class:`Descriptor` that is a sub-descriptor for this descriptor
+        """
         super().__init__([], subdescriptor, "sh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
@@ -254,10 +348,16 @@ class SHDescriptor(Descriptor):
 
 
 class WSHDescriptor(Descriptor):
+    """
+    A descriptor for ``wsh()`` descriptors
+    """
     def __init__(
         self,
         subdescriptor: Optional['Descriptor']
     ) -> None:
+        """
+        :param pubkey: The :class:`Descriptor` that is a sub-descriptor for this descriptor
+        """
         super().__init__([], subdescriptor, "wsh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
@@ -270,6 +370,10 @@ class WSHDescriptor(Descriptor):
 def _get_func_expr(s: str) -> Tuple[str, str]:
     """
     Get the function name and then the expression inside
+
+    :param s: The string that begins with a function name
+    :return: The function name as the first element of the tuple, and the expression contained within the function as the second element
+    :raises: ValueError: if a matching pair of parentheses cannot be found
     """
     start = s.index("(")
     end = s.rindex(")")
@@ -277,6 +381,12 @@ def _get_func_expr(s: str) -> Tuple[str, str]:
 
 
 def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
+    """
+    Parses an individual pubkey expression from a string that may contain more than one pubkey expression.
+
+    :param expr: The expression to parse a pubkey expression from
+    :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, and the remainder of the expression as the second item.
+    """
     end = len(expr)
     comma_idx = expr.find(",")
     next_expr = ""
@@ -287,12 +397,35 @@ def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
 
 
 class _ParseDescriptorContext(Enum):
+    """
+    :meta private:
+
+    Enum representing the level that we are in when parsing a descriptor.
+    Some expressions aren't allowed at certain levels, this helps us track those.
+    """
+
     TOP = 1
+    """The top level, not within any descriptor"""
+
     P2SH = 2
+    """Within a ``sh()`` descriptor"""
+
     P2WSH = 3
+    """Within a ``wsh()`` descriptor"""
 
 
 def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor':
+    """
+    :meta private:
+
+    Parse a descriptor given the context level we are in.
+    Used recursively to parse subdescriptors
+
+    :param desc: The descriptor string to parse
+    :param ctx: The :class:`_ParseDescriptorContext` indicating the level we are in
+    :return: The parsed descriptor
+    :raises: ValueError: if the descriptor is malformed
+    """
     func, expr = _get_func_expr(desc)
     if func == "pkh":
         pubkey, expr = parse_pubkey(expr)
@@ -342,6 +475,14 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
 
 
 def parse_descriptor(desc: str) -> 'Descriptor':
+    """
+    Parse a descriptor string into a :class:`Descriptor`.
+    Validates the checksum if one is provided in the string
+
+    :param desc: The descriptor string
+    :return: The parsed :class:`Descriptor`
+    :raises: ValueError: if the descriptor string is malformed
+    """
     i = desc.find("#")
     if i != -1:
         checksum = desc[i + 1:]
