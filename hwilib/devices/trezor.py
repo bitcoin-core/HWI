@@ -539,9 +539,9 @@ class TrezorClient(HardwareWalletClient):
         self._check_unlocked()
 
         # Script type
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
         else:
             script_type = messages.InputScriptType.SPENDADDRESS
@@ -586,9 +586,9 @@ class TrezorClient(HardwareWalletClient):
         multisig = messages.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
 
         # Script type
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
         else:
             script_type = messages.InputScriptType.SPENDMULTISIG

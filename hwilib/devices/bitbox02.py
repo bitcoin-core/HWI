@@ -451,11 +451,11 @@ class Bitbox02Client(HardwareWalletClient):
         bip32_path: str,
         addr_type: AddressType,
     ) -> str:
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH_P2SH
             )
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_config = bitbox02.btc.BTCScriptConfig(
                 simple_type=bitbox02.btc.BTCScriptConfig.P2WPKH
             )
@@ -492,9 +492,9 @@ class Bitbox02Client(HardwareWalletClient):
             key_origin_infos[pk.extkey.serialize()] = pk.origin
             keypaths[pk.extkey.serialize()] = pk.get_full_derivation_path(0)
 
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_type = bitbox02.btc.BTCScriptConfig.Multisig.P2WSH_P2SH
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_type = bitbox02.btc.BTCScriptConfig.Multisig.P2WSH
         else:
             raise BadArgumentError(

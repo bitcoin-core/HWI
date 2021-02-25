@@ -235,9 +235,9 @@ class ColdcardClient(HardwareWalletClient):
         keypath = keypath.replace('h', '\'')
         keypath = keypath.replace('H', '\'')
 
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             addr_fmt = AF_P2WPKH_P2SH
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             addr_fmt = AF_P2WPKH
         else:
             addr_fmt = AF_CLASSIC
@@ -260,9 +260,9 @@ class ColdcardClient(HardwareWalletClient):
     ) -> str:
         self.device.check_mitm()
 
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             addr_fmt = AF_P2WSH_P2SH
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             addr_fmt = AF_P2WSH
         else:
             addr_fmt = AF_P2SH

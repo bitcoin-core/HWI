@@ -174,7 +174,7 @@ def get_parser() -> HWIArgumentParser:
     kparg_group.add_argument('--nokeypool', action='store_false', dest='keypool', help='Indicates that the keys are not to be imported to the keypool', default=False)
     getkeypool_parser.add_argument('--internal', action='store_true', help='Indicates that the keys are change keys')
     kp_type_group = getkeypool_parser.add_mutually_exclusive_group()
-    kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
+    kp_type_group.add_argument("--addr-type", help="The address type (and default derivation path) to produce descriptors for", type=AddressType.argparse, choices=list(AddressType), default=AddressType.LEGACY) # type: ignore
     kp_type_group.add_argument('--all', action='store_true', help='Generate addresses for all standard address types (default paths: ``m/{44,49,84}h/0h/0h/[0,1]/*)``')
     getkeypool_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
     getkeypool_parser.add_argument('--path', help='Derivation path, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*`` with --addr-type wpkh --internal. If this argument and --internal is not given, both internal and external keypools will be returned.')
@@ -190,7 +190,7 @@ def get_parser() -> HWIArgumentParser:
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
-    displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.PKH) # type: ignore
+    displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.LEGACY) # type: ignore
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')

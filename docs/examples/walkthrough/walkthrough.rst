@@ -35,8 +35,8 @@ Then in another terminal run commands similar to these, adapted to your environm
   # of unknown address on Trezor display. This is not recommended. Use the correct derivation path
   # for the corresponding network!
   wallet=wallet.test
-  rec=$(hwi --testnet -f $FINGERPRINT_TESTNET getkeypool --addr-type wpkh --path m/84h/${DERIVATIONPATH_TESTNET}h/0h/0/* --keypool 0 1000)
-  chg=$(hwi --testnet -f $FINGERPRINT_TESTNET getkeypool --addr-type wpkh --path m/84h/${DERIVATIONPATH_TESTNET}h/0h/1/* --keypool --internal 0 1000)
+  rec=$(hwi --testnet -f $FINGERPRINT_TESTNET getkeypool --addr-type wit --path m/84h/${DERIVATIONPATH_TESTNET}h/0h/0/* --keypool 0 1000)
+  chg=$(hwi --testnet -f $FINGERPRINT_TESTNET getkeypool --addr-type wit --path m/84h/${DERIVATIONPATH_TESTNET}h/0h/1/* --keypool --internal 0 1000)
   bitcoin-cli -testnet createwallet "$wallet" true
   bitcoin-cli -testnet -rpcwallet="$wallet" importmulti "$rec"
   bitcoin-cli -testnet -rpcwallet="$wallet" importmulti "$chg"
@@ -184,5 +184,5 @@ Versions Used
 =============
 
 * This walk-trough was done in Janary 2021
-* HWI version 1.2.1
+* HWI version 2.0.0-dev
 * Bitcoin 0.21.0
