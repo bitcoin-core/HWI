@@ -56,6 +56,34 @@ The table below lists what devices and features are supported for each device.
 | Display on device screen           | ✓             | ✓             | ✓          | ✓              | ―        | ✓        | ✓       | ✓        |
 +------------------------------------+---------------+---------------+------------+----------------+----------+----------+---------+----------+
 
+Support Policy
+================
+
+For a device to be supported by HWI, it must:
+
+* Use open source firmware as much as possible
+
+  * Entirely closed source devices will be rejected
+  * Devices may have closed source firmware components if required to under a NDA (e.g. a secure element with NDA)
+
+* Publicly documented communication protocol
+
+  * It is preferred to both document the protocol and provide a Python library for using it
+  * The library, with its own documentation, can suffice as "publicly documented"
+
+* Either (but preferably both):
+
+  * A simulator/emulator is available for automated tests to be run
+  * A promise to maintain and support from the vendor:
+
+Device support may be dropped:
+
+* If promised vendor maintenance and support disappears
+
+  * If there are continuous issues with the device and the vendor has failed to provide support and updates
+
+* If the device no longer receives security devices and there are known vulnerabilities and issues
+
 Device APIs
 ===========
 
