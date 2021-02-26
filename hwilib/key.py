@@ -12,6 +12,8 @@ Classes and utilities for working with extended public keys, key origins, and ot
 
 from . import _base58 as base58
 from .common import (
+    AddressType,
+    Chain,
     hash256,
     hash160,
 )
@@ -350,3 +352,33 @@ def parse_path(nstr: str) -> List[int]:
         return [str_to_harden(x) for x in n]
     except Exception:
         raise ValueError("Invalid BIP32 path", nstr)
+
+
+def get_bip44_purpose(addrtype: AddressType) -> int:
+    """
+    Determine the BIP 44 purpose based on the given :class:`~hwilib.common.AddressType`.
+
+    :param addrtype: The address type
+    """
+    if addrtype == AddressType.LEGACY:
+        return 44
+    elif addrtype == AddressType.SH_WIT_V0:
+        return 49
+    elif addrtype == AddressType.WIT_V0:
+        return 84
+    else:
+        raise ValueError("Unknown address type")
+
+
+def get_bip44_chain(chain: Chain) -> int:
+    """
+    Determine the BIP 44 coin type based on the Bitcoin chain type.
+
+    For the Bitcoin mainnet chain, this returns 0. For the other chains, this returns 1.
+
+    :param chain: The chain
+    """
+    if chain == Chain.MAIN:
+        return 0
+    else:
+        return 1

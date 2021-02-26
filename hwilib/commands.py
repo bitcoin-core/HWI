@@ -24,6 +24,8 @@ import platform
 
 from ._base58 import xpub_to_pub_hex
 from .key import (
+    get_bip44_purpose,
+    get_bip44_chain,
     H_,
     HARDENED_FLAG,
     is_hardened,
@@ -49,7 +51,6 @@ from .descriptor import (
 from .devices import __all__ as all_devs
 from .common import (
     AddressType,
-    Chain,
 )
 from .hwwclient import HardwareWalletClient
 from .psbt import PSBT
@@ -292,19 +293,10 @@ def getdescriptor(
     parsed_path = []
     if not path:
         # Purpose
-        if is_wpkh:
-            parsed_path.append(H_(84))
-        elif is_sh_wpkh:
-            parsed_path.append(H_(49))
-        else:
-            assert addr_type == AddressType.LEGACY
-            parsed_path.append(H_(44))
+        parsed_path.append(H_(get_bip44_purpose(addr_type)))
 
         # Coin type
-        if client.chain == Chain.MAIN:
-            parsed_path.append(H_(0))
-        else:
-            parsed_path.append(H_(1))
+        parsed_path.append(H_(get_bip44_chain(client.chain)))
 
         # Account
         parsed_path.append(H_(account))
