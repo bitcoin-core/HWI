@@ -146,7 +146,7 @@ class TestKeepkeyGetxpub(KeepkeyTestCase):
                 load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
-                gmxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
+                gmxp_res = self.do_command(['-t', 'keepkey', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub', "--addr-type", "legacy"])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs

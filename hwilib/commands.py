@@ -166,7 +166,7 @@ def find_device(
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
-def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
+def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressType.WIT_V0, account: int = 0) -> Dict[str, str]:
     """
     Get the master extended public key from a client
 
@@ -174,7 +174,7 @@ def getmasterxpub(client: HardwareWalletClient) -> Dict[str, str]:
     :return: A dictionary containing the public key at the ``m/44'/0'/0'`` derivation path.
         Returned as ``{"xpub": <xpub string>}``.
     """
-    return {"xpub": client.get_master_xpub().to_string()}
+    return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
 def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
     """

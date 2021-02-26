@@ -12,7 +12,11 @@ from typing import (
     Union,
 )
 from .descriptor import PubkeyProvider
-from .key import ExtendedKey
+from .key import (
+    ExtendedKey,
+    get_bip44_purpose,
+    get_bip44_chain,
+)
 from .psbt import PSBT
 from .common import AddressType, Chain
 
@@ -41,16 +45,17 @@ class HardwareWalletClient(object):
         self.xpub_cache: Dict[str, str] = {}
         self.expert = expert
 
-    def get_master_xpub(self) -> ExtendedKey:
+    def get_master_xpub(self, addrtype: AddressType = AddressType.WIT_V0, account: int = 0) -> ExtendedKey:
         """
-        Get the master BIP 44 public key.
+        Retrieves a BIP 44 master public key
 
-        Retrieves the public key at the "m/44h/0h/0h" derivation path.
+        Get the extended public key used to derive receiving and change addresses with the BIP 44 derivation path scheme.
+        The returned xpub will be dependent on the address type requested, the chain type, and the BIP 44 account number.
 
-        :return: The extended public key at "m/44h/0h/0h"
+        :return: The extended public key
         """
-        # FIXME testnet is not handled yet
-        return self.get_pubkey_at_path("m/44h/0h/0h")
+        path = f"m/{get_bip44_purpose(addrtype)}h/{get_bip44_chain(self.chain)}h/{account}h"
+        return self.get_pubkey_at_path(path)
 
     def get_master_fingerprint(self) -> bytes:
         """
