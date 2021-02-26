@@ -21,6 +21,7 @@ from ..errors import (
     DeviceConnectionError,
     DeviceFailureError,
     UnavailableActionError,
+    UnknownDeviceError,
     common_err_msgs,
     handle_errors,
 )
@@ -135,6 +136,9 @@ class LedgerClient(HardwareWalletClient):
             self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
 
         self.app = btchip(self.dongle)
+
+        if self.app.getAppName() not in ["Bitcoin", "Bitcoin Test", "app"]:
+            raise UnknownDeviceError("Ledger is not in either the Bitcoin or Bitcoin Testnet app")
 
     @ledger_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
@@ -460,6 +464,9 @@ def enumerate(password: str = '') -> List[Dict[str, Any]]:
                         continue
                     else:
                         raise
+                except UnknownDeviceError:
+                    # This only happens if the ledger is not in the Bitcoin app, so skip it
+                    continue
 
             if client:
                 client.close()
