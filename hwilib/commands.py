@@ -19,6 +19,7 @@ For more information about the exceptions that those can raise, please see the s
 """
 
 import importlib
+import logging
 import platform
 
 from ._base58 import xpub_to_pub_hex
@@ -109,8 +110,11 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
             result.extend(imported_dev.enumerate(password)) # type: ignore
-        except ImportError:
-            pass # Ignore ImportErrors, the user may not have all device dependencies installed
+        except ImportError as e:
+            # Warn for ImportErrors, but largely ignore them to allow users not install
+            # all device dependencies if only one or some devices are wanted.
+            logging.warn(f"{e}, required for {module}. Ignore if you do not want this device.")
+            pass
     return result
 
 # Fingerprint or device type required
