@@ -6,3 +6,4 @@ Example Usage
 
    bitcoin-core-usage
    examples
+   walkthrough/walkthrough

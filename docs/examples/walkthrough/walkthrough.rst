@@ -1,8 +1,5 @@
-How to Use a Hardware Wallet with Bitcoin Core Wallet
-*****************************************************
-
-A Step-by-step Walk-Through
-***************************
+Walkthrough: Using a Hardware Wallet with Bitcoin Core Wallet
+******************************************************************
 
 Summary: On this page we describe step-by-step and show in screenshots how to use a hardware wallet and HWI 
 together with a Bitcoin Core Wallet. As hardware wallet example we have used a Trezor.
