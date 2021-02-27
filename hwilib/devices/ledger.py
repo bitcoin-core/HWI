@@ -37,6 +37,12 @@ from ..serializations import (
     is_witness,
     CTransaction,
 )
+from ..script import (
+    decode_opsender_script,
+    update_opsender_sig,
+    push_data,
+    int_to_hex
+)
 import logging
 import re
 
@@ -181,7 +187,7 @@ class LedgerClient(HardwareWalletClient):
         tx_bytes = c_tx.serialize_with_witness()
 
         # Master key fingerprint
-        master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey('')["publicKey"]))[:4]
+        master_fpr = hash160(compress_public_key(self.app.getWalletPublicKey("44'/88'")["publicKey"]))[:4]
         # An entry per input, each with 0 to many keys to sign with
         all_signature_attempts = [[]] * len(c_tx.vin)
 
@@ -198,6 +204,7 @@ class LedgerClient(HardwareWalletClient):
 
         has_segwit = False
         has_legacy = False
+        has_opsender = False
 
         script_codes = [[]] * len(c_tx.vin)
 
@@ -208,13 +215,17 @@ class LedgerClient(HardwareWalletClient):
             # Wallets shouldn't be sending to change address as user action
             # otherwise this will get confused
             for pubkey, path in tx.outputs[i_num].hd_keypaths.items():
-                if path.fingerprint == master_fpr and len(path.path) > 1 and path[-1] == 1:
+                if path.fingerprint == master_fpr and len(path.path) > 2 and path.path[-2] == 1:
                     # For possible matches, check if pubkey matches possible template
                     if hash160(pubkey) in txout.scriptPubKey or hash160(bytearray.fromhex("0014") + hash160(pubkey)) in txout.scriptPubKey:
                         change_path = ''
-                        for index in path[1:]:
+                        for index in path.path:
                             change_path += str(index) + "/"
                         change_path = change_path[:-1]
+
+            # detect op_sender
+            if not has_opsender and decode_opsender_script(txout.scriptPubKey) is not None:
+                has_opsender = True
 
         for txin, psbt_in, i_num in zip(c_tx.vin, tx.inputs, range(len(c_tx.vin))):
 
@@ -287,6 +298,31 @@ class LedgerClient(HardwareWalletClient):
                     signature_attempts.append([keypath_str, pubkey])
 
             all_signature_attempts[i_num] = signature_attempts
+
+        # Sign op_sender sig
+        if has_opsender:
+            self.app.startUntrustedTransaction(True, 0, legacy_inputs, script_codes[0], c_tx.nVersion, qtumOpSender=True)
+            self.app.finalizeInput(b"", 0, 0, change_path, tx_bytes)
+            for i_num in range(len(c_tx.vout)):
+                txout = c_tx.vout[i_num]
+                decoded = decode_opsender_script(txout.scriptPubKey)
+                if (decoded is not None) and (not decoded[3][1]):
+                    sender_pubkey = ""
+                    sender_path = ""
+                    for pubkey, keypath in tx.outputs[i_num].hd_keypaths.items():
+                        if keypath.fingerprint == master_fpr and hash160(pubkey) == decoded[1][1]:
+                            sender_pubkey = pubkey.hex()
+                            sender_path = keypath.get_derivation_path()[2:]
+                            break
+                    if not sender_path:
+                        continue
+                    outputSignature = self.app.untrustedHashSign(sender_path, "", c_tx.nLockTime, 0x01)
+                    sig = bytes.fromhex(push_data((outputSignature + b'\x01').hex()))
+                    sig += bytes.fromhex(push_data(sender_pubkey))
+                    sig = bytes.fromhex(int_to_hex(len(sig))) + sig
+                    c_tx.vout[i_num].scriptPubKey = update_opsender_sig(txout.scriptPubKey, sig)
+                    tx.tx.vout[i_num].scriptPubKey = c_tx.vout[i_num].scriptPubKey
+            tx_bytes = c_tx.serialize_with_witness()
 
         # Sign any segwit inputs
         if has_segwit:

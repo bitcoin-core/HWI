@@ -1,7 +1,8 @@
-# Bitcoin Hardware Wallet Interface
+# Qtum Hardware Wallet Interface
 
 [![Build Status](https://travis-ci.org/bitcoin-core/HWI.svg?branch=master)](https://travis-ci.org/bitcoin-core/HWI)
 
+The Qtum Hardware Wallet Interface is forked from [Bitcoin Hardware Wallet Interface ](https://github.com/bitcoin-core/HWI).
 The Bitcoin Hardware Wallet Interface is a Python library and command line tool for interacting with hardware wallets.
 It provides a standard way for software to work with hardware wallets without needing to implement device specific drivers.
 Python software can use the provided library (`hwilib`). Software in other languages can execute the `hwi` tool.
@@ -30,7 +31,7 @@ brew install libusb
 ## Install
 
 ```
-git clone https://github.com/bitcoin-core/HWI.git
+git clone https://github.com/qtumproject/HWI.git
 cd HWI
 poetry install # or 'pip3 install .' or 'python3 setup.py install'
 ```
@@ -90,33 +91,33 @@ The below table lists what devices and features are supported for each device.
 
 Please also see [docs](docs/) for additional information about each device.
 
-| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T | BitBox01 | BitBox02 | KeepKey | Coldcard |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| xpub retrieval | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| Device Setup | N/A | N/A | Yes | Yes | Yes | Yes | Yes | N/A |
-| Device Wipe | N/A | N/A | Yes | Yes | Yes | Yes | Yes | N/A |
-| Device Recovery | N/A | N/A | Yes | Yes | N/A | Yes | Yes | N/A |
-| Device Backup | N/A | N/A | N/A | N/A | Yes | Yes | N/A | Yes |
-| P2PKH Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2WPKH Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Bare Multisig Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
-| Arbitrary scriptPubKey Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
-| Arbitrary redeemScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
-| Arbitrary witnessScript Inputs | Yes | Yes | N/A | N/A | Yes | N/A | N/A | N/A |
-| Non-wallet inputs | Yes | Yes | Yes | Yes | Yes | N/A | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | Yes | Yes | Yes | Yes | Yes |
-| Display on device screen | Yes | Yes | Yes | Yes | N/A | Yes | Yes | Yes |
+| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T |
+|:---:|:---:|:---:|:---:|:---:|
+| Support Planned | Yes | Yes | Yes | Yes |
+| Implemented | Yes | Yes | N/A | N/A |
+| xpub retrieval | Yes | Yes | Yes | Yes |
+| Message Signing | Yes | Yes | Yes | Yes |
+| Device Setup | N/A | N/A | Yes | Yes |
+| Device Wipe | N/A | N/A | Yes | Yes |
+| Device Recovery | N/A | N/A | Yes | Yes |
+| Device Backup | N/A | N/A | N/A | N/A |
+| P2PKH Inputs | Yes | Yes | Yes | Yes |
+| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes |
+| P2WPKH Inputs | Yes | Yes | Yes | Yes |
+| P2SH Multisig Inputs | Yes | Yes | Yes | Yes |
+| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes |
+| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes |
+| Bare Multisig Inputs | Yes | Yes | N/A | N/A |
+| Arbitrary scriptPubKey Inputs | Yes | Yes | N/A | N/A |
+| Arbitrary redeemScript Inputs | Yes | Yes | N/A | N/A |
+| Arbitrary witnessScript Inputs | Yes | Yes | N/A | N/A |
+| Non-wallet inputs | Yes | Yes | Yes | Yes |
+| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | Yes |
+| Display on device screen | Yes | Yes | Yes | Yes |
 
-## Using with Bitcoin Core
+## Using with Qtum Core
 
-See [Using Bitcoin Core with Hardware Wallets](docs/bitcoin-core-usage.md).
+See [Using Qtum Core with Hardware Wallets](docs/bitcoin-core-usage.md).
 
 ## License
 
