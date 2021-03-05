@@ -45,7 +45,7 @@ class HardwareWalletClient(object):
         self.xpub_cache: Dict[str, str] = {}
         self.expert = expert
 
-    def get_master_xpub(self, addrtype: AddressType = AddressType.WIT_V0, account: int = 0) -> ExtendedKey:
+    def get_master_xpub(self, addrtype: AddressType = AddressType.WIT, account: int = 0) -> ExtendedKey:
         """
         Retrieves a BIP 44 master public key
 

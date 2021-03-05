@@ -166,7 +166,7 @@ def find_device(
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
-def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressType.WIT_V0, account: int = 0) -> Dict[str, str]:
+def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressType.WIT, account: int = 0) -> Dict[str, str]:
     """
     Get the master extended public key from a client
 

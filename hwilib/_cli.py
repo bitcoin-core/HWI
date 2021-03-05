@@ -153,7 +153,7 @@ def get_parser() -> HWIArgumentParser:
     enumerate_parser.set_defaults(func=enumerate_handler)
 
     getmasterxpub_parser = subparsers.add_parser('getmasterxpub', help='Get the extended public key for BIP 44 standard derivation paths. Convenience function to get xpubs given the address type, account, and chain type.')
-    getmasterxpub_parser.add_argument("--addr-type", help="Get the master xpub used to derive addresses for this address type", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT_V0) # type: ignore
+    getmasterxpub_parser.add_argument("--addr-type", help="Get the master xpub used to derive addresses for this address type", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT) # type: ignore
     getmasterxpub_parser.add_argument("--account", help="The account number", type=int, default=0)
     getmasterxpub_parser.set_defaults(func=getmasterxpub_handler)
 
