@@ -62,7 +62,7 @@ def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password)
 
 def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
-    return getmasterxpub(client)
+    return getmasterxpub(client, addrtype=args.addr_type, account=args.account)
 
 def getxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getxpub(client, path=args.path, expert=args.expert)
@@ -152,7 +152,9 @@ def get_parser() -> HWIArgumentParser:
     enumerate_parser = subparsers.add_parser('enumerate', help='List all available devices')
     enumerate_parser.set_defaults(func=enumerate_handler)
 
-    getmasterxpub_parser = subparsers.add_parser('getmasterxpub', help='Get the extended public key at m/44\'/0\'/0\'')
+    getmasterxpub_parser = subparsers.add_parser('getmasterxpub', help='Get the extended public key for BIP 44 standard derivation paths. Convenience function to get xpubs given the address type, account, and chain type.')
+    getmasterxpub_parser.add_argument("--addr-type", help="Get the master xpub used to derive addresses for this address type", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT_V0) # type: ignore
+    getmasterxpub_parser.add_argument("--account", help="The account number", type=int, default=0)
     getmasterxpub_parser.set_defaults(func=getmasterxpub_handler)
 
     signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
