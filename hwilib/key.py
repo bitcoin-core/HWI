@@ -362,9 +362,9 @@ def get_bip44_purpose(addrtype: AddressType) -> int:
     """
     if addrtype == AddressType.LEGACY:
         return 44
-    elif addrtype == AddressType.SH_WIT_V0:
+    elif addrtype == AddressType.SH_WIT:
         return 49
-    elif addrtype == AddressType.WIT_V0:
+    elif addrtype == AddressType.WIT:
         return 84
     else:
         raise ValueError("Unknown address type")
