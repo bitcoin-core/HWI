@@ -229,7 +229,7 @@ def getkeypool_inner(
     internal: bool = False,
     keypool: bool = True,
     account: int = 0,
-    addr_type: AddressType = AddressType.WPKH
+    addr_type: AddressType = AddressType.WIT
 ) -> List[Dict[str, Any]]:
     """
     :meta private:
@@ -267,7 +267,7 @@ def getdescriptor(
     master_fpr: bytes,
     path: Optional[str] = None,
     internal: bool = False,
-    addr_type: AddressType = AddressType.WPKH,
+    addr_type: AddressType = AddressType.WIT,
     account: int = 0,
     start: Optional[int] = None,
     end: Optional[int] = None
@@ -286,8 +286,8 @@ def getdescriptor(
     :return: The descriptor constructed given the above arguments and key fetched from the device
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
-    is_wpkh = addr_type is AddressType.WPKH
-    is_sh_wpkh = addr_type is AddressType.SH_WPKH
+    is_wpkh = addr_type is AddressType.WIT
+    is_sh_wpkh = addr_type is AddressType.SH_WIT
 
     parsed_path = []
     if not path:
@@ -297,7 +297,7 @@ def getdescriptor(
         elif is_sh_wpkh:
             parsed_path.append(H_(49))
         else:
-            assert addr_type == AddressType.PKH
+            assert addr_type == AddressType.LEGACY
             parsed_path.append(H_(44))
 
         # Coin type
@@ -357,7 +357,7 @@ def getkeypool(
     internal: bool = False,
     keypool: bool = True,
     account: int = 0,
-    addr_type: AddressType = AddressType.PKH,
+    addr_type: AddressType = AddressType.WIT,
     addr_all: bool = False
 ) -> List[Dict[str, Any]]:
     """
@@ -412,7 +412,7 @@ def getdescriptors(
 
     for internal in [False, True]:
         descriptors = []
-        for addr_type in (AddressType.PKH, AddressType.SH_WPKH, AddressType.WPKH):
+        for addr_type in (AddressType.LEGACY, AddressType.SH_WIT, AddressType.WIT):
             try:
                 desc = getdescriptor(client, master_fpr=master_fpr, internal=internal, addr_type=addr_type, account=account)
             except UnavailableActionError:
@@ -432,7 +432,7 @@ def displayaddress(
     client: HardwareWalletClient,
     path: Optional[str] = None,
     desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.PKH
+    addr_type: AddressType = AddressType.WIT
 ) -> Dict[str, str]:
     """
     Display an address on the device for client.
@@ -450,7 +450,7 @@ def displayaddress(
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
         descriptor = parse_descriptor(desc)
-        addr_type = AddressType.PKH
+        addr_type = AddressType.LEGACY
         is_sh = isinstance(descriptor, SHDescriptor)
         is_wsh = isinstance(descriptor, WSHDescriptor)
         if is_sh or is_wsh:
@@ -462,9 +462,9 @@ def displayaddress(
                 descriptor = descriptor.subdescriptor
             if isinstance(descriptor, MultisigDescriptor):
                 if is_sh and is_wsh:
-                    addr_type = AddressType.SH_WPKH
+                    addr_type = AddressType.SH_WIT
                 elif not is_sh and is_wsh:
-                    addr_type = AddressType.WPKH
+                    addr_type = AddressType.WIT
                 return {"address": client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
@@ -477,9 +477,9 @@ def displayaddress(
             if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
                 raise BadArgumentError(f"Key in descriptor does not match device: {desc}")
             if is_sh and is_wpkh:
-                addr_type = AddressType.SH_WPKH
+                addr_type = AddressType.SH_WIT
             elif not is_sh and is_wpkh:
-                addr_type = AddressType.WPKH
+                addr_type = AddressType.WIT
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
     raise BadArgumentError("Missing both path and descriptor")
 

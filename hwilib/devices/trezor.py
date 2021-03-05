@@ -539,12 +539,14 @@ class TrezorClient(HardwareWalletClient):
         self._check_unlocked()
 
         # Script type
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
-        else:
+        elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
+        else:
+            raise BadArgumentError("Unknown address type")
 
         expanded_path = parse_path(keypath)
 
@@ -586,12 +588,14 @@ class TrezorClient(HardwareWalletClient):
         multisig = messages.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
 
         # Script type
-        if addr_type == AddressType.SH_WPKH:
+        if addr_type == AddressType.SH_WIT:
             script_type = messages.InputScriptType.SPENDP2SHWITNESS
-        elif addr_type == AddressType.WPKH:
+        elif addr_type == AddressType.WIT:
             script_type = messages.InputScriptType.SPENDWITNESS
-        else:
+        elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDMULTISIG
+        else:
+            raise BadArgumentError("Unknown address type")
 
         for p in pubkeys:
             keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"

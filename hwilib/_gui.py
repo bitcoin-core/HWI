@@ -171,11 +171,14 @@ class DisplayAddressDialog(QDialog):
     @Slot()
     def go_button_clicked(self):
         path = self.ui.path_lineedit.text()
-        addrtype = AddressType.PKH
         if self.ui.sh_wpkh_radio.isChecked():
-            addrtype = AddressType.SH_WPKH
+            addrtype = AddressType.SH_WIT
         elif self.ui.wpkh_radio.isChecked():
-            addrtype = AddressType.WPKH
+            addrtype = AddressType.WIT
+        elif self.ui.pkh_radio.isChecked():
+            addrtype = AddressType.LEGACY
+        else:
+            assert False # How did this happen?
         res = do_command(commands.displayaddress, self.client, path, addr_type=addrtype)
         self.ui.address_lineedit.setText(res['address'])
 
@@ -204,9 +207,9 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
             self.ui.path_lineedit.setText(opts['path'])
-        self.ui.sh_wpkh_radio.setChecked(opts['addrtype'] == AddressType.SH_WPKH)
-        self.ui.wpkh_radio.setChecked(opts['addrtype'] == AddressType.WPKH)
-        self.ui.pkh_radio.setChecked(opts['addrtype'] == AddressType.PKH)
+        self.ui.sh_wpkh_radio.setChecked(opts['addrtype'] == AddressType.SH_WIT)
+        self.ui.wpkh_radio.setChecked(opts['addrtype'] == AddressType.WIT)
+        self.ui.pkh_radio.setChecked(opts['addrtype'] == AddressType.LEGACY)
 
         self.ui.account_radio.toggled.connect(self.toggle_account)
 
@@ -282,7 +285,7 @@ class HWIQt(QMainWindow):
             'account': 0,
             'internal': False,
             'keypool': True,
-            'addrtype': AddressType.SH_WPKH,
+            'addrtype': AddressType.SH_WIT,
             'path': None,
             'account_used': True
         }
@@ -440,11 +443,13 @@ class HWIQt(QMainWindow):
         self.getkeypool_opts['end'] = self.current_dialog.ui.end_spinbox.value()
         self.getkeypool_opts['internal'] = self.current_dialog.ui.internal_checkbox.isChecked()
         self.getkeypool_opts['keypool'] = self.current_dialog.ui.keypool_checkbox.isChecked()
-        self.getkeypool_opts['addrtype'] = AddressType.PKH
+        self.getkeypool_opts['addrtype'] = AddressType.LEGACY
         if self.current_dialog.ui.sh_wpkh_radio.isChecked():
-            self.getkeypool_opts['addrtype'] = AddressType.SH_WPKH
+            self.getkeypool_opts['addrtype'] = AddressType.SH_WIT
         if self.current_dialog.ui.wpkh_radio.isChecked():
-            self.getkeypool_opts['addrtype'] = AddressType.WPKH
+            self.getkeypool_opts['addrtype'] = AddressType.WIT
+        if self.current_dialog.ui.pkh_radio.isChecked():
+            self.getkeypool_opts['addrtype'] = AddressType.LEGACY
         if self.current_dialog.ui.account_radio.isChecked():
             self.getkeypool_opts['account'] = self.current_dialog.ui.account_spinbox.value()
             self.getkeypool_opts['account_used'] = True
