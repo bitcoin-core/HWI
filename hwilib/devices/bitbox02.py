@@ -756,7 +756,10 @@ class Bitbox02Client(HardwareWalletClient):
                 )
 
         assert bip44_account is not None
-        if len(script_configs) == 1 and script_configs[0].script_config.multisig:
+        if (
+            len(script_configs) == 1
+            and script_configs[0].script_config.WhichOneof("config") == "multisig"
+        ):
             self._maybe_register_script_config(
                 script_configs[0].script_config, script_configs[0].keypath
             )
