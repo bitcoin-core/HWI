@@ -144,19 +144,23 @@ class TestTrezorGetxpub(TrezorTestCase):
         for vec in vectors:
             with self.subTest(vector=vec):
                 # Setup with mnemonic
+                print("bip32 vec: {}".format(vec["master_xpub"]))
                 device.wipe(self.client)
                 load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
+                print("getting xpub")
                 # Test getmasterxpub
                 gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub', "--addr-type", "legacy"])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs
                 for path_vec in vec['vectors']:
+                    print("path vec: {}".format(path_vec))
                     gxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
     def test_expert_getxpub(self):
+        print("expert.")
         result = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', '--expert', 'getxpub', 'm/44h/0h/0h/3'])
         self.assertEqual(result['xpub'], 'xpub6FMafWAi3n3ET2rU5yQr16UhRD1Zx4dELmcEw3NaYeBaNnipcr2zjzYp1sNdwR3aTN37hxAqRWQ13AWUZr6L9jc617mU6EvgYXyBjXrEhgr')
         self.assertFalse(result['testnet'])
@@ -166,6 +170,7 @@ class TestTrezorGetxpub(TrezorTestCase):
         self.assertEqual(result['child_num'], 3)
         self.assertEqual(result['chaincode'], '95a7fb33c4f0896f66045cd7f45ed49a9e72372d2aed204ad0149c39b7b17905')
         self.assertEqual(result['pubkey'], '022e6d9c18e5a837e802fb09abe00f787c8ccb0fc489c6ec5dc2613d930efd7eae')
+        print("Done being an expert")
 
 # Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
 class TestTrezorManCommands(TrezorTestCase):
