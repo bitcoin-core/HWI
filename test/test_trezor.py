@@ -217,7 +217,7 @@ class TestTrezorManCommands(TrezorTestCase):
 
         # Set a PIN
         device.wipe(self.client)
-        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=True, label='test')
         self.client.lock(_refresh_features=False)
         self.client.end_session()
         result = self.do_command(self.dev_args + ['enumerate'])
@@ -339,10 +339,10 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     sys.stderr = sys.__stderr__
