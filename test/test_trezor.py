@@ -158,6 +158,7 @@ class TestTrezorGetxpub(TrezorTestCase):
                     print("path vec: {}".format(path_vec))
                     gxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
+                    time.sleep(1)
 
     def test_expert_getxpub(self):
         print("expert.")
