@@ -15,7 +15,7 @@ from typing import (
     Tuple,
     Union,
 )
-from ..descriptor import PubkeyProvider
+from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -569,23 +569,26 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def display_multisig_address(
         self,
-        threshold: int,
-        pubkeys: List[PubkeyProvider],
-        addr_type: AddressType
+        addr_type: AddressType,
+        multisig: MultisigDescriptor,
     ) -> str:
         self._check_unlocked()
 
+        der_pks = list(zip([p.get_pubkey_bytes(0) for p in multisig.pubkeys], multisig.pubkeys))
+        if multisig.is_sorted:
+            der_pks = sorted(der_pks)
+
         pubkey_objs = []
-        for p in pubkeys:
+        for pk, p in der_pks:
             if p.extkey is not None:
                 xpub = p.extkey
                 hd_node = messages.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
                 pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path if p.deriv_path is not None else "")))
             else:
-                hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=p.get_pubkey_bytes(0))
+                hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=pk)
                 pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=[]))
 
-        multisig = messages.MultisigRedeemScriptType(m=threshold, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
+        trezor_ms = messages.MultisigRedeemScriptType(m=multisig.thresh, signatures=[b''] * len(pubkey_objs), pubkeys=pubkey_objs)
 
         # Script type
         if addr_type == AddressType.SH_WIT:
@@ -597,7 +600,7 @@ class TrezorClient(HardwareWalletClient):
         else:
             raise BadArgumentError("Unknown address type")
 
-        for p in pubkeys:
+        for p in multisig.pubkeys:
             keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"
             keypath += p.deriv_path if p.deriv_path is not None else ""
             path = parse_path(keypath)
@@ -608,7 +611,7 @@ class TrezorClient(HardwareWalletClient):
                     path,
                     show_display=True,
                     script_type=script_type,
-                    multisig=multisig,
+                    multisig=trezor_ms,
                 )
                 assert isinstance(address, str)
                 return address

@@ -19,6 +19,7 @@ from hwilib.psbt import PSBT
 
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
 SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
+SUPPORTS_UNSORTED_MS = {"trezor_1", "trezor_t"}
 SUPPORTS_MIXED = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'}
 SUPPORTS_MULTISIG = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
 SUPPORTS_EXTERNAL = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t'}
@@ -537,71 +538,60 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
-    def _make_single_multisig(self, addrtype):
+    def _make_single_multisig(self, addrtype, sort, use_xpub):
         desc_pubkeys = []
-        sorted_pubkeys = []
         for i in range(0, 3):
-            path = "/48h/1h/{}h/0h/0/0".format(i)
+            path = "/48h/1h/{}h/0h/0".format(i)
+            if not use_xpub:
+                path += "/0"
             origin = '{}{}'.format(self.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-            sorted_pubkeys.append((xpub["pubkey"], origin))
-        sorted_pubkeys.sort(key=lambda tup: tup[0])
+            desc_pubkeys.append("[{}]{}{}".format(origin, xpub["xpub"] if use_xpub else xpub["pubkey"], "/0" if use_xpub else ""))
+
+        desc_func = "sortedmulti" if sort else "multi"
 
         if addrtype == "pkh":
-            desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
-            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "legacy")
+            desc = AddChecksum("sh({}(2,{},{},{}))".format(desc_func, desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
+            addr = self.rpc.deriveaddresses(desc)[0]
         elif addrtype == "sh_wpkh":
-            desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
-            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "p2sh-segwit")
+            desc = AddChecksum("sh(wsh({}(2,{},{},{})))".format(desc_func, desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
+            addr = self.rpc.deriveaddresses(desc)[0]
         elif addrtype == "wpkh":
-            desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
-            ms_info = self.rpc.createmultisig(2, [x[0] for x in sorted_pubkeys], "bech32")
+            desc = AddChecksum("wsh({}(2,{},{},{}))".format(desc_func, desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
+            addr = self.rpc.deriveaddresses(desc)[0]
         else:
             self.fail("Oops the test is broken")
 
-        self.assertEqual(self.rpc.deriveaddresses(desc)[0], ms_info["address"])
-
-        path = "{},{},{}".format(sorted_pubkeys[0][1], sorted_pubkeys[1][1], sorted_pubkeys[2][1])
-
-        return ms_info["address"], desc, ms_info["redeemScript"], path
+        return addr, desc
 
     def test_display_address_multisig(self):
-        if self.full_type not in SUPPORTS_MS_DISPLAY:
+        if self.full_type not in SUPPORTS_MS_DISPLAY and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
             raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
-            with self.subTest(addrtype=addrtype):
-                addr, desc, rs, path = self._make_single_multisig(addrtype)
+            for sort in [True, False]:
+                for derive in [True, False]:
+                    with self.subTest(addrtype=addrtype):
+                        if not sort and self.full_type not in SUPPORTS_UNSORTED_MS:
+                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.full_type))
+                        if derive and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
+                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.full_type))
 
-                args = ['displayaddress', '--desc', desc]
+                        addr, desc = self._make_single_multisig(addrtype, sort, derive)
 
-                result = self.do_command(self.dev_args + args)
-                self.assertNotIn('error', result)
-                self.assertNotIn('code', result)
-                self.assertIn('address', result)
+                        args = ['displayaddress', '--desc', desc]
 
-                if addrtype == "wpkh":
-                    # removes prefix and checksum since regtest gives
-                    # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-                    self.assertEqual(addr[4:58], result['address'][2:56])
-                else:
-                    self.assertEqual(addr, result['address'])
+                        result = self.do_command(self.dev_args + args)
+                        self.assertNotIn('error', result)
+                        self.assertNotIn('code', result)
+                        self.assertIn('address', result)
 
-    def test_display_address_xpub_multisig(self):
-        if self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.full_type))
-
-        account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/48h/1h/0h/0h'])['xpub']
-        desc = 'wsh(multi(2,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/0/0,[' + self.fingerprint + '/48h/1h/0h/0h]' + account_xpub + '/1/0))'
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', desc])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
-        addr = self.rpc.deriveaddresses(AddChecksum(desc))[0]
-        # removes prefix and checksum since regtest gives
-        # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
-        self.assertEqual(addr[4:58], result['address'][2:56])
+                        if addrtype == "wpkh":
+                            # removes prefix and checksum since regtest gives
+                            # prefix `bcrt` on Bitcoin Core while wallets return testnet `tb` prefix
+                            self.assertEqual(addr[4:58], result['address'][2:56])
+                        else:
+                            self.assertEqual(addr, result['address'])
 
 class TestSignMessage(DeviceTestCase):
     def _check_sign_msg(self, msg):

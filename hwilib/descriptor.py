@@ -306,7 +306,8 @@ class MultisigDescriptor(Descriptor):
         """
         super().__init__(pubkeys, None, "sortedmulti" if is_sorted else "multi")
         self.thresh = thresh
-        if is_sorted:
+        self.is_sorted = is_sorted
+        if self.is_sorted:
             self.pubkeys.sort()
 
     def to_string_no_checksum(self) -> str:
@@ -319,8 +320,10 @@ class MultisigDescriptor(Descriptor):
             m = (self.thresh + 0x50).to_bytes(1, "big") if self.thresh > 0 else b"\x00"
         n = (len(self.pubkeys) + 0x50).to_bytes(1, "big") if len(self.pubkeys) > 0 else b"\x00"
         script: bytes = m
-        for p in self.pubkeys:
-            pk = p.get_pubkey_bytes(pos)
+        der_pks = [p.get_pubkey_bytes(pos) for p in self.pubkeys]
+        if self.is_sorted:
+            der_pks.sort()
+        for pk in der_pks:
             script += len(pk).to_bytes(1, "big") + pk
         script += n + b"\xae"
 

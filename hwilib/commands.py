@@ -457,7 +457,7 @@ def displayaddress(
                     addr_type = AddressType.SH_WIT
                 elif not is_sh and is_wsh:
                     addr_type = AddressType.WIT
-                return {"address": client.display_multisig_address(descriptor.thresh, descriptor.pubkeys, addr_type)}
+                return {"address": client.display_multisig_address(addr_type, descriptor)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh:
             pubkey = descriptor.pubkeys[0]

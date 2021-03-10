@@ -22,7 +22,7 @@ from functools import wraps
 
 import base58
 
-from ..descriptor import PubkeyProvider
+from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
 from .._script import (
@@ -476,11 +476,13 @@ class Bitbox02Client(HardwareWalletClient):
     @bitbox02_exception
     def display_multisig_address(
         self,
-        threshold: int,
-        pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
+        multisig: MultisigDescriptor,
     ) -> str:
-        path_suffixes = set(p.deriv_path for p in pubkeys)
+        if not multisig.is_sorted:
+            raise BadArgumentError("BitBox02 only supports sortedmulti descriptors")
+
+        path_suffixes = set(p.deriv_path for p in multisig.pubkeys)
         if len(path_suffixes) != 1:
             # Path suffix refers to the path after the account-level xpub, usually /<change>/<address>.
             # The BitBox02 currently enforces that all of them are the same.
@@ -489,7 +491,7 @@ class Bitbox02Client(HardwareWalletClient):
         # Figure out which of the cosigners is us.
         key_origin_infos = {}
         keypaths = {}
-        for pk in pubkeys:
+        for pk in multisig.pubkeys:
             assert pk.extkey and pk.origin
             key_origin_infos[pk.extkey.serialize()] = pk.origin
             keypaths[pk.extkey.serialize()] = pk.get_full_derivation_path(0)
@@ -503,7 +505,7 @@ class Bitbox02Client(HardwareWalletClient):
                 "BitBox02 currently only supports the following multisig script types: P2WSH, P2WSH_P2SH"
             )
         our_xpub, script_config_with_keypath = self._multisig_scriptconfig(
-            threshold, key_origin_infos, script_type
+            multisig.thresh, key_origin_infos, script_type
         )
         script_config = script_config_with_keypath.script_config
         account_keypath: Sequence[int] = script_config_with_keypath.keypath

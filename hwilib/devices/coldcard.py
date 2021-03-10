@@ -9,7 +9,7 @@ from typing import (
     Union,
 )
 
-from ..descriptor import PubkeyProvider
+from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -256,10 +256,12 @@ class ColdcardClient(HardwareWalletClient):
     @coldcard_exception
     def display_multisig_address(
         self,
-        threshold: int,
-        pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
+        multisig: MultisigDescriptor,
     ) -> str:
+        if not multisig.is_sorted:
+            raise BadArgumentError("Coldcards only allow sortedmulti descriptors")
+
         self.device.check_mitm()
 
         if addr_type == AddressType.SH_WIT:
@@ -271,24 +273,24 @@ class ColdcardClient(HardwareWalletClient):
         else:
             raise BadArgumentError("Unknown address type")
 
-        if not 1 <= len(pubkeys) <= 15:
+        if not 1 <= len(multisig.pubkeys) <= 15:
             raise BadArgumentError("Must provide 1 to 15 keypaths to display a multisig address")
 
-        redeem_script = (80 + int(threshold)).to_bytes(1, byteorder="little")
+        redeem_script = (80 + int(multisig.thresh)).to_bytes(1, byteorder="little")
 
-        if not 1 <= threshold <= len(pubkeys):
+        if not 1 <= multisig.thresh <= len(multisig.pubkeys):
             raise BadArgumentError("Either the redeem script provided is invalid or the keypaths provided are insufficient")
 
         xfp_paths = []
-        for p in pubkeys:
+        sorted_keys = sorted(zip([p.get_pubkey_bytes(0) for p in multisig.pubkeys], multisig.pubkeys))
+        for pk, p in sorted_keys:
             xfp_paths.append(p.get_full_derivation_int_list(0))
-            pk = p.get_pubkey_bytes(0)
             redeem_script += len(pk).to_bytes(1, byteorder="little") + pk
 
-        redeem_script += (80 + len(pubkeys)).to_bytes(1, byteorder="little")
+        redeem_script += (80 + len(multisig.pubkeys)).to_bytes(1, byteorder="little")
         redeem_script += b"\xae"
 
-        payload = CCProtocolPacker.show_p2sh_address(threshold, xfp_paths, redeem_script, addr_fmt=addr_fmt)
+        payload = CCProtocolPacker.show_p2sh_address(multisig.thresh, xfp_paths, redeem_script, addr_fmt=addr_fmt)
 
         address = self.device.send_recv(payload, timeout=None)
         assert isinstance(address, str)
