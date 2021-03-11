@@ -211,7 +211,7 @@ class PassphraseUI:
     def disallow_passphrase(self) -> None:
         self.return_passphrase = False
 
-    def get_passphrase(self) -> str:
+    def get_passphrase(self, available_on_device: bool) -> str:
         if self.return_passphrase:
             return self.passphrase
         raise ValueError('Passphrase from Host is not allowed for Trezor T')
