@@ -31,7 +31,7 @@ from ..common import (
     Chain,
     hash256,
 )
-from ..descriptor import PubkeyProvider
+from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -581,7 +581,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
-    def display_multisig_address(self, threshold: int, pubkeys: List[PubkeyProvider], addr_type: AddressType) -> str:
+    def display_multisig_address(self, addr_type: AddressType, multisig: MultisigDescriptor) -> str:
         """
         The BitBox01 does not have a screen to display addresses on.
 

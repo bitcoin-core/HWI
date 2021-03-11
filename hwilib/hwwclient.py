@@ -7,11 +7,10 @@ The :class:`HardwareWalletClient` is the class which all of the specific device 
 
 from typing import (
     Dict,
-    List,
     Optional,
     Union,
 )
-from .descriptor import PubkeyProvider
+from .descriptor import MultisigDescriptor
 from .key import (
     ExtendedKey,
     get_bip44_purpose,
@@ -123,16 +122,14 @@ class HardwareWalletClient(object):
 
     def display_multisig_address(
         self,
-        threshold: int,
-        pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
+        multisig: MultisigDescriptor,
     ) -> str:
         """
-        Display and return the multisig address of specified type given the threshold and pubkeys.
+        Display and return the multisig address of specified type given the descriptor.
 
-        :param threshold: The number of signers required in the multisig
-        :param pubkeys: The public keys, as found in a descriptor, in the multisig
         :param addr_type: The address type
+        :param multisig: A :class:`~hwilib.descriptor.MultisigDescriptor` that describes the multisig to display.
         :return: The retrieved address also being shown by the device
         """
         raise NotImplementedError("The HardwareWalletClient base class "

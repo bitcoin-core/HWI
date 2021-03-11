@@ -13,7 +13,7 @@ from typing import (
     Tuple,
 )
 
-from ..descriptor import PubkeyProvider
+from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -361,9 +361,8 @@ class LedgerClient(HardwareWalletClient):
     @ledger_exception
     def display_multisig_address(
         self,
-        threshold: int,
-        pubkeys: List[PubkeyProvider],
         addr_type: AddressType,
+        multisig: MultisigDescriptor,
     ) -> str:
         raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
 
