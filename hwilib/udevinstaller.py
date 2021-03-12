@@ -8,7 +8,7 @@ Classes and utilities for installing device udev rules.
 from .errors import NeedsRootError
 
 from subprocess import check_call, CalledProcessError, DEVNULL
-from shutil import copy
+from shutil import copy, which
 from os import path, listdir, getlogin, geteuid
 
 class UDevInstaller(object):
@@ -39,9 +39,9 @@ class UDevInstaller(object):
         return True
 
     def __init__(self) -> None:
-        self._udevadm = '/sbin/udevadm'
-        self._groupadd = '/usr/sbin/groupadd'
-        self._usermod = '/usr/sbin/usermod'
+        self._udevadm = which('udevadm')
+        self._groupadd = which('groupadd')
+        self._usermod = which('usermod')
 
     def _execute(self, cmd: str, *args: str) -> None:
         command = [cmd] + list(args)
@@ -51,12 +51,14 @@ class UDevInstaller(object):
         """
         Run ``udevadm trigger``
         """
+        assert self._udevadm
         self._execute(self._udevadm, 'trigger')
 
     def reload_rules(self) -> None:
         """
         Run ``udevadm control --reload-rules``
         """
+        assert self._udevadm
         self._execute(self._udevadm, 'control', '--reload-rules')
 
     def add_user_plugdev_group(self) -> None:
@@ -67,6 +69,7 @@ class UDevInstaller(object):
         self._add_user_to_group(getlogin(), 'plugdev')
 
     def _create_group(self, name: str) -> None:
+        assert self._groupadd
         try:
             self._execute(self._groupadd, name)
         except CalledProcessError as e:
@@ -74,6 +77,7 @@ class UDevInstaller(object):
                 raise
 
     def _add_user_to_group(self, user: str, group: str) -> None:
+        assert self._usermod
         self._execute(self._usermod, '-aG', group, user)
 
     def copy_udev_rule_files(self, source: str, location: str) -> None:
