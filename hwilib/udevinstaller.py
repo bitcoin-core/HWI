@@ -8,7 +8,7 @@ Classes and utilities for installing device udev rules.
 from .errors import NeedsRootError
 
 from subprocess import check_call, CalledProcessError, DEVNULL
-from shutil import copy
+from shutil import copy, which
 from os import path, listdir, getlogin, geteuid
 
 class UDevInstaller(object):
@@ -39,9 +39,9 @@ class UDevInstaller(object):
         return True
 
     def __init__(self) -> None:
-        self._udevadm = '/sbin/udevadm'
-        self._groupadd = '/usr/sbin/groupadd'
-        self._usermod = '/usr/sbin/usermod'
+        self._udevadm = which('udevadm')
+        self._groupadd = which('groupadd')
+        self._usermod = which('usermod')
 
     def _execute(self, cmd: str, *args: str) -> None:
         command = [cmd] + list(args)
