@@ -9,7 +9,7 @@ from .errors import NeedsRootError
 
 from subprocess import check_call, CalledProcessError, DEVNULL
 from shutil import copy, which
-from os import path, listdir, getlogin, geteuid
+from os import path, listdir, getlogin, geteuid, chmod
 
 class UDevInstaller(object):
     """
@@ -92,6 +92,7 @@ class UDevInstaller(object):
             if '.rules' in rules_file_name:
                 rules_file_path = _resource_path(path.join(src_dir_path, rules_file_name))
                 copy(rules_file_path, location)
+                chmod(path.join(location, rules_file_name), 0o644)
 
 def _resource_path(relative_path: str) -> str:
     return path.join(path.dirname(__file__), relative_path)
