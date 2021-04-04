@@ -264,11 +264,13 @@ class TestGetDescriptors(DeviceTestCase):
         self.assertEqual(len(descriptors['internal']), 3)
 
         for descriptor in descriptors['receive']:
+            self.assertNotIn("'", descriptor)
             info_result = self.rpc.getdescriptorinfo(descriptor)
             self.assertTrue(info_result['isrange'])
             self.assertTrue(info_result['issolvable'])
 
         for descriptor in descriptors['internal']:
+            self.assertNotIn("'", descriptor)
             info_result = self.rpc.getdescriptorinfo(descriptor)
             self.assertTrue(info_result['isrange'])
             self.assertTrue(info_result['issolvable'])
