@@ -285,17 +285,19 @@ class Bitbox02Client(HardwareWalletClient):
             return self.bb02
 
         for device_info in devices.get_any_bitbox02s():
-            if device_info["path"].decode() == self.device_path:
-                bb02 = bitbox02.BitBox02(
-                    transport=self.transport,
-                    device_info=device_info,
-                    noise_config=self.noise_config,
-                )
-                try:
-                    bb02.check_min_version()
-                except FirmwareVersionOutdatedException as exc:
-                    sys.stderr.write("WARNING: {}\n".format(exc))
-                    raise
+            if device_info["path"].decode() != self.device_path:
+                continue
+
+            bb02 = bitbox02.BitBox02(
+                transport=self.transport,
+                device_info=device_info,
+                noise_config=self.noise_config,
+            )
+            try:
+                bb02.check_min_version()
+            except FirmwareVersionOutdatedException as exc:
+                sys.stderr.write("WARNING: {}\n".format(exc))
+                raise
             self.bb02 = bb02
             is_initialized = bb02.device_info()["initialized"]
             if expect_initialized is not None:
