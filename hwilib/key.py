@@ -278,7 +278,7 @@ class KeyOriginInfo(object):
             i &= ~HARDENED_FLAG
             s += "/" + str(i)
             if hardened:
-                s += "'"
+                s += "h"
         return s
 
     def to_string(self) -> str:
