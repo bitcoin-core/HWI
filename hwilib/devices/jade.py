@@ -54,7 +54,11 @@ from .._script import (
     parse_multisig
 )
 
+import logging
 import os
+
+# The test emulator port
+SIMULATOR_PATH = 'tcp:127.0.0.1:2222'
 
 JADE_DEVICE_IDS = [(0x10c4, 0xea60)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
@@ -127,20 +131,27 @@ class JadeClient(HardwareWalletClient):
         self.jade = JadeAPI.create_serial(path, timeout=timeout)
         self.jade.connect()
 
-        # Push some host entropy into jade
-        self.jade.add_entropy(os.urandom(32))
+        verinfo = self.jade.get_version_info()
+        uninitialized = verinfo['JADE_STATE'] not in ['READY', 'TEMP']
 
-        # Ensure Jade unlocked
-        authenticated = False
-        while not authenticated:
-            if not HAS_NETWORKING and self.jade.get_version_info()['JADE_STATE'] not in ['READY', 'TEMP']:
-                # Wallet not initialised nor do we have networking dependencies
+        if path == SIMULATOR_PATH:
+            if uninitialized:
+                # Connected to simulator but it appears to have no wallet set
+                raise DeviceNotReadyError('Use JadeAPI.set_[seed|mnemonic] to set simulator wallet')
+        else:
+            if uninitialized and not HAS_NETWORKING:
+                # Wallet not initialised/unlocked nor do we have networking dependencies
                 # User must use 'Emergency Restore' feature to enter mnemonic on Jade hw
                 raise DeviceNotReadyError('Use "Emergency Restore" feature on Jade hw to enter wallet mnemonic')
 
+            # Push some host entropy into jade
+            self.jade.add_entropy(os.urandom(32))
+
             # Authenticate the user - this may require a PIN and pinserver interaction
             # (if we have required networking dependencies)
-            authenticated = self.jade.auth_user(self._network())
+            authenticated = False
+            while not authenticated:
+                authenticated = self.jade.auth_user(self._network())
 
     # Retrieves the public key at the specified BIP 32 derivation path
     @jade_exception
@@ -477,26 +488,42 @@ class JadeClient(HardwareWalletClient):
 def enumerate(password: str = '') -> List[Dict[str, Any]]:
     results = []
 
+    def _get_device_entry(device_model: str, device_path: str) -> Dict[str, Any]:
+        d_data: Dict[str, Any] = {}
+        d_data['type'] = 'jade'
+        d_data['model'] = device_model
+        d_data['path'] = device_path
+        d_data['needs_pin_sent'] = False
+        d_data['needs_passphrase_sent'] = False
+
+        client = None
+        with handle_errors(common_err_msgs['enumerate'], d_data):
+            client = JadeClient(device_path, password, timeout=1)
+            d_data['fingerprint'] = client.get_master_fingerprint().hex()
+
+        if client:
+            client.close()
+
+        return d_data
+
     # Jade is not really an HID device, it shows as a serial/com port device.
     # Scan com ports looking for the relevant vid and pid, and use 'path' to
     # hold the path to the serial port device, eg. /dev/ttyUSB0
     for devinfo in list_ports.comports():
         if (devinfo.vid, devinfo.pid) in JADE_DEVICE_IDS:
-            d_data: Dict[str, Any] = {}
-            d_data['type'] = 'jade'
-            d_data['model'] = 'jade'
-            d_data['path'] = devinfo.device
-            d_data['needs_pin_sent'] = False
-            d_data['needs_passphrase_sent'] = False
+            results.append(_get_device_entry('jade', devinfo.device))
 
-            client = None
-            with handle_errors(common_err_msgs['enumerate'], d_data):
-                client = JadeClient(devinfo.device, password, timeout=1)
-                d_data['fingerprint'] = client.get_master_fingerprint().hex()
+    # If we can connect to the simulator, add it too
+    try:
+        with JadeAPI.create_serial(SIMULATOR_PATH, timeout=1) as jade:
+            verinfo = jade.get_version_info()
 
-            if client:
-                client.close()
+        if verinfo is not None:
+            results.append(_get_device_entry('jade_simulator', SIMULATOR_PATH))
 
-            results.append(d_data)
+    except Exception as e:
+        # If we get any sort of error do not add the simulator
+        logging.debug(f'Failed to connect to Jade simulator at {SIMULATOR_PATH}')
+        logging.debug(e)
 
     return results
