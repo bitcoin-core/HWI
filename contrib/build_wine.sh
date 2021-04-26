@@ -3,8 +3,7 @@
 
 set -ex
 
-# No Windows installer for 3.6.12
-PYTHON_VERSION=3.6.8
+PYTHON_VERSION=3.9.7
 
 PYTHON_FOLDER="python3"
 PYHOME="c:/$PYTHON_FOLDER"
