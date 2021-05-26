@@ -39,9 +39,8 @@ ENV BUILD_TIME="00:00:00"
 RUN eval "$(pyenv init -)" && eval "$(pyenv virtualenv-init -)" && cat /opt/reproducible-python.diff | pyenv install -kp 3.6.12
 
 RUN dpkg --add-architecture i386
-RUN wget -nc https://dl.winehq.org/wine-builds/winehq.key
-RUN apt-key add winehq.key
-RUN echo "deb https://dl.winehq.org/wine-builds/debian/ buster main" >> /etc/apt/sources.list
+RUN wget -O- -q https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_10/Release.key | apt-key add -
+RUN echo "deb http://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_10 ./" | tee /etc/apt/sources.list.d/wine-obs.list
 RUN apt-get update
 RUN apt-get install --install-recommends -y \
     wine-stable-amd64 \
