@@ -577,7 +577,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not have a screen to display addresses on.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
@@ -585,7 +585,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not have a screen to display addresses on.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not have a screen to display addresses on')
 
@@ -624,7 +624,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not support restoring via software.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not support restoring via software')
 
@@ -649,7 +649,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not need a PIN sent from the host.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
@@ -657,7 +657,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not need a PIN sent from the host.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not need a PIN sent from the host')
 
@@ -665,7 +665,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         The BitBox01 does not support toggling passphrase from the host.
 
-        :raises UnaavailableActionError: Always, this function is unavailable
+        :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
