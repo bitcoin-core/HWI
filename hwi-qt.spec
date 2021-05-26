@@ -11,7 +11,7 @@ def get_libusb_path():
     if platform.system() == 'Darwin':
         proc = subprocess.Popen(['brew', '--prefix', 'libusb'], stdout=subprocess.PIPE)
         prefix = proc.communicate()[0].rstrip().decode()
-        return os.path.join(prefix, "/lib/libusb-1.0.dylib")
+        return os.path.join(prefix, "lib", "libusb-1.0.dylib")
     if platform.system() == 'Linux':
         for lib_dir in ['/lib/x86_64-linux-gnu', '/usr/lib64', '/usr/lib', '/lib']:
             libusb_path = os.path.join(lib_dir, 'libusb-1.0.so.0')
