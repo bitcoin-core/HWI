@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:stretch-slim
 
 SHELL ["/bin/bash", "-c"]
 
@@ -44,7 +44,7 @@ RUN eval "$(pyenv init --path)" && eval "$(pyenv virtualenv-init -)" && cat /opt
 RUN dpkg --add-architecture i386
 RUN wget -nc https://dl.winehq.org/wine-builds/winehq.key
 RUN apt-key add winehq.key
-RUN echo "deb https://dl.winehq.org/wine-builds/debian/ buster main" >> /etc/apt/sources.list
+RUN echo "deb https://dl.winehq.org/wine-builds/debian/ stretch main" >> /etc/apt/sources.list
 RUN apt-get update
 RUN apt-get install --install-recommends -y \
     wine-stable-amd64 \
