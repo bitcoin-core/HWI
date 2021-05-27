@@ -3,7 +3,7 @@
 
 set -ex
 
-eval "$(pyenv init -)"
+eval "$(pyenv init --path)"
 eval "$(pyenv virtualenv-init -)"
 pip install -U pip
 pip install poetry
