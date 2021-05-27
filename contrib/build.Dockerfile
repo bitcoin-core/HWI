@@ -28,7 +28,8 @@ RUN apt-get install -y \
     faketime \
     zip \
     dos2unix \
-    g++-mingw-w64-x86-64
+    g++-mingw-w64-x86-64 \
+    qt5-default
 
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT="/root/.pyenv"
