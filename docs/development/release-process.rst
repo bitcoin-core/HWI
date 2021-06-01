@@ -5,8 +5,10 @@ Release Process
 2. Build distribution archives for PyPi with ``contrib/build_dist.sh``
 3. For MacOS and Linux, use ``contrib/build_bin.sh``. This needs to be run on a MacOS machine for the MacOS binary and on a Linux machine for the linux one.
 4. For Windows, use ``contrib/build_wine.sh`` to build the Windows binary using wine
-5. Upload distribution archives to PyPi
-6. Upload distribution archives and standalone binaries to Github
+5. Make ``SHA256SUMS.txt`` using ``contrib/make_shasums.sh``.
+6. Make ``SHA256SUMS.txt.asc`` using ``gpg --clearsign SHA256SUMS.txt``
+7. Upload distribution archives to PyPi
+8. Upload distribution archives and standalone binaries to Github
 
 Deterministic builds with Docker
 ================================

@@ -29,5 +29,13 @@ OS=`uname | tr '[:upper:]' '[:lower:]'`
 if [[ $OS == "darwin" ]]; then
     OS="mac"
 fi
-tar -czf "hwi-${VERSION}-${OS}-amd64.tar.gz" hwi hwi-qt
+target_tarfile="hwi-${VERSION}-${OS}-amd64.tar.gz"
+tar -czf $target_tarfile hwi hwi-qt
+
+# Copy the binaries to subdir for shasum
+target_dir="$target_tarfile.dir"
+mkdir $target_dir
+mv hwi $target_dir
+mv hwi-qt $target_dir
+
 popd
