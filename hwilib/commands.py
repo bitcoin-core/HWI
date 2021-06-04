@@ -188,7 +188,8 @@ def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    return {"psbt": client.sign_tx(tx).serialize()}
+    result = client.sign_tx(tx).serialize()
+    return {"psbt": result, "signed": result != psbt}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:
     """
