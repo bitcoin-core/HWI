@@ -464,7 +464,7 @@ def displayaddress(
                     addr_type = AddressType.WIT
                 return {"address": client.display_multisig_address(addr_type, descriptor)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
-        if isinstance(descriptor, PKHDescriptor) or is_wpkh:
+        if isinstance(descriptor, PKHDescriptor) or is_wpkh or isinstance(descriptor, TRDescriptor):
             pubkey = descriptor.pubkeys[0]
             if pubkey.origin is None:
                 raise BadArgumentError(f"Descriptor missing origin info: {desc}")
@@ -477,6 +477,8 @@ def displayaddress(
                 addr_type = AddressType.SH_WIT
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WIT
+            elif isinstance(descriptor, TRDescriptor):
+                addr_type = AddressType.TAP
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
     raise BadArgumentError("Missing both path and descriptor")
 
