@@ -42,6 +42,7 @@ from .descriptor import (
     Descriptor,
     parse_descriptor,
     MultisigDescriptor,
+    TRDescriptor,
     PKHDescriptor,
     PubkeyProvider,
     SHDescriptor,
@@ -289,8 +290,6 @@ def getdescriptor(
     :return: The descriptor constructed given the above arguments and key fetched from the device
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
-    is_wpkh = addr_type is AddressType.WIT
-    is_sh_wpkh = addr_type is AddressType.SH_WIT
 
     parsed_path = []
     if not path:
@@ -336,12 +335,16 @@ def getdescriptor(
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
     pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix)
-    if is_wpkh:
-        return WPKHDescriptor(pubkey)
-    elif is_sh_wpkh:
-        return SHDescriptor(WPKHDescriptor(pubkey))
-    else:
+    if addr_type is AddressType.LEGACY:
         return PKHDescriptor(pubkey)
+    elif addr_type is AddressType.SH_WIT:
+        return SHDescriptor(WPKHDescriptor(pubkey))
+    elif addr_type is AddressType.WIT:
+        return WPKHDescriptor(pubkey)
+    elif addr_type is AddressType.TAP:
+        return TRDescriptor(pubkey)
+    else:
+        raise ValueError("Unknown address type")
 
 def getkeypool(
     client: HardwareWalletClient,
