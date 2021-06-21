@@ -409,7 +409,7 @@ def getdescriptors(
 
     for internal in [False, True]:
         descriptors = []
-        for addr_type in (AddressType.LEGACY, AddressType.SH_WIT, AddressType.WIT):
+        for addr_type in list(AddressType):
             try:
                 desc = getdescriptor(client, master_fpr=master_fpr, internal=internal, addr_type=addr_type, account=account)
             except UnavailableActionError:
