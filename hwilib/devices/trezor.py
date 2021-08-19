@@ -730,7 +730,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                 continue
 
             d_data['model'] = 'trezor_' + client.client.features.model.lower()
-            if d_data['path'] == 'udp:127.0.0.1:21324':
+            if d_data['path'].startswith('udp:'):
                 d_data['model'] += '_simulator'
 
             d_data['needs_pin_sent'] = client.client.features.pin_protection and not client.client.features.unlocked
