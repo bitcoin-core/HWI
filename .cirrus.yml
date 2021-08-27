@@ -121,7 +121,7 @@ lint_task:
   test_script:
     - flake8
 
-basic_test_task:
+task:
   install_script:
     - poetry install
   matrix:
@@ -171,7 +171,7 @@ bitcoind_builder_task:
     BUILD_BITCOIND: 1
   build_script: cd test; ./setup_environment.sh --bitcoind; cd ..
 
-sim_builder_task:
+task:
   matrix:
     << : *SIM_BUILD_MATRIX_TEMPLATE
   build_script: cd test; ./setup_environment.sh $DEVICE; cd ..
@@ -185,7 +185,7 @@ dist_builder_task:
     - contrib/build_dist.sh
     - sha256sum dist/*
 
-dist_test_task:
+task:
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   << : *DIST_CACHE_TEMPLATE
@@ -203,7 +203,7 @@ dist_test_task:
   on_failure:
     failed_script: tail -v -n +1 test/*.std*
 
-device_test_task:
+task:
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   << : *BITCOIND_CACHE_TEMPLATE
