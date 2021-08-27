@@ -70,10 +70,11 @@ class UdpTransport(ProtocolBasedTransport):
             d.close()
 
     @classmethod
-    def enumerate(cls) -> Iterable["UdpTransport"]:
-        default_path = "{}:{}".format(cls.DEFAULT_HOST, cls.DEFAULT_PORT)
+    def enumerate(cls, path: Optional[str] = None) -> Iterable["UdpTransport"]:
+        if path is None:
+            path = "{}:{}".format(cls.DEFAULT_HOST, cls.DEFAULT_PORT)
         try:
-            return [cls._try_path(default_path)]
+            return [cls._try_path(path)]
         except TransportException:
             return []
 
