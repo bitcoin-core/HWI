@@ -8,6 +8,7 @@ RUN apt-get install -y \
     bsdmainutils \
     build-essential \
     ccache \
+    clang \    
     cmake \
     curl \
     cython3 \
@@ -35,6 +36,9 @@ RUN apt-get install -y \
     qemu-user-static
 
 RUN pip install poetry flake8
+RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+RUN chmod +x rustup-init && ./rustup-init -y
+ENV PATH="/root/.cargo/bin:$PATH"
 
 ####################
 # Local build/test steps
