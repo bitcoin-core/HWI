@@ -1,47 +1,46 @@
-From f91b0cf38f640a031de08e27081599da13be92fe Mon Sep 17 00:00:00 2001
+From d217046502825fb238cca49546e2b314ccafa8ad Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 27 Nov 2018 17:32:44 -0500
 Subject: [PATCH 1/3] Use linux unix socket address format
 
 ---
- unix/frozen-modules/pyb.py | 6 +++---
+ unix/variant/pyb.py | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/unix/frozen-modules/pyb.py b/unix/frozen-modules/pyb.py
-index 5341be7..b9d32d0 100644
---- a/unix/frozen-modules/pyb.py
-+++ b/unix/frozen-modules/pyb.py
-@@ -26,10 +26,10 @@ class USB_HID:
-         fn = b'/tmp/ckcc-simulator.sock'
+diff --git a/unix/variant/pyb.py b/unix/variant/pyb.py
+index d22bb1b..fe8e7ca 100644
+--- a/unix/variant/pyb.py
++++ b/unix/variant/pyb.py
+@@ -36,10 +36,10 @@ class USB_HID:
+         import usocket as socket
          self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
          # If on linux, try commenting the following line
--        addr = bytes([len(fn)+2, socket.AF_UNIX] + list(fn))
-+        # addr = bytes([len(fn)+2, socket.AF_UNIX] + list(fn))
+-        addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
++        # addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
          # If on linux, try uncommenting the following two lines
 -        #import struct
--        #addr = struct.pack('H108s', socket.AF_UNIX, fn)
+-        #addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
 +        import struct
-+        addr = struct.pack('H108s', socket.AF_UNIX, fn)
++        addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
          while 1:
              try:
                  self.pipe.bind(addr)
 -- 
-2.30.0
+2.33.0
 
-
-From 32d4235a79e8cde7ee1c9901e0c834c310a29725 Mon Sep 17 00:00:00 2001
+From ea0fbe4eb7ba4c68ed60c262af3c1cea993061cb Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 17 Dec 2019 17:56:05 -0500
 Subject: [PATCH 2/3] Change default simulator multisig
 
 ---
- unix/frozen-modules/sim_settings.py | 6 +++++-
+ unix/variant/sim_settings.py | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/unix/frozen-modules/sim_settings.py b/unix/frozen-modules/sim_settings.py
-index 650f255..cf5bbd4 100644
---- a/unix/frozen-modules/sim_settings.py
-+++ b/unix/frozen-modules/sim_settings.py
+diff --git a/unix/variant/sim_settings.py b/unix/variant/sim_settings.py
+index 130f20c..4f0c46b 100644
+--- a/unix/variant/sim_settings.py
++++ b/unix/variant/sim_settings.py
 @@ -68,7 +68,11 @@ if '--ms' in sys.argv:
          sim_defaults['multisig'] = [["CC-2-of-4", [2, 4], [[1130956047, "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP"], [3503269483, "tpubDFcrvj5n7gyatVbr8dHCUfHT4CGvL8hREBjtxc4ge7HZgqNuPhFimPRtVg6fRRwfXiQthV9EBjNbwbpgV2VoQeL1ZNXoAWXxP2L9vMtRjax"], [2389277556, "tpubDExj5FnaUnPAjjgzELoSiNRkuXJG8Cm1pbdiA4Hc5vkAZHphibeVcUp6mqH5LuNVKbtLVZxVSzyja5X26Cfmx6pzRH6gXBUJAH7MiqwNyuM"], [3190206587, "tpubDFiuHYSJhNbHaGtB5skiuDLg12tRboh2uVZ6KGXxr8WVr28pLcS7F3gv8SsHFa2tm1jtx3VAuw56YfgRkdo6DXyfp51oygTKY3nJFT5jBMt"]], {"pp": "48'/1'/0'/1'", "ch": "XTN", "ft": 26}]]
      else:
@@ -56,10 +55,9 @@ index 650f255..cf5bbd4 100644
  
  if '--xfp' in sys.argv:
 -- 
-2.30.0
+2.33.0
 
-
-From 8cf7883d84ca5e30638b4aff0cd12c7e9a01e643 Mon Sep 17 00:00:00 2001
+From 9c6a8f180bd2589c3e0700ea0c6724a2430ee713 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Wed, 27 Jan 2021 21:50:22 -0500
 Subject: [PATCH 3/3] Allow multisigs to share master fingerprint
@@ -69,10 +67,10 @@ Subject: [PATCH 3/3] Allow multisigs to share master fingerprint
  1 file changed, 24 insertions(+), 14 deletions(-)
 
 diff --git a/shared/multisig.py b/shared/multisig.py
-index b7e4f44..e3b5807 100644
+index 4ce66e4..a655516 100644
 --- a/shared/multisig.py
 +++ b/shared/multisig.py
-@@ -141,9 +141,9 @@ class MultisigWallet:
+@@ -142,9 +142,9 @@ class MultisigWallet:
          # calc useful cache value: numeric xfp+subpath, with lookup
          self.xfp_paths = {}
          for xfp, deriv, _ in self.xpubs:
@@ -84,7 +82,7 @@ index b7e4f44..e3b5807 100644
  
      @classmethod
      def render_addr_fmt(cls, addr_fmt):
-@@ -244,7 +244,11 @@ class MultisigWallet:
+@@ -243,7 +243,11 @@ class MultisigWallet:
  
      def get_xfp_paths(self):
          # return list of lists [xfp, *deriv]
@@ -97,7 +95,7 @@ index b7e4f44..e3b5807 100644
  
      @classmethod
      def find_match(cls, M, N, xfp_paths, addr_fmt=None):
-@@ -282,17 +286,23 @@ class MultisigWallet:
+@@ -281,17 +285,23 @@ class MultisigWallet:
          for x in xfp_paths:
              if x[0] not in self.xfp_paths:
                  return False
@@ -133,5 +131,5 @@ index b7e4f44..e3b5807 100644
  
          return True
 -- 
-2.30.0
+2.33.0
 
