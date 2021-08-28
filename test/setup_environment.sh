@@ -225,8 +225,9 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    poetry run pip install construct mnemonic pyelftools jsonschema
-    pip install construct mnemonic pyelftools jsonschema
+    speculos_packages="construct flask-restful jsonschema mnemonic pyelftools pillow requests"
+    poetry run pip install ${speculos_packages}
+    pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
         git clone --recursive https://github.com/LedgerHQ/speculos.git
