@@ -135,7 +135,11 @@ if [[ -n ${build_coldcard} ]]; then
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
+        pushd ../external/micropython/mpy-cross/
+        make
+        popd
         make setup
+        make ngu-setup
     fi
     make
     cd ../..
