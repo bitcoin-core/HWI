@@ -209,21 +209,21 @@ class PubkeyProvider(object):
 class Descriptor(object):
     r"""
     An abstract class for Descriptors themselves.
-    Descriptors can contain multiple :class:`PubkeyProvider`\ s and no more than one ``Descriptor`` as a subdescriptor.
+    Descriptors can contain multiple :class:`PubkeyProvider`\ s and multiple ``Descriptor`` as subdescriptors.
     """
     def __init__(
         self,
         pubkeys: List['PubkeyProvider'],
-        subdescriptor: Optional['Descriptor'],
+        subdescriptors: List['Descriptor'],
         name: str
     ) -> None:
         r"""
         :param pubkeys: The :class:`PubkeyProvider`\ s that are part of this descriptor
-        :param subdescriptor: The ``Descriptor`` that is part of this descriptor
+        :param subdescriptor: The ``Descriptor``s that are part of this descriptor
         :param name: The name of the function for this descriptor
         """
         self.pubkeys = pubkeys
-        self.subdescriptor = subdescriptor
+        self.subdescriptors = subdescriptors
         self.name = name
 
     def to_string_no_checksum(self) -> str:
@@ -235,7 +235,7 @@ class Descriptor(object):
         return "{}({}{})".format(
             self.name,
             ",".join([p.to_string() for p in self.pubkeys]),
-            self.subdescriptor.to_string_no_checksum() if self.subdescriptor else ""
+            self.subdescriptors[0].to_string_no_checksum() if len(self.subdescriptors) > 0 else ""
         )
 
     def to_string(self) -> str:
@@ -264,7 +264,7 @@ class PKHDescriptor(Descriptor):
         """
         :param pubkey: The :class:`PubkeyProvider` for this descriptor
         """
-        super().__init__([pubkey], None, "pkh")
+        super().__init__([pubkey], [], "pkh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
         script = b"\x76\xa9\x14" + hash160(self.pubkeys[0].get_pubkey_bytes(pos)) + b"\x88\xac"
@@ -282,7 +282,7 @@ class WPKHDescriptor(Descriptor):
         """
         :param pubkey: The :class:`PubkeyProvider` for this descriptor
         """
-        super().__init__([pubkey], None, "wpkh")
+        super().__init__([pubkey], [], "wpkh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
         script = b"\x00\x14" + hash160(self.pubkeys[0].get_pubkey_bytes(pos))
@@ -304,7 +304,7 @@ class MultisigDescriptor(Descriptor):
         :param thresh: The number of keys required to sign this multisig
         :param is_sorted: Whether this is a ``sortedmulti()`` descriptor
         """
-        super().__init__(pubkeys, None, "sortedmulti" if is_sorted else "multi")
+        super().__init__(pubkeys, [], "sortedmulti" if is_sorted else "multi")
         self.thresh = thresh
         self.is_sorted = is_sorted
         if self.is_sorted:
@@ -336,16 +336,16 @@ class SHDescriptor(Descriptor):
     """
     def __init__(
         self,
-        subdescriptor: Optional['Descriptor']
+        subdescriptor: 'Descriptor'
     ) -> None:
         """
         :param subdescriptor: The :class:`Descriptor` that is a sub-descriptor for this descriptor
         """
-        super().__init__([], subdescriptor, "sh")
+        super().__init__([], [subdescriptor], "sh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
-        assert self.subdescriptor
-        redeem_script, _, witness_script = self.subdescriptor.expand(pos)
+        assert len(self.subdescriptors) == 1
+        redeem_script, _, witness_script = self.subdescriptors[0].expand(pos)
         script = b"\xa9\x14" + hash160(redeem_script) + b"\x87"
         return ExpandedScripts(script, redeem_script, witness_script)
 
@@ -356,16 +356,16 @@ class WSHDescriptor(Descriptor):
     """
     def __init__(
         self,
-        subdescriptor: Optional['Descriptor']
+        subdescriptor: 'Descriptor'
     ) -> None:
         """
-        :param pubkey: The :class:`Descriptor` that is a sub-descriptor for this descriptor
+        :param subdescriptor: The :class:`Descriptor` that is a sub-descriptor for this descriptor
         """
-        super().__init__([], subdescriptor, "wsh")
+        super().__init__([], [subdescriptor], "wsh")
 
     def expand(self, pos: int) -> "ExpandedScripts":
-        assert self.subdescriptor
-        witness_script, _, _ = self.subdescriptor.expand(pos)
+        assert len(self.subdescriptors) == 1
+        witness_script, _, _ = self.subdescriptors[0].expand(pos)
         script = b"\x00\x20" + sha256(witness_script)
         return ExpandedScripts(script, None, witness_script)
 

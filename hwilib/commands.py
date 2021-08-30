@@ -448,12 +448,12 @@ def displayaddress(
         is_sh = isinstance(descriptor, SHDescriptor)
         is_wsh = isinstance(descriptor, WSHDescriptor)
         if is_sh or is_wsh:
-            assert descriptor.subdescriptor
-            descriptor = descriptor.subdescriptor
+            assert len(descriptor.subdescriptors) == 1
+            descriptor = descriptor.subdescriptors[0]
             if isinstance(descriptor, WSHDescriptor):
                 is_wsh = True
-                assert descriptor.subdescriptor
-                descriptor = descriptor.subdescriptor
+                assert len(descriptor.subdescriptors) == 1
+                descriptor = descriptor.subdescriptors[0]
             if isinstance(descriptor, MultisigDescriptor):
                 if is_sh and is_wsh:
                     addr_type = AddressType.SH_WIT
