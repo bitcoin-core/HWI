@@ -431,11 +431,15 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
     """
     func, expr = _get_func_expr(desc)
     if func == "pkh":
+        if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
+            raise ValueError("Can only have pkh at top level, in sh(), or in wsh()")
         pubkey, expr = parse_pubkey(expr)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
         return PKHDescriptor(pubkey)
     if func == "sortedmulti" or func == "multi":
+        if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
+            raise ValueError("Can only have multi/sortedmulti at top level, in sh(), or in wsh()")
         is_sorted = func == "sortedmulti"
         comma_idx = expr.index(",")
         thresh = int(expr[:comma_idx])
@@ -453,23 +457,23 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
         if ctx == _ParseDescriptorContext.TOP and len(pubkeys) > 3:
             raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys")
         return MultisigDescriptor(pubkeys, thresh, is_sorted)
-    if ctx != _ParseDescriptorContext.P2WSH and func == "wpkh":
+    if func == "wpkh":
+        if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
+            raise ValueError("Can only have wpkh() at top level or inside sh()")
         pubkey, expr = parse_pubkey(expr)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
         return WPKHDescriptor(pubkey)
-    elif ctx == _ParseDescriptorContext.P2WSH and func == "wpkh":
-        raise ValueError("Cannot have wpkh within wsh")
-    if ctx == _ParseDescriptorContext.TOP and func == "sh":
+    if func == "sh":
+        if ctx != _ParseDescriptorContext.TOP:
+            raise ValueError("Can only have sh() at top level")
         subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2SH)
         return SHDescriptor(subdesc)
-    elif ctx != _ParseDescriptorContext.TOP and func == "sh":
-        raise ValueError("Cannot have sh in non-top level")
-    if ctx != _ParseDescriptorContext.P2WSH and func == "wsh":
+    if func == "wsh":
+        if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
+            raise ValueError("Can only have wsh() at top level or inside sh()")
         subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH)
         return WSHDescriptor(subdesc)
-    elif ctx == _ParseDescriptorContext.P2WSH and func == "wsh":
-        raise ValueError("Cannot have wsh within wsh")
     if ctx == _ParseDescriptorContext.P2SH:
         raise ValueError("A function is needed within P2SH")
     elif ctx == _ParseDescriptorContext.P2WSH:
