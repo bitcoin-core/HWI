@@ -23,6 +23,9 @@ from typing import (
 )
 
 
+MAX_TAPROOT_NODES = 128
+
+
 ExpandedScripts = namedtuple("ExpandedScripts", ["output_script", "redeem_script", "witness_script"])
 
 def PolyMod(c: int, val: int) -> int:
@@ -370,6 +373,43 @@ class WSHDescriptor(Descriptor):
         return ExpandedScripts(script, None, witness_script)
 
 
+class TRDescriptor(Descriptor):
+    """
+    A descriptor for ``tr()`` descriptors
+    """
+    def __init__(
+        self,
+        internal_key: 'PubkeyProvider',
+        subdescriptors: List['Descriptor'] = [],
+        depths: List[int] = []
+    ) -> None:
+        """
+        :param internal_key: The :class:`PubkeyProvider` that is the internal key for this descriptor
+        :param subdescriptors: The :class:`Descriptor`s that are the leaf scripts for this descriptor
+        :param depths: The depths of the leaf scripts in the same order as `subdescriptors`
+        """
+        super().__init__([internal_key], subdescriptors, "tr")
+        self.depths = depths
+
+    def to_string_no_checksum(self) -> str:
+        r = f"{self.name}({self.pubkeys[0].to_string()}"
+        path: List[bool] = [] # Track left or right for each depth
+        for p, depth in enumerate(self.depths):
+            r += ","
+            while len(path) <= depth:
+                if len(path) > 0:
+                    r += "{"
+                path.append(False)
+            r += self.subdescriptors[p].to_string_no_checksum()
+            while len(path) > 0 and path[-1]:
+                if len(path) > 0:
+                    r += "}"
+                path.pop()
+            if len(path) > 0:
+                path[-1] = True
+        r += ")"
+        return r
+
 def _get_func_expr(s: str) -> Tuple[str, str]:
     """
     Get the function name and then the expression inside
@@ -382,6 +422,41 @@ def _get_func_expr(s: str) -> Tuple[str, str]:
     end = s.rindex(")")
     return s[0:start], s[start + 1:end]
 
+
+def _get_const(s: str, const: str) -> str:
+    """
+    Get the first character of the string, make sure it is the expected character,
+    and return the rest of the string
+
+    :param s: The string that begins with a constant character
+    :param const: The constant character
+    :return: The remainder of the string without the constant character
+    :raises: ValueError: if the first character is not the constant character
+    """
+    if s[0] != const:
+        raise ValueError(f"Expected '{const}' but got '{s[0]}'")
+    return s[1:]
+
+
+def _get_expr(s: str) -> Tuple[str, str]:
+    """
+    Extract the expression that ``s`` begins with.
+
+    This will return the initial part of ``s``, up to the first comma or closing brace,
+    skipping ones that are surrounded by braces.
+
+    :param s: The string to extract the expression from
+    :return: A pair with the first item being the extracted expression and the second the rest of the string
+    """
+    level: int = 0
+    for i, c in enumerate(s):
+        if c in ["(", "{"]:
+            level += 1
+        elif level > 0 and c in [")", "}"]:
+            level -= 1
+        elif level == 0 and c in [")", "}", ","]:
+            break
+    return s[0:i], s[i:]
 
 def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
     """
@@ -415,6 +490,9 @@ class _ParseDescriptorContext(Enum):
 
     P2WSH = 3
     """Within a ``wsh()`` descriptor"""
+
+    P2TR = 4
+    """Within a ``tr()`` descriptor"""
 
 
 def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor':
@@ -474,6 +552,43 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
             raise ValueError("Can only have wsh() at top level or inside sh()")
         subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH)
         return WSHDescriptor(subdesc)
+    if func == "tr":
+        if ctx != _ParseDescriptorContext.TOP:
+            raise ValueError("Can only have tr at top level")
+        internal_key, expr = parse_pubkey(expr)
+        subscripts = []
+        depths = []
+        if expr:
+            # Path from top of the tree to what we're currently processing.
+            # branches[i] == False: left branch in the i'th step from the top
+            # branches[i] == true: right branch
+            branches = []
+            while True:
+                # Process open braces
+                while True:
+                    try:
+                        expr = _get_const(expr, "{")
+                        branches.append(False)
+                    except ValueError:
+                        break
+                    if len(branches) > MAX_TAPROOT_NODES:
+                        raise ValueError("tr() suports at most {MAX_TAPROOT_NODES} nesting levels")
+                # Process script expression
+                sarg, expr = _get_expr(expr)
+                subscripts.append(_parse_descriptor(sarg, _ParseDescriptorContext.P2TR))
+                depths.append(len(branches))
+                # Process closing braces
+                while len(branches) > 0 and branches[-1]:
+                    expr = _get_const(expr, "}")
+                    branches.pop()
+                # If we're at the end of a left branch, expect a comma
+                if len(branches) > 0 and not branches[-1]:
+                    expr = _get_const(expr, ",")
+                    branches[-1] = True
+
+                if len(branches) == 0:
+                    break
+        return TRDescriptor(internal_key, subscripts, depths)
     if ctx == _ParseDescriptorContext.P2SH:
         raise ValueError("A function is needed within P2SH")
     elif ctx == _ParseDescriptorContext.P2WSH:
