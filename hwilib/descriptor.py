@@ -256,6 +256,20 @@ class Descriptor(object):
         raise NotImplementedError("The Descriptor base class does not implement this method")
 
 
+class PKDescriptor(Descriptor):
+    """
+    A descriptor for ``pk()`` descriptors
+    """
+    def __init__(
+        self,
+        pubkey: 'PubkeyProvider'
+    ) -> None:
+        """
+        :param pubkey: The :class:`PubkeyProvider` for this descriptor
+        """
+        super().__init__([pubkey], [], "pk")
+
+
 class PKHDescriptor(Descriptor):
     """
     A descriptor for ``pkh()`` descriptors
@@ -508,6 +522,11 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
     :raises: ValueError: if the descriptor is malformed
     """
     func, expr = _get_func_expr(desc)
+    if func == "pk":
+        pubkey, expr = parse_pubkey(expr)
+        if expr:
+            raise ValueError("more than one pubkey in pk descriptor")
+        return PKDescriptor(pubkey)
     if func == "pkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have pkh at top level, in sh(), or in wsh()")
