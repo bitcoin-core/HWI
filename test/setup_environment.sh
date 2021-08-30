@@ -110,7 +110,7 @@ if [[ -n ${build_coldcard} ]]; then
         coldcard_setup_needed=true
     else
         cd firmware
-        git reset --hard HEAD~2 # Undo git-am for checking and updating
+        git reset --hard HEAD~3 # Undo git-am for checking and updating
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
