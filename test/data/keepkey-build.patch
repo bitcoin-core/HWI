@@ -1,0 +1,38 @@
+From 5657d7a0465cea36e840853f350f907e9301a451 Mon Sep 17 00:00:00 2001
+From: Andrew Chow <achow101-github@achow101.com>
+Date: Tue, 31 Aug 2021 17:29:07 -0400
+Subject: [PATCH] include stdio and remove extra __stack_chk_guard
+
+---
+ lib/board/keepkey_board.c | 2 +-
+ tools/emulator/main.cpp   | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/lib/board/keepkey_board.c b/lib/board/keepkey_board.c
+index cfc957a6..0e67623c 100644
+--- a/lib/board/keepkey_board.c
++++ b/lib/board/keepkey_board.c
+@@ -36,7 +36,7 @@
+ #include <stdlib.h>
+ 
+ /* Stack smashing protector (SSP) canary value storage */
+-uintptr_t __stack_chk_guard;
++// uintptr_t __stack_chk_guard;
+ 
+ #ifdef EMULATOR
+ /**
+diff --git a/tools/emulator/main.cpp b/tools/emulator/main.cpp
+index b6aa9ee6..7b3976f8 100644
+--- a/tools/emulator/main.cpp
++++ b/tools/emulator/main.cpp
+@@ -37,6 +37,7 @@ extern "C" {
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <signal.h>
++#include <stdio.h>
+ 
+ #define APP_VERSIONS                                    \
+   "VERSION" VERSION_STR(MAJOR_VERSION) "." VERSION_STR( \
+-- 
+2.33.0
+

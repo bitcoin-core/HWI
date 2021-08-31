@@ -181,6 +181,7 @@ if [[ -n ${build_keepkey} ]]; then
         keepkey_setup_needed=true
     else
         cd keepkey-firmware
+        git reset --hard HEAD~1 # Undo git-am for checking and updating
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -196,6 +197,8 @@ if [[ -n ${build_keepkey} ]]; then
             keepkey_setup_needed=true
         fi
     fi
+    # Apply patch to make simulator build
+    git am ../../data/keepkey-build.patch
 
     # Build the simulator. This is cached, but it is also fast
     if [ "$keepkey_setup_needed" == true ] ; then
