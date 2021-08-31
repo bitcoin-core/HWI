@@ -85,6 +85,9 @@ class KeepkeyEmulator(DeviceEmulator):
         if self.keepkey_log is not None:
             self.keepkey_log.close()
 
+        # Wait a second for everything to be cleaned up before going to the next test
+        time.sleep(1)
+
         atexit.unregister(self.stop)
 
 class KeepkeyTestCase(unittest.TestCase):

@@ -87,6 +87,9 @@ class TrezorEmulator(DeviceEmulator):
             self.emulator_log.close()
             self.emulator_log = None
 
+        # Wait a second for everything to be cleaned up before going to the next test
+        time.sleep(1)
+
         atexit.unregister(self.stop)
 
 class TrezorTestCase(unittest.TestCase):
