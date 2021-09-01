@@ -22,7 +22,7 @@ wine 'wineboot'
 
 # Install Python
 # Get the PGP keys
-wget -N -c "https://www.python.org/static/files/pubkeys.txt"
+wget -O pubkeys.txt -N -c "https://keybase.io/stevedower/pgp_keys.asc?fingerprint=7ed10b6531d7c8e1bc296021fc624643487034e5"
 gpg --import pubkeys.txt
 rm pubkeys.txt
 

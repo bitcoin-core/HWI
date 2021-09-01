@@ -4,9 +4,6 @@ container:
 env:
   EMAIL: cirrus@cirrus-ci.org
 
-sim_cache_fpr_template: &SIM_CACHE_FPR_TEMPLATE
-    fingerprint_script: echo $CIRRUS_BUILD_ID $DEVICE Simulator
-
 device_matrix_template: &DEVICE_MATRIX_TEMPLATE
   - env:
       DEVICE: --trezor-1
@@ -14,28 +11,36 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - Trezor 1 Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/trezor-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Trezor 1 Sim Builder/sim/trezor-firmware.tar.gz"
+      - tar -xvf "trezor-firmware.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
   - env:
       DEVICE: --trezor-t
     depends_on:
       - Trezor T Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/trezor-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Trezor T Sim Builder/sim/trezor-firmware.tar.gz"
+      - tar -xvf "trezor-firmware.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
   - env:
       DEVICE: --coldcard
     depends_on:
       - Coldcard Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Coldcard Sim Builder/sim/coldcard-mpy.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
     sim_install_script:
+      - pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
+      - tar -xvf "coldcard-mpy.tar.gz"
+      - pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
       - poetry run pip install -r test/work/firmware/requirements.txt
       - pip install -r test/work/firmware/requirements.txt
   - env:
@@ -44,84 +49,42 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - Bitbox01 Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/mcu
-      << : *SIM_CACHE_FPR_TEMPLATE
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Bitbox01 Sim Builder/sim/mcu.tar.gz"
+      - tar -xvf "mcu.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
   - env:
       DEVICE: --ledger
     depends_on:
       - Ledger Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/speculos
-      << : *SIM_CACHE_FPR_TEMPLATE
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Ledger Sim Builder/sim/speculos.tar.gz"
+      - tar -xvf "speculos.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
     sim_install_script:
-      - poetry run pip install construct pyelftools mnemonic jsonschema
-      - pip install construct pyelftools mnemonic jsonschema
+      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
   - env:
       DEVICE: --keepkey
     depends_on:
       - Keepkey Sim Builder
       - dist_builder
       - bitcoind_builder
-    sim_work_cache:
-      folder: test/work/keepkey-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
-
-sim_build_matrix_template: &SIM_BUILD_MATRIX_TEMPLATE
-  - env:
-      DEVICE: --trezor-1
-    name: Trezor 1 Sim Builder
-    sim_work_cache:
-      folder: test/work/trezor-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
-  - env:
-      DEVICE: --trezor-t
-    name: Trezor T Sim Builder
-    sim_work_cache:
-      folder: test/work/trezor-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
-  - env:
-      DEVICE: --coldcard
-    name: Coldcard Sim Builder
-    sim_work_cache:
-      folder: test/work/firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
-  - env:
-      DEVICE: --bitbox01
-    name: Bitbox01 Sim Builder
-    sim_work_cache:
-      folder: test/work/mcu
-      << : *SIM_CACHE_FPR_TEMPLATE
-  - env:
-      DEVICE: --ledger
-    name: Ledger Sim Builder
-    sim_work_cache:
-      folder: test/work/speculos
-      << : *SIM_CACHE_FPR_TEMPLATE
-  - env:
-      DEVICE: --keepkey
-    name: Keepkey Sim Builder
-    sim_work_cache:
-      folder: test/work/keepkey-firmware
-      << : *SIM_CACHE_FPR_TEMPLATE
-
-bitcoind_cache_template: &BITCOIND_CACHE_TEMPLATE
-  bitcoind_work_cache:
-    folder: test/work/bitcoin
-    fingerprint_script: echo $CIRRUS_BUILD_ID bitcoind
-
-dist_cache_template: &DIST_CACHE_TEMPLATE
-  dist_cache:
-    folder: dist
-    fingerprint_script: echo $CIRRUS_BUILD_ID dist
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Keepkey Sim Builder/sim/keepkey-firmware.tar.gz"
+      - tar -xvf "keepkey-firmware.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
 
 lint_task:
   test_script:
     - flake8
 
-basic_test_task:
+task:
   install_script:
     - poetry install
   matrix:
@@ -159,37 +122,110 @@ wine_builder_task:
     dockerfile: contrib/build.Dockerfile
   build_script:
     - contrib/build_wine.sh
-    - sha256sum dist/*
+    - find dist -type f -exec sha256sum {} \;
 
 bitcoind_builder_task:
-  << : *BITCOIND_CACHE_TEMPLATE
   bitcoind_cache:
     folder: test/work/bitcoin
   ccache_cache:
     folder: /root/.ccache
   env:
     BUILD_BITCOIND: 1
-  build_script: cd test; ./setup_environment.sh --bitcoind; cd ..
+  build_script:
+    - cd test; ./setup_environment.sh --bitcoind; cd ..
+    - tar -czf bitcoin.tar.gz test/work/bitcoin
+  bitcoin_artifacts:
+    path: "bitcoin.tar.gz"
 
-sim_builder_task:
-  matrix:
-    << : *SIM_BUILD_MATRIX_TEMPLATE
-  build_script: cd test; ./setup_environment.sh $DEVICE; cd ..
+task:
+  env:
+    DEVICE: --trezor-1
+  name: Trezor 1 Sim Builder
+  sim_work_cache:
+    folder: test/work/trezor-firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf trezor-firmware.tar.gz test/work/trezor-firmware
+  sim_artifacts:
+    path: "trezor-firmware.tar.gz"
+
+task:
+  env:
+    DEVICE: --trezor-t
+  name: Trezor T Sim Builder
+  sim_work_cache:
+    folder: test/work/trezor-firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf trezor-firmware.tar.gz test/work/trezor-firmware
+  sim_artifacts:
+    path: "trezor-firmware.tar.gz"
+
+task:
+  env:
+    DEVICE: --coldcard
+  name: Coldcard Sim Builder
+  sim_work_cache:
+    folder: test/work/firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf coldcard-mpy.tar.gz test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port
+  sim_artifacts:
+    path: "coldcard-mpy.tar.gz"
+
+task:
+  env:
+    DEVICE: --bitbox01
+  name: Bitbox01 Sim Builder
+  sim_work_cache:
+    folder: test/work/mcu
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf mcu.tar.gz test/work/mcu
+  sim_artifacts:
+    path: "mcu.tar.gz"
+
+task:
+  env:
+    DEVICE: --ledger
+  name: Ledger Sim Builder
+  sim_work_cache:
+    folder: test/work/speculos
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf speculos.tar.gz test/work/speculos
+  sim_artifacts:
+    path: "speculos.tar.gz"
+
+task:
+  env:
+    DEVICE: --keepkey
+  name: Keepkey Sim Builder
+  sim_work_cache:
+    folder: test/work/keepkey-firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf keepkey-firmware.tar.gz test/work/keepkey-firmware/bin
+  sim_artifacts:
+    path: "keepkey-firmware.tar.gz"
+
 
 dist_builder_task:
   container:
     dockerfile: contrib/build.Dockerfile
-  << : *DIST_CACHE_TEMPLATE
   build_script:
     - contrib/build_bin.sh
     - contrib/build_dist.sh
-    - sha256sum dist/*
+    - find dist -type f -exec sha256sum {} \;
+  built_dist_artifacts:
+    path: "dist/*"
 
-dist_test_task:
+task:
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
-  << : *DIST_CACHE_TEMPLATE
-  << : *BITCOIND_CACHE_TEMPLATE
+  fetch_dist_script:
+    - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/dist_builder/built_dist.zip"
+    - unzip built_dist.zip
   matrix:
     - name: $DEVICE Wheel
       install_script: pip install dist/*.whl
@@ -199,14 +235,14 @@ dist_test_task:
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
     - name: $DEVICE Bindist
       install_script: poetry install
+      untar_bindist_script: cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
       test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
   on_failure:
     failed_script: tail -v -n +1 test/*.std*
 
-device_test_task:
+task:
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
-  << : *BITCOIND_CACHE_TEMPLATE
   matrix:
     - env:
         INTERFACE: library

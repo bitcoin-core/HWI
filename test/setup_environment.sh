@@ -89,6 +89,7 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     if [[ -n ${build_trezor_t} ]]; then
+        rustup update
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
         poetry install
@@ -110,7 +111,7 @@ if [[ -n ${build_coldcard} ]]; then
         coldcard_setup_needed=true
     else
         cd firmware
-        git reset --hard HEAD~2 # Undo git-am for checking and updating
+        git reset --hard HEAD~3 # Undo git-am for checking and updating
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -129,12 +130,21 @@ if [[ -n ${build_coldcard} ]]; then
     # Apply patch to make simulator work in linux environments
     git am ../../data/coldcard-multisig.patch
 
+    # Apply patch to libngu to make it compile
+    pushd external/libngu
+    git am ../../../../data/coldcard-libngu.patch
+    popd
+
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
+        pushd ../external/micropython/mpy-cross/
+        make
+        popd
         make setup
+        make ngu-setup
     fi
     make
     cd ../..
@@ -180,6 +190,7 @@ if [[ -n ${build_keepkey} ]]; then
         keepkey_setup_needed=true
     else
         cd keepkey-firmware
+        git reset --hard HEAD~1 # Undo git-am for checking and updating
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -195,6 +206,8 @@ if [[ -n ${build_keepkey} ]]; then
             keepkey_setup_needed=true
         fi
     fi
+    # Apply patch to make simulator build
+    git am ../../data/keepkey-build.patch
 
     # Build the simulator. This is cached, but it is also fast
     if [ "$keepkey_setup_needed" == true ] ; then
@@ -212,8 +225,9 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    poetry run pip install construct mnemonic pyelftools jsonschema
-    pip install construct mnemonic pyelftools jsonschema
+    speculos_packages="construct flask-restful jsonschema mnemonic pyelftools pillow requests"
+    poetry run pip install ${speculos_packages}
+    pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
         git clone --recursive https://github.com/LedgerHQ/speculos.git
@@ -238,7 +252,7 @@ if [[ -n ${build_ledger} ]]; then
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
     cmake -Bbuild -H.
-    make -C build/ emu launcher
+    make -C build/ emu launcher copy-launcher
     cd ..
 fi
 

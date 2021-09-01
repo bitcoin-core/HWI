@@ -35,7 +35,7 @@ class DeviceEmulator():
 
 def start_bitcoind(bitcoind_path):
     datadir = tempfile.mkdtemp()
-    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole', '-fallbackfee=0.0002'])
+    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole', '-fallbackfee=0.0002', '-keypool=1'])
 
     def cleanup_bitcoind():
         bitcoind_proc.kill()
@@ -103,13 +103,13 @@ class DeviceTestCase(unittest.TestCase):
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'bindist':
-            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True)
+            proc = subprocess.Popen(['../dist/hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
             result = proc.communicate()
             return json.loads(result[0].decode())
         elif self.interface == 'stdin':
             args = [f'"{arg}"' for arg in args]
             input_str = '\n'.join(args) + '\n'
-            proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             result = proc.communicate(input_str.encode())
             return json.loads(result[0].decode())
         else:
