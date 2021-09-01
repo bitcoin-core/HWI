@@ -146,7 +146,7 @@ class KeepkeyClient(TrezorClient):
 
         As Keepkeys are clones of the Trezor 1, please refer to `TrezorClient` for documentation.
         """
-        super(KeepkeyClient, self).__init__(path, password, expert)
+        super(KeepkeyClient, self).__init__(path, password, expert, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH)
         self.type = 'Keepkey'
         self.client.vendors = ("keepkey.com")
         self.client.minimum_versions = {"K1-14AM": (0, 0, 0)}

@@ -60,7 +60,7 @@ class KeepkeyEmulator(DeviceEmulator):
                 time.sleep(0.05)
 
         # Setup the emulator
-        wirelink = UdpTransport.enumerate()[0]
+        wirelink = UdpTransport.enumerate("127.0.0.1:11044")[0]
         client = TrezorClientDebugLink(wirelink)
         client.vendors = ("keepkey.com")
         client.minimum_versions = {"K1-14AM": (0, 0, 0)}

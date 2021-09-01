@@ -12,6 +12,7 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Union,
 )
@@ -221,12 +222,18 @@ class PassphraseUI:
 
 HID_IDS = {DEV_TREZOR1}
 WEBUSB_IDS = TREZORS.copy()
+SIMULATOR_PATH = "127.0.0.1:21324"
 
 
-def get_path_transport(path: str) -> Device:
-    devs = hid.HidTransport.enumerate(usb_ids=HID_IDS)
-    devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=WEBUSB_IDS))
-    devs.extend(udp.UdpTransport.enumerate())
+def get_path_transport(
+    path: str,
+    hid_ids: Set[Tuple[int, int]],
+    webusb_ids: Set[Tuple[int, int]],
+    sim_path: str
+) -> Device:
+    devs = hid.HidTransport.enumerate(usb_ids=hid_ids)
+    devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=webusb_ids))
+    devs.extend(udp.UdpTransport.enumerate(sim_path))
     for dev in devs:
         if path == dev.get_path():
             return dev
@@ -236,10 +243,18 @@ def get_path_transport(path: str) -> Device:
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
-    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
+    def __init__(
+        self,
+        path: str,
+        password: str = "",
+        expert: bool = False,
+        hid_ids: Set[Tuple[int, int]] = HID_IDS,
+        webusb_ids: Set[Tuple[int, int]] = WEBUSB_IDS,
+        sim_path: str = SIMULATOR_PATH
+    ) -> None:
         super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
-        transport = get_path_transport(path)
+        transport = get_path_transport(path, hid_ids, webusb_ids, sim_path)
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
             self.client = TrezorClientDebugLink(transport=transport)
