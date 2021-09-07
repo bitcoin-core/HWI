@@ -82,7 +82,7 @@ Device support may be dropped:
 
   * If there are continuous issues with the device and the vendor has failed to provide support and updates
 
-* If the device no longer receives security devices and there are known vulnerabilities and issues
+* If the device no longer receives security updates and there are known vulnerabilities and issues
 
 Device APIs
 ===========
