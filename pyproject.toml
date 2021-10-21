@@ -16,14 +16,14 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6,<3.10"
+python = "^3.6"
 hidapi = "~0"
 ecdsa = "~0"
 pyaes = "^1.6"
 mnemonic = "~0"
 typing-extensions = "^3.7"
 libusb1 = "^1.7"
-pyside2 = { version = "^5.14.0", optional = true }
+pyside2 = { version = "^5.14.0", optional = true, python = "<3.10" }
 bitbox02 = ">=5.3.0,<6.0.0"
 
 [tool.poetry.extras]
