@@ -31,12 +31,12 @@ qt = ["pyside2"]
 
 [tool.poetry.dev-dependencies]
 pyinstaller = "^4.0"
-autopep8 = "^1.4"
-flake8 = "^3.7"
-mypy = "^0.790"
-sphinx = "^3.2.1"
-sphinx-rtd-theme = "^0.5.1"
-sphinxcontrib-autoprogram = "^0.1.6"
+autopep8 = "~1"
+flake8 = "~4"
+mypy = "~0"
+sphinx = "~4"
+sphinx-rtd-theme = "~1"
+sphinxcontrib-autoprogram = "~0"
 
 [tool.poetry.scripts]
 hwi = 'hwilib._cli:main'
