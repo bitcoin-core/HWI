@@ -242,6 +242,27 @@ task:
 
 task:
   matrix:
+    - container:
+        dockerfile: ci/cirrus.Dockerfile
+      env:
+        PYTHON: 3.6
+    - container:
+        dockerfile: ci/py37.Dockerfile
+      env:
+        PYTHON: 3.7
+    - container:
+        dockerfile: ci/py38.Dockerfile
+      env:
+        PYTHON: 3.8
+    - container:
+        dockerfile: ci/py39.Dockerfile
+      env:
+        PYTHON: 3.9
+    - container:
+        dockerfile: ci/py310.Dockerfile
+      env:
+        PYTHON: 3.10
+  matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   matrix:
     - env:
@@ -250,7 +271,7 @@ task:
         INTERFACE: cli
     - env:
         INTERFACE: stdin
-  name: $DEVICE $INTERFACE
+  name: Python $PYTHON $DEVICE $INTERFACE
   install_script: poetry install
   test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=$INTERFACE --device-only; cd ..
   on_failure:
