@@ -49,6 +49,7 @@ from .._base58 import (
     get_xpub_fingerprint,
     to_address,
 )
+from .. import _base58 as base58
 
 from ..key import (
     ExtendedKey,
@@ -60,7 +61,12 @@ from .._script import (
     is_p2wsh,
     is_witness,
 )
-from ..psbt import PSBT
+from ..psbt import (
+    PSBT,
+    PartiallySignedInput,
+    PartiallySignedOutput,
+    KeyOriginInfo,
+)
 from ..tx import (
     CTxOut,
 )
@@ -70,6 +76,7 @@ from .._serialize import (
 from ..common import (
     AddressType,
     Chain,
+    hash256,
 )
 from .. import _bech32 as bech32
 from mnemonic import Mnemonic
@@ -94,7 +101,10 @@ Device = Union[hid.HidTransport, webusb.WebUsbTransport, udp.UdpTransport]
 
 
 # Only handles up to 15 of 15
-def parse_multisig(script: bytes) -> Tuple[bool, Optional[messages.MultisigRedeemScriptType]]:
+def parse_multisig(script: bytes, tx_xpubs: Dict[bytes, KeyOriginInfo], psbt_scope: Union[PartiallySignedInput, PartiallySignedOutput]) -> Tuple[bool, Optional[messages.MultisigRedeemScriptType]]:
+    # at least OP_M pub OP_N OP_CHECKMULTISIG
+    if len(script) < 37:
+        return (False, None)
     # Get m
     m = script[0] - 80
     if m < 1 or m > 15:
@@ -123,6 +133,19 @@ def parse_multisig(script: bytes) -> Tuple[bool, Optional[messages.MultisigRedee
     if op_cms != 174:
         return (False, None)
 
+    # check if we know corresponding xpubs from global scope
+    for pub in pubkeys:
+        if pub.node.public_key in psbt_scope.hd_keypaths:
+            derivation = psbt_scope.hd_keypaths[pub.node.public_key]
+            for xpub in tx_xpubs:
+                hd = ExtendedKey.deserialize(base58.encode(xpub + hash256(xpub)[:4]))
+                origin = tx_xpubs[xpub]
+                # check fingerprint and derivation
+                if (origin.fingerprint == derivation.fingerprint) and (origin.path == derivation.path[:len(origin.path)]):
+                    # all good - populate node and break
+                    pub.address_n = list(derivation.path[len(origin.path):])
+                    pub.node = messages.HDNodeType(depth=hd.depth, fingerprint=int.from_bytes(hd.parent_fingerprint, 'big'), child_num=hd.child_num, chain_code=hd.chaincode, public_key=hd.pubkey)
+                    break
     # Build MultisigRedeemScriptType and return it
     multisig = messages.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
     return (True, multisig)
@@ -384,7 +407,7 @@ class TrezorClient(HardwareWalletClient):
                     to_ignore.append(input_num)
 
                 # Check for multisig
-                is_ms, multisig = parse_multisig(scriptcode)
+                is_ms, multisig = parse_multisig(scriptcode, tx.xpub, psbt_in)
                 if is_ms:
                     # Add to txinputtype
                     txinputtype.multisig = multisig
@@ -463,25 +486,33 @@ class TrezorClient(HardwareWalletClient):
                     else:
                         raise BadArgumentError("Output is not an address")
 
-                # Add the derivation path for change, but only if there is exactly one derivation path
+                # Add the derivation path for change
                 psbt_out = tx.outputs[i]
-                if len(psbt_out.hd_keypaths) == 1:
-                    _, keypath = next(iter(psbt_out.hd_keypaths.items()))
-                    if keypath.fingerprint == master_fp:
-                        wit, ver, prog = out.is_witness()
-                        if out.is_p2pkh():
+                for _, keypath in psbt_out.hd_keypaths.items():
+                    if keypath.fingerprint != master_fp:
+                        continue
+                    wit, ver, prog = out.is_witness()
+                    if out.is_p2pkh():
+                        txoutput.address_n = keypath.path
+                        txoutput.address = None
+                    elif wit:
+                        txoutput.script_type = messages.OutputScriptType.PAYTOWITNESS
+                        txoutput.address_n = keypath.path
+                        txoutput.address = None
+                    elif out.is_p2sh() and psbt_out.redeem_script:
+                        wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
+                        if wit and len(prog) in [20, 32]:
+                            txoutput.script_type = messages.OutputScriptType.PAYTOP2SHWITNESS
                             txoutput.address_n = keypath.path
                             txoutput.address = None
-                        elif wit:
-                            txoutput.script_type = messages.OutputScriptType.PAYTOWITNESS
-                            txoutput.address_n = keypath.path
-                            txoutput.address = None
-                        elif out.is_p2sh() and psbt_out.redeem_script:
-                            wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
-                            if wit and len(prog) == 20:
-                                txoutput.script_type = messages.OutputScriptType.PAYTOP2SHWITNESS
-                                txoutput.address_n = keypath.path
-                                txoutput.address = None
+
+                # add multisig info
+                if psbt_out.witness_script or psbt_out.redeem_script:
+                    is_ms, multisig = parse_multisig(
+                        psbt_out.witness_script or psbt_out.redeem_script,
+                        tx.xpub, psbt_out)
+                    if is_ms:
+                        txoutput.multisig = multisig
 
                 # append to outputs
                 outputs.append(txoutput)
