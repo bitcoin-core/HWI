@@ -49,6 +49,7 @@ from typing import (
     List,
     NoReturn,
     Optional,
+    Union,
 )
 
 
@@ -86,7 +87,7 @@ def setup_device_handler(args: argparse.Namespace, client: HardwareWalletClient)
 def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return signmessage(client, message=args.message, path=args.path)
 
-def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[bool, str]]:
     return signtx(client, psbt=args.psbt)
 
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
