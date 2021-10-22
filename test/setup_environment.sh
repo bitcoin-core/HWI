@@ -285,8 +285,11 @@ if [[ -n ${build_bitcoind} ]]; then
 
     # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.
     if [ "$bitcoind_setup_needed" == true ] ; then
+        pushd depends
+        make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1
+        popd
         ./autogen.sh
-        ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
+        CONFIG_SITE=$PWD/depends/x86_64-pc-linux-gnu/share/config.site ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
     fi
     make src/bitcoind
 fi
