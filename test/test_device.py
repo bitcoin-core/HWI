@@ -285,6 +285,8 @@ class TestSignTx(DeviceTestCase):
             # Just do the normal signing process to test "all inputs" case
             sign_res = self.do_command(self.dev_args + ['signtx', psbt['psbt']])
             finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
+            self.assertTrue(sign_res["signed"])
+            self.assertTrue(finalize_res["complete"])
         else:
             # Sign only input one on first pass
             # then rest on second pass to test ability to successfully
@@ -312,11 +314,16 @@ class TestSignTx(DeviceTestCase):
 
             # First will always have something to sign
             first_sign_res = self.do_command(self.dev_args + ['signtx', first_psbt])
+            self.assertTrue(first_sign_res["signed"])
             self.assertTrue(single_input == self.wrpc.finalizepsbt(first_sign_res['psbt'])['complete'])
             # Second may have nothing to sign (1 input case)
             # and also may throw an error(e.g., ColdCard)
             second_sign_res = self.do_command(self.dev_args + ['signtx', second_psbt])
             if 'psbt' in second_sign_res:
+                if single_input:
+                    self.assertFalse(second_sign_res["signed"])
+                else:
+                    self.assertTrue(second_sign_res["signed"])
                 self.assertTrue(not self.wrpc.finalizepsbt(second_sign_res['psbt'])['complete'])
                 combined_psbt = self.wrpc.combinepsbt([first_sign_res['psbt'], second_sign_res['psbt']])
 
