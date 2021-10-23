@@ -61,6 +61,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Union,
 )
 
 
@@ -176,7 +177,7 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
-def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, str]:
+def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
 
