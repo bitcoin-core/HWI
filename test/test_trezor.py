@@ -190,13 +190,19 @@ class TestTrezorManCommands(TrezorTestCase):
         t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
         t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
         t_client.client.ui.pin = '1234'
-        result = t_client.setup_device()
+        result = t_client.setup_device(label='HWI Trezor')
         self.assertTrue(result)
 
         # Make sure device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+    def test_label(self):
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertEqual(result['label'], 'HWI Trezor')
 
     def test_backup(self):
         result = self.do_command(self.dev_args + ['backup'])
