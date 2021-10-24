@@ -197,10 +197,19 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_label(self):
+        result = self.do_command(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        t_client = KeepkeyClient('udp:127.0.0.1:11044', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device(label='HWI Keepkey')
+        self.assertTrue(result)
+
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
-            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:11044':
-                self.assertEqual(result['label'], 'HWI Keepkey')
+            if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:11044':
+                self.assertEqual(dev['label'], 'HWI Keepkey')
 
     def test_backup(self):
         result = self.do_command(self.dev_args + ['backup'])

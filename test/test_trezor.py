@@ -170,6 +170,17 @@ class TestTrezorGetxpub(TrezorTestCase):
         self.assertEqual(result['chaincode'], '95a7fb33c4f0896f66045cd7f45ed49a9e72372d2aed204ad0149c39b7b17905')
         self.assertEqual(result['pubkey'], '022e6d9c18e5a837e802fb09abe00f787c8ccb0fc489c6ec5dc2613d930efd7eae')
 
+class TestTrezorLabel(TrezorTestCase):
+    def setUp(self):
+        self.client = self.emulator.start()
+        self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
+
+    def test_label(self):
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertEqual(dev['label'], 'test')
+
 # Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
 class TestTrezorManCommands(TrezorTestCase):
     def setUp(self):
@@ -199,10 +210,19 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_label(self):
+        result = self.do_command(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device(label='HWI Trezor')
+        self.assertTrue(result)
+
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertEqual(result['label'], 'HWI Trezor')
+                self.assertEqual(dev['label'], 'HWI Trezor')
 
     def test_backup(self):
         result = self.do_command(self.dev_args + ['backup'])
@@ -350,6 +370,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
