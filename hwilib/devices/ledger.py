@@ -445,6 +445,7 @@ def enumerate(password: str = '') -> List[Dict[str, Any]]:
                 d_data['model'] = LEDGER_LEGACY_PRODUCT_IDS[d['product_id']]
             else:
                 continue
+            d_data['label'] = None
             d_data['path'] = path
 
             if path == SIMULATOR_PATH:

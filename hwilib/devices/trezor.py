@@ -677,7 +677,7 @@ class TrezorClient(HardwareWalletClient):
 
         if self.client.features.initialized:
             raise DeviceAlreadyInitError('Device is already initialized. Use wipe first and try again')
-        device.reset(self.client, passphrase_protection=bool(self.password))
+        device.reset(self.client, label=label or None, passphrase_protection=bool(self.password))
         return True
 
     @trezor_exception
@@ -693,7 +693,7 @@ class TrezorClient(HardwareWalletClient):
             # Use interactive_get_pin
             self.client.ui.get_pin = MethodType(interactive_get_pin, self.client.ui)
 
-        device.recover(self.client, word_count=word_count, label=label, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
+        device.recover(self.client, word_count=word_count, label=label or None, input_callback=mnemonic_words(), passphrase_protection=bool(self.password))
         return True
 
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
@@ -775,6 +775,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             if 'trezor' not in client.client.features.vendor:
                 continue
 
+            d_data['label'] = client.client.features.label
             d_data['model'] = 'trezor_' + client.client.features.model.lower()
             if d_data['path'].startswith('udp:'):
                 d_data['model'] += '_simulator'
