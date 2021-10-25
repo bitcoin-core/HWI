@@ -170,6 +170,20 @@ class TestTrezorGetxpub(TrezorTestCase):
         self.assertEqual(result['chaincode'], '95a7fb33c4f0896f66045cd7f45ed49a9e72372d2aed204ad0149c39b7b17905')
         self.assertEqual(result['pubkey'], '022e6d9c18e5a837e802fb09abe00f787c8ccb0fc489c6ec5dc2613d930efd7eae')
 
+class TestTrezorLabel(TrezorTestCase):
+    def setUp(self):
+        self.client = self.emulator.start()
+        self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
+
+    def test_label(self):
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertEqual(dev['label'], 'test')
+                break
+        else:
+            self.fail("Did not enumerate device")
+
 # Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
 class TestTrezorManCommands(TrezorTestCase):
     def setUp(self):
@@ -199,10 +213,22 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_label(self):
+        result = self.do_command(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device(label='HWI Trezor')
+        self.assertTrue(result)
+
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertEqual(result['label'], 'HWI Trezor')
+                self.assertEqual(dev['label'], 'HWI Trezor')
+                break
+        else:
+            self.fail("Did not enumerate device")
 
     def test_backup(self):
         result = self.do_command(self.dev_args + ['backup'])
@@ -223,6 +249,9 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Set a PIN
         device.wipe(self.client)
@@ -233,6 +262,9 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
@@ -264,6 +296,9 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Sending PIN after unlock
         result = self.do_command(self.dev_args + ['promptpin'])
@@ -282,11 +317,17 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_passphrase_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
         result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 fpr = dev['fingerprint']
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         if self.emulator.model == 't':
             # Trezor T: A different passphrase would not change the fingerprint
@@ -295,6 +336,9 @@ class TestTrezorManCommands(TrezorTestCase):
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
                     self.assertEqual(dev['fingerprint'], fpr)
+                    break
+            else:
+                self.fail("Did not enumerate device")
         else:
             # Trezor 1: A different passphrase will change the fingerprint
             result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
@@ -302,6 +346,9 @@ class TestTrezorManCommands(TrezorTestCase):
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
                     self.assertNotEqual(dev['fingerprint'], fpr)
+                    break
+            else:
+                self.fail("Did not enumerate device")
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
         self.client.call(messages.Initialize())
@@ -310,6 +357,9 @@ class TestTrezorManCommands(TrezorTestCase):
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertNotEqual(dev['fingerprint'], fpr)
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Disable passphrase
         self.do_command(self.dev_args + ['togglepassphrase'])
@@ -320,12 +370,18 @@ class TestTrezorManCommands(TrezorTestCase):
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertEquals(dev['fingerprint'], '95d8f670')
+                break
+        else:
+            self.fail("Did not enumerate device")
         # Setting a passphrase won't change the fingerprint
         result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertEquals(dev['fingerprint'], '95d8f670')
+                break
+        else:
+            self.fail("Did not enumerate device")
 
 def trezor_test_suite(emulator, rpc, userpass, interface, model):
     assert model in TREZOR_MODELS
@@ -350,6 +406,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
