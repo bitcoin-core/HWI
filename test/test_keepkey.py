@@ -297,7 +297,6 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
 
         # A passphrase will need to be sent
         result = self.do_command(self.dev_args + ['enumerate'])
-        print(result)
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:11044':
                 self.assertTrue(dev['needs_passphrase_sent'])
