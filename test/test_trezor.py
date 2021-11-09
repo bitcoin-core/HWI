@@ -289,7 +289,7 @@ class TestTrezorManCommands(TrezorTestCase):
         # Send the PIN
         self.client.open()
         pin = self.client.debug.encode_pin('1234')
-        result = self.do_command(self.dev_args + ['sendpin', pin])
+        result = self.do_command(self.dev_args + ["-p", "asdf", 'sendpin', pin])
         self.assertTrue(result['success'])
 
         result = self.do_command(self.dev_args + ['enumerate'])

@@ -239,7 +239,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
 
         # Set a PIN
         device.wipe(self.client)
-        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=True, label='test')
         self.client.call(messages.LockDevice())
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
@@ -272,7 +272,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         # Send the PIN
         self.client.open()
         pin = self.client.debug.encode_pin('1234')
-        result = self.do_command(self.dev_args + ['sendpin', pin])
+        result = self.do_command(self.dev_args + ["-p", "test", 'sendpin', pin])
         self.assertTrue(result['success'])
 
         result = self.do_command(self.dev_args + ['enumerate'])
