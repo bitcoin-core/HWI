@@ -3,7 +3,7 @@
 import unittest
 import filecmp
 from os import makedirs, remove, removedirs, walk, path
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 
 class TestUdevRulesInstaller(unittest.TestCase):
     INSTALLATION_FOLDER = 'rules.d'
@@ -22,11 +22,7 @@ class TestUdevRulesInstaller(unittest.TestCase):
         removedirs(self.INSTALLATION_FOLDER)
 
     def test_rules_file_are_copied(self):
-        result = process_commands(['installudevrules', '--location', self.INSTALLATION_FOLDER])
-        self.assertIn('error', result)
-        self.assertIn('code', result)
-        self.assertEqual(result['error'], 'Need to be root.')
-        self.assertEqual(result['code'], -16)
+        process_commands(['installudevrules', '--location', self.INSTALLATION_FOLDER])
         # Assert files wre copied
         for _, _, files in walk(self.INSTALLATION_FOLDER, topdown=False):
             for file_name in files:

@@ -1,0 +1,60 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path).*",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^(Accept|Approve).*",
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^Message hash.*",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ],
+                [ "setbool", "seen_msg_hash", true ]
+            ]
+        },
+        {
+            "text": "message",
+            "conditions": [
+                [ "seen_msg_hash", false ]
+            ],
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ],
+                [ "setbool", "seen_msg_hash", true ]
+            ]
+        },
+        {
+            "text": "message",
+            "conditions": [
+                [ "seen_msg_hash", true ]
+            ],
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ],
+                [ "setbool", "seen_msg_hash", false ]
+            ]
+        },
+        {
+            "regexp": "^(Cancel|Reject).*",
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 1, false ]
+            ]
+        }
+    ]
+}

@@ -11,7 +11,7 @@ import unittest
 
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 
 class LedgerEmulator(DeviceEmulator):
     def __init__(self, path):
@@ -25,9 +25,11 @@ class LedgerEmulator(DeviceEmulator):
             pass
 
     def start(self):
+        automation_path = os.path.abspath("data/speculos-automation.json")
+
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', '--automation', 'file:{}'.format(automation_path), '--log-level', 'automation:DEBUG', '--log-level', 'seproxyhal:DEBUG', '--api-port', '0', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
         # Wait for simulator to be up
         while True:
             try:
@@ -100,7 +102,8 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
 
     class TestLedgerGetXpub(DeviceTestCase):
         def setUp(self):
-            self.dev_args.remove("--testnet")
+            self.dev_args.remove("--chain")
+            self.dev_args.remove("test")
 
         def test_getxpub(self):
             result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])

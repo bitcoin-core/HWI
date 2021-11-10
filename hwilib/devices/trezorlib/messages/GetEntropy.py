@@ -2,18 +2,26 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class GetEntropy(p.MessageType):
     MESSAGE_WIRE_TYPE = 9
 
     def __init__(
         self,
-        size: int = None,
+        *,
+        size: int,
     ) -> None:
         self.size = size
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('size', p.UVarintType, 0),  # required
+            1: ('size', p.UVarintType, p.FLAG_REQUIRED),
         }

@@ -85,37 +85,15 @@ pass the `--help` parameter after the command name; for example:
 ./hwi.py getdescriptors --help
 ```
 
-## Device Support
+## Documentation
 
-The below table lists what devices and features are supported for each device.
+Documentation for HWI can be found on [readthedocs.io](https://hwi.readthedocs.io/).
 
-Please also see [docs](docs/) for additional information about each device.
+### Device Support
 
-| Feature \ Device | Ledger Nano X | Ledger Nano S | Trezor One | Trezor Model T |
-|:---:|:---:|:---:|:---:|:---:|
-| Support Planned | Yes | Yes | Yes | Yes |
-| Implemented | Yes | Yes | N/A | N/A |
-| xpub retrieval | Yes | Yes | Yes | Yes |
-| Message Signing | Yes | Yes | Yes | Yes |
-| Device Setup | N/A | N/A | Yes | Yes |
-| Device Wipe | N/A | N/A | Yes | Yes |
-| Device Recovery | N/A | N/A | Yes | Yes |
-| Device Backup | N/A | N/A | N/A | N/A |
-| P2PKH Inputs | Yes | Yes | Yes | Yes |
-| P2SH-P2WPKH Inputs | Yes | Yes | Yes | Yes |
-| P2WPKH Inputs | Yes | Yes | Yes | Yes |
-| P2SH Multisig Inputs | Yes | Yes | Yes | Yes |
-| P2SH-P2WSH Multisig Inputs | Yes | Yes | Yes | Yes |
-| P2WSH Multisig Inputs | Yes | Yes | Yes | Yes |
-| Bare Multisig Inputs | Yes | Yes | N/A | N/A |
-| Arbitrary scriptPubKey Inputs | Yes | Yes | N/A | N/A |
-| Arbitrary redeemScript Inputs | Yes | Yes | N/A | N/A |
-| Arbitrary witnessScript Inputs | Yes | Yes | N/A | N/A |
-| Non-wallet inputs | Yes | Yes | Yes | Yes |
-| Mixed Segwit and Non-Segwit Inputs | N/A | N/A | Yes | Yes |
-| Display on device screen | Yes | Yes | Yes | Yes |
+For documentation on devices supported and how they are supported, please check the [device support page](https://hwi.readthedocs.io/en/latest/devices/index.html#support-matrix)
 
-## Using with Qtum Core
+### Using with Qtum Core
 
 See [Using Qtum Core with Hardware Wallets](docs/bitcoin-core-usage.md).
 

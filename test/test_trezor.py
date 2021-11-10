@@ -12,16 +12,17 @@ import sys
 import time
 import unittest
 
-from hwilib.devices.trezorlib.transport import enumerate_devices
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 from hwilib.devices.trezor import TrezorClient
 
 from types import MethodType
+
+TREZOR_MODELS = {'1', 't'}
 
 def get_pin(self, code=None):
     if self.pin:
@@ -30,22 +31,23 @@ def get_pin(self, code=None):
         return self.debuglink.read_pin_encoded()
 
 class TrezorEmulator(DeviceEmulator):
-    def __init__(self, path, model_t):
+    def __init__(self, path, model):
+        assert model in TREZOR_MODELS
         self.emulator_path = path
         self.emulator_proc = None
-        self.model_t = model_t
+        self.model = model
         self.emulator_log = None
         try:
-            os.unlink('trezor-{}-emulator.stdout'.format('t' if model_t else '1'))
+            os.unlink('trezor-{}-emulator.stdout'.format(self.model))
         except FileNotFoundError:
             pass
 
     def start(self):
-        self.emulator_log = open('trezor-{}-emulator.stdout'.format('t' if self.model_t else '1'), 'a')
+        self.emulator_log = open('trezor-{}-emulator.stdout'.format(self.model), 'a')
         # Start the Trezor emulator
         self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=self.emulator_log, env={'SDL_VIDEODRIVER': 'dummy', 'PYOPT': '0'}, shell=True, preexec_fn=os.setsid)
         # Wait for emulator to be up
-        # From https://github.com/trezor/trezor-mcu/blob/master/script/wait_for_emulator.py
+        # From https://github.com/trezor/trezor-firmware/blob/master/legacy/script/wait_for_emulator.py
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.connect(('127.0.0.1', 21324))
         sock.settimeout(0)
@@ -59,11 +61,7 @@ class TrezorEmulator(DeviceEmulator):
                 time.sleep(0.05)
 
         # Setup the emulator
-        for dev in enumerate_devices():
-            # Find the udp transport, that's the emulator
-            if isinstance(dev, UdpTransport):
-                wirelink = dev
-                break
+        wirelink = UdpTransport.enumerate()[0]
         client = TrezorClientDebugLink(wirelink)
         client.init_device()
         device.wipe(client)
@@ -77,9 +75,9 @@ class TrezorEmulator(DeviceEmulator):
             os.waitpid(self.emulator_proc.pid, 0)
 
         # Clean up emulator image
-        if self.model_t:
+        if self.model == 't':
             emulator_img = "/var/tmp/trezor.flash"
-        else:
+        else:  # self.model == '1'
             emulator_img = os.path.dirname(self.emulator_path) + "/emulator.img"
 
         if os.path.isfile(emulator_img):
@@ -88,6 +86,9 @@ class TrezorEmulator(DeviceEmulator):
         if self.emulator_log is not None:
             self.emulator_log.close()
             self.emulator_log = None
+
+        # Wait a second for everything to be cleaned up before going to the next test
+        time.sleep(1)
 
         atexit.unregister(self.stop)
 
@@ -127,10 +128,10 @@ class TrezorTestCase(unittest.TestCase):
             return process_commands(args)
 
     def __str__(self):
-        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__str__())
+        return 'trezor_{}: {}'.format(self.emulator.model, super().__str__())
 
     def __repr__(self):
-        return 'trezor_{}: {}'.format('t' if self.emulator.model_t else '1', super().__repr__())
+        return 'trezor_{}: {}'.format(self.emulator.model, super().__repr__())
 
     def setUp(self):
         self.client = self.emulator.start()
@@ -145,12 +146,12 @@ class TestTrezorGetxpub(TrezorTestCase):
             vectors = json.load(f)
         for vec in vectors:
             with self.subTest(vector=vec):
-                # Setup with xprv
+                # Setup with mnemonic
                 device.wipe(self.client)
                 load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
-                gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub'])
+                gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub', "--addr-type", "legacy"])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs
@@ -168,6 +169,20 @@ class TestTrezorGetxpub(TrezorTestCase):
         self.assertEqual(result['child_num'], 3)
         self.assertEqual(result['chaincode'], '95a7fb33c4f0896f66045cd7f45ed49a9e72372d2aed204ad0149c39b7b17905')
         self.assertEqual(result['pubkey'], '022e6d9c18e5a837e802fb09abe00f787c8ccb0fc489c6ec5dc2613d930efd7eae')
+
+class TestTrezorLabel(TrezorTestCase):
+    def setUp(self):
+        self.client = self.emulator.start()
+        self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
+
+    def test_label(self):
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertEqual(dev['label'], 'test')
+                break
+        else:
+            self.fail("Did not enumerate device")
 
 # Trezor specific management (setup, wipe, restore, backup, promptpin, sendpin) command tests
 class TestTrezorManCommands(TrezorTestCase):
@@ -189,13 +204,31 @@ class TestTrezorManCommands(TrezorTestCase):
         t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
         t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
         t_client.client.ui.pin = '1234'
-        result = t_client.setup_device()
-        self.assertTrue(result['success'])
+        result = t_client.setup_device(label='HWI Trezor')
+        self.assertTrue(result)
 
         # Make sure device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup'])
         self.assertEquals(result['code'], -10)
         self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+
+    def test_label(self):
+        result = self.do_command(self.dev_args + ['wipe'])
+        self.assertTrue(result['success'])
+
+        t_client = TrezorClient('udp:127.0.0.1:21324', 'test')
+        t_client.client.ui.get_pin = MethodType(get_pin, t_client.client.ui)
+        t_client.client.ui.pin = '1234'
+        result = t_client.setup_device(label='HWI Trezor')
+        self.assertTrue(result)
+
+        result = self.do_command(self.dev_args + ['enumerate'])
+        for dev in result:
+            if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
+                self.assertEqual(dev['label'], 'HWI Trezor')
+                break
+        else:
+            self.fail("Did not enumerate device")
 
     def test_backup(self):
         result = self.do_command(self.dev_args + ['backup'])
@@ -216,15 +249,22 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Set a PIN
         device.wipe(self.client)
-        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=False, label='test')
-        self.client.call(messages.ClearSession())
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=True, label='test')
+        self.client.lock(_refresh_features=False)
+        self.client.end_session()
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
@@ -242,7 +282,7 @@ class TestTrezorManCommands(TrezorTestCase):
         self.assertEqual(result['error'], 'Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
 
         # Prompt pin
-        self.client.call(messages.ClearSession())
+        self.client.call(messages.EndSession())
         result = self.do_command(self.dev_args + ['promptpin'])
         self.assertTrue(result['success'])
 
@@ -256,6 +296,9 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Sending PIN after unlock
         result = self.do_command(self.dev_args + ['promptpin'])
@@ -274,19 +317,28 @@ class TestTrezorManCommands(TrezorTestCase):
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_passphrase_sent'])
+                break
+        else:
+            self.fail("Did not enumerate device")
         result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 fpr = dev['fingerprint']
+                break
+        else:
+            self.fail("Did not enumerate device")
 
-        if self.emulator.model_t:
+        if self.emulator.model == 't':
             # Trezor T: A different passphrase would not change the fingerprint
             result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
             for dev in result:
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
                     self.assertEqual(dev['fingerprint'], fpr)
+                    break
+            else:
+                self.fail("Did not enumerate device")
         else:
             # Trezor 1: A different passphrase will change the fingerprint
             result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
@@ -294,6 +346,9 @@ class TestTrezorManCommands(TrezorTestCase):
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
                     self.assertNotEqual(dev['fingerprint'], fpr)
+                    break
+            else:
+                self.fail("Did not enumerate device")
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
         self.client.call(messages.Initialize())
@@ -302,6 +357,9 @@ class TestTrezorManCommands(TrezorTestCase):
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertNotEqual(dev['fingerprint'], fpr)
+                break
+        else:
+            self.fail("Did not enumerate device")
 
         # Disable passphrase
         self.do_command(self.dev_args + ['togglepassphrase'])
@@ -312,14 +370,21 @@ class TestTrezorManCommands(TrezorTestCase):
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertEquals(dev['fingerprint'], '95d8f670')
+                break
+        else:
+            self.fail("Did not enumerate device")
         # Setting a passphrase won't change the fingerprint
         result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
                 self.assertEquals(dev['fingerprint'], '95d8f670')
+                break
+        else:
+            self.fail("Did not enumerate device")
 
-def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
+def trezor_test_suite(emulator, rpc, userpass, interface, model):
+    assert model in TREZOR_MODELS
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
 
@@ -328,12 +393,8 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     path = 'udp:127.0.0.1:21324'
     fingerprint = '95d8f670'
     master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
-    dev_emulator = TrezorEmulator(emulator, model_t)
-
-    if model_t:
-        full_type = 'trezor_t'
-    else:
-        full_type = 'trezor_1'
+    dev_emulator = TrezorEmulator(emulator, model)
+    full_type = 'trezor_{}'.format(model)
 
     # Generic Device tests
     suite = unittest.TestSuite()
@@ -343,12 +404,11 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model_t=False):
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
-    if not model_t:
-        suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_1_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
-    else:
-        suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_t_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     sys.stderr = sys.__stderr__
@@ -359,10 +419,12 @@ if __name__ == '__main__':
     parser.add_argument('emulator', help='Path to the Trezor emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
-    parser.add_argument('--model_t', help='The emulator is for the Trezor T', action='store_true')
+    group = parser.add_argument_group()
+    group.add_argument('--model_1', help='The emulator is for the Trezor One', action='store_const', const='1', dest='model')
+    group.add_argument('--model_t', help='The emulator is for the Trezor T', action='store_const', const='t', dest='model')
     args = parser.parse_args()
 
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
-    sys.exit(not trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model_t))
+    sys.exit(not trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model))

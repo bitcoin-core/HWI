@@ -26,8 +26,10 @@ from binascii import hexlify, unhexlify
 
 class btchip:
 	BTCHIP_CLA = 0xe0
+	BTCHIP_CLA_COMMON_SDK = 0xb0
 	BTCHIP_JC_EXT_CLA = 0xf0
 
+	BTCHIP_INS_GET_APP_NAME_AND_VERSION = 0x01
 	BTCHIP_INS_SET_ALTERNATE_COIN_VERSION = 0x14
 	BTCHIP_INS_SETUP = 0x20
 	BTCHIP_INS_VERIFY_PIN = 0x22
@@ -85,7 +87,7 @@ class btchip:
 			else:
 				self.scriptBlockLength = 255
 		except Exception:
-			pass			
+			pass				
 
 	def getWalletPublicKey(self, path, showOnScreen=False, segwit=False, segwitNative=False, cashAddr=False):
 		result = {}
@@ -235,9 +237,9 @@ class btchip:
 				self.dongle.exchange(bytearray(apdu))
 				offset += blockLength
 			if len(script) == 0:
-			    apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00, len(sequence) ]
-			    apdu.extend(sequence)
-			    self.dongle.exchange(bytearray(apdu))
+				apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_HASH_INPUT_START, 0x80, 0x00, len(sequence) ]
+				apdu.extend(sequence)
+				self.dongle.exchange(bytearray(apdu))				
 			currentIndex += 1
 
 	def finalizeInput(self, outputAddress, amount, fees, changePath, rawTx=None):
@@ -326,6 +328,27 @@ class btchip:
 		result[0] = 0x30
 		return result
 
+	def signMessagePrepareV1(self, path, message):
+		donglePath = parse_bip32_path(path)
+		if self.needKeyCache:
+			self.resolvePublicKeysInPath(path)		
+		result = {}
+		apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_SIGN_MESSAGE, 0x00, 0x00 ]
+		params = []
+		params.extend(donglePath)
+		params.append(len(message))
+		params.extend(bytearray(message))
+		apdu.append(len(params))
+		apdu.extend(params)
+		response = self.dongle.exchange(bytearray(apdu))
+		result['confirmationNeeded'] = response[0] != 0x00
+		result['confirmationType'] = response[0]
+		if result['confirmationType'] == 0x02:
+			result['keycardData'] = response[1:]
+		if result['confirmationType'] == 0x03:
+			result['secureScreenData'] = response[1:]
+		return result
+
 	def signMessagePrepareV2(self, path, message):
 		donglePath = parse_bip32_path(path)
 		if self.needKeyCache:
@@ -387,6 +410,23 @@ class btchip:
 		apdu.extend(params)
 		response = self.dongle.exchange(bytearray(apdu))
 		return response
+
+	def getAppName(self):
+		apdu = [ self.BTCHIP_CLA_COMMON_SDK, self.BTCHIP_INS_GET_APP_NAME_AND_VERSION, 0x00, 0x00, 0x00 ]
+		try:
+			response = self.dongle.exchange(bytearray(apdu))
+			name_len = response[1]
+			name = response[2:][:name_len]
+			if b'OLOS' not in name:
+				return name.decode('ascii')
+		except BTChipException as e:
+			if e.sw == 0x6faa:
+				# ins not implemented"
+				return None
+			if e.sw == 0x6d00:
+				# Not in an app, return just a string saying that
+				return "not in an app"
+			raise
 
 	def getFirmwareVersion(self):
 		result = {}

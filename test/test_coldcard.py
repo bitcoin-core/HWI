@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+import glob
 import os
 import signal
 import subprocess
@@ -9,7 +10,7 @@ import sys
 import time
 import unittest
 
-from hwilib.cli import process_commands
+from hwilib._cli import process_commands
 from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
@@ -69,9 +70,8 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
         def test_backup(self):
             result = self.do_command(self.dev_args + ['backup'])
             self.assertTrue(result['success'])
-            self.assertIn('The backup has been written to', result['message'])
-            backup_filename = result['message'].split(' ')[-1]
-            os.remove(backup_filename)
+            for filename in glob.glob("backup-*.7z"):
+                os.remove(filename)
 
         def test_pin(self):
             result = self.do_command(self.dev_args + ['promptpin'])

@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -18,8 +18,9 @@ import atexit
 import logging
 import sys
 import time
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Set, Tuple
 
+from ..log import DUMP_PACKETS
 from . import TREZORS, UDEV_RULES_STR, TransportException
 from .protocol import ProtocolBasedTransport, ProtocolV1
 
@@ -43,7 +44,7 @@ class WebUsbHandle:
         self.interface = DEBUG_INTERFACE if debug else INTERFACE
         self.endpoint = DEBUG_ENDPOINT if debug else ENDPOINT
         self.count = 0
-        self.handle = None  # type: Optional[usb1.USBDeviceHandle]
+        self.handle: Optional[usb1.USBDeviceHandle] = None
 
     def open(self) -> None:
         self.handle = self.device.open()
@@ -65,6 +66,7 @@ class WebUsbHandle:
         assert self.handle is not None
         if len(chunk) != 64:
             raise TransportException("Unexpected chunk size: %d" % len(chunk))
+        LOG.log(DUMP_PACKETS, "writing packet: {}".format(chunk.hex()))
         self.handle.interruptWrite(self.endpoint, chunk)
 
     def read_chunk(self) -> bytes:
@@ -76,6 +78,7 @@ class WebUsbHandle:
                 break
             else:
                 time.sleep(0.001)
+        LOG.log(DUMP_PACKETS, "read packet: {}".format(chunk.hex()))
         if len(chunk) != 64:
             raise TransportException("Unexpected chunk size: %d" % len(chunk))
         return chunk
@@ -105,11 +108,8 @@ class WebUsbTransport(ProtocolBasedTransport):
     def get_path(self) -> str:
         return "%s:%s" % (self.PATH_PREFIX, dev_to_str(self.device))
 
-    def get_usb_vendor_id(self) -> int:
-        return self.device.getVendorID()
-
     @classmethod
-    def enumerate(cls) -> Iterable["WebUsbTransport"]:
+    def enumerate(cls, usb_reset=False, usb_ids: Set[Tuple[int, int]] = TREZORS) -> Iterable["WebUsbTransport"]:
         if cls.context is None:
             cls.context = usb1.USBContext()
             cls.context.open()
@@ -117,7 +117,7 @@ class WebUsbTransport(ProtocolBasedTransport):
         devices = []
         for dev in cls.context.getDeviceIterator(skip_on_error=True):
             usb_id = (dev.getVendorID(), dev.getProductID())
-            if usb_id not in TREZORS:
+            if usb_id not in usb_ids:
                 continue
             if not is_vendor_class(dev):
                 continue
@@ -129,19 +129,18 @@ class WebUsbTransport(ProtocolBasedTransport):
                 # non-functional.
                 dev.getProduct()
                 devices.append(WebUsbTransport(dev))
-            except Exception:
+            except usb1.USBErrorNotSupported:
                 pass
+            except usb1.USBErrorPipe:
+                if usb_reset:
+                    handle = dev.open()
+                    handle.resetDevice()
+                    handle.close()
         return devices
 
     def find_debug(self) -> "WebUsbTransport":
-        if self.protocol.VERSION >= 2:
-            # TODO test this
-            # XXX this is broken right now because sessions don't really work
-            # For v2 protocol, use the same WebUSB interface with a different session
-            return WebUsbTransport(self.device, self.handle)
-        else:
-            # For v1 protocol, find debug USB interface for the same serial number
-            return WebUsbTransport(self.device, debug=True)
+        # For v1 protocol, find debug USB interface for the same serial number
+        return WebUsbTransport(self.device, debug=True)
 
 
 def is_vendor_class(dev: "usb1.USBDevice") -> bool:

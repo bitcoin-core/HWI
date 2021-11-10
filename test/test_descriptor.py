@@ -1,126 +1,185 @@
 #! /usr/bin/env python3
 
-from hwilib.descriptor import Descriptor
+from hwilib.descriptor import (
+    parse_descriptor,
+    MultisigDescriptor,
+    SHDescriptor,
+    PKHDescriptor,
+    WPKHDescriptor,
+    WSHDescriptor,
+)
+
+from binascii import unhexlify
+
 import unittest
 
 class TestDescriptor(unittest.TestCase):
     def test_parse_descriptor_with_origin(self):
-        desc = Descriptor.parse("wpkh([00000001/84'/1'/0']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wpkh, True)
-        self.assertEqual(desc.sh_wpkh, None)
-        self.assertEqual(desc.origin_fingerprint, "00000001")
-        self.assertEqual(desc.origin_path, "/84'/1'/0'")
-        self.assertEqual(desc.base_key, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
-        self.assertEqual(desc.path_suffix, "/0/0")
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path, "m/84'/1'/0'/0/0")
+        d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WPKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h")
+        self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, None)
 
     def test_parse_multisig_descriptor_with_origin(self):
-        desc = Descriptor.parse("wsh(multi(2,[00000001/48'/0'/0'/2']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,[00000002/48'/0'/0'/2']tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty/0/0))", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wsh, True)
-        self.assertEqual(desc.origin_fingerprint, ["00000001", "00000002"])
-        self.assertEqual(desc.origin_path, ["/48'/0'/0'/2'", "/48'/0'/0'/2'"])
-        self.assertEqual(desc.base_key, ["tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B", "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty"])
-        self.assertEqual(desc.path_suffix, ["/0/0", "/0/0"])
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path_base, ["m/48'/0'/0'/2'", "m/48'/0'/0'/2'"])
-        self.assertEqual(desc.m_path, ["m/48'/0'/0'/2'/0/0", "m/48'/0'/0'/2'/0/0"])
+        d = "wsh(multi(2,[00000001/48h/0h/0h/2h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,[00000002/48h/0h/0h/2h]tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty/0/0))"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WSHDescriptor))
+        self.assertTrue(isinstance(desc.subdescriptor, MultisigDescriptor))
+        self.assertEqual(desc.subdescriptor.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].deriv_path, "/0/0")
+
+        self.assertEqual(desc.subdescriptor.pubkeys[1].origin.fingerprint.hex(), "00000002")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("002084b64b2b8651df8fd3e9735f6269edbf9e03abf619ae0788be9f17bf18e83d59"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, unhexlify("522102c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c721033a4f18d2b498273ed7439c59f6d8a673d5b9c67a03163d530e12c941ca22be3352ae"))
+
+        d = "sh(multi(2,[00000001/48h/0h/0h/2h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,[00000002/48h/0h/0h/2h]tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty/0/0))"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, SHDescriptor))
+        self.assertTrue(isinstance(desc.subdescriptor, MultisigDescriptor))
+        self.assertEqual(desc.subdescriptor.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.subdescriptor.pubkeys[0].deriv_path, "/0/0")
+
+        self.assertEqual(desc.subdescriptor.pubkeys[1].origin.fingerprint.hex(), "00000002")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
+        self.assertEqual(desc.subdescriptor.pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("a91495ee6326805b1586bb821fc3c0eeab2c68441b4187"))
+        self.assertEqual(e.redeem_script, unhexlify("522102c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c721033a4f18d2b498273ed7439c59f6d8a673d5b9c67a03163d530e12c941ca22be3352ae"))
+        self.assertEqual(e.witness_script, None)
+
+        d = "sh(wsh(multi(2,[00000001/48h/0h/0h/2h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,[00000002/48h/0h/0h/2h]tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty/0/0)))"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, SHDescriptor))
+        self.assertTrue(isinstance(desc.subdescriptor, WSHDescriptor))
+        self.assertTrue(isinstance(desc.subdescriptor.subdescriptor, MultisigDescriptor))
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[0].deriv_path, "/0/0")
+
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[1].origin.fingerprint.hex(), "00000002")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
+        self.assertEqual(desc.subdescriptor.subdescriptor.pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("a914779ae0f6958e98b997cc177f9b554289905fbb5587"))
+        self.assertEqual(e.redeem_script, unhexlify("002084b64b2b8651df8fd3e9735f6269edbf9e03abf619ae0788be9f17bf18e83d59"))
+        self.assertEqual(e.witness_script, unhexlify("522102c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c721033a4f18d2b498273ed7439c59f6d8a673d5b9c67a03163d530e12c941ca22be3352ae"))
 
     def test_parse_descriptor_without_origin(self):
-        desc = Descriptor.parse("wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wpkh, True)
-        self.assertEqual(desc.sh_wpkh, None)
-        self.assertEqual(desc.origin_fingerprint, None)
-        self.assertEqual(desc.origin_path, None)
-        self.assertEqual(desc.base_key, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
-        self.assertEqual(desc.path_suffix, "/0/0")
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path, None)
+        d = "wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WPKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin, None)
+        self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, None)
 
     def test_parse_descriptor_with_origin_fingerprint_only(self):
-        desc = Descriptor.parse("wpkh([00000001]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wpkh, True)
-        self.assertEqual(desc.sh_wpkh, None)
-        self.assertEqual(desc.origin_fingerprint, "00000001")
-        self.assertEqual(desc.origin_path, "")
-        self.assertEqual(desc.base_key, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
-        self.assertEqual(desc.path_suffix, "/0/0")
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path, None)
+        d = "wpkh([00000001]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WPKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(len(desc.pubkeys[0].origin.path), 0)
+        self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, None)
 
     def test_parse_descriptor_with_key_at_end_with_origin(self):
-        desc = Descriptor.parse("wpkh([00000001/84'/1'/0'/0/0]0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wpkh, True)
-        self.assertEqual(desc.sh_wpkh, None)
-        self.assertEqual(desc.origin_fingerprint, "00000001")
-        self.assertEqual(desc.origin_path, "/84'/1'/0'/0/0")
-        self.assertEqual(desc.base_key, "0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
-        self.assertEqual(desc.path_suffix, None)
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path, "m/84'/1'/0'/0/0")
+        d = "wpkh([00000001/84h/1h/0h/0/0]02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WPKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h/0/0")
+        self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
+        self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, None)
+
+        d = "pkh([00000001/84h/1h/0h/0/0]02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, PKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin.fingerprint.hex(), "00000001")
+        self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h/0/0")
+        self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
+        self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.to_string_no_checksum(), d)
+        e = desc.expand(0)
+        self.assertEqual(e.output_script, unhexlify("76a914d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa88ac"))
+        self.assertEqual(e.redeem_script, None)
+        self.assertEqual(e.witness_script, None)
 
     def test_parse_descriptor_with_key_at_end_without_origin(self):
-        desc = Descriptor.parse("wpkh(0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)", True)
-        self.assertIsNotNone(desc)
-        self.assertEqual(desc.wpkh, True)
-        self.assertEqual(desc.sh_wpkh, None)
-        self.assertEqual(desc.origin_fingerprint, None)
-        self.assertEqual(desc.origin_path, None)
-        self.assertEqual(desc.base_key, "0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
-        self.assertEqual(desc.path_suffix, None)
-        self.assertEqual(desc.testnet, True)
-        self.assertEqual(desc.m_path, None)
+        d = "wpkh(02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, WPKHDescriptor))
+        self.assertEqual(desc.pubkeys[0].origin, None)
+        self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
+        self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.to_string_no_checksum(), d)
 
     def test_parse_empty_descriptor(self):
-        desc = Descriptor.parse("", True)
-        self.assertIsNone(desc)
+        self.assertRaises(ValueError, parse_descriptor, "")
 
     def test_parse_descriptor_replace_h(self):
-        desc = Descriptor.parse("wpkh([00000001/84h/1h/0']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)", True)
+        d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
+        desc = parse_descriptor(d)
         self.assertIsNotNone(desc)
-        self.assertEqual(desc.origin_path, "/84'/1'/0'")
-
-    def test_serialize_descriptor_with_origin(self):
-        descriptor = "wpkh([00000001/84'/1'/0']tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#mz20k55p"
-        desc = Descriptor.parse(descriptor, True)
-        self.assertEqual(desc.serialize(), descriptor)
-
-    def test_serialize_descriptor_without_origin(self):
-        descriptor = "wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)#ac0p4yhq"
-        desc = Descriptor.parse(descriptor, True)
-        self.assertEqual(desc.serialize(), descriptor)
-
-    def test_serialize_descriptor_with_key_at_end_with_origin(self):
-        descriptor = "wpkh([00000001/84'/1'/0'/0/0]0297dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)#rh7p6vk2"
-        desc = Descriptor.parse(descriptor, True)
-        self.assertEqual(desc.serialize(), descriptor)
+        self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h")
 
     def test_checksums(self):
-        with self.subTest(msg='Valid checksum'):
-            self.assertIsNotNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxfy"))
-            self.assertIsNotNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09x5t"))
-            self.assertIsNotNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))"))
-            self.assertIsNotNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))"))
+        with self.subTest(msg="Valid checksum"):
+            self.assertIsNotNone(parse_descriptor("sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#5js07kwj"))
+            self.assertIsNotNone(parse_descriptor("sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#hgmsckna"))
+            self.assertIsNotNone(parse_descriptor("sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))"))
+            self.assertIsNotNone(parse_descriptor("sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))"))
         with self.subTest(msg="Empty Checksum"):
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#"))
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#"))
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#")
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#")
         with self.subTest(msg="Too long Checksum"):
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxfyq"))
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09x5tq"))
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#5js07kwjq")
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#hgmscknaq")
         with self.subTest(msg="Too Short Checksum"):
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxf"))
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09x5"))
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#5js07kw")
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#hgmsckn")
         with self.subTest(msg="Error in Payload"):
-            self.assertIsNone(Descriptor.parse("sh(multi(3,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxfy"))
-            self.assertIsNone(Descriptor.parse("sh(multi(3,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09x5t"))
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(3,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggrsrxf")
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(3,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09x5")
         with self.subTest(msg="Error in Checksum"):
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#ggssrxfy"))
-            self.assertIsNone(Descriptor.parse("sh(multi(2,[00000000/111'/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjq09x4t"))
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))#5js07kej")
+            self.assertRaises(ValueError, parse_descriptor, "sh(multi(2,[00000000/111h/222]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0))#tjg09y5")
 
 if __name__ == "__main__":
     unittest.main()

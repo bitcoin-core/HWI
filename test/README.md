@@ -9,7 +9,7 @@ This is taken directly from the [python reference implementation](https://github
 - `test_psbt.py` tests the psbt serialization.
 It implements all of the [BIP 174 serialization test vectors](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki#Test_Vectors).
 - `test_trezor.py` tests the command line interface and the Trezor implementation.
-It uses the [Trezor One firmware emulator](https://github.com/trezor/trezor-mcu/#building-for-development).
+It uses the [Trezor One firmware emulator](https://github.com/trezor/trezor-firmware/blob/master/docs/legacy/index.md#local-development-build) and [Trezor Model T firmware emulator](https://github.com/trezor/trezor-firmware/blob/master/docs/core/emulator/index.md).
 It also tests usage with `bitcoind`.
 - `test_keepkey.py` tests the command line interface and the Keepkey implementation.
 It uses the [Keepkey firmware emulator](https://github.com/keepkey/keepkey-firmware/blob/master/docs/Build.md).
@@ -19,11 +19,14 @@ It uses the [Coldcard simulator](https://github.com/Coldcard/firmware/tree/maste
 It also tests usage with `bitcoind`.
 
 `setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`.
-if run in the `test/` directory, these will be built in `work/test/trezor-mcu`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+In order to build each simulator/emulator, you will need to use command line arguments.
+These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, and `--bitcoind`.
+If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
 `run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
-test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
+`test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
 
 If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
@@ -54,13 +57,13 @@ pip install pipenv
 Clone the repository:
 
 ```
-$ git clone https://github.com/trezor/trezor-mcu/
+$ git clone https://github.com/trezor/trezor-firmware/
 ```
 
 Build the emulator in headless mode:
 
 ```
-$ cd trezor-mcu
+$ cd trezor-firmware/legacy
 $ export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
 $ script/setup
 $ pipenv install

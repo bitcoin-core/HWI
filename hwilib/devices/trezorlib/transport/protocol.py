@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -15,15 +15,12 @@
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
 import logging
-import os
 import struct
-from io import BytesIO
 from typing import Tuple
 
 from typing_extensions import Protocol as StructuralType
 
-from . import Transport
-from .. import mapping, protobuf
+from . import MessagePayload, Transport
 
 REPLEN = 64
 
@@ -71,15 +68,12 @@ class Protocol:
     - open and close physical connections,
     - and send and receive binary chunks.
 
-    We declare a protocol version (we have implementations of v1 and v2).
     For now, the class also handles session counting and opening the underlying Handle.
     This will probably be removed in the future.
 
     We will need a new Protocol class if we change the way a Trezor device encapsulates
     its messages.
     """
-
-    VERSION = None  # type: int
 
     def __init__(self, handle: Handle) -> None:
         self.handle = handle
@@ -92,14 +86,14 @@ class Protocol:
         self.session_counter += 1
 
     def end_session(self) -> None:
-        if self.session_counter == 1:
+        self.session_counter = max(self.session_counter - 1, 0)
+        if self.session_counter == 0:
             self.handle.close()
-        self.session_counter -= 1
 
-    def read(self) -> protobuf.MessageType:
+    def read(self) -> MessagePayload:
         raise NotImplementedError
 
-    def write(self, message: protobuf.MessageType) -> None:
+    def write(self, message_type: int, message_data: bytes) -> None:
         raise NotImplementedError
 
 
@@ -113,10 +107,10 @@ class ProtocolBasedTransport(Transport):
     def __init__(self, protocol: Protocol) -> None:
         self.protocol = protocol
 
-    def write(self, message: protobuf.MessageType) -> None:
-        self.protocol.write(message)
+    def write(self, message_type: int, message_data: bytes) -> None:
+        self.protocol.write(message_type, message_data)
 
-    def read(self) -> protobuf.MessageType:
+    def read(self) -> MessagePayload:
         return self.protocol.read()
 
     def begin_session(self) -> None:
@@ -131,18 +125,11 @@ class ProtocolV1(Protocol):
     Does not understand sessions.
     """
 
-    VERSION = 1
+    HEADER_LEN = struct.calcsize(">HL")
 
-    def write(self, msg: protobuf.MessageType) -> None:
-        LOG.debug(
-            "sending message: {}".format(msg.__class__.__name__),
-            extra={"protobuf": msg},
-        )
-        data = BytesIO()
-        protobuf.dump_message(data, msg)
-        ser = data.getvalue()
-        header = struct.pack(">HL", mapping.get_type(msg), len(ser))
-        buffer = bytearray(b"##" + header + ser)
+    def write(self, message_type: int, message_data: bytes) -> None:
+        header = struct.pack(">HL", message_type, len(message_data))
+        buffer = bytearray(b"##" + header + message_data)
 
         while buffer:
             # Report ID, data padded to 63 bytes
@@ -151,7 +138,7 @@ class ProtocolV1(Protocol):
             self.handle.write_chunk(chunk)
             buffer = buffer[63:]
 
-    def read(self) -> protobuf.MessageType:
+    def read(self) -> MessagePayload:
         buffer = bytearray()
         # Read header with first part of message data
         msg_type, datalen, first_chunk = self.read_first()
@@ -161,28 +148,18 @@ class ProtocolV1(Protocol):
         while len(buffer) < datalen:
             buffer.extend(self.read_next())
 
-        # Strip padding
-        data = BytesIO(buffer[:datalen])
-
-        # Parse to protobuf
-        msg = protobuf.load_message(data, mapping.get_class(msg_type))
-        LOG.debug(
-            "received message: {}".format(msg.__class__.__name__),
-            extra={"protobuf": msg},
-        )
-        return msg
+        return msg_type, buffer[:datalen]
 
     def read_first(self) -> Tuple[int, int, bytes]:
         chunk = self.handle.read_chunk()
         if chunk[:3] != b"?##":
             raise RuntimeError("Unexpected magic characters")
         try:
-            headerlen = struct.calcsize(">HL")
-            msg_type, datalen = struct.unpack(">HL", chunk[3 : 3 + headerlen])
+            msg_type, datalen = struct.unpack(">HL", chunk[3 : 3 + self.HEADER_LEN])
         except Exception:
             raise RuntimeError("Cannot parse header")
 
-        data = chunk[3 + headerlen :]
+        data = chunk[3 + self.HEADER_LEN :]
         return msg_type, datalen, data
 
     def read_next(self) -> bytes:
@@ -190,17 +167,3 @@ class ProtocolV1(Protocol):
         if chunk[:1] != b"?":
             raise RuntimeError("Unexpected magic characters")
         return chunk[1:]
-
-
-def get_protocol(handle: Handle, want_v2: bool) -> Protocol:
-    """Make a Protocol instance for the given handle.
-
-    Each transport can have a preference for using a particular protocol version.
-    This preference is overridable through `TREZOR_PROTOCOL_V1` environment variable,
-    which forces the library to use V1 anyways.
-
-    As of 11/2018, no devices support V2, so we enforce V1 here. It is still possible
-    to set `TREZOR_PROTOCOL_V1=0` and thus enable V2 protocol for transports that ask
-    for it (i.e., USB transports for Trezor T).
-    """
-    return ProtocolV1(handle)

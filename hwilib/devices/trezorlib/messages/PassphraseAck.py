@@ -2,12 +2,20 @@
 # fmt: off
 from .. import protobuf as p
 
+if __debug__:
+    try:
+        from typing import Dict, List  # noqa: F401
+        from typing_extensions import Literal  # noqa: F401
+    except ImportError:
+        pass
+
 
 class PassphraseAck(p.MessageType):
     MESSAGE_WIRE_TYPE = 42
 
     def __init__(
         self,
+        *,
         passphrase: str = None,
         _state: bytes = None,
         on_device: bool = None,
@@ -17,9 +25,9 @@ class PassphraseAck(p.MessageType):
         self.on_device = on_device
 
     @classmethod
-    def get_fields(cls):
+    def get_fields(cls) -> Dict:
         return {
-            1: ('passphrase', p.UnicodeType, 0),
-            2: ('_state', p.BytesType, 0),
-            3: ('on_device', p.BoolType, 0),
+            1: ('passphrase', p.UnicodeType, None),
+            2: ('_state', p.BytesType, None),
+            3: ('on_device', p.BoolType, None),
         }

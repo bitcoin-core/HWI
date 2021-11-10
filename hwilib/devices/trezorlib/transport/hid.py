@@ -1,6 +1,6 @@
 # This file is part of the Trezor project.
 #
-# Copyright (C) 2012-2018 SatoshiLabs and contributors
+# Copyright (C) 2012-2019 SatoshiLabs and contributors
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version 3
@@ -17,9 +17,10 @@
 import logging
 import sys
 import time
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Optional, Set, Tuple
 
-from . import DEV_TREZOR1, DEV_KEEPKEY, UDEV_RULES_STR, TransportException
+from ..log import DUMP_PACKETS
+from . import DEV_TREZOR1, UDEV_RULES_STR, TransportException
 from .protocol import ProtocolBasedTransport, ProtocolV1
 
 LOG = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ LOG = logging.getLogger(__name__)
 try:
     import hid
 except Exception as e:
-    LOG.warning("HID transport is disabled: {}".format(e))
+    LOG.info("HID transport is disabled: {}".format(e))
     hid = None
 
 
@@ -41,7 +42,7 @@ class HidHandle:
     ) -> None:
         self.path = path
         self.serial = serial
-        self.handle = None  # type: HidDeviceHandle
+        self.handle: HidDeviceHandle = None
         self.hid_version = None if probe_hid_version else 2
 
     def open(self) -> None:
@@ -82,17 +83,21 @@ class HidHandle:
             raise TransportException("Unexpected chunk size: %d" % len(chunk))
 
         if self.hid_version == 2:
-            self.handle.write(b"\0" + bytearray(chunk))
-        else:
-            self.handle.write(chunk)
+            chunk = b"\x00" + chunk
+
+        LOG.log(DUMP_PACKETS, "writing packet: {}".format(chunk.hex()))
+        self.handle.write(chunk)
 
     def read_chunk(self) -> bytes:
         while True:
-            chunk = self.handle.read(64)
+            # hidapi seems to return lists of ints instead of bytes
+            chunk = bytes(self.handle.read(64))
             if chunk:
                 break
             else:
                 time.sleep(0.001)
+
+        LOG.log(DUMP_PACKETS, "read packet: {}".format(chunk.hex()))
         if len(chunk) != 64:
             raise TransportException("Unexpected chunk size: %d" % len(chunk))
         return bytes(chunk)
@@ -119,21 +124,17 @@ class HidTransport(ProtocolBasedTransport):
         self.device = device
         self.handle = HidHandle(device["path"], device["serial_number"])
 
-        protocol = ProtocolV1(self.handle)
-        super().__init__(protocol=protocol)
+        super().__init__(protocol=ProtocolV1(self.handle))
 
     def get_path(self) -> str:
         return "%s:%s" % (self.PATH_PREFIX, self.device["path"].decode())
 
-    def get_usb_vendor_id(self) -> int:
-        return self.device["vendor_id"]
-
     @classmethod
-    def enumerate(cls, debug: bool = False) -> Iterable["HidTransport"]:
+    def enumerate(cls, debug: bool = False, usb_ids: Set[Tuple[int, int]] = {DEV_TREZOR1}) -> Iterable["HidTransport"]:
         devices = []
         for dev in hid.enumerate(0, 0):
             usb_id = (dev["vendor_id"], dev["product_id"])
-            if usb_id != DEV_TREZOR1 and usb_id != DEV_KEEPKEY:
+            if usb_id not in usb_ids:
                 continue
             if debug:
                 if not is_debuglink(dev):
@@ -145,15 +146,11 @@ class HidTransport(ProtocolBasedTransport):
         return devices
 
     def find_debug(self) -> "HidTransport":
-        if self.protocol.VERSION >= 2:
-            # use the same device
-            return self
-        else:
-            # For v1 protocol, find debug USB interface for the same serial number
-            for debug in HidTransport.enumerate(debug=True):
-                if debug.device["serial_number"] == self.device["serial_number"]:
-                    return debug
-            raise TransportException("Debug HID device not found")
+        # For v1 protocol, find debug USB interface for the same serial number
+        for debug in HidTransport.enumerate(debug=True):
+            if debug.device["serial_number"] == self.device["serial_number"]:
+                return debug
+        raise TransportException("Debug HID device not found")
 
 
 def is_wirelink(dev: HidDevice) -> bool:

@@ -1,21 +1,26 @@
 # -*- mode: python -*-
 import platform
 import subprocess
+import os
 
 block_cipher = None
 
-binaries = []
-if platform.system() == 'Windows':
-    binaries = [("c:/python3/libusb-1.0.dll", ".")]
-elif platform.system() == 'Linux':
-    binaries = [("/lib/x86_64-linux-gnu/libusb-1.0.so.0", ".")]
-elif platform.system() == 'Darwin':
-    find_brew_libusb_proc = subprocess.Popen(['brew', '--prefix', 'libusb'], stdout=subprocess.PIPE)
-    libusb_path = find_brew_libusb_proc.communicate()[0]
-    binaries = [(libusb_path.rstrip().decode() + "/lib/libusb-1.0.dylib", ".")]
+def get_libusb_path():
+    if platform.system() == "Windows":
+        return "c:/python3/libusb-1.0.dll"
+    if platform.system() == "Darwin":
+        proc = subprocess.Popen(["brew", "--prefix", "libusb"], stdout=subprocess.PIPE)
+        prefix = proc.communicate()[0].rstrip().decode()
+        return os.path.join(prefix, "lib", "libusb-1.0.dylib")
+    if platform.system() == "Linux":
+        for lib_dir in ["/lib/x86_64-linux-gnu", "/usr/lib64", "/lib64" "/usr/lib", "/lib"]:
+            libusb_path = os.path.join(lib_dir, "libusb-1.0.so.0")
+            if os.path.exists(libusb_path):
+                return libusb_path
+    raise RuntimeError(f"Unsupported platform: {platform.system()}")
 
 a = Analysis(['hwi.py'],
-             binaries=binaries,
+             binaries=[(get_libusb_path(), '.')],
              datas=[],
              hiddenimports=[],
              hookspath=['contrib/pyinstaller-hooks/'],

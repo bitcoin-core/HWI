@@ -1,0 +1,2 @@
+sphinxcontrib-autoprogram>=0.1.5
+sphinx>=3.2.1
