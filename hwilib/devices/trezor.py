@@ -737,7 +737,7 @@ class TrezorClient(HardwareWalletClient):
                     raise DeviceAlreadyUnlockedError('The PIN has already been sent to this device')
             return False
         elif isinstance(resp, messages.PassphraseRequest):
-            pass_resp = self.client.call_raw(messages.PassphraseAck(passphrase=self.client.ui.get_passphrase(available_on_device=False), on_device=False))
+            pass_resp = self.client.call(messages.PassphraseAck(passphrase=self.client.ui.get_passphrase(available_on_device=False), on_device=False), check_fw=False)
             if isinstance(pass_resp, messages.Deprecated_PassphraseStateRequest):
                 self.client.call_raw(messages.Deprecated_PassphraseStateAck())
         return True
