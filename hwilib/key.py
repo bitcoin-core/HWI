@@ -379,6 +379,7 @@ def get_bip44_chain(chain: Chain) -> int:
     :param chain: The chain
     """
     if chain == Chain.MAIN:
-        return 0
+        return 88
     else:
-        return 1
+        # use 88' for testnet as well
+        return 88
