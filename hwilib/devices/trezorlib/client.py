@@ -92,14 +92,15 @@ class TrezorClient:
         transport: "Transport",
         ui: "TrezorClientUI",
         session_id: Optional[bytes] = None,
-        derive_cardano: Optional[bool] = None,
     ):
         LOG.info(f"creating client instance for device: {transport.get_path()}")
         self.transport = transport
         self.ui = ui
         self.session_counter = 0
         self.session_id = session_id
-        self.init_device(session_id=session_id, derive_cardano=derive_cardano)
+        self.map_type_to_class_override = {}
+        self.vendors = VENDORS
+        self.minimum_versions = MINIMUM_FIRMWARE_VERSION
 
     def open(self):
         if self.session_counter == 0:
@@ -140,7 +141,7 @@ class TrezorClient:
             DUMP_BYTES,
             f"received type {msg_type} ({len(msg_bytes)} bytes): {msg_bytes.hex()}",
         )
-        msg = mapping.decode(msg_type, msg_bytes)
+        msg = mapping.decode(msg_type, msg_bytes, self.map_type_to_class_override)
         LOG.debug(
             f"received message: {msg.__class__.__name__}",
             extra={"protobuf": msg},
@@ -214,8 +215,9 @@ class TrezorClient:
         return self._raw_read()
 
     @tools.session
-    def call(self, msg):
-        self.check_firmware_version()
+    def call(self, msg, check_fw = True):
+        if check_fw:
+            self.check_firmware_version()
         resp = self.call_raw(msg)
         while True:
             if isinstance(resp, messages.PinMatrixRequest):
@@ -233,7 +235,7 @@ class TrezorClient:
 
     def _refresh_features(self, features: messages.Features) -> None:
         """Update internal fields based on passed-in Features message."""
-        if features.vendor not in VENDORS:
+        if features.vendor not in self.vendors:
             raise RuntimeError("Unsupported device")
 
         self.features = features
@@ -266,7 +268,6 @@ class TrezorClient:
         *,
         session_id: bytes = None,
         new_session: bool = False,
-        derive_cardano: Optional[bool] = None,
     ) -> Optional[bytes]:
         """Initialize the device and return a session ID.
 
@@ -304,7 +305,7 @@ class TrezorClient:
         resp = self.call_raw(
             messages.Initialize(
                 session_id=self.session_id,
-                derive_cardano=derive_cardano,
+                derive_cardano=None,
             )
         )
         if isinstance(resp, messages.Failure):
@@ -333,7 +334,7 @@ class TrezorClient:
         if self.features.bootloader_mode:
             return False
         model = self.features.model or "1"
-        required_version = MINIMUM_FIRMWARE_VERSION[model]
+        required_version = self.minimum_versions[model]
         return self.version < required_version
 
     def check_firmware_version(self, warn_only=False):
