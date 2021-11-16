@@ -596,7 +596,9 @@ class TrezorClient(HardwareWalletClient):
         elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("Trezor does not support displaying Taproot addresses yet")
+            if not self.can_sign_taproot():
+                raise UnavailableActionError("This device does not support displaying Taproot addresses")
+            script_type = messages.InputScriptType.SPENDTAPROOT
         else:
             raise BadArgumentError("Unknown address type")
 
