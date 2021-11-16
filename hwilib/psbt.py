@@ -15,6 +15,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Tuple,
 )
 
 from .key import KeyOriginInfo
@@ -25,6 +26,7 @@ from .tx import (
     CTxOut,
 )
 from ._serialize import (
+    deser_compact_size,
     deser_string,
     Readable,
     ser_compact_size,
@@ -86,6 +88,12 @@ class PartiallySignedInput:
     PSBT_IN_BIP32_DERIVATION = 0x06
     PSBT_IN_FINAL_SCRIPTSIG = 0x07
     PSBT_IN_FINAL_SCRIPTWITNESS = 0x08
+    PSBT_IN_TAP_KEY_SIG = 0x13
+    PSBT_IN_TAP_SCRIPT_SIG = 0x14
+    PSBT_IN_TAP_LEAF_SCRIPT = 0x15
+    PSBT_IN_TAP_BIP32_DERIVATION = 0x16
+    PSBT_IN_TAP_INTERNAL_KEY = 0x17
+    PSBT_IN_TAP_MERKLE_ROOT = 0x18
 
     def __init__(self) -> None:
         self.non_witness_utxo: Optional[CTransaction] = None
@@ -97,6 +105,12 @@ class PartiallySignedInput:
         self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.final_script_sig = b""
         self.final_script_witness = CTxInWitness()
+        self.tap_key_sig = b""
+        self.tap_script_sigs: Dict[Tuple[bytes, bytes], bytes] = {}
+        self.tap_scripts: Dict[Tuple[bytes, int], Set[bytes]] = {}
+        self.tap_bip32_paths: Dict[bytes, Tuple[Set[bytes], KeyOriginInfo]] = {}
+        self.tap_internal_key = b""
+        self.tap_merkle_root = b""
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
@@ -112,6 +126,12 @@ class PartiallySignedInput:
         self.hd_keypaths.clear()
         self.final_script_sig = b""
         self.final_script_witness = CTxInWitness()
+        self.tap_key_sig = b""
+        self.tap_script_sigs.clear()
+        self.tap_scripts.clear()
+        self.tap_bip32_paths.clear()
+        self.tap_internal_key = b""
+        self.tap_merkle_root = b""
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
@@ -196,6 +216,72 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("final scriptWitness key is more than one byte type")
                 witness_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.final_script_witness.deserialize(witness_bytes)
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_KEY_SIG:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot key signature already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input Taproot key signature key is more than one byte type")
+                self.tap_key_sig = deser_string(f)
+                if len(self.tap_key_sig) < 64:
+                    raise PSBTSerializationError("Input Taproot key path signature is shorter than 64 bytes")
+                elif len(self.tap_key_sig) > 65:
+                    raise PSBTSerializationError("Input Taproot key path signature is longer than 65 bytes")
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_SCRIPT_SIG:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot script signature already provided")
+                elif len(key) != 65:
+                    raise PSBTSerializationError("Input Taproot script signature key is not 65 bytes")
+                xonly = key[1:33]
+                script_hash = key[33:65]
+                sig = deser_string(f)
+                if len(sig) < 64:
+                    raise PSBTSerializationError("Input Taproot script path signature is shorter than 64 bytes")
+                elif len(sig) > 65:
+                    raise PSBTSerializationError("Input Taproot script path signature is longer than 65 bytes")
+                self.tap_script_sigs[(xonly, script_hash)] = sig
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_LEAF_SCRIPT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot leaf script already provided")
+                elif len(key) < 34:
+                    raise PSBTSerializationError("Input Taproot leaf script key is not at least 34 bytes")
+                elif (len(key) - 2) % 32 != 0:
+                    raise PSBTSerializationError("Input Taproot leaf script key's control block is not valid")
+                script = deser_string(f)
+                if len(script) == 0:
+                    raise PSBTSerializationError("Intput Taproot leaf script cannot be empty")
+                leaf_script = (script[:-1], int(script[-1]))
+                if leaf_script not in self.tap_scripts:
+                    self.tap_scripts[leaf_script] = set()
+                self.tap_scripts[(script[:-1], int(script[-1]))].add(key[1:])
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_BIP32_DERIVATION:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot BIP 32 keypath already provided")
+                elif len(key) != 33:
+                    raise PSBTSerializationError("Input Taproot BIP 32 keypath key is not 33 bytes")
+                xonly = key[1:33]
+                value = deser_string(f)
+                vs = BytesIO(value)
+                num_hashes = deser_compact_size(vs)
+                leaf_hashes = set()
+                for i in range(0, num_hashes):
+                    leaf_hashes.add(vs.read(32))
+                self.tap_bip32_paths[xonly] = (leaf_hashes, KeyOriginInfo.deserialize(vs.read()))
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_INTERNAL_KEY:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot internal key already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input Taproot internal key key is more than one byte type")
+                self.tap_internal_key = deser_string(f)
+                if len(self.tap_internal_key) != 32:
+                    raise PSBTSerializationError("Input Taproot internal key is not 32 bytes")
+            elif key_type == PartiallySignedInput.PSBT_IN_TAP_MERKLE_ROOT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input Taproot merkle root already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input Taproot merkle root key is more than one byte type")
+                self.tap_merkle_root = deser_string(f)
+                if len(self.tap_merkle_root) != 32:
+                    raise PSBTSerializationError("Input Taproot merkle root is not 32 bytes")
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
@@ -241,6 +327,35 @@ class PartiallySignedInput:
 
             r += SerializeHDKeypath(self.hd_keypaths, ser_compact_size(PartiallySignedInput.PSBT_IN_BIP32_DERIVATION))
 
+            if len(self.tap_key_sig) != 0:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_KEY_SIG))
+                r += ser_string(self.tap_key_sig)
+
+            for (xonly, leaf_hash), sig in self.tap_script_sigs.items():
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_SCRIPT_SIG) + xonly + leaf_hash)
+                r += ser_string(sig)
+
+            for (script, leaf_ver), control_blocks in self.tap_scripts.items():
+                for control_block in control_blocks:
+                    r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_LEAF_SCRIPT) + control_block)
+                    r += ser_string(script + struct.pack("B", leaf_ver))
+
+            for xonly, (leaf_hashes, origin) in self.tap_bip32_paths.items():
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_BIP32_DERIVATION) + xonly)
+                value = ser_compact_size(len(leaf_hashes))
+                for lh in leaf_hashes:
+                    value += lh
+                value += origin.serialize()
+                r += ser_string(value)
+
+            if len(self.tap_internal_key) != 0:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_INTERNAL_KEY))
+                r += ser_string(self.tap_internal_key)
+
+            if len(self.tap_merkle_root) != 0:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_TAP_MERKLE_ROOT))
+                r += ser_string(self.tap_merkle_root)
+
         if len(self.final_script_sig) != 0:
             r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_FINAL_SCRIPTSIG))
             r += ser_string(self.final_script_sig)
@@ -266,11 +381,17 @@ class PartiallySignedOutput:
     PSBT_OUT_REDEEM_SCRIPT = 0x00
     PSBT_OUT_WITNESS_SCRIPT = 0x01
     PSBT_OUT_BIP32_DERIVATION = 0x02
+    PSBT_OUT_TAP_INTERNAL_KEY = 0x05
+    PSBT_OUT_TAP_TREE = 0x06
+    PSBT_OUT_TAP_BIP32_DERIVATION = 0x07
 
     def __init__(self) -> None:
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
+        self.tap_internal_key = b""
+        self.tap_tree = b""
+        self.tap_bip32_paths: Dict[bytes, Tuple[Set[bytes], KeyOriginInfo]] = {}
         self.unknown: Dict[bytes, bytes] = {}
 
     def set_null(self) -> None:
@@ -280,6 +401,9 @@ class PartiallySignedOutput:
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths.clear()
+        self.tap_internal_key = b""
+        self.tap_tree = b""
+        self.tap_bip32_paths.clear()
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
@@ -318,6 +442,33 @@ class PartiallySignedOutput:
                 self.witness_script = deser_string(f)
             elif key_type == PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
+            elif key_type == PartiallySignedOutput.PSBT_OUT_TAP_INTERNAL_KEY:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, output Taproot internal key already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Output Taproot internal key key is more than one byte type")
+                self.tap_internal_key = deser_string(f)
+                if len(self.tap_internal_key) != 32:
+                    raise PSBTSerializationError("Output Taproot internal key is not 32 bytes")
+            elif key_type == PartiallySignedOutput.PSBT_OUT_TAP_TREE:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, output Taproot tree already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Output Taproot tree key is more than one byte type")
+                self.tap_tree = deser_string(f)
+            elif key_type == PartiallySignedOutput.PSBT_OUT_TAP_BIP32_DERIVATION:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, output Taproot BIP 32 keypath already provided")
+                elif len(key) != 33:
+                    raise PSBTSerializationError("Output Taproot BIP 32 keypath key is not 33 bytes")
+                xonly = key[1:33]
+                value = deser_string(f)
+                vs = BytesIO(value)
+                num_hashes = deser_compact_size(vs)
+                leaf_hashes = set()
+                for i in range(0, num_hashes):
+                    leaf_hashes.add(vs.read(32))
+                self.tap_bip32_paths[xonly] = (leaf_hashes, KeyOriginInfo.deserialize(vs.read()))
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
@@ -342,6 +493,22 @@ class PartiallySignedOutput:
             r += ser_string(self.witness_script)
 
         r += SerializeHDKeypath(self.hd_keypaths, ser_compact_size(PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION))
+
+        if len(self.tap_internal_key) != 0:
+            r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_TAP_INTERNAL_KEY))
+            r += ser_string(self.tap_internal_key)
+
+        if len(self.tap_tree) != 0:
+            r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_TAP_TREE))
+            r += ser_string(self.tap_tree)
+
+        for xonly, (leaf_hashes, origin) in self.tap_bip32_paths.items():
+            r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_TAP_BIP32_DERIVATION) + xonly)
+            value = ser_compact_size(len(leaf_hashes))
+            for lh in leaf_hashes:
+                value += lh
+            value += origin.serialize()
+            r += ser_string(value)
 
         for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
