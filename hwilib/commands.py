@@ -22,7 +22,7 @@ import importlib
 import logging
 import platform
 
-from ._base58 import xpub_to_pub_hex
+from ._base58 import xpub_to_pub_hex, xpub_to_xonly_pub_hex
 from .key import (
     get_bip44_purpose,
     get_bip44_chain,
@@ -471,7 +471,7 @@ def displayaddress(
             if pubkey.origin.fingerprint != client.get_master_fingerprint():
                 raise BadArgumentError(f"Descriptor fingerprint does not match device: {desc}")
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
-            if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
+            if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub) and pubkey.pubkey != xpub_to_xonly_pub_hex(xpub):
                 raise BadArgumentError(f"Key in descriptor does not match device: {desc}")
             if is_sh and is_wpkh:
                 addr_type = AddressType.SH_WIT
