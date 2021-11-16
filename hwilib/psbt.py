@@ -14,6 +14,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
+    Set,
 )
 
 from .key import KeyOriginInfo
@@ -108,6 +109,8 @@ class PartiallySignedInput:
 
         :param f: A byte stream containing the serialized PSBT input
         """
+        key_lookup: Set[bytes] = set()
+
         while True:
             # read the key
             try:
@@ -123,7 +126,7 @@ class PartiallySignedInput:
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
             if key_type == 0:
-                if self.non_witness_utxo:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate Key, input non witness utxo already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("non witness utxo key is more than one byte type")
@@ -133,7 +136,7 @@ class PartiallySignedInput:
                 self.non_witness_utxo.rehash()
 
             elif key_type == 1:
-                if self.witness_utxo:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate Key, input witness utxo already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("witness utxo key is more than one byte type")
@@ -152,7 +155,7 @@ class PartiallySignedInput:
                 self.partial_sigs[pubkey] = sig
 
             elif key_type == 3:
-                if self.sighash > 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input sighash type already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("sighash key is more than one byte type")
@@ -160,14 +163,14 @@ class PartiallySignedInput:
                 self.sighash = struct.unpack("<I", sighash_bytes)[0]
 
             elif key_type == 4:
-                if len(self.redeem_script) != 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input redeemScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
 
             elif key_type == 5:
-                if len(self.witness_script) != 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("witnessScript key is more than one byte type")
@@ -177,14 +180,14 @@ class PartiallySignedInput:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
 
             elif key_type == 7:
-                if len(self.final_script_sig) != 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptSig already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("final scriptSig key is more than one byte type")
                 self.final_script_sig = deser_string(f)
 
             elif key_type == 8:
-                if not self.final_script_witness.is_null():
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptWitness already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("final scriptWitness key is more than one byte type")
@@ -196,6 +199,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
                 unknown_bytes = deser_string(f)
                 self.unknown[key] = unknown_bytes
+
+            key_lookup.add(key)
 
     def serialize(self) -> bytes:
         """
@@ -276,6 +281,8 @@ class PartiallySignedOutput:
 
         :param f: A byte stream containing the serialized PSBT output
         """
+        key_lookup: Set[bytes] = set()
+
         while True:
             # read the key
             try:
@@ -291,14 +298,14 @@ class PartiallySignedOutput:
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
             if key_type == 0:
-                if len(self.redeem_script) != 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output redeemScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
 
             elif key_type == 1:
-                if len(self.witness_script) != 0:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output witnessScript key is more than one byte type")
@@ -312,6 +319,8 @@ class PartiallySignedOutput:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
                 value = deser_string(f)
                 self.unknown[key] = value
+
+            key_lookup.add(key)
 
     def serialize(self) -> bytes:
         """
@@ -371,6 +380,8 @@ class PSBT(object):
         if magic != b"psbt\xff":
             raise PSBTSerializationError("invalid magic")
 
+        key_lookup: Set[bytes] = set()
+
         # Read loop
         while True:
             # read the key
@@ -389,7 +400,7 @@ class PSBT(object):
             # Do stuff based on type
             if key_type == 0x00:
                 # Checks for correctness
-                if not self.tx.is_null:
+                if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, unsigned tx already provided")
                 elif len(key) > 1:
                     raise PSBTSerializationError("Global unsigned tx key is more than one byte type")
@@ -409,6 +420,8 @@ class PSBT(object):
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
                 unknown_bytes = deser_string(f)
                 self.unknown[key] = unknown_bytes
+
+            key_lookup.add(key)
 
         # make sure that we got an unsigned tx
         if self.tx.is_null():
