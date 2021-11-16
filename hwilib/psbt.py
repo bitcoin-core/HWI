@@ -80,7 +80,7 @@ class PartiallySignedInput:
         self.non_witness_utxo: Optional[CTransaction] = None
         self.witness_utxo: Optional[CTxOut] = None
         self.partial_sigs: Dict[bytes, bytes] = {}
-        self.sighash = 0
+        self.sighash: Optional[int] = None
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
@@ -95,7 +95,7 @@ class PartiallySignedInput:
         self.non_witness_utxo = None
         self.witness_utxo = None
         self.partial_sigs.clear()
-        self.sighash = 0
+        self.sighash = None
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths.clear()
@@ -216,7 +216,7 @@ class PartiallySignedInput:
                 r += ser_string(b"\x02" + pubkey)
                 r += ser_string(sig)
 
-            if self.sighash > 0:
+            if self.sighash is not None:
                 r += ser_string(b"\x03")
                 r += ser_string(struct.pack("<I", self.sighash))
 
