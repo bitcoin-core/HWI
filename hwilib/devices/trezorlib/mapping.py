@@ -24,24 +24,16 @@ map_class_to_type = {}
 
 
 def build_map():
-    for msg_name in dir(messages.MessageType):
-        if msg_name.startswith("__"):
-            continue
-
-        if msg_name == "Literal":
-            # TODO: remove this when we have a good implementation of enums
-            continue
-
-        try:
-            msg_class = getattr(messages, msg_name)
-        except AttributeError:
+    for entry in messages.MessageType:
+        msg_class = getattr(messages, entry.name, None)
+        if msg_class is None:
             raise ValueError(
-                "Implementation of protobuf message '%s' is missing" % msg_name
+                f"Implementation of protobuf message '{entry.name}' is missing"
             )
 
-        if msg_class.MESSAGE_WIRE_TYPE != getattr(messages.MessageType, msg_name):
+        if msg_class.MESSAGE_WIRE_TYPE != entry.value:
             raise ValueError(
-                "Inconsistent wire type and MessageType record for '%s'" % msg_class
+                f"Inconsistent wire type and MessageType record for '{entry.name}'"
             )
 
         register_message(msg_class)
@@ -50,8 +42,7 @@ def build_map():
 def register_message(msg_class):
     if msg_class.MESSAGE_WIRE_TYPE in map_type_to_class:
         raise Exception(
-            "Message for wire type %s is already registered by %s"
-            % (msg_class.MESSAGE_WIRE_TYPE, get_class(msg_class.MESSAGE_WIRE_TYPE))
+            f"Message for wire type {msg_class.MESSAGE_WIRE_TYPE} is already registered by {get_class(msg_class.MESSAGE_WIRE_TYPE)}"
         )
 
     map_class_to_type[msg_class] = msg_class.MESSAGE_WIRE_TYPE
@@ -62,8 +53,8 @@ def get_type(msg):
     return map_class_to_type[msg.__class__]
 
 
-def get_class(t, map_type_to_class_override):
-    return map_type_to_class_override.get(t, map_type_to_class[t])
+def get_class(t):
+    return map_type_to_class[t]
 
 
 def encode(msg: protobuf.MessageType) -> Tuple[int, bytes]:
@@ -73,8 +64,8 @@ def encode(msg: protobuf.MessageType) -> Tuple[int, bytes]:
     return message_type, buf.getvalue()
 
 
-def decode(message_type: int, message_bytes: bytes, map_type_to_class_override={}) -> protobuf.MessageType:
-    cls = get_class(message_type, map_type_to_class_override)
+def decode(message_type: int, message_bytes: bytes) -> protobuf.MessageType:
+    cls = get_class(message_type)
     buf = io.BytesIO(message_bytes)
     return protobuf.load_message(buf, cls)
 

@@ -156,12 +156,21 @@ def get_ownership_proof(
 
 @expect(messages.MessageSignature)
 def sign_message(
-    client, coin_name, n, message, script_type=messages.InputScriptType.SPENDADDRESS
+    client,
+    coin_name,
+    n,
+    message,
+    script_type=messages.InputScriptType.SPENDADDRESS,
+    no_script_type=False,
 ):
     message = normalize_nfc(message)
     return client.call(
         messages.SignMessage(
-            coin_name=coin_name, address_n=n, message=message, script_type=script_type
+            coin_name=coin_name,
+            address_n=n,
+            message=message,
+            script_type=script_type,
+            no_script_type=no_script_type,
         )
     )
 
@@ -271,7 +280,7 @@ def sign_tx(
                 idx = res.serialized.signature_index
                 sig = res.serialized.signature
                 if signatures[idx] is not None:
-                    raise ValueError("Signature for index %d already filled" % idx)
+                    raise ValueError(f"Signature for index {idx} already filled")
                 signatures[idx] = sig
 
         if res.request_type == R.TXFINISHED:
@@ -279,8 +288,6 @@ def sign_tx(
 
         # Device asked for one more information, let's process it.
         if res.details.tx_hash is not None:
-            if res.details.tx_hash not in prev_txes:
-                raise ValueError(f"Previous transaction {res.details.tx_hash.hex()} not available")
             current_tx = prev_txes[res.details.tx_hash]
         else:
             current_tx = this_tx

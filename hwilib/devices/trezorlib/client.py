@@ -17,7 +17,7 @@
 import logging
 import os
 import warnings
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from mnemonic import Mnemonic
 
@@ -25,10 +25,15 @@ from . import MINIMUM_FIRMWARE_VERSION, exceptions, mapping, messages, tools
 from .log import DUMP_BYTES
 from .messages import Capability
 
+if TYPE_CHECKING:
+    from .ui import TrezorClientUI
+    from .transport import Transport
+
 LOG = logging.getLogger(__name__)
 
 VENDORS = ("bitcointrezor.com", "trezor.io")
 MAX_PASSPHRASE_LENGTH = 50
+MAX_PIN_LENGTH = 50
 
 PASSPHRASE_ON_DEVICE = object()
 PASSPHRASE_TEST_PATH = tools.parse_path("44h/1h/0h/0/0")
@@ -36,7 +41,7 @@ PASSPHRASE_TEST_PATH = tools.parse_path("44h/1h/0h/0/0")
 OUTDATED_FIRMWARE_ERROR = """
 Your Trezor firmware is out of date. Update it with the following command:
   trezorctl firmware-update
-Or visit https://wallet.trezor.io/
+Or visit https://suite.trezor.io/
 """.strip()
 
 
@@ -84,18 +89,17 @@ class TrezorClient:
 
     def __init__(
         self,
-        transport,
-        ui,
-        session_id=None,
+        transport: "Transport",
+        ui: "TrezorClientUI",
+        session_id: Optional[bytes] = None,
+        derive_cardano: Optional[bool] = None,
     ):
-        LOG.info("creating client instance for device: {}".format(transport.get_path()))
+        LOG.info(f"creating client instance for device: {transport.get_path()}")
         self.transport = transport
         self.ui = ui
         self.session_counter = 0
         self.session_id = session_id
-        self.map_type_to_class_override = {}
-        self.vendors = VENDORS
-        self.minimum_versions = MINIMUM_FIRMWARE_VERSION
+        self.init_device(session_id=session_id, derive_cardano=derive_cardano)
 
     def open(self):
         if self.session_counter == 0:
@@ -119,15 +123,13 @@ class TrezorClient:
     def _raw_write(self, msg):
         __tracebackhide__ = True  # for pytest # pylint: disable=W0612
         LOG.debug(
-            "sending message: {}".format(msg.__class__.__name__),
+            f"sending message: {msg.__class__.__name__}",
             extra={"protobuf": msg},
         )
         msg_type, msg_bytes = mapping.encode(msg)
         LOG.log(
             DUMP_BYTES,
-            "encoded as type {} ({} bytes): {}".format(
-                msg_type, len(msg_bytes), msg_bytes.hex()
-            ),
+            f"encoded as type {msg_type} ({len(msg_bytes)} bytes): {msg_bytes.hex()}",
         )
         self.transport.write(msg_type, msg_bytes)
 
@@ -136,13 +138,11 @@ class TrezorClient:
         msg_type, msg_bytes = self.transport.read()
         LOG.log(
             DUMP_BYTES,
-            "received type {} ({} bytes): {}".format(
-                msg_type, len(msg_bytes), msg_bytes.hex()
-            ),
+            f"received type {msg_type} ({len(msg_bytes)} bytes): {msg_bytes.hex()}",
         )
-        msg = mapping.decode(msg_type, msg_bytes, self.map_type_to_class_override)
+        msg = mapping.decode(msg_type, msg_bytes)
         LOG.debug(
-            "received message: {}".format(msg.__class__.__name__),
+            f"received message: {msg.__class__.__name__}",
             extra={"protobuf": msg},
         )
         return msg
@@ -154,7 +154,9 @@ class TrezorClient:
             self.call_raw(messages.Cancel())
             raise
 
-        if any(d not in "123456789" for d in pin) or not (1 <= len(pin) <= 9):
+        if any(d not in "123456789" for d in pin) or not (
+            1 <= len(pin) <= MAX_PIN_LENGTH
+        ):
             self.call_raw(messages.Cancel())
             raise ValueError("Invalid PIN provided")
 
@@ -208,13 +210,12 @@ class TrezorClient:
         __tracebackhide__ = True  # for pytest # pylint: disable=W0612
         # do this raw - send ButtonAck first, notify UI later
         self._raw_write(messages.ButtonAck())
-        self.ui.button_request(msg.code)
+        self.ui.button_request(msg)
         return self._raw_read()
 
     @tools.session
-    def call(self, msg, check_fw = True):
-        if check_fw:
-            self.check_firmware_version()
+    def call(self, msg):
+        self.check_firmware_version()
         resp = self.call_raw(msg)
         while True:
             if isinstance(resp, messages.PinMatrixRequest):
@@ -232,7 +233,7 @@ class TrezorClient:
 
     def _refresh_features(self, features: messages.Features) -> None:
         """Update internal fields based on passed-in Features message."""
-        if features.vendor not in self.vendors:
+        if features.vendor not in VENDORS:
             raise RuntimeError("Unsupported device")
 
         self.features = features
@@ -261,7 +262,11 @@ class TrezorClient:
 
     @tools.session
     def init_device(
-        self, *, session_id: bytes = None, new_session: bool = False
+        self,
+        *,
+        session_id: bytes = None,
+        new_session: bool = False,
+        derive_cardano: Optional[bool] = None,
     ) -> Optional[bytes]:
         """Initialize the device and return a session ID.
 
@@ -296,7 +301,15 @@ class TrezorClient:
         elif session_id is not None:
             self.session_id = session_id
 
-        resp = self.call_raw(messages.Initialize(session_id=self.session_id))
+        resp = self.call_raw(
+            messages.Initialize(
+                session_id=self.session_id,
+                derive_cardano=derive_cardano,
+            )
+        )
+        if isinstance(resp, messages.Failure):
+            # can happen if `derive_cardano` does not match the current session
+            raise exceptions.TrezorFailure(resp)
         if not isinstance(resp, messages.Features):
             raise exceptions.TrezorException("Unexpected response to Initialize")
 
@@ -320,7 +333,7 @@ class TrezorClient:
         if self.features.bootloader_mode:
             return False
         model = self.features.model or "1"
-        required_version = self.minimum_versions[model]
+        required_version = MINIMUM_FIRMWARE_VERSION[model]
         return self.version < required_version
 
     def check_firmware_version(self, warn_only=False):

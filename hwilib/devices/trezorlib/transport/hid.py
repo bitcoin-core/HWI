@@ -17,7 +17,7 @@
 import logging
 import sys
 import time
-from typing import Any, Dict, Iterable, Optional, Set, Tuple
+from typing import Any, Dict, Iterable
 
 from ..log import DUMP_PACKETS
 from . import DEV_TREZOR1, UDEV_RULES_STR, TransportException
@@ -28,7 +28,7 @@ LOG = logging.getLogger(__name__)
 try:
     import hid
 except Exception as e:
-    LOG.info("HID transport is disabled: {}".format(e))
+    LOG.info(f"HID transport is disabled: {e}")
     hid = None
 
 
@@ -63,7 +63,7 @@ class HidHandle:
             self.handle.close()
             self.handle = None
             raise TransportException(
-                "Unexpected device {} on path {}".format(serial, self.path.decode())
+                f"Unexpected device {serial} on path {self.path.decode()}"
             )
 
         self.handle.set_nonblocking(True)
@@ -80,12 +80,12 @@ class HidHandle:
 
     def write_chunk(self, chunk: bytes) -> None:
         if len(chunk) != 64:
-            raise TransportException("Unexpected chunk size: %d" % len(chunk))
+            raise TransportException(f"Unexpected chunk size: {len(chunk)}")
 
         if self.hid_version == 2:
             chunk = b"\x00" + chunk
 
-        LOG.log(DUMP_PACKETS, "writing packet: {}".format(chunk.hex()))
+        LOG.log(DUMP_PACKETS, f"writing packet: {chunk.hex()}")
         self.handle.write(chunk)
 
     def read_chunk(self) -> bytes:
@@ -97,9 +97,9 @@ class HidHandle:
             else:
                 time.sleep(0.001)
 
-        LOG.log(DUMP_PACKETS, "read packet: {}".format(chunk.hex()))
+        LOG.log(DUMP_PACKETS, f"read packet: {chunk.hex()}")
         if len(chunk) != 64:
-            raise TransportException("Unexpected chunk size: %d" % len(chunk))
+            raise TransportException(f"Unexpected chunk size: {len(chunk)}")
         return bytes(chunk)
 
     def probe_hid_version(self) -> int:
@@ -127,14 +127,14 @@ class HidTransport(ProtocolBasedTransport):
         super().__init__(protocol=ProtocolV1(self.handle))
 
     def get_path(self) -> str:
-        return "%s:%s" % (self.PATH_PREFIX, self.device["path"].decode())
+        return f"{self.PATH_PREFIX}:{self.device['path'].decode()}"
 
     @classmethod
-    def enumerate(cls, debug: bool = False, usb_ids: Set[Tuple[int, int]] = {DEV_TREZOR1}) -> Iterable["HidTransport"]:
+    def enumerate(cls, debug: bool = False) -> Iterable["HidTransport"]:
         devices = []
         for dev in hid.enumerate(0, 0):
             usb_id = (dev["vendor_id"], dev["product_id"])
-            if usb_id not in usb_ids:
+            if usb_id != DEV_TREZOR1:
                 continue
             if debug:
                 if not is_debuglink(dev):

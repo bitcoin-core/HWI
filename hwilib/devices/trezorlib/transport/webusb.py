@@ -18,7 +18,7 @@ import atexit
 import logging
 import sys
 import time
-from typing import Iterable, Optional, Set, Tuple
+from typing import Iterable, Optional
 
 from ..log import DUMP_PACKETS
 from . import TREZORS, UDEV_RULES_STR, TransportException
@@ -29,7 +29,7 @@ LOG = logging.getLogger(__name__)
 try:
     import usb1
 except Exception as e:
-    LOG.warning("WebUSB transport is disabled: {}".format(e))
+    LOG.warning(f"WebUSB transport is disabled: {e}")
     usb1 = None
 
 INTERFACE = 0
@@ -65,8 +65,8 @@ class WebUsbHandle:
     def write_chunk(self, chunk: bytes) -> None:
         assert self.handle is not None
         if len(chunk) != 64:
-            raise TransportException("Unexpected chunk size: %d" % len(chunk))
-        LOG.log(DUMP_PACKETS, "writing packet: {}".format(chunk.hex()))
+            raise TransportException(f"Unexpected chunk size: {len(chunk)}")
+        LOG.log(DUMP_PACKETS, f"writing packet: {chunk.hex()}")
         self.handle.interruptWrite(self.endpoint, chunk)
 
     def read_chunk(self) -> bytes:
@@ -78,9 +78,9 @@ class WebUsbHandle:
                 break
             else:
                 time.sleep(0.001)
-        LOG.log(DUMP_PACKETS, "read packet: {}".format(chunk.hex()))
+        LOG.log(DUMP_PACKETS, f"read packet: {chunk.hex()}")
         if len(chunk) != 64:
-            raise TransportException("Unexpected chunk size: %d" % len(chunk))
+            raise TransportException(f"Unexpected chunk size: {len(chunk)}")
         return chunk
 
 
@@ -106,10 +106,10 @@ class WebUsbTransport(ProtocolBasedTransport):
         super().__init__(protocol=ProtocolV1(handle))
 
     def get_path(self) -> str:
-        return "%s:%s" % (self.PATH_PREFIX, dev_to_str(self.device))
+        return f"{self.PATH_PREFIX}:{dev_to_str(self.device)}"
 
     @classmethod
-    def enumerate(cls, usb_reset=False, usb_ids: Set[Tuple[int, int]] = TREZORS) -> Iterable["WebUsbTransport"]:
+    def enumerate(cls, usb_reset=False) -> Iterable["WebUsbTransport"]:
         if cls.context is None:
             cls.context = usb1.USBContext()
             cls.context.open()
@@ -117,7 +117,7 @@ class WebUsbTransport(ProtocolBasedTransport):
         devices = []
         for dev in cls.context.getDeviceIterator(skip_on_error=True):
             usb_id = (dev.getVendorID(), dev.getProductID())
-            if usb_id not in usb_ids:
+            if usb_id not in TREZORS:
                 continue
             if not is_vendor_class(dev):
                 continue
