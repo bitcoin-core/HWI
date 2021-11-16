@@ -134,7 +134,6 @@ class PartiallySignedInput:
                 utxo_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.non_witness_utxo.deserialize(utxo_bytes)
                 self.non_witness_utxo.rehash()
-
             elif key_type == 1:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate Key, input witness utxo already provided")
@@ -143,7 +142,6 @@ class PartiallySignedInput:
                 self.witness_utxo = CTxOut()
                 tx_out_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.witness_utxo.deserialize(tx_out_bytes)
-
             elif key_type == 2:
                 if len(key) != 34 and len(key) != 66:
                     raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
@@ -153,7 +151,6 @@ class PartiallySignedInput:
 
                 sig = deser_string(f)
                 self.partial_sigs[pubkey] = sig
-
             elif key_type == 3:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input sighash type already provided")
@@ -161,31 +158,26 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("sighash key is more than one byte type")
                 sighash_bytes = deser_string(f)
                 self.sighash = struct.unpack("<I", sighash_bytes)[0]
-
             elif key_type == 4:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input redeemScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
-
             elif key_type == 5:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("witnessScript key is more than one byte type")
                 self.witness_script = deser_string(f)
-
             elif key_type == 6:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
-
             elif key_type == 7:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptSig already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("final scriptSig key is more than one byte type")
                 self.final_script_sig = deser_string(f)
-
             elif key_type == 8:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptWitness already provided")
@@ -193,7 +185,6 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("final scriptWitness key is more than one byte type")
                 witness_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.final_script_witness.deserialize(witness_bytes)
-
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
@@ -303,17 +294,14 @@ class PartiallySignedOutput:
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
-
             elif key_type == 1:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output witnessScript key is more than one byte type")
                 self.witness_script = deser_string(f)
-
             elif key_type == 2:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
-
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
