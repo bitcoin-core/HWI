@@ -189,36 +189,30 @@ class TestGetKeypool(DeviceTestCase):
         self.setup_wallets()
 
     def test_getkeypool(self):
-        pkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "legacy", '0', '20'])
-        import_result = self.wrpc.importdescriptors(pkh_keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        for _ in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'legacy'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/44'/1'/0'/0/"))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('legacy'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/44'/1'/0'/1/"))
 
-        shwpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "sh_wit", '0', '20'])
-        import_result = self.wrpc.importdescriptors(shwpkh_keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        for _ in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'p2sh-segwit'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/0'/0/"))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/49'/1'/0'/1/"))
+        getkeypool_args = [
+            ("legacy", 44, "legacy"),
+            ("wit", 84, "bech32"),
+            ("sh_wit", 49, "p2sh-segwit"),
+            ("tap", 86, "bech32m"),
+        ]
 
-        wpkh_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '0', '20'])
-        import_result = self.wrpc.importdescriptors(wpkh_keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        for _ in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'bech32'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/0'/0/"))
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('bech32'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/84'/1'/0'/1/"))
+        descs = []
+        for arg in getkeypool_args:
+            with self.subTest(addrtype=arg[0]):
+                desc = self.do_command(self.dev_args + ["getkeypool", "--addr-type", arg[0], "0", "20"])
+                import_result = self.wrpc.importdescriptors(desc)
+                self.assertTrue(import_result[0]["success"])
+                for _ in range(0, 21):
+                    addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress("", arg[2]))
+                    self.assertTrue(addr_info["hdkeypath"].startswith(f"m/{arg[1]}'/1'/0'/0/"))
+                    addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress(arg[2]))
+                    self.assertTrue(addr_info["hdkeypath"].startswith(f"m/{arg[1]}'/1'/0'/1/"))
+                descs.extend(desc)
 
-        # Test that `--all` option gives the "concatenation" of previous three calls
+        # Test that `--all` option gives the "concatenation" of previous four calls
         all_keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '0', '20'])
-        self.assertEqual(all_keypool_desc, pkh_keypool_desc + wpkh_keypool_desc + shwpkh_keypool_desc)
+        self.assertEqual(all_keypool_desc, descs)
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "sh_wit", '--account', '3', '0', '20'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -260,8 +254,8 @@ class TestGetDescriptors(DeviceTestCase):
 
         self.assertIn('receive', descriptors)
         self.assertIn('internal', descriptors)
-        self.assertEqual(len(descriptors['receive']), 3)
-        self.assertEqual(len(descriptors['internal']), 3)
+        self.assertEqual(len(descriptors['receive']), 4)
+        self.assertEqual(len(descriptors['internal']), 4)
 
         for descriptor in descriptors['receive']:
             self.assertNotIn("'", descriptor)
