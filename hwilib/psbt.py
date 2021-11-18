@@ -976,3 +976,35 @@ class PSBT(object):
 
             psbt_out.amount = txout.nValue
             psbt_out.script = txout.scriptPubKey
+
+    def compute_lock_time(self) -> int:
+        """
+        Computes the lock time for this transaction
+
+        :returns: The lock time
+        """
+        time_lock: Optional[int] = 0
+        height_lock: Optional[int] = 0
+
+        for psbt_in in self.inputs:
+            if psbt_in.time_locktime is not None and psbt_in.height_locktime is None:
+                height_lock = None
+                if time_lock is None:
+                    raise PSBTSerializationError("Cannot require both time and height locktimes")
+            elif psbt_in.time_locktime is None and psbt_in.height_locktime is not None:
+                time_lock = None
+                if height_lock is None:
+                    raise PSBTSerializationError("Cannot require both time and height locktimes")
+
+            if psbt_in.time_locktime is not None and time_lock is not None:
+                time_lock = max(time_lock, psbt_in.time_locktime)
+            if psbt_in.height_locktime is not None and height_lock is not None:
+                height_lock = max(height_lock, psbt_in.height_locktime)
+
+        if height_lock is not None and height_lock > 0:
+            return height_lock
+        if time_lock is not None and time_lock > 0:
+            return time_lock
+        if self.fallback_locktime is not None:
+            return self.fallback_locktime
+        return 0
