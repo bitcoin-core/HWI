@@ -21,7 +21,9 @@ from typing import (
 from .key import KeyOriginInfo
 from .errors import PSBTSerializationError
 from .tx import (
+    COutPoint,
     CTransaction,
+    CTxIn,
     CTxInWitness,
     CTxOut,
 )
@@ -32,6 +34,7 @@ from ._serialize import (
     ser_compact_size,
     ser_string,
     ser_uint256,
+    uint256_from_str,
 )
 
 def DeserializeHDKeypath(
@@ -1008,3 +1011,35 @@ class PSBT(object):
         if self.fallback_locktime is not None:
             return self.fallback_locktime
         return 0
+
+    def get_unsigned_tx(self) -> CTransaction:
+        """
+        Get the unsigned transaction represented by this PSBT
+
+        :return: A CTransaction
+        """
+        if not self.tx.is_null():
+            return self.tx
+
+        assert self.tx_version is not None
+
+        tx = CTransaction()
+        tx.nVersion = self.tx_version
+        self.nLockTime = self.compute_lock_time()
+
+        for psbt_in in self.inputs:
+            assert psbt_in.prev_txid is not None
+            assert psbt_in.prev_out is not None
+            assert psbt_in.sequence is not None
+
+            txin = CTxIn(COutPoint(uint256_from_str(psbt_in.prev_txid), psbt_in.prev_out), b"", psbt_in.sequence)
+            tx.vin.append(txin)
+
+        for psbt_out in self.outputs:
+            assert psbt_out.amount is not None
+
+            txout = CTxOut(psbt_out.amount, psbt_out.script)
+            tx.vout.append(txout)
+
+        tx.rehash()
+        return tx
