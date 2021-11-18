@@ -651,6 +651,16 @@ class PartiallySignedOutput:
 
         return r
 
+    def get_txout(self) -> CTxOut:
+        """
+        Creates a CTxOut for this output
+
+        :returns: The CTxOut
+        """
+        assert self.amount is not None
+        assert len(self.script) != 0
+        return CTxOut(self.amount, self.script)
+
 class PSBT(object):
     """
     A class representing a PSBT
