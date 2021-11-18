@@ -57,9 +57,6 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..tx import (
-    CTransaction,
-)
 from .._serialize import (
     ser_sig_der,
     ser_sig_compact,
@@ -391,8 +388,8 @@ class DigitalbitboxClient(HardwareWalletClient):
     @digitalbitbox_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
 
-        # Create a transaction with all scriptsigs blanekd out
-        blank_tx = CTransaction(tx.tx)
+        # Create a transaction with all scriptsigs blanked out
+        blank_tx = tx.get_unsigned_tx()
 
         # Get the master key fingerprint
         master_fp = self.get_master_fingerprint()
@@ -477,7 +474,7 @@ class DigitalbitboxClient(HardwareWalletClient):
                 preimage += struct.pack("<q", psbt_in.witness_utxo.nValue)
                 preimage += struct.pack("<I", txin.nSequence)
                 preimage += hashOutputs
-                preimage += struct.pack("<I", tx.tx.nLockTime)
+                preimage += struct.pack("<I", blank_tx.nLockTime)
                 preimage += b"\x01\x00\x00\x00"
 
                 # hash it
