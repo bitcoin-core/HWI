@@ -627,9 +627,11 @@ class Bitbox02Client(HardwareWalletClient):
         # must be exactly one pubkey per input that belongs to the BitBox02.
         found_pubkeys: List[bytes] = []
 
-        for input_index, (psbt_in, tx_in) in builtins.enumerate(
-            zip(psbt.inputs, psbt.tx.vin)
-        ):
+        for input_index, psbt_in in builtins.enumerate(psbt.inputs):
+            assert psbt_in.prev_txid is not None
+            assert psbt_in.prev_out is not None
+            assert psbt_in.sequence is not None
+
             if psbt_in.sighash and psbt_in.sighash != 1:
                 raise BadArgumentError(
                     "The BitBox02 only supports SIGHASH_ALL. Found sighash: {}".format(
@@ -650,13 +652,15 @@ class Bitbox02Client(HardwareWalletClient):
             # The BitBox02 for now requires the prevtx, at least until Taproot activates.
 
             if psbt_in.non_witness_utxo:
-                if tx_in.prevout.hash != psbt_in.non_witness_utxo.sha256:
+                assert psbt_in.non_witness_utxo.sha256 is not None
+                if psbt_in.prev_txid != ser_uint256(psbt_in.non_witness_utxo.sha256):
                     raise BadArgumentError(
                         "Input {} has a non_witness_utxo with the wrong hash".format(
                             input_index
                         )
                     )
-                utxo = psbt_in.non_witness_utxo.vout[tx_in.prevout.n]
+                assert psbt_in.prev_out is not None
+                utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
                 prevtx = psbt_in.non_witness_utxo
             elif psbt_in.witness_utxo:
                 utxo = psbt_in.witness_utxo
@@ -687,10 +691,10 @@ class Bitbox02Client(HardwareWalletClient):
             )
             inputs.append(
                 {
-                    "prev_out_hash": ser_uint256(tx_in.prevout.hash),
-                    "prev_out_index": tx_in.prevout.n,
+                    "prev_out_hash": psbt_in.prev_txid,
+                    "prev_out_index": psbt_in.prev_out,
                     "prev_out_value": utxo.nValue,
-                    "sequence": tx_in.nSequence,
+                    "sequence": psbt_in.sequence,
                     "keypath": keypath,
                     "script_config_index": script_config_index,
                     "prev_tx": {
@@ -717,9 +721,10 @@ class Bitbox02Client(HardwareWalletClient):
             )
 
         outputs: List[bitbox02.BTCOutputType] = []
-        for output_index, (psbt_out, tx_out) in builtins.enumerate(
-            zip(psbt.outputs, psbt.tx.vout)
-        ):
+
+        for output_index, psbt_out in builtins.enumerate(psbt.outputs):
+            tx_out = psbt_out.get_txout()
+
             _, keypath = find_our_key(psbt_out.hd_keypaths)
             is_change = keypath and keypath[-2] == 1
             if is_change:
@@ -771,13 +776,14 @@ class Bitbox02Client(HardwareWalletClient):
                 script_configs[0].script_config, script_configs[0].keypath
             )
 
+        assert psbt.tx_version is not None
         sigs = self.init().btc_sign(
             self._get_coin(),
             script_configs,
             inputs=inputs,
             outputs=outputs,
-            locktime=psbt.tx.nLockTime,
-            version=psbt.tx.nVersion,
+            locktime=psbt.compute_lock_time(),
+            version=psbt.tx_version,
         )
 
         for (_, sig), pubkey, psbt_in in zip(sigs, found_pubkeys, psbt.inputs):
