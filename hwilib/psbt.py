@@ -865,6 +865,8 @@ class PSBT(object):
         if len(self.outputs) != output_count:
             raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
 
+        self.cache_unsigned_tx_pieces()
+
     def serialize(self) -> str:
         """
         Serialize the PSBT as a base 64 encoded string.
@@ -929,3 +931,38 @@ class PSBT(object):
 
         # return hex string
         return base64.b64encode(r).decode()
+
+    def cache_unsigned_tx_pieces(self) -> None:
+        """
+        If this PSBT is v0, then the global unsigned transaction will be used to fill in the PSBTv2
+        fields so that all users of the PSBT classes can use the same PSBTv2 interface regardless
+        of PSBT version.
+
+        Does nothing if the PSBT is already v2.
+        """
+        # To make things easier, we split up the global transaction
+        # and use the PSBTv2 fields for PSBTv0
+        if self.tx is not None:
+            self.setup_from_tx(self.tx)
+
+    def setup_from_tx(self, tx: CTransaction):
+        """
+        Fills in the PSBTv2 fields for this PSBT given a transaction
+
+        :param tx: The CTransaction to fill from
+        """
+        self.tx_version = tx.nVersion
+        self.fallback_locktime = tx.nLockTime
+
+        for i, txin in enumerate(tx.vin):
+            psbt_in = self.inputs[i]
+
+            psbt_in.prev_txid = ser_uint256(txin.prevout.hash)
+            psbt_in.prev_out = txin.prevout.n
+            psbt_in.sequence = txin.nSequence
+
+        for i, txout in enumerate(tx.vout):
+            psbt_out = self.outputs[i]
+
+            psbt_out.amount = txout.nValue
+            psbt_out.script = txout.scriptPubKey
