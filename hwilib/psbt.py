@@ -31,6 +31,7 @@ from ._serialize import (
     Readable,
     ser_compact_size,
     ser_string,
+    ser_uint256,
 )
 
 def DeserializeHDKeypath(
@@ -88,6 +89,11 @@ class PartiallySignedInput:
     PSBT_IN_BIP32_DERIVATION = 0x06
     PSBT_IN_FINAL_SCRIPTSIG = 0x07
     PSBT_IN_FINAL_SCRIPTWITNESS = 0x08
+    PSBT_IN_PREVIOUS_TXID = 0x0e
+    PSBT_IN_OUTPUT_INDEX = 0x0f
+    PSBT_IN_SEQUENCE = 0x10
+    PSBT_IN_REQUIRED_TIME_LOCKTIME = 0x11
+    PSBT_IN_REQUIRED_HEIGHT_LOCKTIME = 0x12
     PSBT_IN_TAP_KEY_SIG = 0x13
     PSBT_IN_TAP_SCRIPT_SIG = 0x14
     PSBT_IN_TAP_LEAF_SCRIPT = 0x15
@@ -95,7 +101,7 @@ class PartiallySignedInput:
     PSBT_IN_TAP_INTERNAL_KEY = 0x17
     PSBT_IN_TAP_MERKLE_ROOT = 0x18
 
-    def __init__(self) -> None:
+    def __init__(self, version: int) -> None:
         self.non_witness_utxo: Optional[CTransaction] = None
         self.witness_utxo: Optional[CTxOut] = None
         self.partial_sigs: Dict[bytes, bytes] = {}
@@ -105,6 +111,11 @@ class PartiallySignedInput:
         self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
         self.final_script_sig = b""
         self.final_script_witness = CTxInWitness()
+        self.prev_txid = b""
+        self.prev_out: Optional[int] = None
+        self.sequence: Optional[int] = None
+        self.time_locktime: Optional[int] = None
+        self.height_locktime: Optional[int] = None
         self.tap_key_sig = b""
         self.tap_script_sigs: Dict[Tuple[bytes, bytes], bytes] = {}
         self.tap_scripts: Dict[Tuple[bytes, int], Set[bytes]] = {}
@@ -112,6 +123,8 @@ class PartiallySignedInput:
         self.tap_internal_key = b""
         self.tap_merkle_root = b""
         self.unknown: Dict[bytes, bytes] = {}
+
+        self.version: int = version
 
     def set_null(self) -> None:
         """
@@ -132,6 +145,11 @@ class PartiallySignedInput:
         self.tap_bip32_paths.clear()
         self.tap_internal_key = b""
         self.tap_merkle_root = b""
+        self.prev_txid = b""
+        self.prev_out = None
+        self.sequence = None
+        self.time_locktime = None
+        self.height_locktime = None
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
@@ -216,6 +234,54 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("final scriptWitness key is more than one byte type")
                 witness_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.final_script_witness.deserialize(witness_bytes)
+            elif key_type == PartiallySignedInput.PSBT_IN_PREVIOUS_TXID:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input previous txid is already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Previous txid key is more than one byte type")
+                txid = deser_string(f)
+                if len(txid) != 32:
+                    raise PSBTSerializationError("Previous txid is not 32 bytes")
+                self.prev_txid = txid
+            elif key_type == PartiallySignedInput.PSBT_IN_OUTPUT_INDEX:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input previous output index is already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Previous output index key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Previous output index is not 4 bytes")
+                self.prev_out = struct.unpack("<I", v)[0]
+            elif key_type == PartiallySignedInput.PSBT_IN_SEQUENCE:
+                pass
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input sequence is already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input sequence key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Input sequence is not 4 bytes")
+                self.sequence = struct.unpack("<I", v)[0]
+            elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_TIME_LOCKTIME:
+                pass
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input required time based locktime is already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input time based locktime key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Input time based locktime is not 4 bytes")
+                self.time_locktime = struct.unpack("<I", v)[0]
+            elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_HEIGHT_LOCKTIME:
+                pass
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, input required height based locktime index is already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Input height based locktime key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Input height based locktime is not 4 bytes")
+                self.height_locktime = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_TAP_KEY_SIG:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input Taproot key signature already provided")
@@ -289,6 +355,13 @@ class PartiallySignedInput:
                 self.unknown[key] = unknown_bytes
 
             key_lookup.add(key)
+
+        # Make sure required PSBTv2 fields are present
+        if self.version >= 2:
+            if len(self.prev_txid) == 0:
+                raise PSBTSerializationError("Previous TXID is required in PSBTv2")
+            if self.prev_out is None:
+                raise PSBTSerializationError("Previous output's index is required in PSBTv2")
 
     def serialize(self) -> bytes:
         """
@@ -365,6 +438,27 @@ class PartiallySignedInput:
             witstack = self.final_script_witness.serialize()
             r += ser_string(witstack)
 
+        if self.version >= 2:
+            if len(self.prev_txid) != 0:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_PREVIOUS_TXID))
+                r += ser_string(self.prev_txid)
+
+            if self.prev_out is not None:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_OUTPUT_INDEX))
+                r += ser_string(struct.pack("<I", self.prev_out))
+
+            if self.sequence is not None:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_SEQUENCE))
+                r += ser_string(struct.pack("<I", self.sequence))
+
+            if self.time_locktime is not None:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_REQUIRED_TIME_LOCKTIME))
+                r += ser_string(struct.pack("<I", self.time_locktime))
+
+            if self.height_locktime is not None:
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_REQUIRED_HEIGHT_LOCKTIME))
+                r += ser_string(struct.pack("<I", self.height_locktime))
+
         for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
             r += ser_string(value)
@@ -381,18 +475,24 @@ class PartiallySignedOutput:
     PSBT_OUT_REDEEM_SCRIPT = 0x00
     PSBT_OUT_WITNESS_SCRIPT = 0x01
     PSBT_OUT_BIP32_DERIVATION = 0x02
+    PSBT_OUT_AMOUNT = 0x03
+    PSBT_OUT_SCRIPT = 0x04
     PSBT_OUT_TAP_INTERNAL_KEY = 0x05
     PSBT_OUT_TAP_TREE = 0x06
     PSBT_OUT_TAP_BIP32_DERIVATION = 0x07
 
-    def __init__(self) -> None:
+    def __init__(self, version: int) -> None:
         self.redeem_script = b""
         self.witness_script = b""
         self.hd_keypaths: Dict[bytes, KeyOriginInfo] = {}
+        self.amount: Optional[int] = None
+        self.script = b""
         self.tap_internal_key = b""
         self.tap_tree = b""
         self.tap_bip32_paths: Dict[bytes, Tuple[Set[bytes], KeyOriginInfo]] = {}
         self.unknown: Dict[bytes, bytes] = {}
+
+        self.version: int = version
 
     def set_null(self) -> None:
         """
@@ -404,6 +504,8 @@ class PartiallySignedOutput:
         self.tap_internal_key = b""
         self.tap_tree = b""
         self.tap_bip32_paths.clear()
+        self.amount = None
+        self.script = b""
         self.unknown.clear()
 
     def deserialize(self, f: Readable) -> None:
@@ -442,6 +544,21 @@ class PartiallySignedOutput:
                 self.witness_script = deser_string(f)
             elif key_type == PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
+            elif key_type == PartiallySignedOutput.PSBT_OUT_AMOUNT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, output amount already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Output amount key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 8:
+                    raise PSBTSerializationError("Output amount is not 8 bytes")
+                self.amount = struct.unpack("<q", v)[0]
+            elif key_type == PartiallySignedOutput.PSBT_OUT_SCRIPT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, output script already provided")
+                elif len(key) != 1:
+                    raise PSBTSerializationError("Output script key is more than one byte type")
+                self.script = deser_string(f)
             elif key_type == PartiallySignedOutput.PSBT_OUT_TAP_INTERNAL_KEY:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output Taproot internal key already provided")
@@ -477,6 +594,13 @@ class PartiallySignedOutput:
 
             key_lookup.add(key)
 
+        # Make sure required PSBTv2 fields are present
+        if self.version >= 2:
+            if self.amount is None:
+                raise PSBTSerializationError("PSBT_OUTPUT_AMOUNT is required in PSBTv2")
+            if len(self.script) == 0:
+                raise PSBTSerializationError("PSBT_OUTPUT_SCRIPT is required in PSBTv2")
+
     def serialize(self) -> bytes:
         """
         Serialize this PSBT output
@@ -493,6 +617,15 @@ class PartiallySignedOutput:
             r += ser_string(self.witness_script)
 
         r += SerializeHDKeypath(self.hd_keypaths, ser_compact_size(PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION))
+
+        if self.version >= 2:
+            if self.amount is not None:
+                r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_AMOUNT))
+                r += ser_string(struct.pack("<q", self.amount))
+
+            if len(self.script) != 0:
+                r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_SCRIPT))
+                r += ser_string(self.script)
 
         if len(self.tap_internal_key) != 0:
             r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_TAP_INTERNAL_KEY))
@@ -525,6 +658,12 @@ class PSBT(object):
 
     PSBT_GLOBAL_UNSIGNED_TX = 0x00
     PSBT_GLOBAL_XPUB = 0x01
+    PSBT_GLOBAL_TX_VERSION = 0x02
+    PSBT_GLOBAL_FALLBACK_LOCKTIME = 0x03
+    PSBT_GLOBAL_INPUT_COUNT = 0x04
+    PSBT_GLOBAL_OUTPUT_COUNT = 0x05
+    PSBT_GLOBAL_TX_MODIFIABLE = 0x06
+    PSBT_GLOBAL_VERSION = 0xFB
 
     def __init__(self, tx: Optional[CTransaction] = None) -> None:
         """
@@ -538,6 +677,13 @@ class PSBT(object):
         self.outputs: List[PartiallySignedOutput] = []
         self.unknown: Dict[bytes, bytes] = {}
         self.xpub: Dict[bytes, KeyOriginInfo] = {}
+        self.tx_version: Optional[int] = None
+        self.fallback_locktime: Optional[int] = None
+        self.tx_modifiable: Optional[int] = None
+
+        # Assume version 0 PSBT
+        self.version = 0
+        self.explicit_version = False
 
     def deserialize(self, psbt: str) -> None:
         """
@@ -555,6 +701,9 @@ class PSBT(object):
             raise PSBTSerializationError("invalid magic")
 
         key_lookup: Set[bytes] = set()
+
+        input_count = None
+        output_count = None
 
         # Read loop
         while True:
@@ -589,6 +738,57 @@ class PSBT(object):
                         raise PSBTSerializationError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
             elif key_type == PSBT.PSBT_GLOBAL_XPUB:
                 DeserializeHDKeypath(f, key, self.xpub, [79])
+            elif key_type == PSBT.PSBT_GLOBAL_TX_VERSION:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global transaction version is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global transaction version key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Global transaction version is not 4 bytes")
+                self.tx_version = struct.unpack("<I", v)[0]
+            elif key_type == PSBT.PSBT_GLOBAL_FALLBACK_LOCKTIME:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global fallback locktime is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global fallback locktime key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Global fallback locktime is not 4 bytes")
+                self.fallback_locktime = struct.unpack("<I", v)[0]
+            elif key_type == PSBT.PSBT_GLOBAL_INPUT_COUNT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global input count is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global input count key is more than one byte type")
+                _ = deser_compact_size(f) # Value length, we can ignore this
+                input_count = deser_compact_size(f)
+            elif key_type == PSBT.PSBT_GLOBAL_OUTPUT_COUNT:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global output count is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global output count key is more than one byte type")
+                _ = deser_compact_size(f) # Value length, we can ignore this
+                output_count = deser_compact_size(f)
+            elif key_type == PSBT.PSBT_GLOBAL_TX_MODIFIABLE:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global tx modifiable flags is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global tx modifiable flags key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 1:
+                    raise PSBTSerializationError("Global tx modifiable flags is not 1 bytes")
+                self.tx_modifiable = struct.unpack("<B", v)[0]
+            elif key_type == PSBT.PSBT_GLOBAL_VERSION:
+                if key in key_lookup:
+                    raise PSBTSerializationError("Duplicate key, global PSBT version is already provided")
+                elif len(key) > 1:
+                    raise PSBTSerializationError("Global PSBT version key is more than one byte type")
+                v = deser_string(f)
+                if len(v) != 4:
+                    raise PSBTSerializationError("Global PSBT version is not 1 bytes")
+                self.version = struct.unpack("<I", v)[0]
+                self.explicit_version = True
             else:
                 if key in self.unknown:
                     raise PSBTSerializationError("Duplicate key, key for unknown value already provided")
@@ -597,35 +797,72 @@ class PSBT(object):
 
             key_lookup.add(key)
 
-        # make sure that we got an unsigned tx
-        if self.tx.is_null():
-            raise PSBTSerializationError("No unsigned trasaction was provided")
+        # Check PSBT version constraints
+        if self.version == 0:
+            # make sure that we got an unsigned tx
+            if self.tx.is_null():
+                raise PSBTSerializationError("No unsigned trasaction was provided")
+            # Make sure no v2 fields are present
+            if self.tx_version is not None:
+                raise PSBTSerializationError("PSBT_GLOBAL_TX_VERSION is not allowed in PSBTv0")
+            if self.fallback_locktime is not None:
+                raise PSBTSerializationError("PSBT_GLOBAL_FALLBACK_LOCKTIME is not allowed in PSBTv0")
+            if input_count is not None:
+                raise PSBTSerializationError("PSBT_GLOBAL_INPUT_COUNT is not allowed in PSBTv0")
+            if output_count is not None:
+                raise PSBTSerializationError("PSBT_GLOBAL_OUTPUT_COUNT is not allowed in PSBTv0")
+            if self.tx_modifiable is not None:
+                raise PSBTSerializationError("PSBT_GLOBAL_TX_MODIFIABLE is not allowed in PSBTv0")
+
+        # Disallow v1
+        if self.version == 1:
+            raise PSBTSerializationError("There is no PSBT version 1")
+        if self.version >= 2:
+            # Tx version, input, and output counts are required
+            if self.tx_version is None:
+                raise PSBTSerializationError("PSBT_GLOBAL_TX_VERSION is required in PSBTv2")
+            if input_count is None:
+                raise PSBTSerializationError("PSBT_GLOBAL_INPUT_COUNT is required in PSBTv2")
+            if output_count is None:
+                raise PSBTSerializationError("PSBT_GLOBAL_OUTPUT_COUNT is required in PSBTv2")
+            # Unsigned tx is disallowed
+            if not self.tx.is_null():
+                raise PSBTSerializationError("PSBT_GLOBAL_UNSIGNED_TX is not allowed in PSBTv2")
 
         # Read input data
-        for txin in self.tx.vin:
+        if input_count is None:
+            input_count = len(self.tx.vin)
+        for i in range(input_count):
             if f.tell() == end:
                 break
-            input = PartiallySignedInput()
-            input.deserialize(f)
-            self.inputs.append(input)
+            psbt_in = PartiallySignedInput(self.version)
+            psbt_in.deserialize(f)
+            self.inputs.append(psbt_in)
 
-            if input.non_witness_utxo:
-                input.non_witness_utxo.rehash()
-                if input.non_witness_utxo.sha256 != txin.prevout.hash:
+            if self.version >= 2:
+                prev_txid = psbt_in.prev_txid
+            else:
+                prev_txid = ser_uint256(self.tx.vin[i].prevout.hash)
+
+            if psbt_in.non_witness_utxo:
+                psbt_in.non_witness_utxo.rehash()
+                if psbt_in.non_witness_utxo.hash != prev_txid:
                     raise PSBTSerializationError("Non-witness UTXO does not match outpoint hash")
 
-        if (len(self.inputs) != len(self.tx.vin)):
+        if (len(self.inputs) != input_count):
             raise PSBTSerializationError("Inputs provided does not match the number of inputs in transaction")
 
         # Read output data
-        for txout in self.tx.vout:
+        if output_count is None:
+            output_count = len(self.tx.vout)
+        for i in range(output_count):
             if f.tell() == end:
                 break
-            output = PartiallySignedOutput()
+            output = PartiallySignedOutput(self.version)
             output.deserialize(f)
             self.outputs.append(output)
 
-        if len(self.outputs) != len(self.tx.vout):
+        if len(self.outputs) != output_count:
             raise PSBTSerializationError("Outputs provided does not match the number of outputs in transaction")
 
     def serialize(self) -> str:
@@ -639,16 +876,40 @@ class PSBT(object):
         # magic bytes
         r += b"psbt\xff"
 
-        # unsigned tx flag
-        r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_UNSIGNED_TX))
+        if self.version == 0:
+            # unsigned tx flag
+            r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_UNSIGNED_TX))
 
-        # write serialized tx
-        tx = self.tx.serialize_with_witness()
-        r += ser_compact_size(len(tx))
-        r += tx
+            # write serialized tx
+            tx = self.tx.serialize_with_witness()
+            r += ser_compact_size(len(tx))
+            r += tx
 
         # write xpubs
         r += SerializeHDKeypath(self.xpub, ser_compact_size(PSBT.PSBT_GLOBAL_XPUB))
+
+        if self.version >= 2:
+            assert self.tx_version is not None
+            r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_TX_VERSION))
+            r += ser_string(struct.pack("<I", self.tx_version))
+
+            if self.fallback_locktime is not None:
+                r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_FALLBACK_LOCKTIME))
+                r += ser_string(struct.pack("<I", self.fallback_locktime))
+
+            r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_INPUT_COUNT))
+            r += ser_string(ser_compact_size(len(self.inputs)))
+
+            r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_OUTPUT_COUNT))
+            r += ser_string(ser_compact_size(len(self.outputs)))
+
+            if self.tx_modifiable is not None:
+                r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_TX_MODIFIABLE))
+                r += ser_string(struct.pack("<B", self.tx_modifiable))
+
+        if self.version > 0 or self.explicit_version:
+            r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_VERSION))
+            r += ser_string(struct.pack("<I", self.version))
 
         # unknowns
         for key, value in sorted(self.unknown.items()):
