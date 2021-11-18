@@ -85,6 +85,7 @@ from usb1 import USBErrorNoDevice
 from types import MethodType
 
 import base64
+import builtins
 import getpass
 import logging
 import sys
@@ -362,11 +363,15 @@ class TrezorClient(HardwareWalletClient):
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
             has_tr = False
-            for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
+            for input_num, psbt_in in builtins.enumerate(tx.inputs):
+                assert psbt_in.prev_txid is not None
+                assert psbt_in.prev_out is not None
+                assert psbt_in.sequence is not None
+
                 txinputtype = messages.TxInputType(
-                    prev_hash=ser_uint256(txin.prevout.hash)[::-1],
-                    prev_index=txin.prevout.n,
-                    sequence=txin.nSequence,
+                    prev_hash=psbt_in.prev_txid[::-1],
+                    prev_index=psbt_in.prev_out,
+                    sequence=psbt_in.sequence,
                 )
 
                 # Detrermine spend type
@@ -375,9 +380,9 @@ class TrezorClient(HardwareWalletClient):
                 if psbt_in.witness_utxo:
                     utxo = psbt_in.witness_utxo
                 if psbt_in.non_witness_utxo:
-                    if txin.prevout.hash != psbt_in.non_witness_utxo.sha256:
+                    if psbt_in.prev_txid.hex() != psbt_in.non_witness_utxo.hash:
                         raise BadArgumentError('Input {} has a non_witness_utxo with the wrong hash'.format(input_num))
-                    utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+                    utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
                 if utxo is None:
                     continue
                 scriptcode = utxo.scriptPubKey
@@ -502,7 +507,8 @@ class TrezorClient(HardwareWalletClient):
 
             # prepare outputs
             outputs = []
-            for i, out in py_enumerate(tx.tx.vout):
+            for psbt_out in tx.outputs:
+                out = psbt_out.get_txout()
                 txoutput = messages.TxOutputType(amount=out.nValue)
                 txoutput.script_type = messages.OutputScriptType.PAYTOADDRESS
                 if out.is_p2pkh():
@@ -520,7 +526,6 @@ class TrezorClient(HardwareWalletClient):
                         raise BadArgumentError("Output is not an address")
 
                 # Add the derivation path for change
-                psbt_out = tx.outputs[i]
                 for _, keypath in psbt_out.hd_keypaths.items():
                     if keypath.fingerprint != master_fp:
                         continue
@@ -580,14 +585,15 @@ class TrezorClient(HardwareWalletClient):
                     prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
             # Sign the transaction
+            assert tx.tx_version is not None
             signed_tx = btc.sign_tx(
                 client=self.client,
                 coin_name=self.coin_name,
                 inputs=inputs,
                 outputs=outputs,
                 prev_txes=prevtxs,
-                version=tx.tx.nVersion,
-                lock_time=tx.tx.nLockTime,
+                version=tx.tx_version,
+                lock_time=tx.compute_lock_time(),
             )
 
             # Each input has one signature
