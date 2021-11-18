@@ -53,9 +53,6 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..tx import (
-    CTransaction,
-)
 import logging
 import re
 
@@ -184,7 +181,7 @@ class LedgerClient(HardwareWalletClient):
 
         - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs wil lbe signed in this case.
         """
-        c_tx = CTransaction(tx.tx)
+        c_tx = tx.get_unsigned_tx()
         tx_bytes = c_tx.serialize_with_witness()
 
         # Master key fingerprint
