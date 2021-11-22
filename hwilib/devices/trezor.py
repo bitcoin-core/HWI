@@ -761,13 +761,15 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def can_sign_taproot(self) -> bool:
         """
-        Trezor T supports Taproot in firmware versions greater than (not including) 2.4.2.
-        Trezor One supports Taproot in firmware versions greater than (not including) 1.10.3.
-        However HWI does not implement Taproot support for any Trezor devices yet.
+        Trezor T supports Taproot since firmware version 2.4.3.
+        Trezor One supports Taproot since firmware version 1.10.4.
 
         :returns: False, always.
         """
-        return False
+        self._prepare_device()
+        if self.client.features.model == "T":
+            return bool(self.client.version >= (2, 4, 3))
+        return bool(self.client.version >= (1, 10, 4))
 
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
