@@ -433,6 +433,17 @@ class LedgerClient(HardwareWalletClient):
         """
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
 
+    @ledger_exception
+    def can_sign_taproot(self) -> bool:
+        """
+        Ledgers support Taproot if the Bitcoin App version greater than 2.0.0.
+        However HWI does not implement Taproot support for the Ledger yet.
+
+        :returns: False, always
+        """
+        return False
+
+
 def enumerate(password: str = '') -> List[Dict[str, Any]]:
     results = []
     devices = []

@@ -866,3 +866,11 @@ class Bitbox02Client(HardwareWalletClient):
 
         bb02.restore_from_mnemonic()
         return True
+
+    def can_sign_taproot(self) -> bool:
+        """
+        The BitBox02 does not support Taproot yet.
+
+        :returns: False, always
+        """
+        return False

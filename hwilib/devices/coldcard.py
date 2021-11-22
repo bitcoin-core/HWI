@@ -386,6 +386,15 @@ class ColdcardClient(HardwareWalletClient):
         """
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
 
+    def can_sign_taproot(self) -> bool:
+        """
+        The Coldard does not support Taproot yet.
+
+        :returns: False, always
+        """
+        return False
+
+
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)

@@ -754,6 +754,18 @@ class TrezorClient(HardwareWalletClient):
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return True
 
+    @trezor_exception
+    def can_sign_taproot(self) -> bool:
+        """
+        Trezor T supports Taproot in firmware versions greater than (not including) 2.4.2.
+        Trezor One supports Taproot in firmware versions greater than (not including) 1.10.3.
+        However HWI does not implement Taproot support for any Trezor devices yet.
+
+        :returns: False, always.
+        """
+        return False
+
+
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate()
