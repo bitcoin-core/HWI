@@ -24,6 +24,7 @@ SUPPORTS_MIXED = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t'
 SUPPORTS_MULTISIG = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
 SUPPORTS_EXTERNAL = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
 SUPPORTS_OP_RETURN = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey', 'jade'}
+SUPPORTS_TAPROOT = {}
 
 # Class for emulator control
 class DeviceEmulator():
@@ -194,8 +195,9 @@ class TestGetKeypool(DeviceTestCase):
             ("legacy", 44, "legacy"),
             ("wit", 84, "bech32"),
             ("sh_wit", 49, "p2sh-segwit"),
-            ("tap", 86, "bech32m"),
         ]
+        if self.full_type in SUPPORTS_TAPROOT:
+            getkeypool_args.append(("tap", 86, "bech32m"))
 
         descs = []
         for arg in getkeypool_args:
@@ -254,8 +256,8 @@ class TestGetDescriptors(DeviceTestCase):
 
         self.assertIn('receive', descriptors)
         self.assertIn('internal', descriptors)
-        self.assertEqual(len(descriptors['receive']), 4)
-        self.assertEqual(len(descriptors['internal']), 4)
+        self.assertEqual(len(descriptors['receive']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
+        self.assertEqual(len(descriptors['internal']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
 
         for descriptor in descriptors['receive']:
             self.assertNotIn("'", descriptor)

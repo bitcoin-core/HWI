@@ -360,6 +360,8 @@ class LedgerClient(HardwareWalletClient):
             bech32 = True
         elif addr_type == AddressType.LEGACY:
             pass
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Ledger does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
         output = self.app.getWalletPublicKey(keypath[2:], True, p2sh_p2wpkh or bech32, bech32)

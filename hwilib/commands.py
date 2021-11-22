@@ -342,6 +342,8 @@ def getdescriptor(
     elif addr_type is AddressType.WIT:
         return WPKHDescriptor(pubkey)
     elif addr_type is AddressType.TAP:
+        if not client.can_sign_taproot():
+            raise UnavailableActionError("Device does not support Taproot")
         return TRDescriptor(pubkey)
     else:
         raise ValueError("Unknown address type")
@@ -368,16 +370,21 @@ def getkeypool(
     :param internal: Whether the dictionary should indicate that the descriptor should be for change addresses
     :param keypool: Whether the dictionary should indicate that the dsecriptor should be added to the Bitcoin Core keypool/addresspool
     :param account: The BIP 44 account to use if ``path`` is not specified
-    :param sh_wpkh: Whether to return a descriptor specifying p2sh-segwit addresses
-    :param wpkh: Whether to return a descriptor specifying native segwit addresses
+    :param addr_type: The address type
     :param addr_all: Whether to return a multiple descriptors for every address type
     :return: The dictionary containing the descriptor and all of the arguments for ``importmulti`` or ``importdescriptors``
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
+    supports_taproot = client.can_sign_taproot()
 
     addr_types = [addr_type]
     if addr_all:
         addr_types = list(AddressType)
+    elif not supports_taproot and addr_type == AddressType.TAP:
+        raise UnavailableActionError("Device does not support Taproot")
+
+    if not supports_taproot and AddressType.TAP in addr_types:
+        del addr_types[addr_types.index(AddressType.TAP)]
 
     # When no specific path or internal-ness is specified, create standard types
     chains: List[Dict[str, Any]] = []

@@ -241,6 +241,8 @@ class ColdcardClient(HardwareWalletClient):
             addr_fmt = AF_P2WPKH
         elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
 

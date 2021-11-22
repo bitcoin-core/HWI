@@ -593,6 +593,8 @@ class TrezorClient(HardwareWalletClient):
             script_type = messages.InputScriptType.SPENDWITNESS
         elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Trezor does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
 
