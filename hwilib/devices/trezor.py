@@ -380,7 +380,7 @@ class TrezorClient(HardwareWalletClient):
                 if psbt_in.witness_utxo:
                     utxo = psbt_in.witness_utxo
                 if psbt_in.non_witness_utxo:
-                    if psbt_in.prev_txid.hex() != psbt_in.non_witness_utxo.hash:
+                    if psbt_in.prev_txid != psbt_in.non_witness_utxo.hash:
                         raise BadArgumentError('Input {} has a non_witness_utxo with the wrong hash'.format(input_num))
                     utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
                 if utxo is None:
@@ -580,7 +580,8 @@ class TrezorClient(HardwareWalletClient):
                             script_pubkey=vout.scriptPubKey,
                         )
                         t.bin_outputs.append(o)
-                    logging.debug(psbt_in.non_witness_utxo.hash)
+                    assert(psbt_in.non_witness_utxo.hash is not None)
+                    logging.debug(psbt_in.non_witness_utxo.hash.hex())
                     assert psbt_in.non_witness_utxo.sha256 is not None
                     prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
