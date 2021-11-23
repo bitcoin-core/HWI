@@ -175,7 +175,7 @@ class PartiallySignedInput:
                 break
 
             # First byte of key is the type
-            key_type = struct.unpack("b", bytearray([key[0]]))[0]
+            key_type = deser_compact_size(BytesIO(key))
 
             if key_type == PartiallySignedInput.PSBT_IN_NON_WITNESS_UTXO:
                 if key in key_lookup:
@@ -531,7 +531,7 @@ class PartiallySignedOutput:
                 break
 
             # First byte of key is the type
-            key_type = struct.unpack("b", bytearray([key[0]]))[0]
+            key_type = deser_compact_size(BytesIO(key))
 
             if key_type == PartiallySignedOutput.PSBT_OUT_REDEEM_SCRIPT:
                 if key in key_lookup:
@@ -731,7 +731,7 @@ class PSBT(object):
                 break
 
             # First byte of key is the type
-            key_type = struct.unpack("b", bytearray([key[0]]))[0]
+            key_type = deser_compact_size(BytesIO(key))
 
             # Do stuff based on type
             if key_type == PSBT.PSBT_GLOBAL_UNSIGNED_TX:
