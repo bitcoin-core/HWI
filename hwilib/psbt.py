@@ -1043,3 +1043,24 @@ class PSBT(object):
 
         tx.rehash()
         return tx
+
+    def _convert_version(self, version) -> None:
+        self.version = version
+        for psbt_in in self.inputs:
+            psbt_in.version = version
+        for psbt_out in self.outputs:
+            psbt_out.version = version
+
+    def convert_to_v2(self) -> None:
+        """
+        Sets this PSBT to version 2
+        """
+        self._convert_version(2)
+
+    def convert_to_v0(self) -> None:
+        """
+        Sets this PSBT to version 0
+        """
+        self._convert_version(0)
+        self.tx = self.get_unsigned_tx()
+        self.explicit_version = False
