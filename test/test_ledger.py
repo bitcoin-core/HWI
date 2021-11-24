@@ -41,7 +41,7 @@ class LedgerEmulator(DeviceEmulator):
         self.supports_ms_display = False
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
-        self.supports_taproot = False
+        self.supports_taproot = True
         self.strict_bip48 = True
 
     def start(self):
@@ -140,6 +140,8 @@ def ledger_test_suite(emulator, bitcoind, interface):
     signtx_cases = [
         (["legacy"], ["legacy"], True, True),
         (["segwit"], ["segwit"], True, True),
+        (["tap"], [], True, True),
+        (["legacy", "segwit", "tap"], [], True, True),
     ]
 
     # Generic Device tests
