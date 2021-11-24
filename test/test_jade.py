@@ -135,16 +135,20 @@ def jade_test_suite(emulator, rpc, userpass, interface):
     # Because Jade has some restrictions about what multisigs it supports, we run
     # explicit multisig-address tests, rather than using the standard/provided ones.
     class TestJadeGetMultisigAddresses(DeviceTestCase):
+        # NOTE: These ones are present in Jade's own unit tests
+        # Jade test case: test_data/multisig_reg_ss_p2sh.json
         def test_getp2sh(self):
             descriptor_param = '--desc=sh(multi(2,[1273da33/44/0h/0h]tpubDDCNstnPhbdd4vwbw5UWK3vRQSF1WXQkvBHpNXpKJAkwFYjwu735EH3GVf53qwbWimzewDUv68MUmRDgYtQ1AU8FRCPkazfuaBp7LaEaohG/3/1/11/12,[e3ebcc79/3h/1h/1]tpubDDExQpZg2tziZ7ACSBCYsY3rYxAZtTRBgWwioRLYqgNBguH6rMHN1D8epTxUQUB5kM5nxkEtr2SNic6PJLPubcGMR6S2fmDZTzL9dHpU7ka/1/3/4/5))'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
             self.assertEqual(result['address'], '2N2K6xGHeEYNaKEHZSBVy33g2GfUdFwJr2A')
 
-        def test_getp2wsh(self):
-            descriptor_param = '--desc=wsh(multi(2,[b5281696/3]tpubECMbgHMZm4QymrFbuEntaWbSsaaKvJVpoR6rhVwxGUrT9qf6WLfC88piWYVsQDV86PUKx3QsXYiCqugWX1oz8ekucUdFUdupuNCgjf17EYK/0/37,[e3ebcc79/3h/2h/1]tpubDD8fpYqWy6DEvbqdj9CVWptA3gd3xqarNN6wCAjfDs1sFnd8zfb9SeDzRAXA3S4eeeYvo2sz6mbyS3KaXuDe5PcWy94PqShTpBjiJN198A6/0/37,[1273da33/1]tpubD8PzcLmm1rVeUpEjmd2kQD6a9DXy6dwVVgE14mrh1zc6L98nmNqmDaApAbEcbrJ1iPBpo2gnEniSpVXHgovU8ecWwfHVP113DK2bWEMPpEs/0/37))'
+        # Jade test case: test_data/multisig_reg_ss_wsh_sorted.json
+        def test_get_sorted_p2wsh(self):
+            descriptor_param = '--desc=wsh(sortedmulti(2,[1273da33/44/0h/0h]tpubDDCNstnPhbdd4vwbw5UWK3vRQSF1WXQkvBHpNXpKJAkwFYjwu735EH3GVf53qwbWimzewDUv68MUmRDgYtQ1AU8FRCPkazfuaBp7LaEaohG/3/1/0/1,[e3ebcc79/3h/1h/1]tpubDDExQpZg2tziZ7ACSBCYsY3rYxAZtTRBgWwioRLYqgNBguH6rMHN1D8epTxUQUB5kM5nxkEtr2SNic6PJLPubcGMR6S2fmDZTzL9dHpU7ka/1/0/16))'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
-            self.assertEqual(result['address'], 'tb1qd4zy3l2dckqwjartdq2aj53x2xgesvg530x5569z4lzfrueuhjmsrtcdfp')
+            self.assertEqual(result['address'], 'tb1qx474um8lr97sn46wz9v90u6qs49ttrhdze2cfxa5x4tajvl62avshcqval')
 
+        # Jade test case: test_data/multisig_reg_ss_matches_ga_2of3.json
         def test_getp2shwsh(self):
             descriptor_param = '--desc=sh(wsh(multi(2,[b5281696/3]tpubECMbgHMZm4QymrFbuEntaWbSsaaKvJVpoR6rhVwxGUrT9qf6WLfC88piWYVsQDV86PUKx3QsXYiCqugWX1oz8ekucUdFUdupuNCgjf17EYK/13,[e3ebcc79/3h/2h/1]tpubDD8fpYqWy6DEvbqdj9CVWptA3gd3xqarNN6wCAjfDs1sFnd8zfb9SeDzRAXA3S4eeeYvo2sz6mbyS3KaXuDe5PcWy94PqShTpBjiJN198A6/13,[1273da33/1]tpubD8PzcLmm1rVeUpEjmd2kQD6a9DXy6dwVVgE14mrh1zc6L98nmNqmDaApAbEcbrJ1iPBpo2gnEniSpVXHgovU8ecWwfHVP113DK2bWEMPpEs/13)))'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
@@ -154,21 +158,34 @@ def jade_test_suite(emulator, rpc, userpass, interface):
         # them 'registered' on the Jade hw - This is not mandatory but means in
         # sign-tx we should be using them to auto-validate the change outputs.
         SIGN_TX_MULTI_DESCRIPTOR = 'multi(2,[1273da33/48h/1h/2h/0h]tpubDE5KhdeLh956ERiopzHRskaJ3huWXLUPKiQUSkR3R3nTsr4SQfVVU6DbA9E66BZYwTk87hwE7wn1175WqBzMsbkFErGt3ATJm2xaisCPUmn/0/1,[1273da33/48h/1h/0h/0h]tpubDEAjmvwVDj4aNW8D1KX39VmMW1ZUX8BNgVEyD6tUVshZYCJQvbp9LSqvihiJa4tGZUisf6XpyZHg76dDBxNZLHTf6xYwgbio4Xnj6i21JgN/0/1,[1273da33/48h/1h/1h/0h]tpubDERHGgfviqDnoRSykG1YBBfhFbgNPuTeWvjwJBXM36d5wzFwkQpWFXHC76XW99hMgd1NkR6A3rRHM93Njqdx2X3KoUebekokUPsAvmeC4NE/0/1)'
+        SIGN_TX_SORTEDMULTI_DESCRIPTOR = f'sorted{SIGN_TX_MULTI_DESCRIPTOR}'
 
         def test_get_signing_p2sh(self):
-            descriptor_param = '--desc=sh({})'.format(TestJadeGetMultisigAddresses.SIGN_TX_MULTI_DESCRIPTOR)
+            descriptor_param = f'--desc=sh({self.SIGN_TX_MULTI_DESCRIPTOR})'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
             self.assertEqual(result['address'], '2N4v6yct4NHy7FLex1wgwksLG97dXSTEs9x', result)
 
+            descriptor_param = f'--desc=sh({self.SIGN_TX_SORTEDMULTI_DESCRIPTOR})'
+            result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
+            self.assertEqual(result['address'], '2MwZVj4Sbjn3ewD87ZoDgWrKFNjav4uPJm9', result)
+
         def test_get_signing_p2wsh(self):
-            descriptor_param = '--desc=wsh({})'.format(TestJadeGetMultisigAddresses.SIGN_TX_MULTI_DESCRIPTOR)
+            descriptor_param = f'--desc=wsh({self.SIGN_TX_MULTI_DESCRIPTOR})'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
             self.assertEqual(result['address'], 'tb1qxjxvxk69yedt49u2djh8mu9lsmw6tf4n2pwuqend5tjlqrumuq2skh7qzc', result)
 
+            descriptor_param = f'--desc=wsh({self.SIGN_TX_SORTEDMULTI_DESCRIPTOR})'
+            result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
+            self.assertEqual(result['address'], 'tb1qeuh6d9eg28aqy5ckrqxn868saapcr6kg968prm6999gclkr4ewqsv22prt', result)
+
         def test_get_signing_p2shwsh(self):
-            descriptor_param = '--desc=sh(wsh({}))'.format(TestJadeGetMultisigAddresses.SIGN_TX_MULTI_DESCRIPTOR)
+            descriptor_param = f'--desc=sh(wsh({self.SIGN_TX_MULTI_DESCRIPTOR}))'
             result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
             self.assertEqual(result['address'], '2N6wdpQsBUvT3nAp8hGaXEFpfvzerqaHFVC', result)
+
+            descriptor_param = f'--desc=sh(wsh({self.SIGN_TX_SORTEDMULTI_DESCRIPTOR}))'
+            result = self.do_command(self.dev_args + ['displayaddress', descriptor_param])
+            self.assertEqual(result['address'], '2NAXBEePa5ebo1zTDrtQ9C21QDkkamwczfQ', result)
 
     full_type = 'jade'
     device_model = JADE_MODEL

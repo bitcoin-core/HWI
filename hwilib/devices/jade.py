@@ -55,6 +55,7 @@ from .._script import (
 )
 
 import logging
+import semver
 import os
 
 # The test emulator port
@@ -91,6 +92,7 @@ def jade_exception(f: Callable[..., Any]) -> Any:
 
 # This class extends the HardwareWalletClient for Blockstream Jade specific things
 class JadeClient(HardwareWalletClient):
+    MIN_SUPPORTED_FW_VERSION = semver.VersionInfo(0, 1, 32)
 
     NETWORKS = {Chain.MAIN: 'mainnet',
                 Chain.TEST: 'testnet',
@@ -110,16 +112,16 @@ class JadeClient(HardwareWalletClient):
                        AddressType.WIT: 'wsh(multi(k))',
                        AddressType.SH_WIT: 'sh(wsh(multi(k)))'}
 
-    @staticmethod
-    def _convertAddrType(addrType: AddressType, multisig: bool) -> str:
-        return JadeClient.MULTI_ADDRTYPES[addrType] if multisig else JadeClient.ADDRTYPES[addrType]
+    @classmethod
+    def _convertAddrType(cls, addrType: AddressType, multisig: bool) -> str:
+        return cls.MULTI_ADDRTYPES[addrType] if multisig else cls.ADDRTYPES[addrType]
 
-    # Derive a deterministic name for a multisig registration record
+    # Derive a deterministic name for a multisig registration record (ignoring bip67 key sorting)
     @staticmethod
     def _get_multisig_name(type: str, threshold: int, signers: List[Tuple[bytes, Sequence[int]]]) -> str:
-        # Concatenate script-type, threshold, and all signers fingerprints and derivation paths
+        # Concatenate script-type, threshold, and all signers fingerprints and derivation paths (sorted)
         summary = type + '|' + str(threshold) + '|'
-        for fingerprint, path in signers:
+        for fingerprint, path in sorted(signers):
             summary += fingerprint.hex() + '|' + str(path) + '|'
 
         # Hash it, get the first 6-bytes as hex, prepend with 'hwi'
@@ -134,6 +136,11 @@ class JadeClient(HardwareWalletClient):
         verinfo = self.jade.get_version_info()
         uninitialized = verinfo['JADE_STATE'] not in ['READY', 'TEMP']
 
+        # Check minimum supported firmware version (ignore candidate/build parts)
+        fw_version = semver.parse_version_info(verinfo['JADE_VERSION'])
+        if self.MIN_SUPPORTED_FW_VERSION > fw_version.finalize_version():
+            raise DeviceNotReadyError(f'Jade fw version: {fw_version} - minimum required version: {self.MIN_SUPPORTED_FW_VERSION}. '
+                                      'Please update using a Blockstream Green companion app')
         if path == SIMULATOR_PATH:
             if uninitialized:
                 # Connected to simulator but it appears to have no wallet set
@@ -274,7 +281,6 @@ class JadeClient(HardwareWalletClient):
             # If signing multisig inputs, get registered multisigs details in case we
             # see any multisig outputs which may be change which we can auto-validate.
             # ie. filter speculative 'signing multisigs' to ones actually registered on the hw
-            candidate_multisigs = {}
             if signing_multisigs:
                 registered_multisigs = self.jade.get_registered_multisigs()
                 signing_multisigs = {k: v for k, v in signing_multisigs.items()
@@ -338,9 +344,9 @@ class JadeClient(HardwareWalletClient):
 
                                 signers, paths = _parse_signers(hd_keypath_origins)
                                 multisig_name = self._get_multisig_name(script_variant, threshold, signers)
+                                matched_multisig = candidate_multisigs.get(multisig_name)
 
-                                matched_multisig = candidate_multisigs.get(multisig_name) == (script_variant, threshold, signers)
-                                if matched_multisig:
+                                if matched_multisig and matched_multisig[0] == script_variant and matched_multisig[1] == threshold and sorted(matched_multisig[2]) == sorted(signers):
                                     change[n_vout] = {'paths': paths, 'multisig_name': multisig_name}
 
             # The txn itself
@@ -384,8 +390,6 @@ class JadeClient(HardwareWalletClient):
         signer_origins = []
         signers = []
         paths = []
-        if multisig.is_sorted:
-            raise BadArgumentError('Blockstream Jade can not generate addresses for sorted multisigs')
         for pubkey in multisig.pubkeys:
             if pubkey.extkey is None:
                 raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with full extended keys')
@@ -411,13 +415,17 @@ class JadeClient(HardwareWalletClient):
             path = pubkey.deriv_path[1:] if pubkey.deriv_path[0] == '/' else pubkey.deriv_path
             paths.append(parse_path(path))
 
-        # Get a deterministic name for this multisig wallet
+        if multisig.is_sorted and paths[:-1] != paths[1:]:
+            logging.warning('Sorted multisig with different derivations per signer')
+            logging.warning('Blockstream Jade may not be able to validate change sent back to this descriptor')
+
+        # Get a deterministic name for this multisig wallet (ignoring bip67 key sorting)
         script_variant = self._convertAddrType(addr_type, multisig=True)
         multisig_name = self._get_multisig_name(script_variant, multisig.thresh, signer_origins)
 
         # Need to ensure this multisig wallet is registered first
         # (Note: 're-registering' is a no-op)
-        self.jade.register_multisig(self._network(), multisig_name, script_variant, multisig.thresh, signers)
+        self.jade.register_multisig(self._network(), multisig_name, script_variant, multisig.is_sorted, multisig.thresh, signers)
         address = self.jade.get_receive_address(self._network(), paths, multisig_name=multisig_name)
 
         return str(address)
