@@ -26,6 +26,10 @@ while [[ $# -gt 0 ]]; do
         build_keepkey=1
         shift
         ;;
+        --jade)
+        build_jade=1
+        shift
+        ;;
         --bitcoind)
         build_bitcoind=1
         shift
@@ -37,6 +41,7 @@ while [[ $# -gt 0 ]]; do
         build_bitbox01=1
         build_ledger=1
         build_keepkey=1
+        build_jade=1
         build_bitcoind=1
         shift
         ;;
@@ -255,6 +260,101 @@ if [[ -n ${build_ledger} ]]; then
     mkdir -p build
     cmake -Bbuild -H.
     make -C build/ emu launcher copy-launcher
+    cd ..
+fi
+
+if [[ -n ${build_jade} ]]; then
+    mkdir -p jade
+    cd jade
+
+    # Clone Blockstream Jade firmware if it doesn't exist, or update it if it does
+    if [ ! -d "jade" ]; then
+        git clone --recursive --branch master https://github.com/Blockstream/Jade.git ./jade
+        cd jade
+    else
+        cd jade
+        git fetch
+
+        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+        UPSTREAM=${1:-'@{u}'}
+        LOCAL=$(git rev-parse @)
+        REMOTE=$(git rev-parse "$UPSTREAM")
+        BASE=$(git merge-base @ "$UPSTREAM")
+
+        if [ $LOCAL = $REMOTE ]; then
+            echo "Up-to-date"
+        elif [ $LOCAL = $BASE ]; then
+            git pull
+        fi
+        git submodule update --recursive --init
+    fi
+
+    # Deduce the relevant versions of esp-idf and qemu to use
+    ESP_IDF_BRANCH=$(grep "ARG ESP_IDF_BRANCH=" Dockerfile | cut -d\= -f2)
+    ESP_IDF_COMMIT=$(grep "ARG ESP_IDF_COMMIT=" Dockerfile | cut -d\= -f2)
+    ESP_QEMU_BRANCH=$(grep "ARG ESP_QEMU_BRANCH=" Dockerfile | cut -d\= -f2)
+    ESP_QEMU_COMMIT=$(grep "ARG ESP_QEMU_COMMIT=" Dockerfile | cut -d\= -f2)
+    cd ..
+
+    # Build the qemu emulator
+    if [ ! -d "qemu" ]; then
+        git clone --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --recursive https://github.com/espressif/qemu.git ./qemu
+        cd qemu
+        ./configure --target-list=xtensa-softmmu \
+            --enable-gcrypt \
+            --enable-debug --enable-sanitizers \
+            --disable-strip --disable-user \
+            --disable-capstone --disable-vnc \
+            --disable-sdl --disable-gtk
+    else
+        cd qemu
+        git fetch
+    fi
+    git checkout ${ESP_QEMU_COMMIT}
+    git submodule update --recursive --init
+    ninja -C build
+    cd ..
+
+    # Build the esp-idf toolchain
+    if [ ! -d "esp-idf" ]; then
+        git clone --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git ./esp-idf
+        cd esp-idf
+    else
+        cd esp-idf
+        git fetch
+    fi
+    git checkout ${ESP_IDF_COMMIT}
+    git submodule update --recursive --init
+
+    # Install the isp-idf tools in a given location (otherwise defauts to user home dir)
+    IDF_TOOLS_PATH=$(pwd)/tools
+    ./install.sh
+    . ./export.sh
+    cd ..
+
+    # Build Blockstream Jade firmware configured for the emulator
+    cd jade
+    rm -fr sdkconfig
+    cp configs/sdkconfig_qemu.defaults sdkconfig.defaults
+    idf.py all
+
+    # Make the qemu flash image
+    esptool.py --chip esp32 merge_bin --fill-flash-size 4MB -o main/qemu/flash_image.bin \
+    --flash_mode dio --flash_freq 40m --flash_size 4MB \
+    0x9000 build/partition_table/partition-table.bin \
+    0xe000 build/ota_data_initial.bin \
+    0x1000 build/bootloader/bootloader.bin \
+    0x10000 build/jade.bin
+    cd ..
+
+    # Extract the minimal artifacts required to run the emulator
+    rm -fr simulator
+    mkdir simulator
+    cp qemu/build/qemu-system-xtensa simulator/
+    cp -R qemu/pc-bios simulator/
+    cp jade/main/qemu/flash_image.bin simulator/
+    cp jade/main/qemu/qemu_efuse.bin simulator/
+
     cd ..
 fi
 

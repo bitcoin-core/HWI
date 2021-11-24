@@ -55,6 +55,17 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
   - env:
+      DEVICE: --jade
+    depends_on:
+      - Jade Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Jade Sim Builder/sim/jade.tar.gz"
+      - tar -xvf "jade.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
+  - env:
       DEVICE: --ledger
     depends_on:
       - Ledger Sim Builder
@@ -102,6 +113,7 @@ task:
         hwilib/devices/bitbox02.py
         hwilib/devices/coldcard.py
         hwilib/devices/digitalbitbox.py
+        hwilib/devices/jade.py
         hwilib/devices/__init__.py
         hwilib/devices/keepkey.py
         hwilib/devices/ledger.py
@@ -184,6 +196,18 @@ task:
     - tar -czf mcu.tar.gz test/work/mcu
   sim_artifacts:
     path: "mcu.tar.gz"
+
+task:
+  env:
+    DEVICE: --jade
+  name: Jade Sim Builder
+  sim_work_cache:
+    folder: test/work/jade
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf jade.tar.gz test/work/jade/simulator
+  sim_artifacts:
+    path: "jade.tar.gz"
 
 task:
   env:

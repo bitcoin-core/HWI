@@ -15,6 +15,7 @@ from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
 from test_digitalbitbox import digitalbitbox_test_suite
 from test_keepkey import keepkey_test_suite
+from test_jade import jade_test_suite
 from test_udevrules import TestUdevRulesInstaller
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
@@ -38,6 +39,10 @@ keepkey_group = parser.add_mutually_exclusive_group()
 keepkey_group.add_argument('--no-keepkey', dest='keepkey', help='Do not run Keepkey test with emulator', action='store_false')
 keepkey_group.add_argument('--keepkey', dest='keepkey', help='Run Keepkey test with emulator', action='store_true')
 
+jade_group = parser.add_mutually_exclusive_group()
+jade_group.add_argument('--no-jade', dest='jade', help='Do not run Jade test with emulator', action='store_false')
+jade_group.add_argument('--jade', dest='jade', help='Run Jade test with emulator', action='store_true')
+
 dbb_group = parser.add_mutually_exclusive_group()
 dbb_group.add_argument('--no_bitbox01', dest='bitbox01', help='Do not run Digital Bitbox test with simulator', action='store_false')
 dbb_group.add_argument('--bitbox01', dest='bitbox01', help='Run Digital Bitbox test with simulator', action='store_true')
@@ -48,6 +53,7 @@ parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldc
 parser.add_argument('--keepkey-path', dest='keepkey_path', help='Path to Keepkey emulator', default='work/keepkey-firmware/bin/kkemu')
 parser.add_argument('--bitbox01-path', dest='bitbox01_path', help='Path to Digital Bitbox simulator', default='work/mcu/build/bin/simulator')
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
+parser.add_argument('--jade-path', dest='jade_path', help='Path to Jade qemu emulator', default='work/jade/simulator')
 
 parser.add_argument('--all', help='Run tests on all existing simulators', default=False, action='store_true')
 parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/src/bitcoind')
@@ -55,7 +61,7 @@ parser.add_argument('--interface', help='Which interface to send commands over',
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
-parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None)
+parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, jade=None)
 
 args = parser.parse_args()
 
@@ -80,6 +86,7 @@ if args.all:
     args.keepkey = True if args.keepkey is None else args.keepkey
     args.bitbox01 = True if args.bitbox01 is None else args.bitbox01
     args.ledger = True if args.ledger is None else args.ledger
+    args.jade = True if args.jade is None else args.jade
 else:
     # Default all false unless overridden
     args.trezor_1 = False if args.trezor_1 is None else args.trezor_1
@@ -88,8 +95,9 @@ else:
     args.keepkey = False if args.keepkey is None else args.keepkey
     args.bitbox01 = False if args.bitbox01 is None else args.bitbox01
     args.ledger = False if args.ledger is None else args.ledger
+    args.jade = False if args.jade is None else args.jade
 
-if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox01:
+if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox01 or args.jade:
     # Start bitcoind
     rpc, userpass = start_bitcoind(args.bitcoind)
 
@@ -105,5 +113,7 @@ if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepke
         success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
     if success and args.ledger:
         success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
+    if success and args.jade:
+        success &= jade_test_suite(args.jade_path, rpc, userpass, args.interface)
 
 sys.exit(not success)

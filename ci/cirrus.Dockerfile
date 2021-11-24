@@ -24,6 +24,7 @@ RUN apt-get install -y \
     libdb-dev \
     libdb++-dev \
     libevent-dev \
+    libgcrypt20-dev \
     libnewlib-arm-none-eabi \
     libsdl2-dev \
     libsdl2-image-dev \
@@ -31,6 +32,7 @@ RUN apt-get install -y \
     libtool \
     libudev-dev \
     libusb-1.0-0-dev \
+    ninja-build \
     pkg-config \
     protobuf-compiler \
     qemu-user-static
@@ -48,7 +50,7 @@ ENV PATH="/root/.cargo/bin:$PATH"
 # as needed.
 # e.g.,
 # docker build -f ci/cirrus.Dockerfile -t hwi_test .
-# docker run -it --entrypoint /bin/bash hwi_tst
+# docker run -it --entrypoint /bin/bash hwi_test
 # cd test; poetry run ./run_tests.py --ledger --coldcard --interface=cli --device-only
 ####################
 
@@ -68,6 +70,7 @@ ENV PATH="/root/.cargo/bin:$PATH"
 #RUN cd test; ./setup_environment.sh --bitbox01
 #RUN cd test; ./setup_environment.sh --ledger
 #RUN cd test; ./setup_environment.sh --keepkey
+#RUN cd test; ./setup_environment.sh --jade
 #RUN cd test; ./setup_environment.sh --bitcoind
 #
 ## Once everything has been built, put rest of files in place
