@@ -299,8 +299,12 @@ class TestSignTx(DeviceTestCase):
             for psbt_input in first_psbt.inputs[1:]:
                 for pubkey, path in psbt_input.hd_keypaths.items():
                     psbt_input.hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x01", path.path)
+                for pubkey, (leaves, origin) in psbt_input.tap_bip32_paths.items():
+                    psbt_input.tap_bip32_paths[pubkey] = (leaves, KeyOriginInfo(b"\x00\x00\x00\x01", origin.path))
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
                 second_psbt.inputs[0].hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x01", path.path)
+            for pubkey, (leaves, origin) in second_psbt.inputs[0].tap_bip32_paths.items():
+                second_psbt.inputs[0].tap_bip32_paths[pubkey] = (leaves, KeyOriginInfo(b"\x00\x00\x00\x01", origin.path))
 
             single_input = len(first_psbt.inputs) == 1
 
@@ -373,6 +377,9 @@ class TestSignTx(DeviceTestCase):
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
         wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
+        tr_addr = None
+        if self.full_type in SUPPORTS_TAPROOT:
+            tr_addr = self.wrpc.getnewaddress("", "bech32m")
 
         sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
 
@@ -395,6 +402,10 @@ class TestSignTx(DeviceTestCase):
         if input_type == 'legacy' or input_type == 'all':
             self.wpk_rpc.sendtoaddress(pkh_addr, in_amt)
             number_inputs += 1
+        if input_type == "tap" or input_type == "all":
+            assert tr_addr is not None
+            self.wpk_rpc.sendtoaddress(tr_addr, in_amt)
+            number_inputs += 1
         # Now do segwit/legacy multisig
         if multisig:
             if input_type == 'legacy' or input_type == 'all':
@@ -407,7 +418,7 @@ class TestSignTx(DeviceTestCase):
 
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
-        # Spend different amounts, requiring 1 to 3 inputs
+        # Spend different amounts, with increasing number of inputs until the wallet is swept
         for i in range(number_inputs):
             # Create a psbt spending the above
             change_addr = self.wrpc.getrawchangeaddress()
@@ -442,6 +453,9 @@ class TestSignTx(DeviceTestCase):
             self._test_signtx("legacy", multisig, external, op_return)
         with self.subTest(addrtype="segwit", multisig=multisig, external=external):
             self._test_signtx("segwit", multisig, external, op_return)
+        if self.full_type in SUPPORTS_TAPROOT:
+            with self.subTest(addrtype="tap", multisig=False, external=external):
+                self._test_signtx("tap", False, external, op_return)
         if self.full_type in SUPPORTS_MIXED:
             with self.subTest(addrtype="all", multisig=multisig, external=external):
                 self._test_signtx("all", multisig, external, op_return)
