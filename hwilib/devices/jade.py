@@ -278,76 +278,78 @@ class JadeClient(HardwareWalletClient):
             # be confirmed by the user on the hwwallet screen, like any other spend output.
             change: List[Optional[Dict[str, Any]]] = [None] * len(tx.outputs)
 
-            # If signing multisig inputs, get registered multisigs details in case we
-            # see any multisig outputs which may be change which we can auto-validate.
-            # ie. filter speculative 'signing multisigs' to ones actually registered on the hw
-            if signing_multisigs:
-                registered_multisigs = self.jade.get_registered_multisigs()
-                signing_multisigs = {k: v for k, v in signing_multisigs.items()
-                                     if k in registered_multisigs
-                                     and registered_multisigs[k]['variant'] == v[0]
-                                     and registered_multisigs[k]['threshold'] == v[1]
-                                     and registered_multisigs[k]['num_signers'] == len(v[2])}
+            # Skip automatic change validation in expert mode - user checks *every* output on hw
+            if not self.expert:
+                # If signing multisig inputs, get registered multisigs details in case we
+                # see any multisig outputs which may be change which we can auto-validate.
+                # ie. filter speculative 'signing multisigs' to ones actually registered on the hw
+                if signing_multisigs:
+                    registered_multisigs = self.jade.get_registered_multisigs()
+                    signing_multisigs = {k: v for k, v in signing_multisigs.items()
+                                         if k in registered_multisigs
+                                         and registered_multisigs[k]['variant'] == v[0]
+                                         and registered_multisigs[k]['threshold'] == v[1]
+                                         and registered_multisigs[k]['num_signers'] == len(v[2])}
 
-            # Look at every output...
-            for n_vout, (txout, psbtout) in py_enumerate(zip(c_txn.vout, tx.outputs)):
-                num_signers = len(psbtout.hd_keypaths)
+                # Look at every output...
+                for n_vout, (txout, psbtout) in py_enumerate(zip(c_txn.vout, tx.outputs)):
+                    num_signers = len(psbtout.hd_keypaths)
 
-                if num_signers == 1 and signing_singlesigs:
-                    # Single-sig output - since we signed singlesig inputs this could be our change
-                    for pubkey, origin in psbtout.hd_keypaths.items():
-                        # Considers 'our' outputs as potential change as far as Jade is concerned
-                        # ie. can be verified and auto-confirmed.
-                        # Is this ok, or should check path also, assuming bip44-like ?
-                        if origin.fingerprint == master_fp and len(origin.path) > 0:
-                            change_addr_type = None
-                            if txout.is_p2pkh():
-                                change_addr_type = AddressType.LEGACY
-                            elif txout.is_witness()[0] and not txout.is_p2wsh():
-                                change_addr_type = AddressType.WIT  # ie. p2wpkh
-                            elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.SH_WIT
-                            else:
-                                continue
+                    if num_signers == 1 and signing_singlesigs:
+                        # Single-sig output - since we signed singlesig inputs this could be our change
+                        for pubkey, origin in psbtout.hd_keypaths.items():
+                            # Considers 'our' outputs as potential change as far as Jade is concerned
+                            # ie. can be verified and auto-confirmed.
+                            # Is this ok, or should check path also, assuming bip44-like ?
+                            if origin.fingerprint == master_fp and len(origin.path) > 0:
+                                change_addr_type = None
+                                if txout.is_p2pkh():
+                                    change_addr_type = AddressType.LEGACY
+                                elif txout.is_witness()[0] and not txout.is_p2wsh():
+                                    change_addr_type = AddressType.WIT  # ie. p2wpkh
+                                elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.SH_WIT
+                                else:
+                                    continue
 
-                            script_variant = self._convertAddrType(change_addr_type, multisig=False)
-                            change[n_vout] = {'path': origin.path, 'variant': script_variant}
+                                script_variant = self._convertAddrType(change_addr_type, multisig=False)
+                                change[n_vout] = {'path': origin.path, 'variant': script_variant}
 
-                elif num_signers > 1 and signing_multisigs:
-                    # Multisig output - since we signed multisig inputs this could be our change
-                    candidate_multisigs = {k: v for k, v in signing_multisigs.items() if len(v[2]) == num_signers}
-                    if not candidate_multisigs:
-                        continue
+                    elif num_signers > 1 and signing_multisigs:
+                        # Multisig output - since we signed multisig inputs this could be our change
+                        candidate_multisigs = {k: v for k, v in signing_multisigs.items() if len(v[2]) == num_signers}
+                        if not candidate_multisigs:
+                            continue
 
-                    for pubkey, origin in psbtout.hd_keypaths.items():
-                        if origin.fingerprint == master_fp and len(origin.path) > 0:
-                            change_addr_type = None
-                            if txout.is_p2sh() and not is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.LEGACY
-                                scriptcode = psbtout.redeem_script
-                            elif txout.is_p2wsh() and not txout.is_p2sh():
-                                change_addr_type = AddressType.WIT
-                                scriptcode = psbtout.witness_script
-                            elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.SH_WIT
-                                scriptcode = psbtout.witness_script
-                            else:
-                                continue
+                        for pubkey, origin in psbtout.hd_keypaths.items():
+                            if origin.fingerprint == master_fp and len(origin.path) > 0:
+                                change_addr_type = None
+                                if txout.is_p2sh() and not is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.LEGACY
+                                    scriptcode = psbtout.redeem_script
+                                elif txout.is_p2wsh() and not txout.is_p2sh():
+                                    change_addr_type = AddressType.WIT
+                                    scriptcode = psbtout.witness_script
+                                elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.SH_WIT
+                                    scriptcode = psbtout.witness_script
+                                else:
+                                    continue
 
-                            parsed = parse_multisig(scriptcode)
-                            if parsed:
-                                script_variant = self._convertAddrType(change_addr_type, multisig=True)
-                                threshold = parsed[0]
+                                parsed = parse_multisig(scriptcode)
+                                if parsed:
+                                    script_variant = self._convertAddrType(change_addr_type, multisig=True)
+                                    threshold = parsed[0]
 
-                                pubkeys = parsed[1]
-                                hd_keypath_origins = [psbtout.hd_keypaths[pubkey] for pubkey in pubkeys]
+                                    pubkeys = parsed[1]
+                                    hd_keypath_origins = [psbtout.hd_keypaths[pubkey] for pubkey in pubkeys]
 
-                                signers, paths = _parse_signers(hd_keypath_origins)
-                                multisig_name = self._get_multisig_name(script_variant, threshold, signers)
-                                matched_multisig = candidate_multisigs.get(multisig_name)
+                                    signers, paths = _parse_signers(hd_keypath_origins)
+                                    multisig_name = self._get_multisig_name(script_variant, threshold, signers)
+                                    matched_multisig = candidate_multisigs.get(multisig_name)
 
-                                if matched_multisig and matched_multisig[0] == script_variant and matched_multisig[1] == threshold and sorted(matched_multisig[2]) == sorted(signers):
-                                    change[n_vout] = {'paths': paths, 'multisig_name': multisig_name}
+                                    if matched_multisig and matched_multisig[0] == script_variant and matched_multisig[1] == threshold and sorted(matched_multisig[2]) == sorted(signers):
+                                        change[n_vout] = {'paths': paths, 'multisig_name': multisig_name}
 
             # The txn itself
             txn_bytes = c_txn.serialize_without_witness()
