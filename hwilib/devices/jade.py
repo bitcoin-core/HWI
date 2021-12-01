@@ -392,7 +392,11 @@ class JadeClient(HardwareWalletClient):
             if pubkey.origin is None:
                 raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key origin information')
             if pubkey.deriv_path is None:
-                raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key origin derivation path information')
+                raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key derivation paths')
+
+            if pubkey.origin.path and not is_hardened(pubkey.origin.path[-1]):
+                logging.warning(f'Final element of origin path {pubkey.origin.path} unhardened')
+                logging.warning('Blockstream Jade may not be able to identify change sent back to this descriptor')
 
             # Tuple to derive deterministic name for the registrtion
             signer_origins.append((pubkey.origin.fingerprint, pubkey.origin.path))
