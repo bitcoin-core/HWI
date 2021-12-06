@@ -76,6 +76,17 @@ class PartiallySignedInput:
     """
     An object for a PSBT input map.
     """
+
+    PSBT_IN_NON_WITNESS_UTXO = 0x00
+    PSBT_IN_WITNESS_UTXO = 0x01
+    PSBT_IN_PARTIAL_SIG = 0x02
+    PSBT_IN_SIGHASH_TYPE = 0x03
+    PSBT_IN_REDEEM_SCRIPT = 0x04
+    PSBT_IN_WITNESS_SCRIPT = 0x05
+    PSBT_IN_BIP32_DERIVATION = 0x06
+    PSBT_IN_FINAL_SCRIPTSIG = 0x07
+    PSBT_IN_FINAL_SCRIPTWITNESS = 0x08
+
     def __init__(self) -> None:
         self.non_witness_utxo: Optional[CTransaction] = None
         self.witness_utxo: Optional[CTxOut] = None
@@ -125,7 +136,7 @@ class PartiallySignedInput:
             # First byte of key is the type
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
-            if key_type == 0:
+            if key_type == PartiallySignedInput.PSBT_IN_NON_WITNESS_UTXO:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate Key, input non witness utxo already provided")
                 elif len(key) != 1:
@@ -134,7 +145,7 @@ class PartiallySignedInput:
                 utxo_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.non_witness_utxo.deserialize(utxo_bytes)
                 self.non_witness_utxo.rehash()
-            elif key_type == 1:
+            elif key_type == PartiallySignedInput.PSBT_IN_WITNESS_UTXO:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate Key, input witness utxo already provided")
                 elif len(key) != 1:
@@ -142,7 +153,7 @@ class PartiallySignedInput:
                 self.witness_utxo = CTxOut()
                 tx_out_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.witness_utxo.deserialize(tx_out_bytes)
-            elif key_type == 2:
+            elif key_type == PartiallySignedInput.PSBT_IN_PARTIAL_SIG:
                 if len(key) != 34 and len(key) != 66:
                     raise PSBTSerializationError("Size of key was not the expected size for the type partial signature pubkey")
                 pubkey = key[1:]
@@ -151,34 +162,34 @@ class PartiallySignedInput:
 
                 sig = deser_string(f)
                 self.partial_sigs[pubkey] = sig
-            elif key_type == 3:
+            elif key_type == PartiallySignedInput.PSBT_IN_SIGHASH_TYPE:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input sighash type already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("sighash key is more than one byte type")
                 sighash_bytes = deser_string(f)
                 self.sighash = struct.unpack("<I", sighash_bytes)[0]
-            elif key_type == 4:
+            elif key_type == PartiallySignedInput.PSBT_IN_REDEEM_SCRIPT:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input redeemScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
-            elif key_type == 5:
+            elif key_type == PartiallySignedInput.PSBT_IN_WITNESS_SCRIPT:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("witnessScript key is more than one byte type")
                 self.witness_script = deser_string(f)
-            elif key_type == 6:
+            elif key_type == PartiallySignedInput.PSBT_IN_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
-            elif key_type == 7:
+            elif key_type == PartiallySignedInput.PSBT_IN_FINAL_SCRIPTSIG:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptSig already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("final scriptSig key is more than one byte type")
                 self.final_script_sig = deser_string(f)
-            elif key_type == 8:
+            elif key_type == PartiallySignedInput.PSBT_IN_FINAL_SCRIPTWITNESS:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input final scriptWitness already provided")
                 elif len(key) != 1:
@@ -251,6 +262,11 @@ class PartiallySignedOutput:
     """
     An object for a PSBT output map.
     """
+
+    PSBT_OUT_REDEEM_SCRIPT = 0x00
+    PSBT_OUT_WITNESS_SCRIPT = 0x01
+    PSBT_OUT_BIP32_DERIVATION = 0x02
+
     def __init__(self) -> None:
         self.redeem_script = b""
         self.witness_script = b""
@@ -288,19 +304,19 @@ class PartiallySignedOutput:
             # First byte of key is the type
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
-            if key_type == 0:
+            if key_type == PartiallySignedOutput.PSBT_OUT_REDEEM_SCRIPT:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output redeemScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output redeemScript key is more than one byte type")
                 self.redeem_script = deser_string(f)
-            elif key_type == 1:
+            elif key_type == PartiallySignedOutput.PSBT_OUT_WITNESS_SCRIPT:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output witnessScript already provided")
                 elif len(key) != 1:
                     raise PSBTSerializationError("Output witnessScript key is more than one byte type")
                 self.witness_script = deser_string(f)
-            elif key_type == 2:
+            elif key_type == PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
             else:
                 if key in self.unknown:
@@ -339,6 +355,9 @@ class PSBT(object):
     """
     A class representing a PSBT
     """
+
+    PSBT_GLOBAL_UNSIGNED_TX = 0x00
+    PSBT_GLOBAL_XPUB = 0x01
 
     def __init__(self, tx: Optional[CTransaction] = None) -> None:
         """
@@ -386,7 +405,7 @@ class PSBT(object):
             key_type = struct.unpack("b", bytearray([key[0]]))[0]
 
             # Do stuff based on type
-            if key_type == 0x00:
+            if key_type == PSBT.PSBT_GLOBAL_UNSIGNED_TX:
                 # Checks for correctness
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, unsigned tx already provided")
@@ -401,7 +420,7 @@ class PSBT(object):
                 for txin in self.tx.vin:
                     if len(txin.scriptSig) != 0 or not self.tx.wit.is_null():
                         raise PSBTSerializationError("Unsigned tx does not have empty scriptSigs and scriptWitnesses")
-            elif key_type == 0x01:
+            elif key_type == PSBT.PSBT_GLOBAL_XPUB:
                 DeserializeHDKeypath(f, key, self.xpub, [79])
             else:
                 if key in self.unknown:
