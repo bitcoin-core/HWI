@@ -1,7 +1,7 @@
 from typing import Tuple, Mapping, Optional, Union
 from io import BytesIO
 
-from ledgercomm import Transport
+from .ledgercomm import Transport
 
 from ...common import Chain
 

@@ -16,3 +16,4 @@ As the library originally copied several functions and classes from HWI, the maj
 * Removed `btchip/btchipComm.py` as it is not doing anything.
 * Remove usage of `typing.Literal` (needed for Python 3.6 support)
 * Removed the `sign_message` function (to be reintroduced when message signing is available for both legacy and new clients).
+* Use `ledgercomm` relative import
