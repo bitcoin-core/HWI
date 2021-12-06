@@ -24,8 +24,8 @@ except ImportError:
 
 
 class TransportClient:
-    def __init__(self, interface: str = "tcp", server: str = "127.0.0.1", port: int = 9999, debug: bool = False):
-        self.transport = Transport('hid', debug=debug) if interface == 'hid' else Transport(interface, server, port, debug)
+    def __init__(self, interface: str = "tcp", server: str = "127.0.0.1", port: int = 9999, hid_path: Optional[bytes] = None, debug: bool = False):
+        self.transport = Transport('hid', debug=debug, hid_path=hid_path) if interface == 'hid' else Transport(interface, server, port, debug)
 
     def apdu_exchange(
         self, cla: int, ins: int, data: bytes = b"", p1: int = 0, p2: int = 0
