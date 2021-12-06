@@ -47,6 +47,7 @@ class Transport:
                  interface: str = "tcp", # Literal["hid", "tcp"]
                  server: str = "127.0.0.1",
                  port: int = 9999,
+                 hid_path: Optional[bytes] = None,
                  debug: bool = False) -> None:
         """Init constructor of Transport."""
         if debug:
@@ -61,7 +62,7 @@ class Transport:
 
         self.com: Union[TCPClient, HID] = (TCPClient(server=server, port=port)
                                            if self.interface == TransportType.TCP
-                                           else HID())
+                                           else HID(hid_path=hid_path))
 
         self.com.open()
 

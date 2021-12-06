@@ -32,14 +32,14 @@ class HID(Comm):
 
     """
 
-    def __init__(self, vendor_id: int = 0x2C97) -> None:
+    def __init__(self, vendor_id: int = 0x2C97, hid_path: Optional[bytes] = None) -> None:
         """Init constructor of HID."""
         if hid is None:
             raise ImportError("hidapi is not installed, try: "
                               "'pip install ledgercomm[hid]'")
 
         self.device = hid.device()
-        self.path: Optional[bytes] = None
+        self.path: Optional[bytes] = hid_path
         self.__opened: bool = False
         self.vendor_id: int = vendor_id
 
@@ -52,7 +52,8 @@ class HID(Comm):
 
         """
         if not self.__opened:
-            self.path = HID.enumerate_devices(self.vendor_id)[0]
+            if self.path is None:
+                self.path = HID.enumerate_devices(self.vendor_id)[0]
             self.device.open_path(self.path)
             self.device.set_nonblocking(True)
             self.__opened = True
