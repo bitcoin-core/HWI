@@ -213,40 +213,40 @@ class PartiallySignedInput:
         r = b""
 
         if self.non_witness_utxo:
-            r += ser_string(b"\x00")
+            r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_NON_WITNESS_UTXO))
             tx = self.non_witness_utxo.serialize_with_witness()
             r += ser_string(tx)
 
         if self.witness_utxo:
-            r += ser_string(b"\x01")
+            r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_WITNESS_UTXO))
             tx = self.witness_utxo.serialize()
             r += ser_string(tx)
 
         if len(self.final_script_sig) == 0 and self.final_script_witness.is_null():
             for pubkey, sig in sorted(self.partial_sigs.items()):
-                r += ser_string(b"\x02" + pubkey)
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_PARTIAL_SIG) + pubkey)
                 r += ser_string(sig)
 
             if self.sighash is not None:
-                r += ser_string(b"\x03")
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_SIGHASH_TYPE))
                 r += ser_string(struct.pack("<I", self.sighash))
 
             if len(self.redeem_script) != 0:
-                r += ser_string(b"\x04")
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_REDEEM_SCRIPT))
                 r += ser_string(self.redeem_script)
 
             if len(self.witness_script) != 0:
-                r += ser_string(b"\x05")
+                r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_WITNESS_SCRIPT))
                 r += ser_string(self.witness_script)
 
-            r += SerializeHDKeypath(self.hd_keypaths, b"\x06")
+            r += SerializeHDKeypath(self.hd_keypaths, ser_compact_size(PartiallySignedInput.PSBT_IN_BIP32_DERIVATION))
 
         if len(self.final_script_sig) != 0:
-            r += ser_string(b"\x07")
+            r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_FINAL_SCRIPTSIG))
             r += ser_string(self.final_script_sig)
 
         if not self.final_script_witness.is_null():
-            r += ser_string(b"\x08")
+            r += ser_string(ser_compact_size(PartiallySignedInput.PSBT_IN_FINAL_SCRIPTWITNESS))
             witstack = self.final_script_witness.serialize()
             r += ser_string(witstack)
 
@@ -334,14 +334,14 @@ class PartiallySignedOutput:
         """
         r = b""
         if len(self.redeem_script) != 0:
-            r += ser_string(b"\x00")
+            r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_REDEEM_SCRIPT))
             r += ser_string(self.redeem_script)
 
         if len(self.witness_script) != 0:
-            r += ser_string(b"\x01")
+            r += ser_string(ser_compact_size(PartiallySignedOutput.PSBT_OUT_WITNESS_SCRIPT))
             r += ser_string(self.witness_script)
 
-        r += SerializeHDKeypath(self.hd_keypaths, b"\x02")
+        r += SerializeHDKeypath(self.hd_keypaths, ser_compact_size(PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION))
 
         for key, value in sorted(self.unknown.items()):
             r += ser_string(key)
@@ -473,7 +473,7 @@ class PSBT(object):
         r += b"psbt\xff"
 
         # unsigned tx flag
-        r += b"\x01\x00"
+        r += ser_string(ser_compact_size(PSBT.PSBT_GLOBAL_UNSIGNED_TX))
 
         # write serialized tx
         tx = self.tx.serialize_with_witness()
@@ -481,7 +481,7 @@ class PSBT(object):
         r += tx
 
         # write xpubs
-        r += SerializeHDKeypath(self.xpub, b"\x01")
+        r += SerializeHDKeypath(self.xpub, ser_compact_size(PSBT.PSBT_GLOBAL_XPUB))
 
         # unknowns
         for key, value in sorted(self.unknown.items()):
