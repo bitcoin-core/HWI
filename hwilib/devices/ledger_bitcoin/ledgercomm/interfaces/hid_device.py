@@ -7,8 +7,8 @@ try:
 except ImportError:
     hid = None
 
-from ledgercomm.interfaces.comm import Comm
-from ledgercomm.log import LOG
+from .comm import Comm
+from ..log import LOG
 
 
 class HID(Comm):

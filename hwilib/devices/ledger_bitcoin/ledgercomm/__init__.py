@@ -1,6 +1,6 @@
 """ledgercomm module."""
 
-from ledgercomm.transport import Transport
+from .transport import Transport
 
 __version__ = "1.1.0"
 

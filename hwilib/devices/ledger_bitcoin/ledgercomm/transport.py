@@ -5,9 +5,9 @@ import logging
 import struct
 from typing import Union, Tuple, Optional, cast
 
-from ledgercomm.interfaces.tcp_client import TCPClient
-from ledgercomm.interfaces.hid_device import HID
-from ledgercomm.log import LOG
+from .interfaces.tcp_client import TCPClient
+from .interfaces.hid_device import HID
+from .log import LOG
 
 
 class TransportType(enum.Enum):

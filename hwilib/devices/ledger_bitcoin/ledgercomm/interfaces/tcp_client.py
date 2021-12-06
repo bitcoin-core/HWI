@@ -3,8 +3,8 @@
 import socket
 from typing import Tuple
 
-from ledgercomm.interfaces.comm import Comm
-from ledgercomm.log import LOG
+from .comm import Comm
+from ..log import LOG
 
 
 class TCPClient(Comm):
