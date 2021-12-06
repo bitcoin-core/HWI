@@ -55,7 +55,7 @@ def check_keypath(key_path: str) -> bool:
 
 class DongleAdaptor:
     # TODO: type for comm_client
-    def __init__(self, comm_client):
+    def __init__(self, comm_client) -> None:
         self.comm_client = comm_client
 
     def exchange(self, apdu: Union[bytes, bytearray]) -> bytearray:
