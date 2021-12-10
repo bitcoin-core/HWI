@@ -242,8 +242,9 @@ class TrezorClient:
         return self._raw_read()
 
     @session
-    def call(self, msg: "MessageType") -> "MessageType":
-        self.check_firmware_version()
+    def call(self, msg: "MessageType", check_fw: bool = True) -> "MessageType":
+        if check_fw:
+            self.check_firmware_version()
         resp = self.call_raw(msg)
         while True:
             if isinstance(resp, messages.PinMatrixRequest):

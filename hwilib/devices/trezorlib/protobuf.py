@@ -182,8 +182,8 @@ class Field:
 class _MessageTypeMeta(type):
     def __init__(cls, name: str, bases: tuple, d: dict) -> None:
         super().__init__(name, bases, d)  # type: ignore [Expected 1 positional]
-        if name != "MessageType":
-            cls.__init__ = MessageType.__init__  # type: ignore [Cannot assign member "__init__" for type "_MessageTypeMeta"]
+        #if name != "MessageType":
+        #    cls.__init__ = MessageType.__init__  # type: ignore [Cannot assign member "__init__" for type "_MessageTypeMeta"]
 
 
 class MessageType(metaclass=_MessageTypeMeta):
