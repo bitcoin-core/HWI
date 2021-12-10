@@ -16,11 +16,13 @@ from .trezorlib.transport import (
     webusb,
 )
 from .trezor import TrezorClient, HID_IDS, WEBUSB_IDS
+from .trezorlib.mapping import DEFAULT_MAPPING
 from .trezorlib.messages import (
     DebugLinkState,
     Features,
     ResetDevice,
 )
+from .trezorlib.models import TrezorModel
 
 from typing import (
     Any,
@@ -144,14 +146,20 @@ class KeepkeyClient(TrezorClient):
 
         As Keepkeys are clones of the Trezor 1, please refer to `TrezorClient` for documentation.
         """
-        super(KeepkeyClient, self).__init__(path, password, expert, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH)
+        model = TrezorModel(
+            name="K1-14M",
+            minimum_version=(0, 0, 0),
+            vendors=("keepkey.com"),
+            usb_ids=(), # unused
+            default_mapping=DEFAULT_MAPPING,
+        )
+        model.default_mapping.register(KeepkeyFeatures)
+        model.default_mapping.register(KeepkeyResetDevice)
+        if path.startswith("udp"):
+            model.default_mapping.register(KeepkeyDebugLinkState)
+
+        super(KeepkeyClient, self).__init__(path, password, expert, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH, model)
         self.type = 'Keepkey'
-        self.client.vendors = ("keepkey.com")
-        self.client.minimum_versions = {"K1-14AM": (0, 0, 0)}
-        self.client.map_type_to_class_override[KeepkeyFeatures.MESSAGE_WIRE_TYPE] = KeepkeyFeatures
-        self.client.map_type_to_class_override[KeepkeyResetDevice.MESSAGE_WIRE_TYPE] = KeepkeyResetDevice
-        if self.simulator:
-            self.client.debug.map_type_to_class_override[KeepkeyDebugLinkState.MESSAGE_WIRE_TYPE] = KeepkeyDebugLinkState
 
     def can_sign_taproot(self) -> bool:
         """

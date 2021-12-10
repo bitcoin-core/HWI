@@ -33,6 +33,7 @@ from ..errors import (
 from .trezorlib.client import TrezorClient as Trezor, PASSPHRASE_ON_DEVICE
 from .trezorlib.debuglink import TrezorClientDebugLink
 from .trezorlib.exceptions import Cancelled, TrezorFailure
+from .trezorlib.models import TrezorModel
 from .trezorlib.transport import (
     DEV_TREZOR1,
     TREZORS,
@@ -273,7 +274,8 @@ class TrezorClient(HardwareWalletClient):
         expert: bool = False,
         hid_ids: Set[Tuple[int, int]] = HID_IDS,
         webusb_ids: Set[Tuple[int, int]] = WEBUSB_IDS,
-        sim_path: str = SIMULATOR_PATH
+        sim_path: str = SIMULATOR_PATH,
+        model: Optional[TrezorModel] = None
     ) -> None:
         super(TrezorClient, self).__init__(path, password, expert)
         self.simulator = False
@@ -281,10 +283,12 @@ class TrezorClient(HardwareWalletClient):
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
             self.client = TrezorClientDebugLink(transport=transport)
+            if model:
+                self.client.mapping = model.default_mapping
             self.simulator = True
             self.client.use_passphrase(password)
         else:
-            self.client = Trezor(transport=transport, ui=PassphraseUI(password))
+            self.client = Trezor(transport=transport, ui=PassphraseUI(password), model=model, _init_device=False)
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
