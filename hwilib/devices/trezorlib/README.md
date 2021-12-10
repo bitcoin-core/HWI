@@ -2,7 +2,7 @@
 
 This is a stripped down version of the official [python-trezor](https://github.com/trezor/trezor-firmware/tree/master/python) library.
 
-This stripped down version was made at commit [e4c406822c00695aaf7cd420634643236de17849](https://github.com/trezor/trezor-firmware/commit/e4c406822c00695aaf7cd420634643236de17849).
+This stripped down version was made at commit [3ed92a72bb2f4c923bd826ffc959e2f1660e75cd](https://github.com/trezor/trezor-firmware/commit/3ed92a72bb2f4c923bd826ffc959e2f1660e75cd).
 
 ## Changes
 
