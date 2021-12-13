@@ -123,8 +123,8 @@ class LegacyClient(Client):
         self,
         wallet: Wallet,
         wallet_hmac: Optional[bytes],
-        change: int,
-        address_index: int,
+        change: int, # Ignored
+        address_index: int, # Ignored
         display: bool,
     ) -> str:
         # TODO: check keypath
@@ -151,7 +151,7 @@ class LegacyClient(Client):
 
         p2sh_p2wpkh = addr_type == AddressType.SH_WIT
         bech32 = addr_type == AddressType.WIT
-        output = self.app.getWalletPublicKey(f"{key_origin_path}/{change}/{address_index}", display, p2sh_p2wpkh or bech32, bech32)
+        output = self.app.getWalletPublicKey(key_origin_path, display, p2sh_p2wpkh or bech32, bech32)
         assert isinstance(output["address"], str)
         return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
