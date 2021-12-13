@@ -286,6 +286,7 @@ task:
         dockerfile: ci/py310.Dockerfile
       env:
         PYTHON: 3.10
+  install_script: poetry install
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   matrix:
@@ -296,7 +297,6 @@ task:
     - env:
         INTERFACE: stdin
   name: Python $PYTHON $DEVICE $INTERFACE
-  install_script: poetry install
   test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=$INTERFACE --device-only; cd ..
   on_failure:
     failed_script: tail -v -n +1 test/*.std*
