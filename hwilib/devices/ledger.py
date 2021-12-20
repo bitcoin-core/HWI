@@ -352,8 +352,18 @@ class LedgerClient(HardwareWalletClient):
     ) -> str:
         if not check_keypath(keypath):
             raise BadArgumentError("Invalid keypath")
-        p2sh_p2wpkh = addr_type == AddressType.SH_WIT
-        bech32 = addr_type == AddressType.WIT
+        bech32 = False
+        p2sh_p2wpkh = False
+        if addr_type == AddressType.SH_WIT:
+            p2sh_p2wpkh = True
+        elif addr_type == AddressType.WIT:
+            bech32 = True
+        elif addr_type == AddressType.LEGACY:
+            pass
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Ledger does not support displaying Taproot addresses yet")
+        else:
+            raise BadArgumentError("Unknown address type")
         output = self.app.getWalletPublicKey(keypath[2:], True, p2sh_p2wpkh or bech32, bech32)
         assert isinstance(output["address"], str)
         return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
@@ -424,6 +434,17 @@ class LedgerClient(HardwareWalletClient):
         :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Ledger Nano S and X do not support toggling passphrase from the host')
+
+    @ledger_exception
+    def can_sign_taproot(self) -> bool:
+        """
+        Ledgers support Taproot if the Bitcoin App version greater than 2.0.0.
+        However HWI does not implement Taproot support for the Ledger yet.
+
+        :returns: False, always
+        """
+        return False
+
 
 def enumerate(password: str = '') -> List[Dict[str, Any]]:
     results = []

@@ -593,6 +593,8 @@ class TrezorClient(HardwareWalletClient):
             script_type = messages.InputScriptType.SPENDWITNESS
         elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Trezor does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
 
@@ -753,6 +755,18 @@ class TrezorClient(HardwareWalletClient):
                 print('Use \'sendpin\' to provide the number positions for the PIN as displayed on your device\'s screen', file=sys.stderr)
                 print(PIN_MATRIX_DESCRIPTION, file=sys.stderr)
         return True
+
+    @trezor_exception
+    def can_sign_taproot(self) -> bool:
+        """
+        Trezor T supports Taproot in firmware versions greater than (not including) 2.4.2.
+        Trezor One supports Taproot in firmware versions greater than (not including) 1.10.3.
+        However HWI does not implement Taproot support for any Trezor devices yet.
+
+        :returns: False, always.
+        """
+        return False
+
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []

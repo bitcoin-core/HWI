@@ -131,6 +131,19 @@ def xpub_to_pub_hex(xpub: str) -> str:
     pubkey = data[-37:-4]
     return hexlify(pubkey).decode()
 
+
+def xpub_to_xonly_pub_hex(xpub: str) -> str:
+    """
+    Get the public key as a string from the extended public key.
+
+    :param xpub: The extended pubkey
+    :return: The pubkey hex string
+    """
+    data = decode(xpub)
+    pubkey = data[-36:-4]
+    return hexlify(pubkey).decode()
+
+
 def xpub_main_2_test(xpub: str) -> str:
     """
     Convert an extended pubkey from mainnet version to testnet version.

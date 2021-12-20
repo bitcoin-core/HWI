@@ -22,7 +22,7 @@ import importlib
 import logging
 import platform
 
-from ._base58 import xpub_to_pub_hex
+from ._base58 import xpub_to_pub_hex, xpub_to_xonly_pub_hex
 from .key import (
     get_bip44_purpose,
     get_bip44_chain,
@@ -42,6 +42,7 @@ from .descriptor import (
     Descriptor,
     parse_descriptor,
     MultisigDescriptor,
+    TRDescriptor,
     PKHDescriptor,
     PubkeyProvider,
     SHDescriptor,
@@ -289,8 +290,6 @@ def getdescriptor(
     :return: The descriptor constructed given the above arguments and key fetched from the device
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
-    is_wpkh = addr_type is AddressType.WIT
-    is_sh_wpkh = addr_type is AddressType.SH_WIT
 
     parsed_path = []
     if not path:
@@ -336,12 +335,18 @@ def getdescriptor(
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
     pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix)
-    if is_wpkh:
-        return WPKHDescriptor(pubkey)
-    elif is_sh_wpkh:
-        return SHDescriptor(WPKHDescriptor(pubkey))
-    else:
+    if addr_type is AddressType.LEGACY:
         return PKHDescriptor(pubkey)
+    elif addr_type is AddressType.SH_WIT:
+        return SHDescriptor(WPKHDescriptor(pubkey))
+    elif addr_type is AddressType.WIT:
+        return WPKHDescriptor(pubkey)
+    elif addr_type is AddressType.TAP:
+        if not client.can_sign_taproot():
+            raise UnavailableActionError("Device does not support Taproot")
+        return TRDescriptor(pubkey)
+    else:
+        raise ValueError("Unknown address type")
 
 def getkeypool(
     client: HardwareWalletClient,
@@ -365,16 +370,21 @@ def getkeypool(
     :param internal: Whether the dictionary should indicate that the descriptor should be for change addresses
     :param keypool: Whether the dictionary should indicate that the dsecriptor should be added to the Bitcoin Core keypool/addresspool
     :param account: The BIP 44 account to use if ``path`` is not specified
-    :param sh_wpkh: Whether to return a descriptor specifying p2sh-segwit addresses
-    :param wpkh: Whether to return a descriptor specifying native segwit addresses
+    :param addr_type: The address type
     :param addr_all: Whether to return a multiple descriptors for every address type
     :return: The dictionary containing the descriptor and all of the arguments for ``importmulti`` or ``importdescriptors``
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
+    supports_taproot = client.can_sign_taproot()
 
     addr_types = [addr_type]
     if addr_all:
         addr_types = list(AddressType)
+    elif not supports_taproot and addr_type == AddressType.TAP:
+        raise UnavailableActionError("Device does not support Taproot")
+
+    if not supports_taproot and AddressType.TAP in addr_types:
+        del addr_types[addr_types.index(AddressType.TAP)]
 
     # When no specific path or internal-ness is specified, create standard types
     chains: List[Dict[str, Any]] = []
@@ -406,7 +416,7 @@ def getdescriptors(
 
     for internal in [False, True]:
         descriptors = []
-        for addr_type in (AddressType.LEGACY, AddressType.SH_WIT, AddressType.WIT):
+        for addr_type in list(AddressType):
             try:
                 desc = getdescriptor(client, master_fpr=master_fpr, internal=internal, addr_type=addr_type, account=account)
             except UnavailableActionError:
@@ -461,19 +471,21 @@ def displayaddress(
                     addr_type = AddressType.WIT
                 return {"address": client.display_multisig_address(addr_type, descriptor)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
-        if isinstance(descriptor, PKHDescriptor) or is_wpkh:
+        if isinstance(descriptor, PKHDescriptor) or is_wpkh or isinstance(descriptor, TRDescriptor):
             pubkey = descriptor.pubkeys[0]
             if pubkey.origin is None:
                 raise BadArgumentError(f"Descriptor missing origin info: {desc}")
             if pubkey.origin.fingerprint != client.get_master_fingerprint():
                 raise BadArgumentError(f"Descriptor fingerprint does not match device: {desc}")
             xpub = client.get_pubkey_at_path(pubkey.origin.get_derivation_path()).to_string()
-            if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub):
+            if pubkey.pubkey != xpub and pubkey.pubkey != xpub_to_pub_hex(xpub) and pubkey.pubkey != xpub_to_xonly_pub_hex(xpub):
                 raise BadArgumentError(f"Key in descriptor does not match device: {desc}")
             if is_sh and is_wpkh:
                 addr_type = AddressType.SH_WIT
             elif not is_sh and is_wpkh:
                 addr_type = AddressType.WIT
+            elif isinstance(descriptor, TRDescriptor):
+                addr_type = AddressType.TAP
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
     raise BadArgumentError("Missing both path and descriptor")
 

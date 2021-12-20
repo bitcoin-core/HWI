@@ -485,6 +485,16 @@ class JadeClient(HardwareWalletClient):
         """
         raise UnavailableActionError('Blockstream Jade does not support toggling passphrase from the host')
 
+    @jade_exception
+    def can_sign_taproot(self) -> bool:
+        """
+        Blockstream Jade does not currently support Taproot.
+
+        :returns: False, always
+        """
+        return False
+
+
 def enumerate(password: str = '') -> List[Dict[str, Any]]:
     results = []
 

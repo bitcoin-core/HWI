@@ -669,6 +669,15 @@ class DigitalbitboxClient(HardwareWalletClient):
         """
         raise UnavailableActionError('The Digital Bitbox does not support toggling passphrase from the host')
 
+    def can_sign_taproot(self) -> bool:
+        """
+        The BitBox01 does not support Taproot as it is no longer supported by the manufacturer
+
+        :returns: False, always
+        """
+        return False
+
+
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)

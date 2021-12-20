@@ -228,3 +228,12 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    def can_sign_taproot(self) -> bool:
+        """
+        Whether the device has a version that can sign for Taproot inputs
+
+        :return: Whether Taproot is supported
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")

@@ -241,6 +241,8 @@ class ColdcardClient(HardwareWalletClient):
             addr_fmt = AF_P2WPKH
         elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
 
@@ -385,6 +387,15 @@ class ColdcardClient(HardwareWalletClient):
         :raises UnavailableActionError: Always, this function is unavailable
         """
         raise UnavailableActionError('The Coldcard does not support toggling passphrase from the host')
+
+    def can_sign_taproot(self) -> bool:
+        """
+        The Coldard does not support Taproot yet.
+
+        :returns: False, always
+        """
+        return False
+
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:
     results = []

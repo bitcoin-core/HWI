@@ -466,6 +466,8 @@ class Bitbox02Client(HardwareWalletClient):
             raise UnavailableActionError(
                 "The BitBox02 does not support legacy p2pkh addresses"
             )
+        elif addr_type == AddressType.TAP:
+            raise UnavailableActionError("BitBox02 does not support displaying Taproot addresses yet")
         else:
             raise BadArgumentError("Unknown address type")
         address = self.init().btc_address(
@@ -866,3 +868,11 @@ class Bitbox02Client(HardwareWalletClient):
 
         bb02.restore_from_mnemonic()
         return True
+
+    def can_sign_taproot(self) -> bool:
+        """
+        The BitBox02 does not support Taproot yet.
+
+        :returns: False, always
+        """
+        return False
