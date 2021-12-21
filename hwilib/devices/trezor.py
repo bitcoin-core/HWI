@@ -282,9 +282,7 @@ class TrezorClient(HardwareWalletClient):
         transport = get_path_transport(path, hid_ids, webusb_ids, sim_path)
         if path.startswith('udp'):
             logging.debug('Simulator found, using DebugLink')
-            self.client = TrezorClientDebugLink(transport=transport)
-            if model:
-                self.client.mapping = model.default_mapping
+            self.client = TrezorClientDebugLink(transport=transport, model=model, _init_device=False)
             self.simulator = True
             self.client.use_passphrase(password)
         else:

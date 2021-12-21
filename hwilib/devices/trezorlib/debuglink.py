@@ -42,6 +42,7 @@ from . import mapping, messages, protobuf
 from .client import TrezorClient
 from .exceptions import TrezorFailure
 from .log import DUMP_BYTES
+from .models import TrezorModel
 from .tools import expect
 
 if TYPE_CHECKING:
@@ -395,7 +396,7 @@ class TrezorClientDebugLink(TrezorClient):
     # without special DebugLink interface provided
     # by the device.
 
-    def __init__(self, transport: "Transport", auto_interact: bool = True) -> None:
+    def __init__(self, transport: "Transport", auto_interact: bool = True, model: Optional[TrezorModel] = None, _init_device: bool = False) -> None:
         try:
             debug_transport = transport.find_debug()
             self.debug = DebugLink(debug_transport, auto_interact)
@@ -410,7 +411,7 @@ class TrezorClientDebugLink(TrezorClient):
 
         self.reset_debug_features()
 
-        super().__init__(transport, ui=self.ui)
+        super().__init__(transport, ui=self.ui, model=model, _init_device=_init_device)
 
     def reset_debug_features(self) -> None:
         """Prepare the debugging client for a new testcase.
