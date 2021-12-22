@@ -14,6 +14,8 @@ import unittest
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
+from hwilib.devices.trezorlib.mapping import DEFAULT_MAPPING
+from hwilib.devices.trezorlib.models import TrezorModel
 from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
 
 from hwilib._cli import process_commands
@@ -60,13 +62,18 @@ class KeepkeyEmulator(DeviceEmulator):
                 time.sleep(0.05)
 
         # Setup the emulator
+        model = TrezorModel(
+            name="K1-14M",
+            minimum_version=(0, 0, 0),
+            vendors=("keepkey.com"),
+            usb_ids=(), # unused
+            default_mapping=DEFAULT_MAPPING,
+        )
+        model.default_mapping.register(KeepkeyFeatures)
+        model.default_mapping.register(KeepkeyResetDevice)
+        model.default_mapping.register(KeepkeyDebugLinkState)
         wirelink = UdpTransport.enumerate("127.0.0.1:11044")[0]
-        client = TrezorClientDebugLink(wirelink)
-        client.vendors = ("keepkey.com")
-        client.minimum_versions = {"K1-14AM": (0, 0, 0)}
-        client.map_type_to_class_override[KeepkeyFeatures.MESSAGE_WIRE_TYPE] = KeepkeyFeatures
-        client.map_type_to_class_override[KeepkeyResetDevice.MESSAGE_WIRE_TYPE] = KeepkeyResetDevice
-        client.debug.map_type_to_class_override[KeepkeyDebugLinkState.MESSAGE_WIRE_TYPE] = KeepkeyDebugLinkState
+        client = TrezorClientDebugLink(wirelink, model=model)
         client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests

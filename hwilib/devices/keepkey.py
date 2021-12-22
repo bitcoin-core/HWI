@@ -9,19 +9,20 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
-from .trezorlib import protobuf as p
+from .trezorlib import protobuf
 from .trezorlib.transport import (
     hid,
     udp,
     webusb,
 )
 from .trezor import TrezorClient, HID_IDS, WEBUSB_IDS
+from .trezorlib.mapping import DEFAULT_MAPPING
 from .trezorlib.messages import (
     DebugLinkState,
     Features,
-    HDNodeType,
     ResetDevice,
 )
+from .trezorlib.models import TrezorModel
 
 from typing import (
     Any,
@@ -41,44 +42,58 @@ WEBUSB_IDS.update(KEEPKEY_WEBUSB_IDS)
 
 
 class KeepkeyFeatures(Features): # type: ignore
+    MESSAGE_WIRE_TYPE = 17
+    FIELDS = {
+        1: protobuf.Field("vendor", "string", repeated=False, required=False),
+        2: protobuf.Field("major_version", "uint32", repeated=False, required=True),
+        3: protobuf.Field("minor_version", "uint32", repeated=False, required=True),
+        4: protobuf.Field("patch_version", "uint32", repeated=False, required=True),
+        5: protobuf.Field("bootloader_mode", "bool", repeated=False, required=False),
+        6: protobuf.Field("device_id", "string", repeated=False, required=False),
+        7: protobuf.Field("pin_protection", "bool", repeated=False, required=False),
+        8: protobuf.Field("passphrase_protection", "bool", repeated=False, required=False),
+        9: protobuf.Field("language", "string", repeated=False, required=False),
+        10: protobuf.Field("label", "string", repeated=False, required=False),
+        12: protobuf.Field("initialized", "bool", repeated=False, required=False),
+        13: protobuf.Field("revision", "bytes", repeated=False, required=False),
+        14: protobuf.Field("bootloader_hash", "bytes", repeated=False, required=False),
+        15: protobuf.Field("imported", "bool", repeated=False, required=False),
+        16: protobuf.Field("unlocked", "bool", repeated=False, required=False),
+        17: protobuf.Field("passphrase_cached", "bool", repeated=False, required=False),
+        21: protobuf.Field("model", "string", repeated=False, required=False),
+        22: protobuf.Field("firmware_variant", "string", repeated=False, required=False),
+        23: protobuf.Field("firmware_hash", "bytes", repeated=False, required=False),
+        24: protobuf.Field("no_backup", "bool", repeated=False, required=False),
+    }
+
     def __init__(
         self,
         *,
         firmware_variant: Optional[str] = None,
         firmware_hash: Optional[bytes] = None,
+        passphrase_cached: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+        self.passphrase_cached = passphrase_cached
         self.firmware_variant = firmware_variant
         self.firmware_hash = firmware_hash
 
-    @classmethod
-    def get_fields(cls) -> Dict[int, p.FieldInfo]:
-        return {
-            1: ('vendor', p.UnicodeType, None),
-            2: ('major_version', p.UVarintType, None),
-            3: ('minor_version', p.UVarintType, None),
-            4: ('patch_version', p.UVarintType, None),
-            5: ('bootloader_mode', p.BoolType, None),
-            6: ('device_id', p.UnicodeType, None),
-            7: ('pin_protection', p.BoolType, None),
-            8: ('passphrase_protection', p.BoolType, None),
-            9: ('language', p.UnicodeType, None),
-            10: ('label', p.UnicodeType, None),
-            12: ('initialized', p.BoolType, None),
-            13: ('revision', p.BytesType, None),
-            14: ('bootloader_hash', p.BytesType, None),
-            15: ('imported', p.BoolType, None),
-            16: ('unlocked', p.BoolType, None),
-            21: ('model', p.UnicodeType, None),
-            22: ('firmware_variant', p.UnicodeType, None),
-            23: ('firmware_hash', p.BytesType, None),
-            24: ('no_backup', p.BoolType, None),
-            25: ('wipe_code_protection', p.BoolType, None),
-        }
-
 
 class KeepkeyResetDevice(ResetDevice): # type: ignore
+    MESSAGE_WIRE_TYPE = 14
+    FIELDS = {
+        1: protobuf.Field("display_random", "bool", repeated=False, required=False),
+        2: protobuf.Field("strength", "uint32", repeated=False, required=False),
+        3: protobuf.Field("passphrase_protection", "bool", repeated=False, required=False),
+        4: protobuf.Field("pin_protection", "bool", repeated=False, required=False),
+        5: protobuf.Field("language", "string", repeated=False, required=False),
+        6: protobuf.Field("label", "string", repeated=False, required=False),
+        7: protobuf.Field("no_backup", "bool", repeated=False, required=False),
+        8: protobuf.Field("auto_lock_delay_ms", "uint32", repeated=False, required=False),
+        9: protobuf.Field("u2f_counter", "uint32", repeated=False, required=False),
+    }
+
     def __init__(
         self,
         *,
@@ -88,22 +103,26 @@ class KeepkeyResetDevice(ResetDevice): # type: ignore
         super().__init__(**kwargs)
         self.auto_lock_delay_ms = auto_lock_delay_ms
 
-    @classmethod
-    def get_fields(cls) -> Dict[int, p.FieldInfo]:
-        return {
-            1: ('display_random', p.BoolType, None),
-            2: ('strength', p.UVarintType, 256),  # default=256
-            3: ('passphrase_protection', p.BoolType, None),
-            4: ('pin_protection', p.BoolType, None),
-            5: ('language', p.UnicodeType, "en-US"),  # default=en-US
-            6: ('label', p.UnicodeType, None),
-            7: ('no_backup', p.BoolType, None),
-            8: ('auto_lock_delay_ms', p.UVarintType, None),
-            9: ('u2f_counter', p.UVarintType, None),
-        }
-
 
 class KeepkeyDebugLinkState(DebugLinkState): # type: ignore
+    MESSAGE_WIRE_TYPE = 102
+    FIELDS = {
+        1: protobuf.Field("layout", "bytes", repeated=False, required=False),
+        2: protobuf.Field("pin", "string", repeated=False, required=False),
+        3: protobuf.Field("matrix", "string", repeated=False, required=False),
+        4: protobuf.Field("mnemonic_secret", "bytes", repeated=False, required=False),
+        5: protobuf.Field("node", "HDNodeType", repeated=False, required=False),
+        6: protobuf.Field("passphrase_protection", "bool", repeated=False, required=False),
+        7: protobuf.Field("reset_word", "string", repeated=False, required=False),
+        8: protobuf.Field("reset_entropy", "bytes", repeated=False, required=False),
+        9: protobuf.Field("recovery_fake_word", "string", repeated=False, required=False),
+        10: protobuf.Field("recovery_word_pos", "uint32", repeated=False, required=False),
+        11: protobuf.Field("recovery_cipher", "string", repeated=False, required=False),
+        12: protobuf.Field("recovery_auto_completed_word", "string", repeated=False, required=False),
+        13: protobuf.Field("firmware_hash", "bytes", repeated=False, required=False),
+        14: protobuf.Field("storage_hash", "bytes", repeated=False, required=False),
+    }
+
     def __init__(
         self,
         *,
@@ -119,25 +138,6 @@ class KeepkeyDebugLinkState(DebugLinkState): # type: ignore
         self.firmware_hash = firmware_hash
         self.storage_hash = storage_hash
 
-    @classmethod
-    def get_fields(cls) -> Dict[int, p.FieldType]:
-        return {
-            1: ('layout', p.BytesType, None),
-            2: ('pin', p.UnicodeType, None),
-            3: ('matrix', p.UnicodeType, None),
-            4: ('mnemonic_secret', p.BytesType, None),
-            5: ('node', HDNodeType, None),
-            6: ('passphrase_protection', p.BoolType, None),
-            7: ('reset_word', p.UnicodeType, None),
-            8: ('reset_entropy', p.BytesType, None),
-            9: ('recovery_fake_word', p.UnicodeType, None),
-            10: ('recovery_word_pos', p.UVarintType, None),
-            11: ('recovery_cipher', p.UnicodeType, None),
-            12: ('recovery_auto_completed_word', p.UnicodeType, None),
-            13: ('firmware_hash', p.BytesType, None),
-            14: ('storage_hash', p.BytesType, None),
-        }
-
 
 class KeepkeyClient(TrezorClient):
     def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
@@ -146,14 +146,20 @@ class KeepkeyClient(TrezorClient):
 
         As Keepkeys are clones of the Trezor 1, please refer to `TrezorClient` for documentation.
         """
-        super(KeepkeyClient, self).__init__(path, password, expert, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH)
+        model = TrezorModel(
+            name="K1-14M",
+            minimum_version=(0, 0, 0),
+            vendors=("keepkey.com"),
+            usb_ids=(), # unused
+            default_mapping=DEFAULT_MAPPING,
+        )
+        model.default_mapping.register(KeepkeyFeatures)
+        model.default_mapping.register(KeepkeyResetDevice)
+        if path.startswith("udp"):
+            model.default_mapping.register(KeepkeyDebugLinkState)
+
+        super(KeepkeyClient, self).__init__(path, password, expert, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH, model)
         self.type = 'Keepkey'
-        self.client.vendors = ("keepkey.com")
-        self.client.minimum_versions = {"K1-14AM": (0, 0, 0)}
-        self.client.map_type_to_class_override[KeepkeyFeatures.MESSAGE_WIRE_TYPE] = KeepkeyFeatures
-        self.client.map_type_to_class_override[KeepkeyResetDevice.MESSAGE_WIRE_TYPE] = KeepkeyResetDevice
-        if self.simulator:
-            self.client.debug.map_type_to_class_override[KeepkeyDebugLinkState.MESSAGE_WIRE_TYPE] = KeepkeyDebugLinkState
 
     def can_sign_taproot(self) -> bool:
         """
