@@ -457,6 +457,9 @@ class TestSignTx(DeviceTestCase):
             with self.subTest(addrtype="tap", multisig=False, external=external):
                 self._test_signtx("tap", False, external, op_return)
         if self.full_type in SUPPORTS_MIXED:
+            if "trezor" in self.full_type:
+                # Trezors cannot do external mixed with Taproot
+                external = False
             with self.subTest(addrtype="all", multisig=multisig, external=external):
                 self._test_signtx("all", multisig, external, op_return)
 

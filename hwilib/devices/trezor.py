@@ -361,6 +361,7 @@ class TrezorClient(HardwareWalletClient):
             # Prepare inputs
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
+            has_tr = False
             for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
                 txinputtype = messages.TxInputType(
                     prev_hash=ser_uint256(txin.prevout.hash)[::-1],
@@ -464,6 +465,7 @@ class TrezorClient(HardwareWalletClient):
                         for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
                             # TODO: Support script path signing
                             if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
+                                has_tr = True
                                 txinputtype.address_n = origin.path
                                 found = True
                                 our_keys += 1
@@ -483,6 +485,10 @@ class TrezorClient(HardwareWalletClient):
 
                 # append to inputs
                 inputs.append(txinputtype)
+
+            # Cannot sign transactions that have external inputs (to_ignore is not empty) and would sign taproot inputs
+            if has_tr and len(to_ignore) > 0:
+                raise BadArgumentError("Trezor cannot sign taproot inputs when the transaction also has external inputs")
 
             # address version byte
             if self.chain != Chain.MAIN:
