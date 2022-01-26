@@ -179,6 +179,12 @@ def jade_test_suite(emulator, rpc, userpass, interface):
     dev_emulator.start()
     atexit.register(dev_emulator.stop)
 
+    signtx_cases = [
+        (["legacy"], True, True, True),
+        (["segwit"], True, True, True),
+        (["legacy", "segwit"], True, True, True),
+    ]
+
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestJadeDisabledCommands, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
@@ -189,7 +195,7 @@ def jade_test_suite(emulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestJadeGetMultisigAddresses, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     dev_emulator.stop()

@@ -148,6 +148,12 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
             self.assertEqual(result['chaincode'], '7062818c752f878bf96ca668f77630452c3fa033b7415eed3ff568e04ada8104')
             self.assertEqual(result['pubkey'], '029078c9ad8421afd958d7bc054a0952874923e2586fc9375604f0479a354ea193')
 
+    signtx_cases = [
+        (["legacy"], True, True, True),
+        (["segwit"], True, True, True),
+        (["legacy", "segwit"], True, True, True),
+    ]
+
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
@@ -156,7 +162,7 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'digitalbitbox_01_simulator', full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     cleanup_simulator()

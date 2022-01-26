@@ -20,10 +20,6 @@ from hwilib.psbt import PSBT
 SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
 SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
 SUPPORTS_UNSORTED_MS = {"trezor_1", "trezor_t"}
-SUPPORTS_MIXED = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t', 'jade'}
-SUPPORTS_MULTISIG = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
-SUPPORTS_EXTERNAL = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
-SUPPORTS_OP_RETURN = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey', 'jade'}
 SUPPORTS_TAPROOT = {"trezor_1", "trezor_t"}
 
 # Class for emulator control
@@ -67,7 +63,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', signtx_cases=None, methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -85,14 +81,15 @@ class DeviceTestCase(unittest.TestCase):
         if password:
             self.dev_args.extend(['-p', password])
         self.interface = interface
+        self.signtx_cases = signtx_cases
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None):
+    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, signtx_cases=None):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, signtx_cases, name))
         return suite
 
     def do_command(self, args):
@@ -275,6 +272,7 @@ class TestSignTx(DeviceTestCase):
     def setUp(self):
         super().setUp()
         self.setup_wallets()
+        assert self.signtx_cases is not None
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
@@ -369,7 +367,7 @@ class TestSignTx(DeviceTestCase):
 
         return sh_desc, sh_ms_info["address"], sh_wsh_desc, sh_wsh_ms_info["address"], wsh_desc, wsh_ms_info["address"]
 
-    def _test_signtx(self, input_type, multisig, external, op_return: bool):
+    def _test_signtx(self, input_types, multisig, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -378,7 +376,7 @@ class TestSignTx(DeviceTestCase):
         wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
         tr_addr = None
-        if self.full_type in SUPPORTS_TAPROOT:
+        if "tap" in input_types:
             tr_addr = self.wrpc.getnewaddress("", "bech32m")
 
         sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
@@ -395,23 +393,23 @@ class TestSignTx(DeviceTestCase):
         out_amt = in_amt // 3 * 0.9
         number_inputs = 0
         # Single-sig
-        if input_type == 'segwit' or input_type == 'all':
+        if "segwit" in input_types:
             self.wpk_rpc.sendtoaddress(sh_wpkh_addr, in_amt)
             self.wpk_rpc.sendtoaddress(wpkh_addr, in_amt)
             number_inputs += 2
-        if input_type == 'legacy' or input_type == 'all':
+        if "legacy" in input_types:
             self.wpk_rpc.sendtoaddress(pkh_addr, in_amt)
             number_inputs += 1
-        if input_type == "tap" or input_type == "all":
+        if "tap" in input_types:
             assert tr_addr is not None
             self.wpk_rpc.sendtoaddress(tr_addr, in_amt)
             number_inputs += 1
         # Now do segwit/legacy multisig
         if multisig:
-            if input_type == 'legacy' or input_type == 'all':
+            if "legacy" in input_types:
                 self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
                 number_inputs += 1
-            if input_type == 'segwit' or input_type == 'all':
+            if "segwit" in input_types:
                 self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
                 self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
                 number_inputs += 2
@@ -446,22 +444,10 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        multisig = self.full_type in SUPPORTS_MULTISIG
-        external = self.full_type in SUPPORTS_EXTERNAL
-        op_return = self.full_type in SUPPORTS_OP_RETURN
-        with self.subTest(addrtype="legacy", multisig=multisig, external=external):
-            self._test_signtx("legacy", multisig, external, op_return)
-        with self.subTest(addrtype="segwit", multisig=multisig, external=external):
-            self._test_signtx("segwit", multisig, external, op_return)
-        if self.full_type in SUPPORTS_TAPROOT:
-            with self.subTest(addrtype="tap", multisig=False, external=external):
-                self._test_signtx("tap", False, external, op_return)
-        if self.full_type in SUPPORTS_MIXED:
-            if "trezor" in self.full_type:
-                # Trezors cannot do external mixed with Taproot
-                external = False
-            with self.subTest(addrtype="all", multisig=multisig, external=external):
-                self._test_signtx("all", multisig, external, op_return)
+
+        for addrtypes, multisig, external, op_return in self.signtx_cases:
+            with self.subTest(addrtypes=addrtypes, multisig=multisig, external=external, op_return=op_return):
+                self._test_signtx(addrtypes, multisig, external, op_return)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):

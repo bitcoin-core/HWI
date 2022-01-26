@@ -396,12 +396,20 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     dev_emulator = TrezorEmulator(emulator, model)
     full_type = 'trezor_{}'.format(model)
 
+    signtx_cases = [
+        (["legacy"], True, True, True),
+        (["segwit"], True, True, True),
+        (["tap"], False, False, True),
+        (["legacy", "segwit"], True, True, True),
+        (["legacy", "segwit", "tap"], True, False, True),
+    ]
+
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     if model != 't':
