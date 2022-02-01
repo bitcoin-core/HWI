@@ -100,6 +100,16 @@ Use the numeric keypad to describe number positions. The layout is:
 
 Device = Union[hid.HidTransport, webusb.WebUsbTransport, udp.UdpTransport]
 
+ECDSA_SCRIPT_TYPES = [
+    messages.InputScriptType.SPENDADDRESS,
+    messages.InputScriptType.SPENDMULTISIG,
+    messages.InputScriptType.SPENDWITNESS,
+    messages.InputScriptType.SPENDP2SHWITNESS,
+]
+SCHNORR_SCRIPT_TYPES = [
+    messages.InputScriptType.SPENDTAPROOT,
+]
+
 
 # Only handles up to 15 of 15
 def parse_multisig(script: bytes, tx_xpubs: Dict[bytes, KeyOriginInfo], psbt_scope: Union[PartiallySignedInput, PartiallySignedOutput]) -> Tuple[bool, Optional[messages.MultisigRedeemScriptType]]:
@@ -351,6 +361,7 @@ class TrezorClient(HardwareWalletClient):
             # Prepare inputs
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
+            has_tr = False
             for input_num, (psbt_in, txin) in py_enumerate(list(zip(tx.inputs, tx.tx.vin))):
                 txinputtype = messages.TxInputType(
                     prev_hash=ser_uint256(txin.prevout.hash)[::-1],
@@ -381,13 +392,16 @@ class TrezorClient(HardwareWalletClient):
                     p2sh = True
 
                 # Check segwit
-                is_wit, _, _ = is_witness(scriptcode)
+                is_wit, wit_ver, _ = is_witness(scriptcode)
 
                 if is_wit:
-                    if p2sh:
-                        txinputtype.script_type = messages.InputScriptType.SPENDP2SHWITNESS
-                    else:
-                        txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
+                    if wit_ver == 0:
+                        if p2sh:
+                            txinputtype.script_type = messages.InputScriptType.SPENDP2SHWITNESS
+                        else:
+                            txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
+                    elif wit_ver == 1:
+                        txinputtype.script_type = messages.InputScriptType.SPENDTAPROOT
                 else:
                     txinputtype.script_type = messages.InputScriptType.SPENDADDRESS
                 txinputtype.amount = utxo.nValue
@@ -433,16 +447,29 @@ class TrezorClient(HardwareWalletClient):
                 found = False # Whether we have found a key to sign with
                 found_in_sigs = False # Whether we have found one of our keys in the signatures
                 our_keys = 0
-                for key in psbt_in.hd_keypaths.keys():
-                    keypath = psbt_in.hd_keypaths[key]
-                    if keypath.fingerprint == master_fp:
-                        if key in psbt_in.partial_sigs: # This key already has a signature
-                            found_in_sigs = True
-                            continue
-                        if not found: # This key does not have a signature and we don't have a key to sign with yet
-                            txinputtype.address_n = keypath.path
-                            found = True
-                        our_keys += 1
+                if txinputtype.script_type in ECDSA_SCRIPT_TYPES:
+                    for key in psbt_in.hd_keypaths.keys():
+                        keypath = psbt_in.hd_keypaths[key]
+                        if keypath.fingerprint == master_fp:
+                            if key in psbt_in.partial_sigs: # This key already has a signature
+                                found_in_sigs = True
+                                continue
+                            if not found: # This key does not have a signature and we don't have a key to sign with yet
+                                txinputtype.address_n = keypath.path
+                                found = True
+                            our_keys += 1
+                elif txinputtype.script_type in SCHNORR_SCRIPT_TYPES:
+                    if len(psbt_in.tap_key_sig) > 0:
+                        found_in_sigs = True
+                    else:
+                        for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
+                            # TODO: Support script path signing
+                            if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
+                                has_tr = True
+                                txinputtype.address_n = origin.path
+                                found = True
+                                our_keys += 1
+                                break
 
                 # Determine if we need to do more passes to sign everything
                 if our_keys > passes:
@@ -458,6 +485,10 @@ class TrezorClient(HardwareWalletClient):
 
                 # append to inputs
                 inputs.append(txinputtype)
+
+            # Cannot sign transactions that have external inputs (to_ignore is not empty) and would sign taproot inputs
+            if has_tr and len(to_ignore) > 0:
+                raise BadArgumentError("Trezor cannot sign taproot inputs when the transaction also has external inputs")
 
             # address version byte
             if self.chain != Chain.MAIN:
@@ -568,6 +599,10 @@ class TrezorClient(HardwareWalletClient):
                     if fp == master_fp and pubkey not in psbt_in.partial_sigs:
                         psbt_in.partial_sigs[pubkey] = sig + b'\x01'
                         break
+                if len(psbt_in.tap_internal_key) > 0 and len(psbt_in.tap_key_sig) == 0:
+                    # Assume key path sig
+                    # TODO: Deal with script path sig
+                    psbt_in.tap_key_sig = sig
 
             p += 1
 
@@ -596,7 +631,9 @@ class TrezorClient(HardwareWalletClient):
         elif addr_type == AddressType.LEGACY:
             script_type = messages.InputScriptType.SPENDADDRESS
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("Trezor does not support displaying Taproot addresses yet")
+            if not self.can_sign_taproot():
+                raise UnavailableActionError("This device does not support displaying Taproot addresses")
+            script_type = messages.InputScriptType.SPENDTAPROOT
         else:
             raise BadArgumentError("Unknown address type")
 
@@ -761,13 +798,15 @@ class TrezorClient(HardwareWalletClient):
     @trezor_exception
     def can_sign_taproot(self) -> bool:
         """
-        Trezor T supports Taproot in firmware versions greater than (not including) 2.4.2.
-        Trezor One supports Taproot in firmware versions greater than (not including) 1.10.3.
-        However HWI does not implement Taproot support for any Trezor devices yet.
+        Trezor T supports Taproot since firmware version 2.4.3.
+        Trezor One supports Taproot since firmware version 1.10.4.
 
         :returns: False, always.
         """
-        return False
+        self._prepare_device()
+        if self.client.features.model == "T":
+            return bool(self.client.version >= (2, 4, 3))
+        return bool(self.client.version >= (1, 10, 4))
 
 
 def enumerate(password: str = "") -> List[Dict[str, Any]]:

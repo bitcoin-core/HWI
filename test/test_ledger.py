@@ -124,6 +124,11 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
     dev_emulator.start()
     atexit.register(dev_emulator.stop)
 
+    signtx_cases = [
+        (["legacy"], True, True, True),
+        (["segwit"], True, True, True),
+    ]
+
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
@@ -133,7 +138,7 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     dev_emulator.stop()
