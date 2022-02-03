@@ -43,9 +43,6 @@ from ..key import (
     parse_path
 )
 from ..psbt import PSBT
-from ..tx import (
-    CTransaction
-)
 from .._script import (
     is_p2sh,
     is_p2wpkh,
@@ -192,7 +189,7 @@ class JadeClient(HardwareWalletClient):
                 paths.append(suffix)
             return signers, paths
 
-        c_txn = CTransaction(tx.tx)
+        c_txn = tx.get_unsigned_tx()
         master_fp = self.get_master_fingerprint()
         signing_singlesigs = False
         signing_multisigs = {}
@@ -204,7 +201,7 @@ class JadeClient(HardwareWalletClient):
 
             # Signing input details
             jade_inputs = []
-            for n_vin, (txin, psbtin) in py_enumerate(zip(c_txn.vin, tx.inputs)):
+            for n_vin, psbtin in py_enumerate(tx.inputs):
                 # Get bip32 path to use to sign, if required for this input
                 path = None
                 multisig_input = len(psbtin.hd_keypaths) > 1
@@ -230,9 +227,10 @@ class JadeClient(HardwareWalletClient):
                 if psbtin.witness_utxo:
                     utxo = psbtin.witness_utxo
                 if psbtin.non_witness_utxo:
-                    if txin.prevout.hash != psbtin.non_witness_utxo.sha256:
+                    if psbtin.prev_txid != psbtin.non_witness_utxo.hash:
                         raise BadArgumentError(f'Input {n_vin} has a non_witness_utxo with the wrong hash')
-                    utxo = psbtin.non_witness_utxo.vout[txin.prevout.n]
+                    assert psbtin.prev_out is not None
+                    utxo = psbtin.non_witness_utxo.vout[psbtin.prev_out]
                     input_txn_bytes = psbtin.non_witness_utxo.serialize_without_witness()
                 if utxo is None:
                     raise Exception('PSBT is missing input utxo information, cannot sign')

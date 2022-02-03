@@ -142,6 +142,7 @@ class ColdcardClient(HardwareWalletClient):
 
         for _ in range(passes):
             # Get psbt in hex and then make binary
+            tx.convert_to_v0()
             fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
             # learn size (portable way)
