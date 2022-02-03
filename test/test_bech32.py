@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-"""Reference tests for segwit adresses"""
+"""Reference tests for segwit addresses"""
 
 import binascii
 import unittest
@@ -143,7 +143,7 @@ INVALID_ADDRESS_ENC = [
 ]
 
 class TestSegwitAddress(unittest.TestCase):
-    """Unit test class for segwit addressess."""
+    """Unit test class for segwit addresses."""
 
     def test_valid_checksum(self):
         """Test checksum creation and validation."""

@@ -178,7 +178,7 @@ def trezor_exception(f: Callable[..., Any]) -> Any:
 
 
 def interactive_get_pin(self: object, code: Optional[int] = None) -> str:
-    if code == messages.PinMatrixRequestType.Currrent:
+    if code == messages.PinMatrixRequestType.Current:
         desc = "current PIN"
     elif code == messages.PinMatrixRequestType.NewFirst:
         desc = "new PIN"

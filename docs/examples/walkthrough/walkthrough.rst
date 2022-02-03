@@ -118,7 +118,7 @@ Send funds with Bitcoin Core and Trezor using HWI
 * Now let us **send funds**.
 
 * CORE: To send funds, open the "Send" tab in Bitcoin Core Wallet, 
-  then select input, amount, fees, etc. Once satisifed, click "Create Unsigned", 
+  then select input, amount, fees, etc. Once satisfied, click "Create Unsigned", 
   verify any displayed information, then click "Create Unsigned" again.
   The PSBT (Partially Signed Bitcoin Transaction) is now on the clipboard.
 
@@ -183,6 +183,6 @@ Send funds with Bitcoin Core and Trezor using HWI
 Versions Used
 =============
 
-* This walk-trough was done in Janary 2021
+* This walk-trough was done in January 2021
 * HWI version 2.0.0-dev
 * Bitcoin 0.21.0

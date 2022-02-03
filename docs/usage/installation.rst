@@ -9,7 +9,7 @@ HWI is distributed in 2 different ways:
 Binaries
 ========
 
-The self-contained binaries are availabe for download from the `releases page <https://github.com/bitcoin-core/HWI/releases>`_.
+The self-contained binaries are available for download from the `releases page <https://github.com/bitcoin-core/HWI/releases>`_.
 
 Download and extract the package for your operating system and architecture.
 The ``hwi`` binary (``hwi.exe`` for Windows) is a command line tool and executed from the terminal (command prompt in Windows).

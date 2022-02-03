@@ -342,7 +342,7 @@ if [[ -n ${build_jade} ]]; then
     cd ..
 
     # Build the esp-idf toolchain
-    # We will install the esp-idf tools in a given location (otherwise defauts to user home dir)
+    # We will install the esp-idf tools in a given location (otherwise defaults to user home dir)
     export IDF_TOOLS_PATH="$(pwd)/esp-idf-tools"
     if [ ! -d "esp-idf" ]; then
         git clone --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git ./esp-idf

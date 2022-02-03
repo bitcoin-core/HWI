@@ -272,7 +272,7 @@ class JadeClient(HardwareWalletClient):
 
             # Change output details
             # This is optional, in that if we send it Jade validates the change output script
-            # and the user need not confirm that ouptut.  If not passed the change output must
+            # and the user need not confirm that output.  If not passed the change output must
             # be confirmed by the user on the hwwallet screen, like any other spend output.
             change: List[Optional[Dict[str, Any]]] = [None] * len(tx.outputs)
 
