@@ -55,67 +55,66 @@ class LedgerEmulator(DeviceEmulator):
         if self.emulator_stdout is not None:
             self.emulator_stdout.close()
 
+# Ledger specific disabled command tests
+class TestLedgerDisabledCommands(DeviceTestCase):
+    def test_pin(self):
+        result = self.do_command(self.dev_args + ['promptpin'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not need a PIN sent from the host')
+        self.assertEqual(result['code'], -9)
+
+        result = self.do_command(self.dev_args + ['sendpin', '1234'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not need a PIN sent from the host')
+        self.assertEqual(result['code'], -9)
+
+    def test_setup(self):
+        result = self.do_command(self.dev_args + ['-i', 'setup'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not support software setup')
+        self.assertEqual(result['code'], -9)
+
+    def test_wipe(self):
+        result = self.do_command(self.dev_args + ['wipe'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not support wiping via software')
+        self.assertEqual(result['code'], -9)
+
+    def test_restore(self):
+        result = self.do_command(self.dev_args + ['-i', 'restore'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not support restoring via software')
+        self.assertEqual(result['code'], -9)
+
+    def test_backup(self):
+        result = self.do_command(self.dev_args + ['backup'])
+        self.assertIn('error', result)
+        self.assertIn('code', result)
+        self.assertEqual(result['error'], 'The Ledger Nano S and X do not support creating a backup via software')
+        self.assertEqual(result['code'], -9)
+
+class TestLedgerGetXpub(DeviceTestCase):
+    def setUp(self):
+        self.dev_args.remove("--chain")
+        self.dev_args.remove("test")
+
+    def test_getxpub(self):
+        result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
+        self.assertEqual(result['xpub'], 'xpub6DqTtMuqBiBsSPb5UxB1qgJ3ViXuhoyZYhw3zTK4MywLB6psioW4PN1SAbhxVVirKQojnTBsjG5gXiiueRBgWmUuN43dpbMSgMCQHVqx2bR')
+        self.assertFalse(result['testnet'])
+        self.assertFalse(result['private'])
+        self.assertEqual(result['depth'], 4)
+        self.assertEqual(result['parent_fingerprint'], '2930ce56')
+        self.assertEqual(result['child_num'], 3)
+        self.assertEqual(result['chaincode'], 'a3cd503ab3ffd3c31610a84307f141528c7e9b8416e10980ced60d1868b463e2')
+        self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
+
 def ledger_test_suite(emulator, rpc, userpass, interface):
-
-    # Ledger specific disabled command tests
-    class TestLedgerDisabledCommands(DeviceTestCase):
-        def test_pin(self):
-            result = self.do_command(self.dev_args + ['promptpin'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not need a PIN sent from the host')
-            self.assertEqual(result['code'], -9)
-
-            result = self.do_command(self.dev_args + ['sendpin', '1234'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not need a PIN sent from the host')
-            self.assertEqual(result['code'], -9)
-
-        def test_setup(self):
-            result = self.do_command(self.dev_args + ['-i', 'setup'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not support software setup')
-            self.assertEqual(result['code'], -9)
-
-        def test_wipe(self):
-            result = self.do_command(self.dev_args + ['wipe'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not support wiping via software')
-            self.assertEqual(result['code'], -9)
-
-        def test_restore(self):
-            result = self.do_command(self.dev_args + ['-i', 'restore'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not support restoring via software')
-            self.assertEqual(result['code'], -9)
-
-        def test_backup(self):
-            result = self.do_command(self.dev_args + ['backup'])
-            self.assertIn('error', result)
-            self.assertIn('code', result)
-            self.assertEqual(result['error'], 'The Ledger Nano S and X do not support creating a backup via software')
-            self.assertEqual(result['code'], -9)
-
-    class TestLedgerGetXpub(DeviceTestCase):
-        def setUp(self):
-            self.dev_args.remove("--chain")
-            self.dev_args.remove("test")
-
-        def test_getxpub(self):
-            result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
-            self.assertEqual(result['xpub'], 'xpub6DqTtMuqBiBsSPb5UxB1qgJ3ViXuhoyZYhw3zTK4MywLB6psioW4PN1SAbhxVVirKQojnTBsjG5gXiiueRBgWmUuN43dpbMSgMCQHVqx2bR')
-            self.assertFalse(result['testnet'])
-            self.assertFalse(result['private'])
-            self.assertEqual(result['depth'], 4)
-            self.assertEqual(result['parent_fingerprint'], '2930ce56')
-            self.assertEqual(result['child_num'], 3)
-            self.assertEqual(result['chaincode'], 'a3cd503ab3ffd3c31610a84307f141528c7e9b8416e10980ced60d1868b463e2')
-            self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
-
     device_model = 'ledger_nano_s_simulator'
     path = 'tcp:127.0.0.1:9999'
     master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
