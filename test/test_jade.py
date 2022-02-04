@@ -63,6 +63,7 @@ class JadeEmulator(DeviceEmulator):
 
                 except Exception as e:
                     print(str(e))
+        atexit.register(self.stop)
 
     def stop(self):
         if USE_SIMULATOR:
@@ -70,6 +71,7 @@ class JadeEmulator(DeviceEmulator):
             if self.emulator_proc.poll() is None:
                 os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
                 os.waitpid(self.emulator_proc.pid, 0)
+        atexit.unregister(self.stop)
 
 # Jade specific disabled command tests
 class TestJadeDisabledCommands(DeviceTestCase):
@@ -115,11 +117,9 @@ class TestJadeDisabledCommands(DeviceTestCase):
         self.assertEqual(result['code'], -9)
 
 class TestJadeGetXpub(DeviceTestCase):
-    def setUp(self):
+    def test_getexpertxpub(self):
         self.dev_args.remove("--chain")
         self.dev_args.remove("test")
-
-    def test_getexpertxpub(self):
         result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
         self.assertEqual(result['xpub'], 'xpub6EZPQwwr93eGRt5uAN8fqNpLWtgoWM4Cn96Y7XERhRBaXus5FjuTpgGBWuvuAXp1PhYBfp7h7C7HPyuRvCyyc6wBAK7PC1Z1JVEGBnrZUXi')
         self.assertFalse(result['testnet'])
@@ -192,8 +192,6 @@ def jade_test_suite(emulator, rpc, userpass, interface):
     master_xpub = 'xpub6CYWf8Kf1MXHij4KJjjtkNgQxJufSmAoyrmGuiGWvjXHSpak638GrmgWZqiem339nuHf2xuCmEVmmnXDmskEjB7QdZGW2HdiBUnoEAwV1q2'
     fingerprint = '1273da33'
     dev_emulator = JadeEmulator(emulator)
-    dev_emulator.start()
-    atexit.register(dev_emulator.stop)
 
     signtx_cases = [
         (["legacy"], True, True, True),
@@ -203,19 +201,17 @@ def jade_test_suite(emulator, rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestJadeDisabledCommands, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestJadeGetXpub, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestJadeGetMultisigAddresses, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestJadeDisabledCommands, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestJadeGetXpub, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestJadeGetMultisigAddresses, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
-    dev_emulator.stop()
-    atexit.unregister(dev_emulator.stop)
     return result.wasSuccessful()
 
 if __name__ == '__main__':
