@@ -25,6 +25,7 @@ class LedgerEmulator(DeviceEmulator):
             pass
 
     def start(self):
+        super().start()
         automation_path = os.path.abspath("data/speculos-automation.json")
 
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
@@ -48,6 +49,7 @@ class LedgerEmulator(DeviceEmulator):
         atexit.register(self.stop)
 
     def stop(self):
+        super().stop()
         if self.emulator_proc.poll() is None:
             os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
             os.waitpid(self.emulator_proc.pid, 0)

@@ -34,6 +34,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.coldcard_proc = None
 
     def start(self):
+        super().start()
         self.coldcard_log = open("coldcard-emulator.stdout", "a")
         # Start the Coldcard simulator
         self.coldcard_proc = subprocess.Popen(
@@ -62,6 +63,7 @@ class ColdcardSimulator(DeviceEmulator):
         atexit.register(self.stop)
 
     def stop(self):
+        super().stop()
         if self.coldcard_proc.poll() is None:
             os.killpg(os.getpgid(self.coldcard_proc.pid), signal.SIGTERM)
             os.waitpid(os.getpgid(self.coldcard_proc.pid), 0)

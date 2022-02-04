@@ -32,6 +32,7 @@ class BitBox01Emulator(DeviceEmulator):
         self.simulator_proc = None
 
     def start(self):
+        super().start()
         self.bitbox_log = open('bitbox-emulator.stderr', 'a')
         # Start the Digital bitbox simulator
         self.simulator_proc = subprocess.Popen(
@@ -59,6 +60,7 @@ class BitBox01Emulator(DeviceEmulator):
         atexit.register(self.stop)
 
     def stop(self):
+        super().stop()
         self.simulator_proc.terminate()
         self.simulator_proc.wait()
         self.bitbox_log.close()

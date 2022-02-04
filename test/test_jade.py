@@ -33,6 +33,7 @@ class JadeEmulator(DeviceEmulator):
         self.emulator_proc = None
 
     def start(self):
+        super().start()
         if USE_SIMULATOR:
             # Start the qemu emulator
             print('Starting Jade emulator at:', self.emulator_path)
@@ -66,6 +67,7 @@ class JadeEmulator(DeviceEmulator):
         atexit.register(self.stop)
 
     def stop(self):
+        super().stop()
         if USE_SIMULATOR:
             print('Stopping Jade emulator')
             if self.emulator_proc.poll() is None:
