@@ -41,8 +41,7 @@ class TrezorEmulator(DeviceEmulator):
             os.unlink('trezor-{}-emulator.stdout'.format(self.model))
         except FileNotFoundError:
             pass
-        self.type = 'trezor'
-        self.full_type = 'trezor_{}'.format(model)
+        self.type = f"trezor_{model}"
         self.path = 'udp:127.0.0.1:21324'
         self.fingerprint = '95d8f670'
         self.master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'

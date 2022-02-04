@@ -15,7 +15,6 @@ from hwilib.devices.jadepy.jade import JadeAPI
 
 USE_SIMULATOR = True
 JADE_PATH = 'tcp:127.0.0.1:2222' if USE_SIMULATOR else '/dev/ttyUSB0'
-JADE_MODEL = 'jade_simulator' if USE_SIMULATOR else 'jade'
 TEST_SEED = bytes.fromhex('b90e532426d0dc20fffe01037048c018e940300038b165c211915c672e07762c')
 
 LOGGING = None  # logging.INFO
@@ -32,7 +31,6 @@ class JadeEmulator(DeviceEmulator):
         self.emulator_path = jade_qemu_emulator_path
         self.emulator_proc = None
         self.type = "jade"
-        self.full_type = JADE_MODEL
         self.path = JADE_PATH
         self.master_xpub = 'xpub6CYWf8Kf1MXHij4KJjjtkNgQxJufSmAoyrmGuiGWvjXHSpak638GrmgWZqiem339nuHf2xuCmEVmmnXDmskEjB7QdZGW2HdiBUnoEAwV1q2'
         self.fingerprint = '1273da33'

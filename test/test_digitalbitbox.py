@@ -31,7 +31,6 @@ class BitBox01Emulator(DeviceEmulator):
         self.bitbox_log = None
         self.simulator_proc = None
         self.type = 'digitalbitbox'
-        self.full_type = 'digitalbitbox'
         self.path = 'udp:127.0.0.1:35345'
         self.fingerprint = 'a31b978a'
         self.master_xpub = 'xpub6BsWJiRvbzQJg3J6tgUKmHWYbHJSj41EjAAje6LuDwnYLqLiNSWK4N7rCXwiUmNJTBrKL8AEH3LBzhJdgdxoy4T9aMPLCWAa6eWKGCFjQhq'

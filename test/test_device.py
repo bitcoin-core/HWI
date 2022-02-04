@@ -21,7 +21,6 @@ from hwilib.psbt import PSBT
 class DeviceEmulator():
     def __init__(self):
         self.type = None
-        self.full_type = None
         self.path = None
         self.fingerprint = None
         self.master_xpub = None
@@ -33,7 +32,6 @@ class DeviceEmulator():
 
     def start(self):
         assert self.type is not None
-        assert self.full_type is not None
         assert self.path is not None
         assert self.fingerprint is not None
         assert self.master_xpub is not None
@@ -126,13 +124,13 @@ class DeviceTestCase(unittest.TestCase):
         return []
 
     def __str__(self):
-        return '{}: {}'.format(self.emulator.full_type, super().__str__())
+        return '{}: {}'.format(self.emulator.type, super().__str__())
 
     def __repr__(self):
-        return '{}: {}'.format(self.emulator.full_type, super().__repr__())
+        return '{}: {}'.format(self.emulator.type, super().__repr__())
 
     def setup_wallets(self):
-        wallet_name = '{}_{}_test'.format(self.emulator.full_type, self.id())
+        wallet_name = '{}_{}_test'.format(self.emulator.type, self.id())
         self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True, descriptors=True)
         self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(self.rpc_userpass))
@@ -369,12 +367,12 @@ class TestSignTx(DeviceTestCase):
         # Trezor requires that each address type uses a different derivation path.
         # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
         # So for those other devices, stick to the 0 path.
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.emulator.full_type == "trezor_t" else get_pubkeys(0)
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.emulator.type == "trezor_t" else get_pubkeys(0)
         sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
         sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
         self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.emulator.full_type == "trezor_t" else get_pubkeys(0)
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.emulator.type == "trezor_t" else get_pubkeys(0)
         wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
         wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
         self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
@@ -588,16 +586,16 @@ class TestDisplayAddress(DeviceTestCase):
 
     def test_display_address_multisig(self):
         if not self.emulator.supports_ms_display and not self.emulator.supports_xpub_ms_display:
-            raise unittest.SkipTest("{} does not support multisig display".format(self.emulator.full_type))
+            raise unittest.SkipTest("{} does not support multisig display".format(self.emulator.type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
             for sort in [True, False]:
                 for derive in [True, False]:
                     with self.subTest(addrtype=addrtype):
                         if not sort and not self.emulator.supports_unsorted_ms:
-                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.emulator.full_type))
+                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.emulator.type))
                         if derive and not self.emulator.supports_xpub_ms_display:
-                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.emulator.full_type))
+                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.emulator.type))
 
                         addr, desc = self._make_single_multisig(addrtype, sort, derive)
 

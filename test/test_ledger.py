@@ -24,7 +24,6 @@ class LedgerEmulator(DeviceEmulator):
         except FileNotFoundError:
             pass
         self.type = "ledger"
-        self.full_type = 'ledger_nano_s_simulator'
         self.path = 'tcp:127.0.0.1:9999'
         self.fingerprint = 'f5acc2fd'
         self.master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'

@@ -33,7 +33,6 @@ class ColdcardSimulator(DeviceEmulator):
         self.coldcard_log = None
         self.coldcard_proc = None
         self.type = "coldcard"
-        self.full_type = "coldcard"
         self.path = "/tmp/ckcc-simulator.sock"
         self.fingerprint = "0f056943"
         self.master_xpub = "tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd"
