@@ -130,7 +130,7 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type=device_model))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))

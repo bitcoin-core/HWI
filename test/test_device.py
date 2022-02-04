@@ -137,11 +137,15 @@ class DeviceTestCase(unittest.TestCase):
         self.emulator.stop()
 
 class TestDeviceConnect(DeviceTestCase):
+    def __init__(self, *args, detect_type, **kwargs):
+        super(TestDeviceConnect, self).__init__(*args, **kwargs)
+        self.detect_type = detect_type
+
     def test_enumerate(self):
         enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
         for device in enum_res:
-            if (device['type'] == self.type or device['model'] == self.type) and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
+            if (device['type'] == self.detect_type or device['model'] == self.detect_type) and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
                 self.assertIn('type', device)
                 self.assertIn('model', device)
                 self.assertIn('path', device)
@@ -160,7 +164,7 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, '-d', self.path, 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.path, 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
     def test_fingerprint_autodetect(self):
@@ -173,7 +177,7 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertEqual(gmxp_res['code'], -3)
 
     def test_type_only_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['xpub'], self.master_xpub)
 
         # Unknown device type

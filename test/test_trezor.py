@@ -408,7 +408,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type="trezor"))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
@@ -417,7 +417,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'trezor_{}_simulator'.format(model), full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, "", full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type=f"trezor_{model}_simulator"))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

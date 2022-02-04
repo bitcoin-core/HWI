@@ -204,7 +204,7 @@ def jade_test_suite(emulator, rpc, userpass, interface):
     # Generic Device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestJadeDisabledCommands, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type=device_model))
     suite.addTest(DeviceTestCase.parameterize(TestJadeGetXpub, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
