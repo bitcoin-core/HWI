@@ -45,6 +45,7 @@ class LedgerEmulator(DeviceEmulator):
                 print(str(e))
                 pass
             time.sleep(0.5)
+        atexit.register(self.stop)
 
     def stop(self):
         if self.emulator_proc.poll() is None:
@@ -54,6 +55,7 @@ class LedgerEmulator(DeviceEmulator):
             self.emulator_stderr.close()
         if self.emulator_stdout is not None:
             self.emulator_stdout.close()
+        atexit.unregister(self.stop)
 
 # Ledger specific disabled command tests
 class TestLedgerDisabledCommands(DeviceTestCase):
@@ -99,14 +101,10 @@ class TestLedgerDisabledCommands(DeviceTestCase):
         self.assertEqual(result['code'], -9)
 
 class TestLedgerGetXpub(DeviceTestCase):
-    def setUp(self):
-        self.dev_args.remove("--chain")
-        self.dev_args.remove("test")
-
     def test_getxpub(self):
         result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
-        self.assertEqual(result['xpub'], 'xpub6DqTtMuqBiBsSPb5UxB1qgJ3ViXuhoyZYhw3zTK4MywLB6psioW4PN1SAbhxVVirKQojnTBsjG5gXiiueRBgWmUuN43dpbMSgMCQHVqx2bR')
-        self.assertFalse(result['testnet'])
+        self.assertEqual(result['xpub'], "tpubDED6QbjWtz9KiBmvw9A73bdQpqdZhCUd6LXMM1NChthDvPVao2M9XogGQdnk1zg67KLeQ2hkGMujDuDX3H2vQCwCRenwW81gGJnp3W5kteV")
+        self.assertTrue(result['testnet'])
         self.assertFalse(result['private'])
         self.assertEqual(result['depth'], 4)
         self.assertEqual(result['parent_fingerprint'], '2930ce56')
@@ -120,8 +118,6 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
     master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
     fingerprint = 'f5acc2fd'
     dev_emulator = LedgerEmulator(emulator)
-    dev_emulator.start()
-    atexit.register(dev_emulator.stop)
 
     signtx_cases = [
         (["legacy"], True, True, True),
@@ -130,18 +126,16 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
-    dev_emulator.stop()
-    atexit.unregister(dev_emulator.stop)
     return result.wasSuccessful()
 
 if __name__ == '__main__':
