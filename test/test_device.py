@@ -63,7 +63,7 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', signtx_cases=None, methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
@@ -81,15 +81,14 @@ class DeviceTestCase(unittest.TestCase):
         if password:
             self.dev_args.extend(['-p', password])
         self.interface = interface
-        self.signtx_cases = signtx_cases
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, signtx_cases=None, *args, **kwargs):
+    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, *args, **kwargs):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, signtx_cases, name, *args, **kwargs))
+            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, name, *args, **kwargs))
         return suite
 
     def do_command(self, args):
@@ -273,10 +272,13 @@ class TestGetDescriptors(DeviceTestCase):
             self.assertTrue(info_result['issolvable'])
 
 class TestSignTx(DeviceTestCase):
+    def __init__(self, *args, signtx_cases, **kwargs):
+        super(TestSignTx, self).__init__(*args, **kwargs)
+        self.signtx_cases = signtx_cases
+
     def setUp(self):
         super().setUp()
         self.setup_wallets()
-        assert self.signtx_cases is not None
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
