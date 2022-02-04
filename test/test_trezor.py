@@ -41,6 +41,16 @@ class TrezorEmulator(DeviceEmulator):
             os.unlink('trezor-{}-emulator.stdout'.format(self.model))
         except FileNotFoundError:
             pass
+        self.type = 'trezor'
+        self.full_type = 'trezor_{}'.format(model)
+        self.path = 'udp:127.0.0.1:21324'
+        self.fingerprint = '95d8f670'
+        self.master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
+        self.password = ""
+        self.supports_ms_display = True
+        self.supports_xpub_ms_display = True
+        self.supports_unsorted_ms = True
+        self.supports_taproot = True
 
     def start(self):
         super().start()
@@ -390,13 +400,7 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
 
-    # Device info for tests
-    type = 'trezor'
-    path = 'udp:127.0.0.1:21324'
-    fingerprint = '95d8f670'
-    master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
     dev_emulator = TrezorEmulator(emulator, model)
-    full_type = 'trezor_{}'.format(model)
 
     signtx_cases = [
         (["legacy"], True, True, True),
@@ -408,16 +412,16 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type="trezor"))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="trezor"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, emulator=dev_emulator, interface=interface))
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, "", full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type=f"trezor_{model}_simulator"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type=f"trezor_{model}_simulator"))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)

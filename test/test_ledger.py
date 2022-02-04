@@ -23,6 +23,16 @@ class LedgerEmulator(DeviceEmulator):
             os.unlink('ledger-emulator.stderr')
         except FileNotFoundError:
             pass
+        self.type = "ledger"
+        self.full_type = 'ledger_nano_s_simulator'
+        self.path = 'tcp:127.0.0.1:9999'
+        self.fingerprint = 'f5acc2fd'
+        self.master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
+        self.password = ""
+        self.supports_ms_display = False
+        self.supports_xpub_ms_display = False
+        self.supports_unsorted_ms = False
+        self.supports_taproot = False
 
     def start(self):
         super().start()
@@ -115,10 +125,6 @@ class TestLedgerGetXpub(DeviceTestCase):
         self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
 
 def ledger_test_suite(emulator, rpc, userpass, interface):
-    device_model = 'ledger_nano_s_simulator'
-    path = 'tcp:127.0.0.1:9999'
-    master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
-    fingerprint = 'f5acc2fd'
     dev_emulator = LedgerEmulator(emulator)
 
     signtx_cases = [
@@ -128,14 +134,14 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, detect_type=device_model))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, device_model, 'ledger', path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type=dev_emulator.type))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()

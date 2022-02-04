@@ -17,15 +17,30 @@ from hwilib.descriptor import AddChecksum
 from hwilib.key import KeyOriginInfo
 from hwilib.psbt import PSBT
 
-SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
-SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
-SUPPORTS_UNSORTED_MS = {"trezor_1", "trezor_t"}
-SUPPORTS_TAPROOT = {"trezor_1", "trezor_t"}
-
 # Class for emulator control
 class DeviceEmulator():
+    def __init__(self):
+        self.type = None
+        self.full_type = None
+        self.path = None
+        self.fingerprint = None
+        self.master_xpub = None
+        self.password = None
+        self.supports_ms_display = None
+        self.supports_xpub_ms_display = None
+        self.supports_unsorted_ms = None
+        self.supports_taproot = None
+
     def start(self):
-        pass
+        assert self.type is not None
+        assert self.full_type is not None
+        assert self.path is not None
+        assert self.fingerprint is not None
+        assert self.master_xpub is not None
+        assert self.password is not None
+        assert self.supports_ms_display is not None
+        assert self.supports_xpub_ms_display is not None
+        assert self.supports_unsorted_ms is not None
 
     def stop(self):
         pass
@@ -63,32 +78,25 @@ def start_bitcoind(bitcoind_path):
     return (rpc, userpass)
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, rpc, rpc_userpass, emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.rpc = rpc
         self.rpc_userpass = rpc_userpass
-        self.type = type
-        self.full_type = full_type
-        self.path = path
-        self.fingerprint = fingerprint
-        self.master_xpub = master_xpub
-        self.password = password
-        self.dev_args = ['-t', self.type, '-d', self.path, '--chain', 'test']
-        if emulator:
-            self.emulator = emulator
-        else:
-            self.emulator = DeviceEmulator()
-        if password:
-            self.dev_args.extend(['-p', password])
+        self.emulator = emulator
+
+        self.dev_args = ['-t', self.emulator.type, '-d', self.emulator.path, '--chain', 'test']
+        if self.emulator.password:
+            self.dev_args.extend(['-p', self.emulator.password])
+
         self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, *args, **kwargs):
+    def parameterize(testclass, rpc, rpc_userpass, emulator, interface='library', *args, **kwargs):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, name, *args, **kwargs))
+            suite.addTest(testclass(rpc, rpc_userpass, emulator, interface, name, *args, **kwargs))
         return suite
 
     def do_command(self, args):
@@ -113,18 +121,18 @@ class DeviceTestCase(unittest.TestCase):
             return process_commands(args)
 
     def get_password_args(self):
-        if self.password:
-            return ['-p', self.password]
+        if self.emulator.password:
+            return ['-p', self.emulator.password]
         return []
 
     def __str__(self):
-        return '{}: {}'.format(self.full_type, super().__str__())
+        return '{}: {}'.format(self.emulator.full_type, super().__str__())
 
     def __repr__(self):
-        return '{}: {}'.format(self.full_type, super().__repr__())
+        return '{}: {}'.format(self.emulator.full_type, super().__repr__())
 
     def setup_wallets(self):
-        wallet_name = '{}_{}_test'.format(self.full_type, self.id())
+        wallet_name = '{}_{}_test'.format(self.emulator.full_type, self.id())
         self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True, descriptors=True)
         self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
         self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(self.rpc_userpass))
@@ -144,7 +152,7 @@ class TestDeviceConnect(DeviceTestCase):
         enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
         for device in enum_res:
-            if (device['type'] == self.detect_type or device['model'] == self.detect_type) and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
+            if (device['type'] == self.detect_type or device['model'] == self.detect_type) and device['path'] == self.emulator.path and device['fingerprint'] == self.emulator.fingerprint:
                 self.assertIn('type', device)
                 self.assertIn('model', device)
                 self.assertIn('path', device)
@@ -163,12 +171,12 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.path, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.emulator.path, 'getmasterxpub', "--addr-type", "legacy"])
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
     def test_fingerprint_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.fingerprint, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.emulator.fingerprint, 'getmasterxpub', "--addr-type", "legacy"])
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Nonexistent fingerprint
         gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', 'getmasterxpub', "--addr-type", "legacy"])
@@ -177,7 +185,7 @@ class TestDeviceConnect(DeviceTestCase):
 
     def test_type_only_autodetect(self):
         gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Unknown device type
         gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub', "--addr-type", "legacy"])
@@ -196,7 +204,7 @@ class TestGetKeypool(DeviceTestCase):
             ("wit", 84, "bech32"),
             ("sh_wit", 49, "p2sh-segwit"),
         ]
-        if self.full_type in SUPPORTS_TAPROOT:
+        if self.emulator.supports_taproot:
             getkeypool_args.append(("tap", 86, "bech32m"))
 
         descs = []
@@ -256,8 +264,8 @@ class TestGetDescriptors(DeviceTestCase):
 
         self.assertIn('receive', descriptors)
         self.assertIn('internal', descriptors)
-        self.assertEqual(len(descriptors['receive']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
-        self.assertEqual(len(descriptors['internal']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
+        self.assertEqual(len(descriptors['receive']), 4 if self.emulator.supports_taproot else 3)
+        self.assertEqual(len(descriptors['internal']), 4 if self.emulator.supports_taproot else 3)
 
         for descriptor in descriptors['receive']:
             self.assertNotIn("'", descriptor)
@@ -346,7 +354,7 @@ class TestSignTx(DeviceTestCase):
             sorted_pubkeys = []
             for i in range(0, 3):
                 path = "/48h/1h/{}h/{}h/0/0".format(i, t)
-                origin = '{}{}'.format(self.fingerprint, path)
+                origin = '{}{}'.format(self.emulator.fingerprint, path)
                 xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
                 desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
                 sorted_pubkeys.append(xpub["pubkey"])
@@ -361,12 +369,12 @@ class TestSignTx(DeviceTestCase):
         # Trezor requires that each address type uses a different derivation path.
         # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
         # So for those other devices, stick to the 0 path.
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.full_type == "trezor_t" else get_pubkeys(0)
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.emulator.full_type == "trezor_t" else get_pubkeys(0)
         sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
         sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
         self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.full_type == "trezor_t" else get_pubkeys(0)
+        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.emulator.full_type == "trezor_t" else get_pubkeys(0)
         wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
         wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
         self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
@@ -475,7 +483,7 @@ class TestSignTx(DeviceTestCase):
             result = self.do_command(self.dev_args + ['signtx', psbt])
             if self.interface == 'cli':
                 self.fail('Big tx did not cause CLI to error')
-            if self.type == 'coldcard':
+            if self.emulator.type == 'coldcard':
                 self.assertEqual(result['code'], -7)
             else:
                 self.assertNotIn('code', result)
@@ -511,37 +519,37 @@ class TestDisplayAddress(DeviceTestCase):
         legacy_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
 
         # Native SegWit address using xpub:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + account_xpub + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Native SegWit address using hex encoded pubkey:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # P2SH wrapped SegWit address using xpub:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h]' + p2sh_segwit_account_xpub + '/0/0))'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.emulator.fingerprint + '/49h/1h/0h]' + p2sh_segwit_account_xpub + '/0/0))'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Legacy address
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.emulator.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Should check xpub
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check hex pub
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
@@ -558,7 +566,7 @@ class TestDisplayAddress(DeviceTestCase):
             path = "/48h/1h/{}h/0h/0".format(i)
             if not use_xpub:
                 path += "/0"
-            origin = '{}{}'.format(self.fingerprint, path)
+            origin = '{}{}'.format(self.emulator.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
             desc_pubkeys.append("[{}]{}{}".format(origin, xpub["xpub"] if use_xpub else xpub["pubkey"], "/0" if use_xpub else ""))
 
@@ -579,17 +587,17 @@ class TestDisplayAddress(DeviceTestCase):
         return addr, desc
 
     def test_display_address_multisig(self):
-        if self.full_type not in SUPPORTS_MS_DISPLAY and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-            raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
+        if not self.emulator.supports_ms_display and not self.emulator.supports_xpub_ms_display:
+            raise unittest.SkipTest("{} does not support multisig display".format(self.emulator.full_type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
             for sort in [True, False]:
                 for derive in [True, False]:
                     with self.subTest(addrtype=addrtype):
-                        if not sort and self.full_type not in SUPPORTS_UNSORTED_MS:
-                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.full_type))
-                        if derive and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.full_type))
+                        if not sort and not self.emulator.supports_unsorted_ms:
+                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.emulator.full_type))
+                        if derive and not self.emulator.supports_xpub_ms_display:
+                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.emulator.full_type))
 
                         addr, desc = self._make_single_multisig(addrtype, sort, derive)
 

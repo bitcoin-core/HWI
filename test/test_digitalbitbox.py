@@ -30,6 +30,16 @@ class BitBox01Emulator(DeviceEmulator):
         self.simulator = simulator
         self.bitbox_log = None
         self.simulator_proc = None
+        self.type = 'digitalbitbox'
+        self.full_type = 'digitalbitbox'
+        self.path = 'udp:127.0.0.1:35345'
+        self.fingerprint = 'a31b978a'
+        self.master_xpub = 'xpub6BsWJiRvbzQJg3J6tgUKmHWYbHJSj41EjAAje6LuDwnYLqLiNSWK4N7rCXwiUmNJTBrKL8AEH3LBzhJdgdxoy4T9aMPLCWAa6eWKGCFjQhq'
+        self.password = "0000"
+        self.supports_ms_display = False
+        self.supports_xpub_ms_display = False
+        self.supports_unsorted_ms = False
+        self.supports_taproot = False
 
     def start(self):
         super().start()
@@ -164,12 +174,7 @@ class TestBitboxGetXpub(DeviceTestCase):
         self.assertEqual(result['pubkey'], '029078c9ad8421afd958d7bc054a0952874923e2586fc9375604f0479a354ea193')
 
 def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
-    # params
-    type = 'digitalbitbox'
-    full_type = 'digitalbitbox'
-    path = 'udp:127.0.0.1:35345'
-    fingerprint = 'a31b978a'
-    master_xpub = 'xpub6BsWJiRvbzQJg3J6tgUKmHWYbHJSj41EjAAje6LuDwnYLqLiNSWK4N7rCXwiUmNJTBrKL8AEH3LBzhJdgdxoy4T9aMPLCWAa6eWKGCFjQhq'
+    dev_emulator = BitBox01Emulator(simulator)
 
     signtx_cases = [
         (["legacy"], True, True, True),
@@ -177,17 +182,15 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
         (["legacy", "segwit"], True, True, True),
     ]
 
-    dev_emulator = BitBox01Emulator(simulator)
-
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestBitboxGetXpub, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface, detect_type="digitalbitbox"))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface, detect_type="digitalbitbox_01_simulator"))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, '0000', emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestBitboxGetXpub, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox_01_simulator"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()

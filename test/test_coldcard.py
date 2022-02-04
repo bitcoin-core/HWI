@@ -32,6 +32,16 @@ class ColdcardSimulator(DeviceEmulator):
         self.simulator = simulator
         self.coldcard_log = None
         self.coldcard_proc = None
+        self.type = "coldcard"
+        self.full_type = "coldcard"
+        self.path = "/tmp/ckcc-simulator.sock"
+        self.fingerprint = "0f056943"
+        self.master_xpub = "tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd"
+        self.password = ""
+        self.supports_ms_display = True
+        self.supports_xpub_ms_display = False
+        self.supports_unsorted_ms = False
+        self.supports_taproot = False
 
     def start(self):
         super().start()
@@ -125,29 +135,25 @@ class TestColdcardGetXpub(DeviceTestCase):
         self.assertEqual(result['pubkey'], '0368000bdff5e0b71421c37b8514de8acd4d98ba9908d183d9da56d02ca4fcfd08')
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
-    dev_type = "coldcard"
-    sim_path = "/tmp/ckcc-simulator.sock"
-    fpr = "0f056943"
-    xpub = "tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd"
+    dev_emulator = ColdcardSimulator(simulator)
+
     signtx_cases = [
         (["legacy"], True, True, False),
         (["segwit"], True, True, False),
         (["legacy", "segwit"], True, True, False),
     ]
 
-    dev_emulator = ColdcardSimulator(simulator)
-
     # Generic device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, rpc, userpass, dev_type, dev_type, sim_path, fpr, '', emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestColdcardGetXpub, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface, detect_type="coldcard"))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface, detect_type="coldcard_simulator"))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, dev_type, dev_type, sim_path, fpr, xpub, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestColdcardGetXpub, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="coldcard"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="coldcard"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()
