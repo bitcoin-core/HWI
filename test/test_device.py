@@ -84,12 +84,12 @@ class DeviceTestCase(unittest.TestCase):
         self.signtx_cases = signtx_cases
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, signtx_cases=None):
+    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None, signtx_cases=None, *args, **kwargs):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, signtx_cases, name))
+            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, signtx_cases, name, *args, **kwargs))
         return suite
 
     def do_command(self, args):
