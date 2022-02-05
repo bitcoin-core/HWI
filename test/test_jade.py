@@ -44,7 +44,8 @@ class JadeEmulator(DeviceEmulator):
         super().start()
         if USE_SIMULATOR:
             # Start the qemu emulator
-            print('Starting Jade emulator at:', self.emulator_path)
+            self.emulator_stdout_log = open("jade-emulator.stdout", "a")
+            self.emulator_stderr_log = open("jade-emulator.stderr", "a")
             self.emulator_proc = subprocess.Popen(
                 [
                     './qemu-system-xtensa',
@@ -57,7 +58,11 @@ class JadeEmulator(DeviceEmulator):
                     '-global', 'driver=nvram.esp32.efuse,property=drive,value=efuse',
                     '-serial', 'pty'
                 ],
-                cwd=self.emulator_path, preexec_fn=os.setsid)
+                cwd=self.emulator_path,
+                preexec_fn=os.setsid,
+                stdout=self.emulator_stdout_log,
+                stderr=self.emulator_stderr_log,
+            )
             time.sleep(5)
 
             # Wait for emulator to be up
@@ -67,7 +72,6 @@ class JadeEmulator(DeviceEmulator):
                     # Try to connect and set the test seed
                     with JadeAPI.create_serial(JADE_PATH, timeout=5) as jade:
                         if jade.set_seed(TEST_SEED, temporary_wallet=True):
-                            print('Emulator started and test seed set')
                             break
 
                 except Exception as e:
@@ -77,10 +81,11 @@ class JadeEmulator(DeviceEmulator):
     def stop(self):
         super().stop()
         if USE_SIMULATOR:
-            print('Stopping Jade emulator')
             if self.emulator_proc.poll() is None:
                 os.killpg(os.getpgid(self.emulator_proc.pid), signal.SIGTERM)
                 os.waitpid(self.emulator_proc.pid, 0)
+            self.emulator_stdout_log.close()
+            self.emulator_stderr_log.close()
         atexit.unregister(self.stop)
 
 # Jade specific disabled command tests

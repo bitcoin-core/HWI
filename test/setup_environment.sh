@@ -304,7 +304,6 @@ if [[ -n ${build_jade} ]]; then
         ./configure \
             --target-list=xtensa-softmmu \
             --enable-gcrypt \
-            --enable-sanitizers \
             --disable-user \
             --disable-opengl \
             --disable-curses \
