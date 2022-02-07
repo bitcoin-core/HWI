@@ -210,31 +210,31 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertTrue(found)
 
     def test_no_type(self):
-        gmxp_res = self.do_command(['getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(["--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertIn('error', gmxp_res)
         self.assertEqual(gmxp_res['error'], 'You must specify a device type or fingerprint for all commands except enumerate')
         self.assertIn('code', gmxp_res)
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.emulator.path, 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.emulator.path, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
     def test_fingerprint_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.emulator.fingerprint, 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.emulator.fingerprint, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Nonexistent fingerprint
-        gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint')
         self.assertEqual(gmxp_res['code'], -3)
 
     def test_type_only_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Unknown device type
-        gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['error'], 'Unknown device type specified')
         self.assertEqual(gmxp_res['code'], -4)
 

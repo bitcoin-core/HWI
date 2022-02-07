@@ -54,7 +54,7 @@ class TrezorEmulator(DeviceEmulator):
         self.type = f"trezor_{model}"
         self.path = 'udp:127.0.0.1:21324'
         self.fingerprint = '95d8f670'
-        self.master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
+        self.master_xpub = "tpubDCknDegFqAdP4V2AhHhs635DPe8N1aTjfKE9m2UFbdej8zmeNbtqDzK59SxnsYSRSx5uS3AujbwgANUiAk4oHmDNUKoGGkWWUY6c48WgjEx"
         self.password = ""
         self.supports_ms_display = True
         self.supports_xpub_ms_display = True

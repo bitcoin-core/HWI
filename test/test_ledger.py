@@ -37,7 +37,7 @@ class LedgerEmulator(DeviceEmulator):
         self.type = "ledger"
         self.path = 'tcp:127.0.0.1:9999'
         self.fingerprint = 'f5acc2fd'
-        self.master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
+        self.master_xpub = 'tpubDCwYjpDhUdPGP5rS3wgNg13mTrrjBuG8V9VpWbyptX6TRPbNoZVXsoVUSkCjmQ8jJycjuDKBb9eataSymXakTTaGifxR6kmVsfFehH1ZgJT'
         self.password = ""
         self.supports_ms_display = False
         self.supports_xpub_ms_display = False
@@ -146,15 +146,15 @@ class TestLedgerDisabledCommands(DeviceTestCase):
 
 class TestLedgerGetXpub(DeviceTestCase):
     def test_getxpub(self):
-        result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
-        self.assertEqual(result['xpub'], "tpubDED6QbjWtz9KiBmvw9A73bdQpqdZhCUd6LXMM1NChthDvPVao2M9XogGQdnk1zg67KLeQ2hkGMujDuDX3H2vQCwCRenwW81gGJnp3W5kteV")
+        result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/1h/0h/0/3'])
+        self.assertEqual(result['xpub'], "tpubDHcN44A4UHqdR5iJduo8FWiWtJNcY7MPUEe1Dmpo4sv1R93k6mrWxAVNmjFAsW4e9gC14yTfkHFzBTQUjnkdijZVLmmiJdueMgLPczBRBSL")
         self.assertTrue(result['testnet'])
         self.assertFalse(result['private'])
-        self.assertEqual(result['depth'], 4)
-        self.assertEqual(result['parent_fingerprint'], '2930ce56')
+        self.assertEqual(result['depth'], 5)
+        self.assertEqual(result['parent_fingerprint'], "f7ed8b7e")
         self.assertEqual(result['child_num'], 3)
-        self.assertEqual(result['chaincode'], 'a3cd503ab3ffd3c31610a84307f141528c7e9b8416e10980ced60d1868b463e2')
-        self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
+        self.assertEqual(result['chaincode'], "1067f2a53975faf7ac265be505c1c50ef80a0dcbe1f53f50497c5618e8888dbd")
+        self.assertEqual(result['pubkey'], "035879ca173a9c1b3f300ec587fb4cc6d54d618e30584e425c1b53b98828708f1d")
 
 def ledger_test_suite(emulator, bitcoind, interface, legacy=False):
     dev_emulator = LedgerEmulator(emulator, legacy)

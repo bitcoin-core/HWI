@@ -33,7 +33,7 @@ class BitBox01Emulator(DeviceEmulator):
         self.type = 'digitalbitbox'
         self.path = 'udp:127.0.0.1:35345'
         self.fingerprint = 'a31b978a'
-        self.master_xpub = 'xpub6BsWJiRvbzQJg3J6tgUKmHWYbHJSj41EjAAje6LuDwnYLqLiNSWK4N7rCXwiUmNJTBrKL8AEH3LBzhJdgdxoy4T9aMPLCWAa6eWKGCFjQhq'
+        self.master_xpub = "tpubDCjZ76WbqdyGWi7NaFLuhWL8GX7NK5gCGB7ApynxUHGkgvBVCtpXX1i6Uj88rL9WKM7vimN8QZRjowSX4g2uPxjnuie1Kg7XK8pvNGZznQi"
         self.password = "0000"
         self.supports_ms_display = False
         self.supports_xpub_ms_display = False
