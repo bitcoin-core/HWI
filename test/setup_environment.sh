@@ -181,7 +181,7 @@ if [[ -n ${build_bitbox01} ]]; then
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build && cd build
-    cmake .. -DBUILD_TYPE=simulator -DCMAKE_C_FLAGS="-Wno-format-truncation"
+    cmake .. -DBUILD_TYPE=simulator -DCMAKE_C_FLAGS="-Wno-format-truncation -Wno-array-parameter"
     make
     cd ../..
 fi
