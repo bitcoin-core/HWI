@@ -5,6 +5,7 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -53,6 +54,18 @@ class Bitcoind():
         self.userpass = None
 
     def start(self):
+
+        def get_free_port():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("", 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+            s.close()
+            return port
+
+        self.p2p_port = get_free_port()
+        self.rpc_port = get_free_port()
+
         self.bitcoind_proc = subprocess.Popen(
             [
                 self.bitcoind_path,
@@ -61,6 +74,8 @@ class Bitcoind():
                 "-noprinttoconsole",
                 "-fallbackfee=0.0002",
                 "-keypool=1",
+                f"-port={self.p2p_port}",
+                f"-rpcport={self.rpc_port}"
             ]
         )
 
@@ -73,7 +88,7 @@ class Bitcoind():
         # Read .cookie file to get user and pass
         with open(cookie_path) as f:
             self.userpass = f.readline().lstrip().rstrip()
-        self.rpc_url = f"http://{self.userpass}@127.0.0.1:18443"
+        self.rpc_url = f"http://{self.userpass}@127.0.0.1:{self.rpc_port}"
         self.rpc = AuthServiceProxy(self.rpc_url)
 
         # Wait for bitcoind to be ready
