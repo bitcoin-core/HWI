@@ -438,8 +438,7 @@ class TestSignTx(DeviceTestCase):
         if "tap" in input_types:
             tr_addr = self.wrpc.getnewaddress("", "bech32m")
 
-        in_amt = 3
-        out_amt = in_amt // 3 * 0.9
+        in_amt = 1
         number_inputs = 0
         # Single-sig
         if "segwit" in input_types:
@@ -481,21 +480,32 @@ class TestSignTx(DeviceTestCase):
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
         # Spend different amounts, with increasing number of inputs until the wallet is swept
-        for i in range(number_inputs):
+        utxos = self.wrpc.listunspent()
+        for i in range(1, number_inputs + 1):
             # Create a psbt spending the above
-            change_addr = self.wrpc.getrawchangeaddress()
-            if i == number_inputs - 1:
-                self.assertEqual((i + 1) * in_amt, self.wrpc.getbalance("*", 0, True))
-                change_addr = self.wpk_rpc.getrawchangeaddress()
-            out_val = (i + 1) * out_amt
+            change_addr = self.wpk_rpc.getrawchangeaddress()
+
+            out_val = i / 4
             outputs = [
                 {self.wpk_rpc.getnewaddress('', 'legacy'): out_val},
                 {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): out_val},
                 {self.wpk_rpc.getnewaddress('', 'bech32'): out_val}
             ]
+            if self.emulator.supports_taproot:
+                outputs.append({self.wpk_rpc.getnewaddress("", "bech32m"): out_val})
             if op_return:
                 outputs.append({"data": "000102030405060708090a0b0c0d0e0f10111213141516171819101a1b1c1d1e1f"})
-            psbt = self.wrpc.walletcreatefundedpsbt([], outputs, 0, {'includeWatching': True, "changePosition": 3, "changeAddress": change_addr}, True)
+            psbt = self.wrpc.walletcreatefundedpsbt(
+                utxos[:i],
+                outputs,
+                0,
+                {
+                    "includeWatching": True,
+                    "changeAddress": change_addr,
+                    "subtractFeeFromOutputs": [0, 1, 2],
+                },
+                True
+            )
 
             if external:
                 # Sign with unknown inputs in two steps
