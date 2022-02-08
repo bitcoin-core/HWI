@@ -10,9 +10,9 @@ import time
 import unittest
 
 from test_device import (
+    Bitcoind,
     DeviceEmulator,
     DeviceTestCase,
-    start_bitcoind,
     TestDeviceConnect,
     TestGetKeypool,
     TestGetDescriptors,
@@ -172,7 +172,7 @@ class TestBitboxGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], '7062818c752f878bf96ca668f77630452c3fa033b7415eed3ff568e04ada8104')
         self.assertEqual(result['pubkey'], '029078c9ad8421afd958d7bc054a0952874923e2586fc9375604f0479a354ea193')
 
-def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
+def digitalbitbox_test_suite(simulator, bitcoind, interface):
     dev_emulator = BitBox01Emulator(simulator)
 
     signtx_cases = [
@@ -183,13 +183,13 @@ def digitalbitbox_test_suite(simulator, rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestBitboxGetXpub, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox"))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox_01_simulator"))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestDBBManCommands, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestBitboxGetXpub, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="digitalbitbox_01_simulator"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()
@@ -202,6 +202,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not digitalbitbox_test_suite(args.simulator, rpc, userpass, args.interface))
+    sys.exit(not digitalbitbox_test_suite(args.simulator, bitcoind, args.interface))

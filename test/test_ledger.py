@@ -9,7 +9,17 @@ import sys
 import time
 import unittest
 
-from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
+from test_device import (
+    Bitcoind,
+    DeviceEmulator,
+    DeviceTestCase,
+    TestDeviceConnect,
+    TestDisplayAddress,
+    TestGetKeypool,
+    TestGetDescriptors,
+    TestSignMessage,
+    TestSignTx,
+)
 
 from hwilib._cli import process_commands
 
@@ -123,7 +133,7 @@ class TestLedgerGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], 'a3cd503ab3ffd3c31610a84307f141528c7e9b8416e10980ced60d1868b463e2')
         self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
 
-def ledger_test_suite(emulator, rpc, userpass, interface):
+def ledger_test_suite(emulator, bitcoind, interface):
     dev_emulator = LedgerEmulator(emulator)
 
     signtx_cases = [
@@ -133,14 +143,14 @@ def ledger_test_suite(emulator, rpc, userpass, interface):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type=dev_emulator.type))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerDisabledCommands, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestLedgerGetXpub, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type=dev_emulator.type))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()
@@ -154,6 +164,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not ledger_test_suite(args.emulator, rpc, userpass, args.interface))
+    sys.exit(not ledger_test_suite(args.emulator, bitcoind, args.interface))

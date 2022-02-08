@@ -9,7 +9,7 @@ from test_bech32 import TestSegwitAddress
 from test_bip32 import TestBIP32
 from test_coldcard import coldcard_test_suite
 from test_descriptor import TestDescriptor
-from test_device import start_bitcoind
+from test_device import Bitcoind
 from test_psbt import TestPSBT
 from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
@@ -99,21 +99,21 @@ else:
 
 if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox01 or args.jade:
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
     if success and args.bitbox01:
-        success &= digitalbitbox_test_suite(args.bitbox01_path, rpc, userpass, args.interface)
+        success &= digitalbitbox_test_suite(args.bitbox01_path, bitcoind, args.interface)
     if success and args.coldcard:
-        success &= coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface)
+        success &= coldcard_test_suite(args.coldcard_path, bitcoind, args.interface)
     if success and args.trezor_1:
-        success &= trezor_test_suite(args.trezor_1_path, rpc, userpass, args.interface, '1')
+        success &= trezor_test_suite(args.trezor_1_path, bitcoind, args.interface, '1')
     if success and args.trezor_t:
-        success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, 't')
+        success &= trezor_test_suite(args.trezor_t_path, bitcoind, args.interface, 't')
     if success and args.keepkey:
-        success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
+        success &= keepkey_test_suite(args.keepkey_path, bitcoind, args.interface)
     if success and args.ledger:
-        success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
+        success &= ledger_test_suite(args.ledger_path, bitcoind, args.interface)
     if success and args.jade:
-        success &= jade_test_suite(args.jade_path, rpc, userpass, args.interface)
+        success &= jade_test_suite(args.jade_path, bitcoind, args.interface)
 
 sys.exit(not success)

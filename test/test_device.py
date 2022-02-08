@@ -43,43 +43,74 @@ class DeviceEmulator():
     def stop(self):
         pass
 
-def start_bitcoind(bitcoind_path):
-    datadir = tempfile.mkdtemp()
-    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole', '-fallbackfee=0.0002', '-keypool=1'])
+# Class for bitcoind control and RPC
+class Bitcoind():
+    def __init__(self, bitcoind_path):
+        self.bitcoind_path = bitcoind_path
+        self.datadir = tempfile.mkdtemp()
+        self.rpc = None
+        self.bitcoind_proc = None
+        self.userpass = None
 
-    def cleanup_bitcoind():
-        bitcoind_proc.kill()
-        shutil.rmtree(datadir)
-    atexit.register(cleanup_bitcoind)
-    # Wait for cookie file to be created
-    while not os.path.exists(datadir + '/regtest/.cookie'):
-        time.sleep(0.5)
-    # Read .cookie file to get user and pass
-    with open(datadir + '/regtest/.cookie') as f:
-        userpass = f.readline().lstrip().rstrip()
-    rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(userpass))
+    def start(self):
+        self.bitcoind_proc = subprocess.Popen(
+            [
+                self.bitcoind_path,
+                "-regtest",
+                f"-datadir={self.datadir}",
+                "-noprinttoconsole",
+                "-fallbackfee=0.0002",
+                "-keypool=1",
+            ]
+        )
 
-    # Wait for bitcoind to be ready
-    ready = False
-    while not ready:
-        try:
-            rpc.getblockchaininfo()
-            ready = True
-        except JSONRPCException:
+        atexit.register(self.cleanup)
+
+        # Wait for cookie file to be created
+        cookie_path = os.path.join(self.datadir, "regtest", ".cookie")
+        while not os.path.exists(cookie_path):
             time.sleep(0.5)
-            pass
+        # Read .cookie file to get user and pass
+        with open(cookie_path) as f:
+            self.userpass = f.readline().lstrip().rstrip()
+        self.rpc_url = f"http://{self.userpass}@127.0.0.1:18443"
+        self.rpc = AuthServiceProxy(self.rpc_url)
 
-    # Make sure there are blocks and coins available
-    rpc.createwallet(wallet_name="supply")
-    wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(userpass))
-    wrpc.generatetoaddress(101, wrpc.getnewaddress())
-    return (rpc, userpass)
+        # Wait for bitcoind to be ready
+        ready = False
+        while not ready:
+            try:
+                self.rpc.getblockchaininfo()
+                ready = True
+            except JSONRPCException:
+                time.sleep(0.5)
+                pass
+
+        # Make sure there are blocks and coins available
+        self.rpc.createwallet(wallet_name="supply")
+        self.wrpc = self.get_wallet_rpc("supply")
+        self.wrpc.generatetoaddress(101, self.wrpc.getnewaddress())
+
+    def get_wallet_rpc(self, wallet):
+        url = self.rpc_url + f"/wallet/{wallet}"
+        return AuthServiceProxy(url)
+
+    def cleanup(self):
+        if self.bitcoind_proc is not None and self.bitcoind_proc.poll() is None:
+            self.bitcoind_proc.kill()
+        shutil.rmtree(self.datadir)
+
+    @staticmethod
+    def create(*args, **kwargs):
+        c = Bitcoind(*args, **kwargs)
+        c.start()
+        return c
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, bitcoind, emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
-        self.rpc = rpc
-        self.rpc_userpass = rpc_userpass
+        self.bitcoind = bitcoind
+        self.rpc = bitcoind.rpc
         self.emulator = emulator
 
         self.dev_args = ['-t', self.emulator.type, '-d', self.emulator.path, '--chain', 'test']
@@ -89,12 +120,12 @@ class DeviceTestCase(unittest.TestCase):
         self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, emulator, interface='library', *args, **kwargs):
+    def parameterize(testclass, bitcoind, emulator, interface='library', *args, **kwargs):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, emulator, interface, name, *args, **kwargs))
+            suite.addTest(testclass(bitcoind, emulator, interface, name, *args, **kwargs))
         return suite
 
     def do_command(self, args):
@@ -132,8 +163,8 @@ class DeviceTestCase(unittest.TestCase):
     def setup_wallets(self):
         wallet_name = '{}_{}_test'.format(self.emulator.type, self.id())
         self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True, descriptors=True)
-        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
-        self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(self.rpc_userpass))
+        self.wrpc = self.bitcoind.get_wallet_rpc(wallet_name)
+        self.wpk_rpc = self.bitcoind.get_wallet_rpc("supply")
 
     def setUp(self):
         self.emulator.start()

@@ -15,7 +15,17 @@ import unittest
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device, messages
-from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
+from test_device import (
+    Bitcoind,
+    DeviceEmulator,
+    DeviceTestCase,
+    TestDeviceConnect,
+    TestDisplayAddress,
+    TestGetKeypool,
+    TestGetDescriptors,
+    TestSignMessage,
+    TestSignTx,
+)
 
 from hwilib._cli import process_commands
 from hwilib.devices.trezor import TrezorClient
@@ -394,7 +404,7 @@ class TestTrezorManCommands(TrezorTestCase):
         else:
             self.fail("Did not enumerate device")
 
-def trezor_test_suite(emulator, rpc, userpass, interface, model):
+def trezor_test_suite(emulator, bitcoind, interface, model):
     assert model in TREZOR_MODELS
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
@@ -411,16 +421,16 @@ def trezor_test_suite(emulator, rpc, userpass, interface, model):
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type="trezor"))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="trezor"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     if model != 't':
         suite.addTest(TrezorTestCase.parameterize(TestTrezorManCommands, emulator=dev_emulator, interface=interface))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorLabel, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, emulator=dev_emulator, interface=interface, detect_type=f"trezor_{model}_simulator"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type=f"trezor_{model}_simulator"))
     suite.addTest(TrezorTestCase.parameterize(TestTrezorGetxpub, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
@@ -438,6 +448,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not trezor_test_suite(args.emulator, rpc, userpass, args.interface, args.model))
+    sys.exit(not trezor_test_suite(args.emulator, bitcoind, args.interface, args.model))
