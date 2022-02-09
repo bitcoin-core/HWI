@@ -317,7 +317,7 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Input Taproot leaf script key's control block is not valid")
                 script = deser_string(f)
                 if len(script) == 0:
-                    raise PSBTSerializationError("Intput Taproot leaf script cannot be empty")
+                    raise PSBTSerializationError("Input Taproot leaf script cannot be empty")
                 leaf_script = (script[:-1], int(script[-1]))
                 if leaf_script not in self.tap_scripts:
                     self.tap_scripts[leaf_script] = set()
@@ -814,7 +814,7 @@ class PSBT(object):
         if self.version == 0:
             # make sure that we got an unsigned tx
             if self.tx.is_null():
-                raise PSBTSerializationError("No unsigned trasaction was provided")
+                raise PSBTSerializationError("No unsigned transaction was provided")
             # Make sure no v2 fields are present
             if self.tx_version is not None:
                 raise PSBTSerializationError("PSBT_GLOBAL_TX_VERSION is not allowed in PSBTv0")

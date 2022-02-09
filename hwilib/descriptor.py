@@ -243,7 +243,7 @@ class Descriptor(object):
 
     def to_string(self) -> str:
         """
-        Serializes the descriptor as a string wtih the checksum
+        Serializes the descriptor as a string with the checksum
 
         :return: The descriptor with a checksum
         """
@@ -591,7 +591,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
                     except ValueError:
                         break
                     if len(branches) > MAX_TAPROOT_NODES:
-                        raise ValueError("tr() suports at most {MAX_TAPROOT_NODES} nesting levels")
+                        raise ValueError("tr() supports at most {MAX_TAPROOT_NODES} nesting levels")
                 # Process script expression
                 sarg, expr = _get_expr(expr)
                 subscripts.append(_parse_descriptor(sarg, _ParseDescriptorContext.P2TR))
