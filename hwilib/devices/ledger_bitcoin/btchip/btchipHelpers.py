@@ -21,7 +21,7 @@ import decimal
 import re
 
 # from pycoin
-SATOSHI_PER_COIN = decimal.Decimal(1e8)
+SATOSHI_PER_COIN = decimal.Decimal(10 ** 8)
 COIN_PER_SATOSHI = decimal.Decimal(1)/SATOSHI_PER_COIN
 
 def satoshi_to_btc(satoshi_count):
