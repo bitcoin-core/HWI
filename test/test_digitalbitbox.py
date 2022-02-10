@@ -177,9 +177,9 @@ def digitalbitbox_test_suite(simulator, bitcoind, interface):
     dev_emulator = BitBox01Emulator(simulator)
 
     signtx_cases = [
-        (["legacy"], True, True, True),
-        (["segwit"], True, True, True),
-        (["legacy", "segwit"], True, True, True),
+        (["legacy"], ["legacy"], True, True),
+        (["segwit"], ["segwit"], True, True),
+        (["legacy", "segwit"], ["legacy", "segwit"], True, True),
     ]
 
     # Generic Device tests

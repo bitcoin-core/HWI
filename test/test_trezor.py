@@ -413,11 +413,11 @@ def trezor_test_suite(emulator, bitcoind, interface, model):
     dev_emulator = TrezorEmulator(emulator, model)
 
     signtx_cases = [
-        (["legacy"], True, True, True),
-        (["segwit"], True, True, True),
-        (["tap"], False, False, True),
-        (["legacy", "segwit"], True, True, True),
-        (["legacy", "segwit", "tap"], True, False, True),
+        (["legacy"], ["legacy"], True, True),
+        (["segwit"], ["segwit"], True, True),
+        (["tap"], [], False, True),
+        (["legacy", "segwit"], ["legacy", "segwit"], True, True),
+        (["legacy", "segwit", "tap"], ["legacy", "segwit"], False, True),
     ]
 
     # Generic Device tests

@@ -426,7 +426,7 @@ class TestSignTx(DeviceTestCase):
 
         return desc, ms_info["address"]
 
-    def _test_signtx(self, input_types, multisig, external, op_return: bool):
+    def _test_signtx(self, input_types, multisig_types, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -454,30 +454,29 @@ class TestSignTx(DeviceTestCase):
             self.wpk_rpc.sendtoaddress(tr_addr, in_amt)
             number_inputs += 1
         # Now do segwit/legacy multisig
-        if multisig:
-            if "legacy" in input_types:
-                sh_multi_desc, sh_multi_addr = self._make_multisig("legacy")
+        if "legacy" in multisig_types:
+            sh_multi_desc, sh_multi_addr = self._make_multisig("legacy")
 
-                sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
-                multi_result = self.wrpc.importdescriptors([sh_multi_import])
-                self.assertTrue(multi_result[0]['success'])
+            sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
+            multi_result = self.wrpc.importdescriptors([sh_multi_import])
+            self.assertTrue(multi_result[0]['success'])
 
-                self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
-                number_inputs += 1
-            if "segwit" in input_types:
-                sh_wsh_multi_desc, sh_wsh_multi_addr = self._make_multisig("p2sh-segwit")
-                wsh_multi_desc, wsh_multi_addr = self._make_multisig("bech32")
+            self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
+            number_inputs += 1
+        if "segwit" in multisig_types:
+            sh_wsh_multi_desc, sh_wsh_multi_addr = self._make_multisig("p2sh-segwit")
+            wsh_multi_desc, wsh_multi_addr = self._make_multisig("bech32")
 
-                sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
-                wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
+            sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
+            wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
 
-                multi_result = self.wrpc.importdescriptors([sh_wsh_multi_import, wsh_multi_import])
-                self.assertTrue(multi_result[0]['success'])
-                self.assertTrue(multi_result[1]['success'])
+            multi_result = self.wrpc.importdescriptors([sh_wsh_multi_import, wsh_multi_import])
+            self.assertTrue(multi_result[0]['success'])
+            self.assertTrue(multi_result[1]['success'])
 
-                self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
-                self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
-                number_inputs += 2
+            self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
+            self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
+            number_inputs += 2
 
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
@@ -510,9 +509,9 @@ class TestSignTx(DeviceTestCase):
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
 
-        for addrtypes, multisig, external, op_return in self.signtx_cases:
-            with self.subTest(addrtypes=addrtypes, multisig=multisig, external=external, op_return=op_return):
-                self._test_signtx(addrtypes, multisig, external, op_return)
+        for addrtypes, multisig_types, external, op_return in self.signtx_cases:
+            with self.subTest(addrtypes=addrtypes, multisig_types=multisig_types, external=external, op_return=op_return):
+                self._test_signtx(addrtypes, multisig_types, external, op_return)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):

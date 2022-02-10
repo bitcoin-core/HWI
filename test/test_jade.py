@@ -215,9 +215,9 @@ def jade_test_suite(emulator, bitcoind, interface):
     dev_emulator = JadeEmulator(emulator)
 
     signtx_cases = [
-        (["legacy"], True, True, True),
-        (["segwit"], True, True, True),
-        (["legacy", "segwit"], True, True, True),
+        (["legacy"], ["legacy"], True, True),
+        (["segwit"], ["segwit"], True, True),
+        (["legacy", "segwit"], ["legacy", "segwit"], True, True),
     ]
 
     # Generic Device tests

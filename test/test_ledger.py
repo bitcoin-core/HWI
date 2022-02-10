@@ -138,8 +138,8 @@ def ledger_test_suite(emulator, bitcoind, interface):
     dev_emulator = LedgerEmulator(emulator)
 
     signtx_cases = [
-        (["legacy"], True, True, True),
-        (["segwit"], True, True, True),
+        (["legacy"], ["legacy"], True, True),
+        (["segwit"], ["segwit"], True, True),
     ]
 
     # Generic Device tests
