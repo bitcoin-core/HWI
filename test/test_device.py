@@ -392,38 +392,37 @@ class TestSignTx(DeviceTestCase):
             self.assertTrue(self.wrpc.testmempoolaccept([finalize_res['hex']])[0]["allowed"])
         return finalize_res['hex']
 
-    def _make_multisigs(self):
-        def get_pubkeys(t):
-            desc_pubkeys = []
-            sorted_pubkeys = []
-            for i in range(0, 3):
-                path = "/48h/1h/{}h/{}h/0/0".format(i, t)
-                origin = '{}{}'.format(self.emulator.fingerprint, path)
-                xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-                desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-                sorted_pubkeys.append(xpub["pubkey"])
-            sorted_pubkeys.sort()
-            return desc_pubkeys, sorted_pubkeys
+    def _make_multisig(self, addrtype):
+        if addrtype == "legacy":
+            coin_type = 0
+            desc_prefix = "sh("
+            desc_suffix = ")"
+        elif addrtype == "p2sh-segwit":
+            coin_type = 1
+            desc_prefix = "sh(wsh("
+            desc_suffix = "))"
+        elif addrtype == "bech32":
+            coin_type = 2
+            desc_prefix = "wsh("
+            desc_suffix = ")"
+        else:
+            self.fail(f"Unknown address type {addrtype}")
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(0)
-        sh_desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
-        sh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "legacy")
-        self.assertEqual(self.rpc.deriveaddresses(sh_desc)[0], sh_ms_info["address"])
+        desc_pubkeys = []
+        sorted_pubkeys = []
+        for account in range(0, 3):
+            path = f"/48h/1h/{account}h/{coin_type}h/0/0"
+            origin = '{}{}'.format(self.emulator.fingerprint, path)
+            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
+            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
+            sorted_pubkeys.append(xpub["pubkey"])
+        sorted_pubkeys.sort()
 
-        # Trezor requires that each address type uses a different derivation path.
-        # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
-        # So for those other devices, stick to the 0 path.
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.emulator.type == "trezor_t" else get_pubkeys(0)
-        sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
-        sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
-        self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
+        desc = AddChecksum(f"{desc_prefix}sortedmulti(2,{desc_pubkeys[0]},{desc_pubkeys[1]},{desc_pubkeys[2]}){desc_suffix}")
+        ms_info = self.rpc.createmultisig(2, sorted_pubkeys, addrtype)
+        self.assertEqual(self.rpc.deriveaddresses(desc)[0], ms_info["address"])
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.emulator.type == "trezor_t" else get_pubkeys(0)
-        wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
-        wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
-        self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
-
-        return sh_desc, sh_ms_info["address"], sh_wsh_desc, sh_wsh_ms_info["address"], wsh_desc, wsh_ms_info["address"]
+        return desc, ms_info["address"]
 
     def _test_signtx(self, input_types, multisig, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
@@ -436,16 +435,6 @@ class TestSignTx(DeviceTestCase):
         tr_addr = None
         if "tap" in input_types:
             tr_addr = self.wrpc.getnewaddress("", "bech32m")
-
-        sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
-
-        sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
-        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
-        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
-        multi_result = self.wrpc.importdescriptors([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
-        self.assertTrue(multi_result[0]['success'])
-        self.assertTrue(multi_result[1]['success'])
-        self.assertTrue(multi_result[2]['success'])
 
         in_amt = 3
         out_amt = in_amt // 3 * 0.9
@@ -465,9 +454,25 @@ class TestSignTx(DeviceTestCase):
         # Now do segwit/legacy multisig
         if multisig:
             if "legacy" in input_types:
+                sh_multi_desc, sh_multi_addr = self._make_multisig("legacy")
+
+                sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
+                multi_result = self.wrpc.importdescriptors([sh_multi_import])
+                self.assertTrue(multi_result[0]['success'])
+
                 self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
                 number_inputs += 1
             if "segwit" in input_types:
+                sh_wsh_multi_desc, sh_wsh_multi_addr = self._make_multisig("p2sh-segwit")
+                wsh_multi_desc, wsh_multi_addr = self._make_multisig("bech32")
+
+                sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
+                wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
+
+                multi_result = self.wrpc.importdescriptors([sh_wsh_multi_import, wsh_multi_import])
+                self.assertTrue(multi_result[0]['success'])
+                self.assertTrue(multi_result[1]['success'])
+
                 self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
                 self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
                 number_inputs += 2
