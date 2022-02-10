@@ -160,14 +160,14 @@ def ledger_test_suite(emulator, bitcoind, interface, legacy=False):
     dev_emulator = LedgerEmulator(emulator, legacy)
 
     signtx_cases = [
-        (["legacy"], ["legacy"] if legacy else [], True, legacy),
-        (["segwit"], ["segwit"] if legacy else [], True, legacy),
+        (["legacy"], ["legacy"], True, legacy),
+        (["segwit"], ["segwit"], True, legacy),
     ]
     if not legacy:
         signtx_cases.extend([
             (["tap"], [], True, legacy),
-            (["legacy", "segwit"], ["legacy", "segwit"] if legacy else [], True, legacy),
-            (["legacy", "segwit", "tap"], ["legacy", "segwit"] if legacy else [], True, legacy),
+            (["legacy", "segwit"], ["legacy", "segwit"], True, legacy),
+            (["legacy", "segwit", "tap"], ["legacy", "segwit"], True, legacy),
         ])
 
     # Generic Device tests
