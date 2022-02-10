@@ -17,18 +17,21 @@ It also tests usage with `bitcoind`.
 - `test_coldcard.py` tests the command line interface and Coldcard implementation.
 It uses the [Coldcard simulator](https://github.com/Coldcard/firmware/tree/master/unix#coldcard-desktop-simulator).
 It also tests usage with `bitcoind`.
+- `test_jade.py` tests the command line interface and Blockstream Jade implementation.
+It uses the [Espressif fork of the Qemu emulator](https://github.com/espressif/qemu.git).
+It also tests usage with `bitcoind`.
 
-`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind`.
+`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
 if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
 In order to build each simulator/emulator, you will need to use command line arguments.
-These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, and `--bitcoind`.
+These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
 If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
-`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, and bitcoind.
+`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, Jade emulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
-`test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, and `test/test_digitalbitbox.py` can be disabled.
+`test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, `test_jade.py`, and `test/test_digitalbitbox.py` can be disabled.
 
-If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
+If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Jade emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
 ```
 $ cd test
@@ -162,6 +165,116 @@ Build the emulator:
 $ export PATH=$PATH:`pwd`/nanopb/generator
 $ cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DKK_HAVE_STRLCAT=OFF -DKK_HAVE_STRLCPY=OFF
 $ make kkemu
+```
+
+## Jade emulator
+
+### Dependencies
+
+In order to build the Jade emulator, the following packages will need to be installed:
+
+```
+build-essential git cmake ninja-build libusb-1.0-0 libglib2.0-dev libpixman-1-dev libgcrypt20-dev
+```
+
+### Building
+
+Building the jade firmware and emulator can be a bit involved.  See `setup_environment.sh`.
+
+NOTE: the branch and commit of the esp-idf toolchain and the qemu emulator required are best extracted
+from the Jade Dockerfile at the Jade commit being built.
+
+Clone the jade repository and extract the branches and commits of the dependencies:
+
+```
+$ mkdir jade
+$ git clone --recursive --branch master https://github.com/Blockstream/Jade.git ./jade
+$ ESP_IDF_BRANCH=$(grep "ARG ESP_IDF_BRANCH=" Dockerfile | cut -d\= -f2)
+$ ESP_IDF_COMMIT=$(grep "ARG ESP_IDF_COMMIT=" Dockerfile | cut -d\= -f2)
+$ ESP_QEMU_BRANCH=$(grep "ARG ESP_QEMU_BRANCH=" Dockerfile | cut -d\= -f2)
+$ ESP_QEMU_COMMIT=$(grep "ARG ESP_QEMU_COMMIT=" Dockerfile | cut -d\= -f2)
+```
+
+Clone and build the qemu emulator:
+```
+$ mkdir qemu
+$ git clone --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --recursive https://github.com/espressif/qemu.git ./qemu
+$ cd qemu && checkout ${ESP_QEMU_COMMIT}
+$ ./configure \
+    --target-list=xtensa-softmmu \
+    --enable-gcrypt \
+    --enable-sanitizers \
+    --disable-user \
+    --disable-opengl \
+    --disable-curses \
+    --disable-capstone \
+    --disable-vnc \
+    --disable-parallels \
+    --disable-qed \
+    --disable-vvfat \
+    --disable-vdi \
+    --disable-qcow1 \
+    --disable-dmg \
+    --disable-cloop \
+    --disable-bochs \
+    --disable-replication \
+    --disable-live-block-migration \
+    --disable-keyring \
+    --disable-containers \
+    --disable-docs \
+    --disable-libssh \
+    --disable-xen \
+    --disable-tools \
+    --disable-zlib-test \
+    --disable-sdl \
+    --disable-gtk \
+    --disable-vhost-scsi \
+    --disable-qom-cast-debug \
+    --disable-tpm
+$ ninja -C build
+$ cd ..
+```
+
+Clone and install the relevant version of the esp-idf libraries and toolchain:
+```
+$ mkdir ./esp && cd ./esp
+$ export IDF_TOOLS_PATH="$(pwd)/esp-idf-tools"
+$ git clone --quiet --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git
+$ cd esp-idf && git checkout ${ESP_IDF_COMMIT}
+$ ./install.sh esp32
+$ . ./export.sh
+$ cd ../..
+```
+(Note: once the tools are installed, any new shell only needs to source the `./export.sh` file.)
+
+Build the Jade fw configured for the emulator:
+```
+$ cd jade
+$ rm -f sdkconfig
+$ cp configs/sdkconfig_qemu.defaults sdkconfig.defaults
+$ idf.py all
+```
+
+Create an emulator rom image:
+```
+$ esptool.py --chip esp32 merge_bin --fill-flash-size 4MB -o main/qemu/flash_image.bin \
+$ --flash_mode dio --flash_freq 40m --flash_size 4MB \
+$ 0x9000 build/partition_table/partition-table.bin \
+$ 0xe000 build/ota_data_initial.bin \
+$ 0x1000 build/bootloader/bootloader.bin \
+$ 0x10000 build/jade.bin
+$ cd ..
+```
+
+Extract the minimal artifacts required to run the emulator
+```
+$ rm -fr simulator
+$ mkdir simulator
+$ cp qemu/build/qemu-system-xtensa simulator/
+$ cp -R qemu/pc-bios simulator/
+$ cp jade/main/qemu/flash_image.bin simulator/
+$ cp jade/main/qemu/qemu_efuse.bin simulator/
+$ cd ..
 ```
 
 ## Bitcoin Core
