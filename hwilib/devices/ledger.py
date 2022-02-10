@@ -9,6 +9,8 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
+    Tuple,
     Union,
 )
 
@@ -39,7 +41,10 @@ from .ledger_bitcoin.client import (
 )
 from .ledger_bitcoin.client_legacy import DongleAdaptor
 from .ledger_bitcoin.exception import NotSupportedError
-from .ledger_bitcoin.wallet import PolicyMapWallet
+from .ledger_bitcoin.wallet import (
+    MultisigWallet,
+    PolicyMapWallet,
+)
 from .ledger_bitcoin.btchip.btchipException import BTChipException
 from .ledger_bitcoin.btchip.btchip import btchip
 
@@ -59,7 +64,9 @@ from ..key import (
 )
 from .._script import (
     is_p2sh,
+    is_p2wsh,
     is_witness,
+    parse_multisig,
 )
 from ..psbt import PSBT
 import logging
@@ -161,7 +168,7 @@ class LedgerClient(HardwareWalletClient):
         path = path.replace("H", "'")
         try:
             xpub_str = self.client.get_extended_pubkey(path=path, display=False)
-        except NotSupportedError as e:
+        except NotSupportedError:
             # We will get not supported for non-standard paths
             # If so, try again but with display=True
             xpub_str = self.client.get_extended_pubkey(path=path, display=True)
@@ -202,8 +209,8 @@ class LedgerClient(HardwareWalletClient):
             psbt2.convert_to_v2()
 
         # Figure out which wallets are signing
-        wallets = []
-        pubkeys = {}
+        wallets: Dict[bytes, Tuple[int, AddressType, PolicyMapWallet, Optional[bytes]]] = {}
+        pubkeys: Dict[int, bytes] = {}
         for input_num, psbt_in in builtins.enumerate(psbt2.inputs):
             utxo = None
             scriptcode = b""
@@ -243,33 +250,83 @@ class LedgerClient(HardwareWalletClient):
                     else:
                         continue
 
-            def process_origin(origin: KeyOriginInfo) -> None:
-                if not is_standard_path(origin.path, script_addrtype, self.chain):
-                    # TODO: Deal with non-default wallets
-                    return
-                wallets.append(
-                    (
+            # Check if P2WSH
+            if is_p2wsh(scriptcode):
+                if len(psbt_in.witness_script) == 0:
+                    continue
+                scriptcode = psbt_in.witness_script
+
+            multisig = parse_multisig(scriptcode)
+            if multisig is not None:
+                k, ms_pubkeys = multisig
+
+                # Figure out the parent xpubs
+                key_exprs: List[str] = []
+                ok = True
+                our_keys = 0
+                for pub in ms_pubkeys:
+                    if pub in psbt_in.hd_keypaths:
+                        pk_origin = psbt_in.hd_keypaths[pub]
+                        if pk_origin.fingerprint == master_fp:
+                            our_keys += 1
+                            pubkeys[input_num] = pub
+                        for xpub_bytes, xpub_origin in psbt2.xpub.items():
+                            xpub = ExtendedKey.from_bytes(xpub_bytes)
+                            if (xpub_origin.fingerprint == pk_origin.fingerprint) and (xpub_origin.path == pk_origin.path[:len(xpub_origin.path)]):
+                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), "/**").to_string())
+                                break
+                        else:
+                            # No xpub, Ledger will not accept this multisig
+                            ok = False
+                    else:
+                        # No origin info, Ledger will not accept this multisig
+                        ok = False
+
+                if not ok:
+                    continue
+
+                if our_keys != 1:
+                    # Ledger does not allow having more than one key per multisig
+                    continue
+
+                # Make and register the MultisigWallet
+                msw = MultisigWallet(f"{k} of {len(key_exprs)} Multisig", script_addrtype, k, key_exprs)
+                msw_id = msw.id
+                if msw_id not in wallets:
+                    _, registered_hmac = self.client.register_wallet(msw)
+                    wallets[msw_id] = (
                         signing_priority[script_addrtype],
                         script_addrtype,
-                        self._get_singlesig_default_wallet_policy(script_addrtype, origin.path[2])
+                        msw,
+                        registered_hmac,
                     )
-                )
+            else:
+                def process_origin(origin: KeyOriginInfo) -> None:
+                    if not is_standard_path(origin.path, script_addrtype, self.chain):
+                        # TODO: Deal with non-default wallets
+                        return
+                    policy = self._get_singlesig_default_wallet_policy(script_addrtype, origin.path[2])
+                    wallets[policy.id] = (
+                        signing_priority[script_addrtype],
+                        script_addrtype,
+                        self._get_singlesig_default_wallet_policy(script_addrtype, origin.path[2]),
+                        None, # Wallet hmac
+                    )
 
-            for key, origin in psbt_in.hd_keypaths.items():
-                if origin.fingerprint == master_fp:
-                    process_origin(origin)
-                    pubkeys[input_num] = key
+                for key, origin in psbt_in.hd_keypaths.items():
+                    if origin.fingerprint == master_fp:
+                        if not multisig:
+                            process_origin(origin)
+                        pubkeys[input_num] = key
 
-            for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
-                # TODO: Support script path signing
-                if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
-                    process_origin(origin)
-                    pubkeys[input_num] = key
-
-        wallets.sort(key=lambda y: y[0])
+                for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
+                    # TODO: Support script path signing
+                    if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
+                        process_origin(origin)
+                        pubkeys[input_num] = key
 
         # For each wallet, sign
-        for _, addrtype, wallet in wallets:
+        for _, (_, addrtype, wallet, wallet_hmac) in sorted(wallets.items(), key=lambda y: y[1][0]):
             if addrtype == AddressType.LEGACY:
                 # We need to remove witness_utxo for legacy inputs when signing with legacy otherwise signing will fail
                 for psbt_in in psbt2.inputs:
@@ -282,10 +339,10 @@ class LedgerClient(HardwareWalletClient):
                     if not is_wit:
                         psbt_in.witness_utxo = None
 
-            input_sigs = self.client.sign_psbt(psbt2, wallet, None)
+            input_sigs = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
 
             for idx, sig in input_sigs.items():
-                psbt_in = tx.inputs[idx]
+                psbt_in = psbt2.inputs[idx]
 
                 utxo = None
                 if psbt_in.witness_utxo:
@@ -306,6 +363,13 @@ class LedgerClient(HardwareWalletClient):
                 else:
                     pubkey = pubkeys[idx]
                     psbt_in.partial_sigs[pubkey] = sig
+
+        # Extract the sigs from psbt2 and put them into tx
+        for sig_in, psbt_in in zip(psbt2.inputs, tx.inputs):
+            psbt_in.partial_sigs.update(sig_in.partial_sigs)
+            psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
+            if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
+                psbt_in.tap_key_sig = sig_in.tap_key_sig
 
         return tx
 
