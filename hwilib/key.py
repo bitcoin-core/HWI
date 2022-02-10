@@ -139,6 +139,15 @@ class ExtendedKey(object):
         :param xpub: The Base58 check encoded xpub
         """
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
+        return cls.from_bytes(data)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'ExtendedKey':
+        """
+        Create an :class:`~ExtendedKey` from a serialized xpub
+
+        :param xpub: The serialized xpub
+        """
 
         version = data[0:4]
         if version not in [ExtendedKey.MAINNET_PRIVATE, ExtendedKey.MAINNET_PUBLIC, ExtendedKey.TESTNET_PRIVATE, ExtendedKey.TESTNET_PUBLIC]:
