@@ -170,9 +170,19 @@ class LedgerClient(HardwareWalletClient):
     @ledger_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
         """
-        Sign a transaction with a Ledger device. Not all transactiosn can be signed by a Ledger.
+        Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
-        - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs wil lbe signed in this case.
+        The scripts supported depend on the version of the Bitcoin Application installed on the Ledger.
+
+        For application versions 1.x:
+
+        - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs will be signed in this case.
+
+        For application versions 2.x:
+
+        - Transactions containing OP_RETURN outputs are not supported.
+        - Transacttions containing multisig inputs are currently not supported.
+        - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported.
         """
         master_fp = self.get_master_fingerprint()
 
