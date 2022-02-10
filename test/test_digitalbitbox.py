@@ -39,6 +39,7 @@ class BitBox01Emulator(DeviceEmulator):
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
+        self.strict_bip48 = False
 
     def start(self):
         super().start()

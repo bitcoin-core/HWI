@@ -30,6 +30,7 @@ class DeviceEmulator():
         self.supports_xpub_ms_display = None
         self.supports_unsorted_ms = None
         self.supports_taproot = None
+        self.strict_bip48 = None
 
     def start(self):
         assert self.type is not None
@@ -40,6 +41,7 @@ class DeviceEmulator():
         assert self.supports_ms_display is not None
         assert self.supports_xpub_ms_display is not None
         assert self.supports_unsorted_ms is not None
+        assert self.strict_bip48 is not None
 
     def stop(self):
         pass
@@ -398,11 +400,11 @@ class TestSignTx(DeviceTestCase):
             desc_prefix = "sh("
             desc_suffix = ")"
         elif addrtype == "p2sh-segwit":
-            coin_type = 1
+            coin_type = 1 if self.emulator.strict_bip48 else 0
             desc_prefix = "sh(wsh("
             desc_suffix = "))"
         elif addrtype == "bech32":
-            coin_type = 2
+            coin_type = 2 if self.emulator.strict_bip48 else 0
             desc_prefix = "wsh("
             desc_suffix = ")"
         else:

@@ -42,6 +42,7 @@ class LedgerEmulator(DeviceEmulator):
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
+        self.strict_bip48 = True
 
     def start(self):
         super().start()
