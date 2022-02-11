@@ -16,7 +16,7 @@ from typing import Dict
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
-from hwilib.descriptor import AddChecksum
+from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider
 from hwilib.key import ExtendedKey, KeyOriginInfo
 from hwilib.psbt import PSBT
 
@@ -34,6 +34,7 @@ class DeviceEmulator():
         self.supports_taproot = None
         self.strict_bip48 = None
         self.include_xpubs = None
+        self.supports_device_multiple_multisig = None
 
     def start(self):
         assert self.type is not None
@@ -46,6 +47,7 @@ class DeviceEmulator():
         assert self.supports_unsorted_ms is not None
         assert self.strict_bip48 is not None
         assert self.include_xpubs is not None
+        assert self.supports_device_multiple_multisig is not None
 
     def stop(self):
         pass
@@ -339,6 +341,11 @@ class TestSignTx(DeviceTestCase):
         self.setup_wallets()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
+        if not self.emulator.supports_device_multiple_multisig:
+            # We will need Core to sign so that the multisig is complete
+            core_sign_res = self.wpk_rpc.walletprocesspsbt(psbt=psbt, finalize=False)
+            psbt = core_sign_res["psbt"]
+
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
             sign_res = self.do_command(self.dev_args + ['signtx', psbt])
@@ -416,7 +423,7 @@ class TestSignTx(DeviceTestCase):
 
         desc_pubkeys = []
         xpubs: Dict[bytes, KeyOriginInfo] = {}
-        for account in range(0, 3):
+        for account in range(0, 3 if self.emulator.supports_device_multiple_multisig else 1):
             path = f"/48h/1h/{account}h/{coin_type}h"
             origin = '{}{}'.format(self.emulator.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["getxpub", "m{}".format(path)])
@@ -424,6 +431,31 @@ class TestSignTx(DeviceTestCase):
             if self.emulator.include_xpubs:
                 extkey = ExtendedKey.deserialize(xpub["xpub"])
                 xpubs[extkey.serialize()] = KeyOriginInfo.from_string(origin)
+
+        if not self.emulator.supports_device_multiple_multisig:
+            # If the device does not support itself in the multisig more than once,
+            # we need to fetch a key from Core, and use another key that will not be signed with
+            counter_descs = self.wpk_rpc.listdescriptors()["descriptors"]
+            desc = parse_descriptor(counter_descs[0]["desc"])
+            pubkey_prov = None
+            while pubkey_prov is None:
+                if len(desc.pubkeys) > 0:
+                    pubkey_prov = desc.pubkeys[0]
+                else:
+                    desc = desc.subdescriptors[0]
+            assert pubkey_prov.extkey is not None
+            assert pubkey_prov.origin is not None
+            pubkey_prov.deriv_path = "/0/0"
+            desc_pubkeys.append(pubkey_prov.to_string())
+            if self.emulator.include_xpubs:
+                xpubs[pubkey_prov.extkey.serialize()] = pubkey_prov.origin
+
+            # A fixed key
+            fixed_extkey = ExtendedKey.deserialize("tpubDCBWBScQPGv4Xk3JSbhw6wYYpayMjb2eAYyArpbSqQTbLDpphHGAetB6VQgVeftLML8vDSUEWcC2xDi3qJJ3YCDChJDvqVzpgoYSuT52MhJ")
+            fixed_origin = KeyOriginInfo(b"\xde\xad\xbe\xef", [0x80000000])
+            desc_pubkeys.append(PubkeyProvider(fixed_origin, fixed_extkey.to_string(), "/0/0").to_string())
+            if self.emulator.include_xpubs:
+                xpubs[fixed_extkey.serialize()] = fixed_origin
 
         desc = AddChecksum(f"{desc_prefix}sortedmulti(2,{desc_pubkeys[0]},{desc_pubkeys[1]},{desc_pubkeys[2]}){desc_suffix}")
 
