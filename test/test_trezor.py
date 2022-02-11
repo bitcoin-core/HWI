@@ -61,6 +61,7 @@ class TrezorEmulator(DeviceEmulator):
         self.supports_unsorted_ms = True
         self.supports_taproot = True
         self.strict_bip48 = True
+        self.include_xpubs = False
 
     def start(self):
         super().start()

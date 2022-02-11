@@ -62,6 +62,7 @@ class KeepkeyEmulator(DeviceEmulator):
         self.supports_unsorted_ms = False
         self.supports_taproot = False
         self.strict_bip48 = False
+        self.include_xpubs = False
 
     def start(self):
         super().start()

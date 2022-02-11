@@ -11,11 +11,13 @@ import tempfile
 import time
 import unittest
 
+from typing import Dict
+
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
 from hwilib.descriptor import AddChecksum
-from hwilib.key import KeyOriginInfo
+from hwilib.key import ExtendedKey, KeyOriginInfo
 from hwilib.psbt import PSBT
 
 # Class for emulator control
@@ -31,6 +33,7 @@ class DeviceEmulator():
         self.supports_unsorted_ms = None
         self.supports_taproot = None
         self.strict_bip48 = None
+        self.include_xpubs = None
 
     def start(self):
         assert self.type is not None
@@ -42,6 +45,7 @@ class DeviceEmulator():
         assert self.supports_xpub_ms_display is not None
         assert self.supports_unsorted_ms is not None
         assert self.strict_bip48 is not None
+        assert self.include_xpubs is not None
 
     def stop(self):
         pass
@@ -337,7 +341,7 @@ class TestSignTx(DeviceTestCase):
     def _generate_and_finalize(self, unknown_inputs, psbt):
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
-            sign_res = self.do_command(self.dev_args + ['signtx', psbt['psbt']])
+            sign_res = self.do_command(self.dev_args + ['signtx', psbt])
             finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
             self.assertTrue(sign_res["signed"])
             self.assertTrue(finalize_res["complete"])
@@ -348,9 +352,9 @@ class TestSignTx(DeviceTestCase):
             # signing passes to ensure they are actually properly being
             # partially signed at each step.
             first_psbt = PSBT()
-            first_psbt.deserialize(psbt['psbt'])
+            first_psbt.deserialize(psbt)
             second_psbt = PSBT()
-            second_psbt.deserialize(psbt['psbt'])
+            second_psbt.deserialize(psbt)
 
             # Blank master fingerprint to make hww fail to sign
             # Single input PSBTs will be fully signed by first signer
@@ -411,20 +415,19 @@ class TestSignTx(DeviceTestCase):
             self.fail(f"Unknown address type {addrtype}")
 
         desc_pubkeys = []
-        sorted_pubkeys = []
+        xpubs: Dict[bytes, KeyOriginInfo] = {}
         for account in range(0, 3):
-            path = f"/48h/1h/{account}h/{coin_type}h/0/0"
+            path = f"/48h/1h/{account}h/{coin_type}h"
             origin = '{}{}'.format(self.emulator.fingerprint, path)
-            xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-            desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-            sorted_pubkeys.append(xpub["pubkey"])
-        sorted_pubkeys.sort()
+            xpub = self.do_command(self.dev_args + ["getxpub", "m{}".format(path)])
+            desc_pubkeys.append("[{}]{}/0/0".format(origin, xpub["xpub"]))
+            if self.emulator.include_xpubs:
+                extkey = ExtendedKey.deserialize(xpub["xpub"])
+                xpubs[extkey.serialize()] = KeyOriginInfo.from_string(origin)
 
         desc = AddChecksum(f"{desc_prefix}sortedmulti(2,{desc_pubkeys[0]},{desc_pubkeys[1]},{desc_pubkeys[2]}){desc_suffix}")
-        ms_info = self.rpc.createmultisig(2, sorted_pubkeys, addrtype)
-        self.assertEqual(self.rpc.deriveaddresses(desc)[0], ms_info["address"])
 
-        return desc, ms_info["address"]
+        return desc, self.rpc.deriveaddresses(desc)[0], xpubs
 
     def _test_signtx(self, input_types, multisig_types, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
@@ -453,8 +456,11 @@ class TestSignTx(DeviceTestCase):
             self.wpk_rpc.sendtoaddress(tr_addr, in_amt)
             number_inputs += 1
         # Now do segwit/legacy multisig
+        xpubs: Dict[bytes, KeyOriginInfo] = {}
         if "legacy" in multisig_types:
-            sh_multi_desc, sh_multi_addr = self._make_multisig("legacy")
+            sh_multi_desc, sh_multi_addr, sh_multi_xpubs = self._make_multisig("legacy")
+
+            xpubs.update(sh_multi_xpubs)
 
             sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
             multi_result = self.wrpc.importdescriptors([sh_multi_import])
@@ -463,8 +469,11 @@ class TestSignTx(DeviceTestCase):
             self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
             number_inputs += 1
         if "segwit" in multisig_types:
-            sh_wsh_multi_desc, sh_wsh_multi_addr = self._make_multisig("p2sh-segwit")
-            wsh_multi_desc, wsh_multi_addr = self._make_multisig("bech32")
+            sh_wsh_multi_desc, sh_wsh_multi_addr, sh_wsh_xpubs = self._make_multisig("p2sh-segwit")
+            wsh_multi_desc, wsh_multi_addr, wsh_xpubs = self._make_multisig("bech32")
+
+            xpubs.update(sh_wsh_xpubs)
+            xpubs.update(wsh_xpubs)
 
             sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
             wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
@@ -505,7 +514,13 @@ class TestSignTx(DeviceTestCase):
                     "subtractFeeFromOutputs": [0, 1, 2],
                 },
                 True
-            )
+            )["psbt"]
+
+            # We need to modify the psbt to include our xpubs as Core does not include xpubs
+            psbt_obj = PSBT()
+            psbt_obj.deserialize(psbt)
+            psbt_obj.xpub = xpubs
+            psbt = psbt_obj.serialize()
 
             if external:
                 # Sign with unknown inputs in two steps

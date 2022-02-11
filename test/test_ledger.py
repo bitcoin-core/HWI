@@ -44,6 +44,7 @@ class LedgerEmulator(DeviceEmulator):
         self.supports_unsorted_ms = False
         self.supports_taproot = not legacy # Legacy does not support Taproot
         self.strict_bip48 = True
+        self.include_xpubs = True
 
     def start(self):
         super().start()
