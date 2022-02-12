@@ -188,8 +188,9 @@ class LedgerClient(HardwareWalletClient):
         For application versions 2.x:
 
         - Transactions containing OP_RETURN outputs are not supported.
-        - Transacttions containing multisig inputs are currently not supported.
+        - Transactions containing multisig inputs involving the device more than once and also have Taproot outputs are currently not supported.
         - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported.
+        - Multisigs must only contain this device a single time. This is a limitation of the firmware.
         """
         master_fp = self.get_master_fingerprint()
 
