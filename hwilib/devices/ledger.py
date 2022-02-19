@@ -460,7 +460,7 @@ class LedgerClient(HardwareWalletClient):
         addr_type: AddressType,
         multisig: MultisigDescriptor,
     ) -> str:
-        raise BadArgumentError("The Ledger Nano S and X do not support P2SH address display")
+        raise BadArgumentError("The Ledger Nano S and X do not support P2(W)SH address display")
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
