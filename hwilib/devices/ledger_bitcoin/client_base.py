@@ -93,11 +93,20 @@ class Client:
 
         format = r.read(1)
 
-        app_name = deser_string(r)
-        app_version = deser_string(r)
-        app_flags = deser_string(r)
+        try:
+            app_name = deser_string(r)
+        except Exception as e:
+            app_name = b""
+        try:
+            app_version = deser_string(r)
+        except Exception as e:
+            app_version = b""
+        try:
+            app_flags = deser_string(r)
+        except Exception as e:
+            app_flags = b""
 
-        if format != b'\1' or app_name == b'' or app_version == b'' or app_flags == b'':
+        if format != b'\1' or app_name == b'' or app_version == b'':
             raise DeviceException(error_code=sw, ins=DefaultInsType.GET_VERSION,
                                   message="Invalid format returned by GET_VERSION")
 

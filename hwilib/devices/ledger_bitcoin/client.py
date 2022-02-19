@@ -7,7 +7,7 @@ from ...common import Chain
 from .client_command import ClientCommandInterpreter
 from .client_base import Client, TransportClient
 from .client_legacy import LegacyClient
-from .exception import DeviceException
+from .exception import DeviceException, NotSupportedError
 from .merkle import get_merkleized_map_commitment
 from .wallet import Wallet, WalletType, PolicyMapWallet
 from ...psbt import PSBT
@@ -216,7 +216,11 @@ def createClient(comm_client: Optional[TransportClient] = None, chain: Chain = C
         comm_client = TransportClient("hid", debug=debug)
 
     base_client = Client(comm_client, chain)
-    _, app_version, _ = base_client.get_version()
+    app_name, app_version, _ = base_client.get_version()
+
+    if app_name not in ["Bitcoin", "Bitcoin Test", "app"]:
+        raise NotSupportedError(0x6A82, None, "Ledger is not in either the Bitcoin or Bitcoin Testnet app")
+
     if app_version >= "2":
         return NewClient(comm_client, chain)
     else:

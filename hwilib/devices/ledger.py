@@ -148,15 +148,18 @@ class LedgerClient(HardwareWalletClient):
 
         is_debug = logging.getLogger().getEffectiveLevel() == logging.DEBUG
 
-        if path.startswith('tcp'):
-            split_path = path.split(':')
-            server = split_path[1]
-            port = int(split_path[2])
-            self.transport_client = TransportClient(interface="tcp", server=server, port=port, debug=is_debug)
-        else:
-            self.transport_client = TransportClient(interface="hid", debug=is_debug, hid_path=path.encode())
+        try:
+            if path.startswith('tcp'):
+                split_path = path.split(':')
+                server = split_path[1]
+                port = int(split_path[2])
+                self.transport_client = TransportClient(interface="tcp", server=server, port=port, debug=is_debug)
+            else:
+                self.transport_client = TransportClient(interface="hid", debug=is_debug, hid_path=path.encode())
 
-        self.client = createClient(self.transport_client, chain=self.chain, debug=is_debug)
+            self.client = createClient(self.transport_client, chain=self.chain, debug=is_debug)
+        except NotSupportedError as e:
+            raise DeviceConnectionError(e.args[2])
 
     @ledger_exception
     def get_master_fingerprint(self) -> bytes:
