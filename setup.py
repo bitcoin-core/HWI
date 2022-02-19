@@ -7,7 +7,6 @@ packages = \
  'hwilib.devices.btchip',
  'hwilib.devices.ckcc',
  'hwilib.devices.trezorlib',
- 'hwilib.devices.trezorlib.messages',
  'hwilib.devices.trezorlib.transport']
 
 package_data = \
