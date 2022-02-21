@@ -63,7 +63,10 @@ from ..key import (
     parse_path,
 )
 from .._script import (
+    is_opreturn,
+    is_p2pkh,
     is_p2sh,
+    is_p2wpkh,
     is_p2wsh,
     is_witness,
     parse_multisig,
@@ -197,14 +200,20 @@ class LedgerClient(HardwareWalletClient):
         """
         master_fp = self.get_master_fingerprint()
 
-        if isinstance(self.client, LegacyClient):
+        def legacy_sign_tx() -> PSBT:
+            client = self.client
+            if not isinstance(client, LegacyClient):
+                client = LegacyClient(self.transport_client, self.chain)
             wallet = PolicyMapWallet("", "wpkh(@0)", [""])
-            legacy_input_sigs = self.client.sign_psbt(tx, wallet, None)
+            legacy_input_sigs = client.sign_psbt(tx, wallet, None)
 
             for idx, sigs in legacy_input_sigs.items():
                 psbt_in = tx.inputs[idx]
                 psbt_in.partial_sigs.update(sigs)
             return tx
+
+        if isinstance(self.client, LegacyClient):
+            return legacy_sign_tx()
 
         # Make a deepcopy of this psbt. We will need to modify it to get signing to work,
         # which will affect the caller's detection for whether signing occured.
@@ -215,6 +224,7 @@ class LedgerClient(HardwareWalletClient):
         # Figure out which wallets are signing
         wallets: Dict[bytes, Tuple[int, AddressType, PolicyMapWallet, Optional[bytes]]] = {}
         pubkeys: Dict[int, bytes] = {}
+        retry_legacy = False
         for input_num, psbt_in in builtins.enumerate(psbt2.inputs):
             utxo = None
             scriptcode = b""
@@ -287,10 +297,12 @@ class LedgerClient(HardwareWalletClient):
                         ok = False
 
                 if not ok:
+                    retry_legacy = True
                     continue
 
                 if our_keys != 1:
                     # Ledger does not allow having more than one key per multisig
+                    retry_legacy = True
                     continue
 
                 # Make and register the MultisigWallet
@@ -374,6 +386,22 @@ class LedgerClient(HardwareWalletClient):
             psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
             if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
                 psbt_in.tap_key_sig = sig_in.tap_key_sig
+
+        # There are some situations where we want to retry with the legacy protocol
+        # So do that if we should.
+        if retry_legacy:
+            # But the legacy protocol only supports legacy and segwit v0, so only retry if those are the only outputs types
+            for output in tx.outputs:
+                if not (
+                    is_opreturn(output.script)
+                    or is_p2sh(output.script)
+                    or is_p2pkh(output.script)
+                    or is_p2wpkh(output.script)
+                    or is_p2wsh(output.script)
+                ):
+                    break
+            else:
+                return legacy_sign_tx()
 
         return tx
 
