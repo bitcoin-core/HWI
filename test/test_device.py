@@ -572,26 +572,27 @@ class TestSignTx(DeviceTestCase):
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
-        # make a huge transaction that is unrelated to the hardware wallet
+        # make a huge transaction
+        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "legacy", "0", "100"])
+        import_result = self.wrpc.importdescriptors(keypool_desc)
+        self.assertTrue(import_result[0]['success'])
         outputs = []
         num_inputs = 60
         for i in range(0, num_inputs):
-            outputs.append({self.wpk_rpc.getnewaddress('', 'legacy'): 0.001})
+            outputs.append({self.wrpc.getnewaddress('', 'legacy'): 0.001})
+        outputs.append({self.wrpc.getnewaddress("", "legacy"): 10})
         psbt = self.wpk_rpc.walletcreatefundedpsbt([], outputs, 0, {}, True)['psbt']
         psbt = self.wpk_rpc.walletprocesspsbt(psbt)['psbt']
         tx = self.wpk_rpc.finalizepsbt(psbt)['hex']
-        txid = self.wpk_rpc.sendrawtransaction(tx)
-        inputs = []
-        for i in range(0, num_inputs):
-            inputs.append({'txid': txid, 'vout': i})
-        psbt = self.wpk_rpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}], 0, {'subtractFeeFromOutputs': [0]}, True)['psbt']
+        self.wpk_rpc.sendrawtransaction(tx)
+        self.wpk_rpc.generatetoaddress(10, self.wpk_rpc.getnewaddress())
+        inputs = self.wrpc.listunspent()
+        psbt = self.wrpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}])['psbt']
         # For cli, this should throw an exception
         try:
             result = self.do_command(self.dev_args + ['signtx', psbt])
             if self.interface == 'cli':
                 self.fail('Big tx did not cause CLI to error')
-            if self.emulator.type == 'coldcard':
-                self.assertEqual(result['code'], -7)
             else:
                 self.assertNotIn('code', result)
                 self.assertNotIn('error', result)
