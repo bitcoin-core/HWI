@@ -327,6 +327,15 @@ class TrezorClient(HardwareWalletClient):
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
 
+    def _supports_external(self) -> bool:
+        if self.client.features.model == "1" and self.client.version <= (1, 10, 5):
+            return True
+        if self.client.features.model == "T" and self.client.version <= (2, 4, 3):
+            return True
+        if self.client.features.model == "K1-14AM":
+            return True
+        return False
+
     @trezor_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self._check_unlocked()
@@ -364,7 +373,6 @@ class TrezorClient(HardwareWalletClient):
             # Prepare inputs
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
-            has_tr = False
             for input_num, psbt_in in builtins.enumerate(tx.inputs):
                 assert psbt_in.prev_txid is not None
                 assert psbt_in.prev_out is not None
@@ -439,14 +447,20 @@ class TrezorClient(HardwareWalletClient):
                             txinputtype.script_type = messages.InputScriptType.SPENDMULTISIG
                         else:
                             # Cannot sign bare multisig, ignore it
+                            if not self._supports_external():
+                                raise BadArgumentError("Cannot sign bare multisig")
                             ignore_input()
                             continue
                 elif not is_ms and not is_wit and not is_p2pkh(scriptcode):
                     # Cannot sign unknown spk, ignore it
+                    if not self._supports_external():
+                        raise BadArgumentError("Cannot sign unknown scripts")
                     ignore_input()
                     continue
                 elif not is_ms and is_wit and p2wsh:
                     # Cannot sign unknown witness script, ignore it
+                    if not self._supports_external():
+                        raise BadArgumentError("Cannot sign unknown witness versions")
                     ignore_input()
                     continue
 
@@ -454,10 +468,12 @@ class TrezorClient(HardwareWalletClient):
                 found = False # Whether we have found a key to sign with
                 found_in_sigs = False # Whether we have found one of our keys in the signatures
                 our_keys = 0
+                path_last_ours = None # The path of the last key that is ours. We will use this if we need to ignore this input because it is already signed.
                 if txinputtype.script_type in ECDSA_SCRIPT_TYPES:
                     for key in psbt_in.hd_keypaths.keys():
                         keypath = psbt_in.hd_keypaths[key]
                         if keypath.fingerprint == master_fp:
+                            path_last_ours = keypath.path
                             if key in psbt_in.partial_sigs: # This key already has a signature
                                 found_in_sigs = True
                                 continue
@@ -466,17 +482,15 @@ class TrezorClient(HardwareWalletClient):
                                 found = True
                             our_keys += 1
                 elif txinputtype.script_type in SCHNORR_SCRIPT_TYPES:
-                    if len(psbt_in.tap_key_sig) > 0:
-                        found_in_sigs = True
-                    else:
-                        for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
-                            # TODO: Support script path signing
-                            if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
-                                has_tr = True
-                                txinputtype.address_n = origin.path
-                                found = True
-                                our_keys += 1
-                                break
+                    found_in_sigs = len(psbt_in.tap_key_sig) > 0
+                    for key, (leaf_hashes, origin) in psbt_in.tap_bip32_paths.items():
+                        # TODO: Support script path signing
+                        if key == psbt_in.tap_internal_key and origin.fingerprint == master_fp:
+                            path_last_ours = origin.path
+                            txinputtype.address_n = origin.path
+                            found = True
+                            our_keys += 1
+                            break
 
                 # Determine if we need to do more passes to sign everything
                 if our_keys > passes:
@@ -484,18 +498,19 @@ class TrezorClient(HardwareWalletClient):
 
                 if not found and not found_in_sigs: # None of our keys were in hd_keypaths or in partial_sigs
                     # This input is not one of ours
+                    if not self._supports_external():
+                        raise BadArgumentError("Cannot sign external inputs")
                     ignore_input()
                     continue
-                elif not found and found_in_sigs: # All of our keys are in partial_sigs, ignore whatever signature is produced for this input
-                    ignore_input()
-                    continue
+                elif not found and found_in_sigs:
+                    # All of our keys are in partial_sigs, pick the first key that is ours, sign with it,
+                    # and ignore whatever signature is produced for this input
+                    assert path_last_ours is not None
+                    txinputtype.address_n = path_last_ours
+                    to_ignore.append(input_num)
 
                 # append to inputs
                 inputs.append(txinputtype)
-
-            # Cannot sign transactions that have external inputs (to_ignore is not empty) and would sign taproot inputs
-            if has_tr and len(to_ignore) > 0:
-                raise BadArgumentError("Trezor cannot sign taproot inputs when the transaction also has external inputs")
 
             # address version byte
             if self.chain != Chain.MAIN:

@@ -415,10 +415,10 @@ def trezor_test_suite(emulator, bitcoind, interface, model):
     dev_emulator = TrezorEmulator(emulator, model)
 
     signtx_cases = [
-        (["legacy"], ["legacy"], True, True),
-        (["segwit"], ["segwit"], True, True),
+        (["legacy"], ["legacy"], False, True),
+        (["segwit"], ["segwit"], False, True),
         (["tap"], [], False, True),
-        (["legacy", "segwit"], ["legacy", "segwit"], True, True),
+        (["legacy", "segwit"], ["legacy", "segwit"], False, True),
         (["legacy", "segwit", "tap"], ["legacy", "segwit"], False, True),
     ]
 
