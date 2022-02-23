@@ -535,6 +535,10 @@ class TestSignTx(DeviceTestCase):
                 self.fail('Big tx did not cause CLI to error')
             if self.emulator.type == 'coldcard':
                 self.assertEqual(result['code'], -7)
+            elif self.emulator.type in ('trezor_1', 'trezor_t'):
+                # Trezor rejects to sign as inputs do not correspond to the wallet's private keys
+                self.assertEqual(result['code'], -13)
+                self.assertIn('Input does not match scriptPubKey', result['error'])
             else:
                 self.assertNotIn('code', result)
                 self.assertNotIn('error', result)
