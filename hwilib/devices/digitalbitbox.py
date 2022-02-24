@@ -494,42 +494,45 @@ class DigitalbitboxClient(HardwareWalletClient):
         if len(sighash_tuples) == 0:
             return tx
 
-        # Sign the sighashes
-        to_send = '{"sign":{"data":['
-        for tup in sighash_tuples:
-            to_send += '{"hash":"'
-            to_send += tup[0]
-            to_send += '","keypath":"'
-            to_send += tup[1]
-            to_send += '"},'
-        if to_send[-1] == ',':
-            to_send = to_send[:-1]
-        to_send += ']}}'
-        logging.debug(to_send)
+        for i in range(0, len(sighash_tuples), 15):
+            tups = sighash_tuples[i:i + 15]
 
-        reply = send_encrypt(to_send, self.password, self.device)
-        logging.debug(reply)
-        if 'error' in reply:
-            raise DBBError(reply)
-        print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
-        reply = send_encrypt(to_send, self.password, self.device)
-        logging.debug(reply)
-        if 'error' in reply:
-            raise DBBError(reply)
+            # Sign the sighashes
+            to_send = '{"sign":{"data":['
+            for tup in tups:
+                to_send += '{"hash":"'
+                to_send += tup[0]
+                to_send += '","keypath":"'
+                to_send += tup[1]
+                to_send += '"},'
+            if to_send[-1] == ',':
+                to_send = to_send[:-1]
+            to_send += ']}}'
+            logging.debug(to_send)
 
-        # Extract sigs
-        sigs = []
-        for item in reply['sign']:
-            sigs.append(binascii.unhexlify(item['sig']))
+            reply = send_encrypt(to_send, self.password, self.device)
+            logging.debug(reply)
+            if 'error' in reply:
+                raise DBBError(reply)
+            print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
+            reply = send_encrypt(to_send, self.password, self.device)
+            logging.debug(reply)
+            if 'error' in reply:
+                raise DBBError(reply)
 
-        # Make sigs der
-        der_sigs = []
-        for sig in sigs:
-            der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+            # Extract sigs
+            sigs = []
+            for item in reply['sign']:
+                sigs.append(binascii.unhexlify(item['sig']))
 
-        # add sigs to tx
-        for tup, sig in zip(sighash_tuples, der_sigs):
-            tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
+            # Make sigs der
+            der_sigs = []
+            for sig in sigs:
+                der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+
+            # add sigs to tx
+            for tup, sig in zip(tups, der_sigs):
+                tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
         return tx
 
