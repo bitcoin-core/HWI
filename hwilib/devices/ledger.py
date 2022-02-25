@@ -177,9 +177,9 @@ class LedgerClient(HardwareWalletClient):
     @ledger_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
         """
-        Sign a transaction with a Ledger device. Not all transactiosn can be signed by a Ledger.
+        Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
-        - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs wil lbe signed in this case.
+        - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs will be signed in this case.
         """
         c_tx = tx.get_unsigned_tx()
         tx_bytes = c_tx.serialize_with_witness()
