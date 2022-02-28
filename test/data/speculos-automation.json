@@ -2,14 +2,14 @@
     "version": 1,
     "rules": [
         {
-            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path).*",
+            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path|external inputs|Register wallet|Policy map|Key|Path|Public key|Spend from).*",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
             ]
         },
         {
-            "regexp": "^(Accept|Approve).*",
+            "regexp": "^(Accept|Approve|Continue).*",
             "actions": [
                 [ "button", 1, true ],
                 [ "button", 2, true ],

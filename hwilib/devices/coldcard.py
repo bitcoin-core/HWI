@@ -89,8 +89,8 @@ def coldcard_exception(f: Callable[..., Any]) -> Callable[..., Any]:
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
 
-    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
-        super(ColdcardClient, self).__init__(path, password, expert)
+    def __init__(self, path: str, password: str = "", expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+        super(ColdcardClient, self).__init__(path, password, expert, chain)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
             self.device = ColdcardDevice(sn=path)

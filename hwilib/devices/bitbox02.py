@@ -258,11 +258,11 @@ def bitbox02_exception(f: T) -> T:
 
 # This class extends the HardwareWalletClient for BitBox02 specific things
 class Bitbox02Client(HardwareWalletClient):
-    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
+    def __init__(self, path: str, password: str = "", expert: bool = False, chain: Chain = Chain.MAIN) -> None:
         """
         Initializes a new BitBox02 client instance.
         """
-        super().__init__(path, password=password, expert=expert)
+        super().__init__(path, password=password, expert=expert, chain=chain)
         if password:
             raise BadArgumentError(
                 "The BitBox02 does not accept a passphrase from the host. Please enable the passphrase option and enter the passphrase on the device during unlock."

@@ -283,12 +283,13 @@ class TrezorClient(HardwareWalletClient):
         path: str,
         password: str = "",
         expert: bool = False,
+        chain: Chain = Chain.MAIN,
         hid_ids: Set[Tuple[int, int]] = HID_IDS,
         webusb_ids: Set[Tuple[int, int]] = WEBUSB_IDS,
         sim_path: str = SIMULATOR_PATH,
         model: Optional[TrezorModel] = None
     ) -> None:
-        super(TrezorClient, self).__init__(path, password, expert)
+        super(TrezorClient, self).__init__(path, password, expert, chain)
         self.simulator = False
         transport = get_path_transport(path, hid_ids, webusb_ids, sim_path)
         if path.startswith('udp'):
@@ -347,6 +348,7 @@ class TrezorClient(HardwareWalletClient):
         - Multisig inputs are limited to at most n-of-15 multisigs. This is a firmware limitation.
         - Transactions with arbitrary input scripts (scriptPubKey, redeemScript, or witnessScript) and arbitrary output scripts cannot be signed. This is a firmware limitation.
         - Send-to-self transactions will result in no prompt for outputs as all outputs will be detected as change.
+        - Transactions containing Taproot inputs cannot have external inputs.
         """
         self._check_unlocked()
 

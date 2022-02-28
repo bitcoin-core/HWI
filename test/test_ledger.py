@@ -24,11 +24,12 @@ from test_device import (
 from hwilib._cli import process_commands
 
 class LedgerEmulator(DeviceEmulator):
-    def __init__(self, path):
+    def __init__(self, path, legacy=False):
         self.emulator_path = path
         self.emulator_proc = None
         self.emulator_stderr = None
         self.emulator_stdout = None
+        self.legacy = legacy
         try:
             os.unlink('ledger-emulator.stderr')
         except FileNotFoundError:
@@ -36,21 +37,44 @@ class LedgerEmulator(DeviceEmulator):
         self.type = "ledger"
         self.path = 'tcp:127.0.0.1:9999'
         self.fingerprint = 'f5acc2fd'
-        self.master_xpub = 'xpub6Cak8u8nU1evR4eMoz5UX12bU9Ws5RjEgq2Kq1RKZrsEQF6Cvecoyr19ZYRikWoJo16SXeft5fhkzbXcmuPfCzQKKB9RDPWT8XnUM62ieB9'
+        self.master_xpub = 'tpubDCwYjpDhUdPGP5rS3wgNg13mTrrjBuG8V9VpWbyptX6TRPbNoZVXsoVUSkCjmQ8jJycjuDKBb9eataSymXakTTaGifxR6kmVsfFehH1ZgJT'
         self.password = ""
         self.supports_ms_display = False
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
-        self.supports_taproot = False
+        self.supports_taproot = not legacy # Legacy does not support Taproot
         self.strict_bip48 = True
+        self.include_xpubs = True
+        self.supports_device_multiple_multisig = legacy
 
     def start(self):
         super().start()
         automation_path = os.path.abspath("data/speculos-automation.json")
+        app_path = "./apps/nanos#btc#2.0#ce796c1b.elf" if self.legacy else "./apps/btc-test.elf"
+        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.0" if self.legacy else "Bitcoin Test:2.0.1"
 
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
-        self.emulator_proc = subprocess.Popen(['python3', './' + os.path.basename(self.emulator_path), '--display', 'headless', '--automation', 'file:{}'.format(automation_path), '--log-level', 'automation:DEBUG', '--log-level', 'seproxyhal:DEBUG', '--api-port', '0', './apps/btc.elf'], cwd=os.path.dirname(self.emulator_path), stderr=self.emulator_stderr, preexec_fn=os.setsid)
+        self.emulator_proc = subprocess.Popen(
+            [
+                'python3',
+                './' + os.path.basename(self.emulator_path),
+                '--display',
+                'headless',
+                '--automation',
+                'file:{}'.format(automation_path),
+                '--log-level',
+                'automation:DEBUG',
+                '--log-level',
+                'seproxyhal:DEBUG',
+                '--api-port',
+                '0',
+                app_path
+            ],
+            cwd=os.path.dirname(self.emulator_path),
+            stderr=self.emulator_stderr,
+            preexec_fn=os.setsid,
+        )
         # Wait for simulator to be up
         while True:
             try:
@@ -124,23 +148,29 @@ class TestLedgerDisabledCommands(DeviceTestCase):
 
 class TestLedgerGetXpub(DeviceTestCase):
     def test_getxpub(self):
-        result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/0h/0h/3'])
-        self.assertEqual(result['xpub'], "tpubDED6QbjWtz9KiBmvw9A73bdQpqdZhCUd6LXMM1NChthDvPVao2M9XogGQdnk1zg67KLeQ2hkGMujDuDX3H2vQCwCRenwW81gGJnp3W5kteV")
+        result = self.do_command(self.dev_args + ['--expert', 'getxpub', 'm/44h/1h/0h/0/3'])
+        self.assertEqual(result['xpub'], "tpubDHcN44A4UHqdR5iJduo8FWiWtJNcY7MPUEe1Dmpo4sv1R93k6mrWxAVNmjFAsW4e9gC14yTfkHFzBTQUjnkdijZVLmmiJdueMgLPczBRBSL")
         self.assertTrue(result['testnet'])
         self.assertFalse(result['private'])
-        self.assertEqual(result['depth'], 4)
-        self.assertEqual(result['parent_fingerprint'], '2930ce56')
+        self.assertEqual(result['depth'], 5)
+        self.assertEqual(result['parent_fingerprint'], "f7ed8b7e")
         self.assertEqual(result['child_num'], 3)
-        self.assertEqual(result['chaincode'], 'a3cd503ab3ffd3c31610a84307f141528c7e9b8416e10980ced60d1868b463e2')
-        self.assertEqual(result['pubkey'], '03d5edb7c091b5577e1e2e6493b34e602b02547518222e26472cfab1745bb5977d')
+        self.assertEqual(result['chaincode'], "1067f2a53975faf7ac265be505c1c50ef80a0dcbe1f53f50497c5618e8888dbd")
+        self.assertEqual(result['pubkey'], "035879ca173a9c1b3f300ec587fb4cc6d54d618e30584e425c1b53b98828708f1d")
 
-def ledger_test_suite(emulator, bitcoind, interface):
-    dev_emulator = LedgerEmulator(emulator)
+def ledger_test_suite(emulator, bitcoind, interface, legacy=False):
+    dev_emulator = LedgerEmulator(emulator, legacy)
 
     signtx_cases = [
-        (["legacy"], ["legacy"], True, True),
-        (["segwit"], ["segwit"], True, True),
+        (["legacy"], ["legacy"], True, legacy),
+        (["segwit"], ["segwit"], True, legacy),
     ]
+    if not legacy:
+        signtx_cases.extend([
+            (["tap"], [], True, legacy),
+            (["legacy", "segwit"], ["legacy", "segwit"], True, legacy),
+            (["legacy", "segwit", "tap"], ["legacy", "segwit"], True, legacy),
+        ])
 
     # Generic Device tests
     suite = unittest.TestSuite()
@@ -161,10 +191,11 @@ if __name__ == '__main__':
     parser.add_argument('emulator', help='Path to the ledger emulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
+    parser.add_argument("--legacy", action="store_true", help="Use the v1 app and test the legacy API")
 
     args = parser.parse_args()
 
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not ledger_test_suite(args.emulator, bitcoind, args.interface))
+    sys.exit(not ledger_test_suite(args.emulator, bitcoind, args.interface, args.legacy))

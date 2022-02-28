@@ -27,7 +27,7 @@ class HardwareWalletClient(object):
     that hardware wallet subclasses should implement.
     """
 
-    def __init__(self, path: str, password: str, expert: bool) -> None:
+    def __init__(self, path: str, password: str, expert: bool, chain: Chain = Chain.MAIN) -> None:
         """
         :param path: Path to the device as returned by :func:`~hwilib.commands.enumerate`
         :param password: A password/passphrase to use with the device.
@@ -38,7 +38,7 @@ class HardwareWalletClient(object):
         self.path = path
         self.password = password
         self.message_magic = b"\x18Bitcoin Signed Message:\n"
-        self.chain = Chain.MAIN
+        self.chain = chain
         self.fingerprint: Optional[str] = None
         # {bip32_path: <xpub string>}
         self.xpub_cache: Dict[str, str] = {}

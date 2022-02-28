@@ -22,6 +22,10 @@ while [[ $# -gt 0 ]]; do
         build_ledger=1
         shift
         ;;
+        --ledger-legacy)
+        build_ledger=1
+        shift
+        ;;
         --keepkey)
         build_keepkey=1
         shift

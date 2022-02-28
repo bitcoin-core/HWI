@@ -35,13 +35,15 @@ class ColdcardSimulator(DeviceEmulator):
         self.type = "coldcard"
         self.path = "/tmp/ckcc-simulator.sock"
         self.fingerprint = "0f056943"
-        self.master_xpub = "tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd"
+        self.master_xpub = "tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB"
         self.password = ""
         self.supports_ms_display = True
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
         self.strict_bip48 = False
+        self.include_xpubs = False
+        self.supports_device_multiple_multisig = True
 
     def start(self):
         super().start()

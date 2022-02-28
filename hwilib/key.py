@@ -139,6 +139,15 @@ class ExtendedKey(object):
         :param xpub: The Base58 check encoded xpub
         """
         data = base58.decode(xpub)[:-4] # Decoded xpub without checksum
+        return cls.from_bytes(data)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'ExtendedKey':
+        """
+        Create an :class:`~ExtendedKey` from a serialized xpub
+
+        :param xpub: The serialized xpub
+        """
 
         version = data[0:4]
         if version not in [ExtendedKey.MAINNET_PRIVATE, ExtendedKey.MAINNET_PUBLIC, ExtendedKey.TESTNET_PRIVATE, ExtendedKey.TESTNET_PUBLIC]:
@@ -384,3 +393,39 @@ def get_bip44_chain(chain: Chain) -> int:
         return 0
     else:
         return 1
+
+def get_addrtype_from_bip44_purpose(index: int) -> Optional[AddressType]:
+    purpose = index & ~HARDENED_FLAG
+
+    if purpose == 44:
+        return AddressType.LEGACY
+    elif purpose == 49:
+        return AddressType.SH_WIT
+    elif purpose == 84:
+        return AddressType.WIT
+    elif purpose == 86:
+        return AddressType.TAP
+    else:
+        return None
+
+def is_standard_path(
+    path: Sequence[int],
+    addrtype: AddressType,
+    chain: Chain,
+) -> bool:
+    if len(path) != 5:
+        return False
+    if not is_hardened(path[0]) or not is_hardened(path[1]) or not is_hardened(path[2]):
+        return False
+    if is_hardened(path[3]) or is_hardened(path[4]):
+        return False
+    computed_addrtype = get_addrtype_from_bip44_purpose(path[0])
+    if computed_addrtype is None:
+        return False
+    if computed_addrtype != addrtype:
+        return False
+    if path[1] != H_(get_bip44_chain(chain)):
+        return False
+    if path[3] not in [0, 1]:
+        return False
+    return True

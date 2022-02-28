@@ -42,7 +42,7 @@ class JadeEmulator(DeviceEmulator):
         self.emulator_proc = None
         self.type = "jade"
         self.path = JADE_PATH
-        self.master_xpub = 'xpub6CYWf8Kf1MXHij4KJjjtkNgQxJufSmAoyrmGuiGWvjXHSpak638GrmgWZqiem339nuHf2xuCmEVmmnXDmskEjB7QdZGW2HdiBUnoEAwV1q2'
+        self.master_xpub = "tpubDCgUYU13ZZ2ES5mTZNfR93i2hGLKyCkGcbJtUJ2U1Lt9qQdNTSG7kQ4r6WK3mY7HVVKxyVpkbK6Hrdo1FLRHFRL4RP68eLmoySecZLLX5tW"
         self.fingerprint = '1273da33'
         self.password = ""
         self.supports_ms_display = False
@@ -50,6 +50,8 @@ class JadeEmulator(DeviceEmulator):
         self.supports_unsorted_ms = False
         self.supports_taproot = False
         self.strict_bip48 = False
+        self.include_xpubs = False
+        self.supports_device_multiple_multisig = True
 
     def start(self):
         super().start()
