@@ -30,6 +30,7 @@ from .._script import (
     is_p2pkh,
     is_p2wpkh,
     is_p2wsh,
+    is_p2tr,
     parse_multisig,
 )
 from ..psbt import PSBT
@@ -339,7 +340,7 @@ class Bitbox02Client(HardwareWalletClient):
             "The BitBox02 does not need a PIN sent from the host"
         )
 
-    def _get_coin(self) -> bitbox02.btc.BTCCoin:
+    def _get_coin(self) -> "bitbox02.btc.BTCCoin.V":
         if self.chain != Chain.MAIN:
             return bitbox02.btc.TBTC
         return bitbox02.btc.BTC
@@ -405,7 +406,7 @@ class Bitbox02Client(HardwareWalletClient):
         self,
         threshold: int,
         origin_infos: Mapping[bytes, KeyOriginInfo],
-        script_type: bitbox02.btc.BTCScriptConfig.Multisig.ScriptType,
+        script_type: "bitbox02.btc.BTCScriptConfig.Multisig.ScriptType.V",
     ) -> Tuple[bytes, bitbox02.btc.BTCScriptConfigWithKeypath]:
         """
         From a threshold, {xpub: KeyOriginInfo} mapping and multisig script type,
@@ -744,16 +745,19 @@ class Bitbox02Client(HardwareWalletClient):
             else:
                 if tx_out.is_p2pkh():
                     output_type = bitbox02.btc.P2PKH
-                    output_hash = tx_out.scriptPubKey[3:23]
+                    output_payload = tx_out.scriptPubKey[3:23]
                 elif is_p2wpkh(tx_out.scriptPubKey):
                     output_type = bitbox02.btc.P2WPKH
-                    output_hash = tx_out.scriptPubKey[2:]
+                    output_payload = tx_out.scriptPubKey[2:]
                 elif tx_out.is_p2sh():
                     output_type = bitbox02.btc.P2SH
-                    output_hash = tx_out.scriptPubKey[2:22]
+                    output_payload = tx_out.scriptPubKey[2:22]
                 elif is_p2wsh(tx_out.scriptPubKey):
                     output_type = bitbox02.btc.P2WSH
-                    output_hash = tx_out.scriptPubKey[2:]
+                    output_payload = tx_out.scriptPubKey[2:]
+                elif is_p2tr(tx_out.scriptPubKey):
+                    output_type = bitbox02.btc.P2TR
+                    output_payload = tx_out.scriptPubKey[2:]
                 else:
                     raise BadArgumentError(
                         "Output type not recognized of output {}".format(output_index)
@@ -762,7 +766,7 @@ class Bitbox02Client(HardwareWalletClient):
                 outputs.append(
                     bitbox02.BTCOutputExternal(
                         output_type=output_type,
-                        output_hash=output_hash,
+                        output_payload=output_payload,
                         value=tx_out.nValue,
                     )
                 )
