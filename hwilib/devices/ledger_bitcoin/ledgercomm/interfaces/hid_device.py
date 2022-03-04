@@ -70,7 +70,7 @@ class HID(Comm):
         Returns
         -------
         List[bytes]
-            List of paths to HID devices which should be Nano S or Nano X.
+            List of paths to HID devices which should be Nano S, Nano S Plus or Nano X.
 
         """
         devices: List[bytes] = []

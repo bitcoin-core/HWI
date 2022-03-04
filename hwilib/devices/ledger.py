@@ -80,11 +80,13 @@ SIMULATOR_PATH = 'tcp:127.0.0.1:9999'
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_MODEL_IDS = {
     0x10: "ledger_nano_s",
-    0x40: "ledger_nano_x"
+    0x40: "ledger_nano_x",
+    0x50: "ledger_nano_s_plus"
 }
 LEDGER_LEGACY_PRODUCT_IDS = {
     0x0001: "ledger_nano_s",
-    0x0004: "ledger_nano_x"
+    0x0004: "ledger_nano_x",
+    0x0005: "ledger_nano_s_plus"
 }
 
 # minimal checking of string keypath
@@ -143,7 +145,7 @@ def ledger_exception(f: Callable[..., Any]) -> Any:
                 raise e
     return func
 
-# This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
+# This class extends the HardwareWalletClient for Ledger Nano S, Nano S Plus and Nano X specific things
 class LedgerClient(HardwareWalletClient):
 
     def __init__(self, path: str, password: str = "", expert: bool = False, chain: Chain = Chain.MAIN) -> None:
