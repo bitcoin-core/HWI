@@ -584,7 +584,7 @@ class TestSignTx(DeviceTestCase):
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
         # make a huge transaction
-        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "legacy", "0", "100"])
+        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "legacy", "0", "200"])
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         outputs = []
