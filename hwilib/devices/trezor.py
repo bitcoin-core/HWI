@@ -275,6 +275,14 @@ def get_path_transport(
     raise BadArgumentError(f"Could not find device by path: {path}")
 
 
+def _use_external_script_type(client) -> bool:
+    if client.features.model == "1" and client.version > (1, 10, 5):
+        return True
+    if client.features.model == "T" and client.version > (2, 4, 3):
+        return True
+    return False
+
+
 # This class extends the HardwareWalletClient for Trezor specific things
 class TrezorClient(HardwareWalletClient):
 
@@ -326,15 +334,6 @@ class TrezorClient(HardwareWalletClient):
             self.client.ui.disallow_passphrase()
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
-
-    def _supports_external(self) -> bool:
-        if self.client.features.model == "1" and self.client.version <= (1, 10, 5):
-            return True
-        if self.client.features.model == "T" and self.client.version <= (2, 4, 3):
-            return True
-        if self.client.features.model == "K1-14AM":
-            return True
-        return False
 
     @trezor_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
@@ -431,9 +430,18 @@ class TrezorClient(HardwareWalletClient):
                     p2wsh = True
 
                 def ignore_input() -> None:
-                    txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (0 if self.chain == Chain.MAIN else 1), 0x80000000, 0, 0]
                     txinputtype.multisig = None
-                    txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
+                    if _use_external_script_type(self.client):
+                        txinputtype.script_type = messages.InputScriptType.EXTERNAL
+                        txinputtype.script_pubkey = utxo.scriptPubKey
+                        if psbt_in.final_script_sig:
+                            txinputtype.script_sig = psbt_in.final_script_sig
+                        witness = psbt_in.final_script_witness.serialize()
+                        if witness:
+                            txinputtype.witness = witness
+                    else:
+                        txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (0 if self.chain == Chain.MAIN else 1), 0x80000000, 0, 0]
+                        txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
                     inputs.append(txinputtype)
                     to_ignore.append(input_num)
 
@@ -446,21 +454,12 @@ class TrezorClient(HardwareWalletClient):
                         if utxo.is_p2sh:
                             txinputtype.script_type = messages.InputScriptType.SPENDMULTISIG
                         else:
-                            # Cannot sign bare multisig, ignore it
-                            if not self._supports_external():
-                                raise BadArgumentError("Cannot sign bare multisig")
                             ignore_input()
                             continue
                 elif not is_ms and not is_wit and not is_p2pkh(scriptcode):
-                    # Cannot sign unknown spk, ignore it
-                    if not self._supports_external():
-                        raise BadArgumentError("Cannot sign unknown scripts")
                     ignore_input()
                     continue
                 elif not is_ms and is_wit and p2wsh:
-                    # Cannot sign unknown witness script, ignore it
-                    if not self._supports_external():
-                        raise BadArgumentError("Cannot sign unknown witness versions")
                     ignore_input()
                     continue
 
@@ -497,9 +496,6 @@ class TrezorClient(HardwareWalletClient):
                     passes = our_keys
 
                 if not found and not found_in_sigs: # None of our keys were in hd_keypaths or in partial_sigs
-                    # This input is not one of ours
-                    if not self._supports_external():
-                        raise BadArgumentError("Cannot sign external inputs")
                     ignore_input()
                     continue
                 elif not found and found_in_sigs:
