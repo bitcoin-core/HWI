@@ -439,6 +439,11 @@ class TrezorClient(HardwareWalletClient):
                     if _use_external_script_type(self.client):
                         txinputtype.script_type = messages.InputScriptType.EXTERNAL
                         txinputtype.script_pubkey = utxo.scriptPubKey
+                        if psbt_in.final_script_sig:
+                            txinputtype.script_sig = psbt_in.final_script_sig
+                        witness = psbt_in.final_script_witness.serialize()
+                        if witness:
+                            txinputtype.witness = witness
                     else:
                         txinputtype.address_n = [0x80000000 | 84, 0x80000000 | (0 if self.chain == Chain.MAIN else 1), 0x80000000, 0, 0]
                         txinputtype.script_type = messages.InputScriptType.SPENDWITNESS
