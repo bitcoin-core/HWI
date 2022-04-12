@@ -222,7 +222,7 @@ class Descriptor(object):
     ) -> None:
         r"""
         :param pubkeys: The :class:`PubkeyProvider`\ s that are part of this descriptor
-        :param subdescriptor: The ``Descriptor``s that are part of this descriptor
+        :param subdescriptor: The ``Descriptor``\ s that are part of this descriptor
         :param name: The name of the function for this descriptor
         """
         self.pubkeys = pubkeys
@@ -397,9 +397,9 @@ class TRDescriptor(Descriptor):
         subdescriptors: List['Descriptor'] = [],
         depths: List[int] = []
     ) -> None:
-        """
+        r"""
         :param internal_key: The :class:`PubkeyProvider` that is the internal key for this descriptor
-        :param subdescriptors: The :class:`Descriptor`s that are the leaf scripts for this descriptor
+        :param subdescriptors: The :class:`Descriptor`\ s that are the leaf scripts for this descriptor
         :param depths: The depths of the leaf scripts in the same order as `subdescriptors`
         """
         super().__init__([internal_key], subdescriptors, "tr")
