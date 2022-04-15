@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hwi"
-version = "2.1.0-rc.1"
+version = "2.1.0"
 description = "A library for working with Bitcoin hardware wallets"
 authors = ["Andrew Chow <andrew@achow101.com>"]
 license = "MIT"
