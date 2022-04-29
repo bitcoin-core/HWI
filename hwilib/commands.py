@@ -120,7 +120,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                 # if None or other type than string - skip
                 if device_dict['fingerprint'] and isinstance(device_dict['fingerprint'], str):
                     device_dict['fingerprint'] = device_dict['fingerprint'].lower()
-            result.extend(partial_res) # type: ignore
+            result.extend(partial_res)
         except ImportError as e:
             # Warn for ImportErrors, but largely ignore them to allow users not install
             # all device dependencies if only one or some devices are wanted.
