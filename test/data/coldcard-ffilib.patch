@@ -1,0 +1,28 @@
+From 7778672d2de6ef2dd496bf3104e0a707ee03c897 Mon Sep 17 00:00:00 2001
+From: Andrew Chow <achow101-github@achow101.com>
+Date: Tue, 3 May 2022 19:15:59 -0400
+Subject: [PATCH] Fix unix/variant/ffilib.py to detect linux systems correctly
+
+It appears that sys.platofrm on linux systems report as "coldcard-unix"
+so ffilib.py needs to search for the string "unix" in order for the
+simulator to work on linux.
+---
+ unix/variant/ffilib.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/unix/variant/ffilib.py b/unix/variant/ffilib.py
+index dc4d672..c850c5b 100644
+--- a/unix/variant/ffilib.py
++++ b/unix/variant/ffilib.py
+@@ -14,7 +14,7 @@ def open(name, maxver=10, extra=()):
+     except KeyError:
+         pass
+     def libs():
+-        if sys.platform == "linux":
++        if "unix" in sys.platform:
+             yield '%s.so' % name
+             for i in range(maxver, -1, -1):
+                 yield '%s.so.%u' % (name, i)
+-- 
+2.36.0
+
