@@ -528,7 +528,10 @@ class TrezorClient(HardwareWalletClient):
                 out = psbt_out.get_txout()
                 txoutput = messages.TxOutputType(amount=out.nValue)
                 txoutput.script_type = messages.OutputScriptType.PAYTOADDRESS
-                if out.is_p2pkh():
+                wit, ver, prog = out.is_witness()
+                if wit:
+                    txoutput.address = bech32.encode(bech32_hrp, ver, prog)
+                elif out.is_p2pkh():
                     txoutput.address = to_address(out.scriptPubKey[3:23], p2pkh_version)
                 elif out.is_p2sh():
                     txoutput.address = to_address(out.scriptPubKey[2:22], p2sh_version)
@@ -536,30 +539,35 @@ class TrezorClient(HardwareWalletClient):
                     txoutput.script_type = messages.OutputScriptType.PAYTOOPRETURN
                     txoutput.op_return_data = out.scriptPubKey[2:]
                 else:
-                    wit, ver, prog = out.is_witness()
-                    if wit:
-                        txoutput.address = bech32.encode(bech32_hrp, ver, prog)
-                    else:
-                        raise BadArgumentError("Output is not an address")
+                    raise BadArgumentError("Output is not an address")
 
                 # Add the derivation path for change
-                for _, keypath in psbt_out.hd_keypaths.items():
-                    if keypath.fingerprint != master_fp:
-                        continue
-                    wit, ver, prog = out.is_witness()
-                    if out.is_p2pkh():
-                        txoutput.address_n = keypath.path
-                        txoutput.address = None
-                    elif wit:
-                        txoutput.script_type = messages.OutputScriptType.PAYTOWITNESS
-                        txoutput.address_n = keypath.path
-                        txoutput.address = None
-                    elif out.is_p2sh() and psbt_out.redeem_script:
-                        wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
-                        if wit and len(prog) in [20, 32]:
-                            txoutput.script_type = messages.OutputScriptType.PAYTOP2SHWITNESS
+                if not wit or (wit and ver == 0):
+                    for _, keypath in psbt_out.hd_keypaths.items():
+                        if keypath.fingerprint != master_fp:
+                            continue
+                        wit, ver, prog = out.is_witness()
+                        if out.is_p2pkh():
                             txoutput.address_n = keypath.path
                             txoutput.address = None
+                        elif wit:
+                            txoutput.script_type = messages.OutputScriptType.PAYTOWITNESS
+                            txoutput.address_n = keypath.path
+                            txoutput.address = None
+                        elif out.is_p2sh() and psbt_out.redeem_script:
+                            wit, ver, prog = CTxOut(0, psbt_out.redeem_script).is_witness()
+                            if wit and len(prog) in [20, 32]:
+                                txoutput.script_type = messages.OutputScriptType.PAYTOP2SHWITNESS
+                                txoutput.address_n = keypath.path
+                                txoutput.address = None
+                elif wit and ver == 1:
+                    for key, (leaf_hashes, origin) in psbt_out.tap_bip32_paths.items():
+                        # TODO: Support script path change
+                        if key == psbt_out.tap_internal_key and origin.fingerprint == master_fp:
+                            txoutput.address_n = origin.path
+                            txoutput.script_type = messages.OutputScriptType.PAYTOTAPROOT
+                            txoutput.address = None
+                            break
 
                 # add multisig info
                 if psbt_out.witness_script or psbt_out.redeem_script:
