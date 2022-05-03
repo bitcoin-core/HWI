@@ -26,6 +26,7 @@ RUN apt-get install -y \
     libevent-dev \
     libgcrypt20-dev \
     libnewlib-arm-none-eabi \
+    libpcsclite-dev \
     libsdl2-dev \
     libsdl2-image-dev \
     libssl-dev \
@@ -35,7 +36,8 @@ RUN apt-get install -y \
     ninja-build \
     pkg-config \
     protobuf-compiler \
-    qemu-user-static
+    qemu-user-static \
+    swig
 
 RUN pip install poetry flake8
 RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init

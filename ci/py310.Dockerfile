@@ -5,11 +5,13 @@ RUN apt-get update
 RUN apt-get install -y \
     cython3 \
     git \
+    libpcsclite-dev \
     libsdl2-dev \
     libsdl2-image-dev \
     libudev-dev \
     libusb-1.0-0-dev \
-    qemu-user-static
+    qemu-user-static \
+    swig
 
 RUN pip install poetry flake8
 
