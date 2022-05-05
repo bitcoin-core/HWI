@@ -1,7 +1,7 @@
-From 7cf569c904804c37275c24cafa2eaf7a6b559d68 Mon Sep 17 00:00:00 2001
+From a18ac68f4cfb7a3e8627ec28910e6ebacead1e8e Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 15:31:12 -0400
-Subject: [PATCH 01/46] Move individual KeyOriginInfo de/ser to separate
+Subject: [PATCH 01/48] Move individual KeyOriginInfo de/ser to separate
  function
 
 To make it easier to de/serialize individual KeyOriginInfo for PSBTs,
@@ -15,7 +15,7 @@ the caller.
  1 file changed, 23 insertions(+), 8 deletions(-)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index f0ceb02481..e2dbf48679 100644
+index 8a9cbd33d2..e0512feb4f 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -98,22 +98,30 @@ void UnserializeFromVector(Stream& s, X&... args)
@@ -83,13 +83,13 @@ index f0ceb02481..e2dbf48679 100644
  template<typename Stream>
  void SerializeHDKeypaths(Stream& s, const std::map<CPubKey, KeyOriginInfo>& hd_keypaths, CompactSizeWriter type)
 -- 
-2.35.1
+2.36.0
 
 
-From 0b27b011232202dda549284820d5d6e1012a1378 Mon Sep 17 00:00:00 2001
+From 61c44af8d53e995c578cbb0bd9a97fc9d6f26507 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:04:46 -0400
-Subject: [PATCH 02/46] Add TaprootBuilder::GetTreeTuples
+Subject: [PATCH 02/48] Add TaprootBuilder::GetTreeTuples
 
 GetTreeTuples returns the leaves in DFS order as tuples of depth, leaf
 version, and script. This is a representation of the tree that can be
@@ -100,10 +100,10 @@ serialized.
  2 files changed, 17 insertions(+)
 
 diff --git a/src/script/standard.cpp b/src/script/standard.cpp
-index 5fb98cc307..1e8d892e00 100644
+index e25155d3dd..010828d93d 100644
 --- a/src/script/standard.cpp
 +++ b/src/script/standard.cpp
-@@ -621,3 +621,18 @@ std::optional<std::vector<std::tuple<int, CScript, int>>> InferTaprootTree(const
+@@ -642,3 +642,18 @@ std::optional<std::vector<std::tuple<int, CScript, int>>> InferTaprootTree(const
  
      return ret;
  }
@@ -123,10 +123,10 @@ index 5fb98cc307..1e8d892e00 100644
 +    return tuples;
 +}
 diff --git a/src/script/standard.h b/src/script/standard.h
-index eb50421768..6e0dbca61c 100644
+index f0b143c52b..0e1cbc4690 100644
 --- a/src/script/standard.h
 +++ b/src/script/standard.h
-@@ -312,6 +312,8 @@ public:
+@@ -321,6 +321,8 @@ public:
      static bool ValidDepths(const std::vector<int>& depths);
      /** Compute spending data (after Finalize()). */
      TaprootSpendData GetSpendData() const;
@@ -136,13 +136,13 @@ index eb50421768..6e0dbca61c 100644
  
  /** Given a TaprootSpendData and the output key, reconstruct its script tree.
 -- 
-2.35.1
+2.36.0
 
 
-From d787a40bdf99cc86674944e6b6db459c12080720 Mon Sep 17 00:00:00 2001
+From bf29c1c6dd202a2a07eaf9027e5b6021121c3720 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:05:42 -0400
-Subject: [PATCH 03/46] Add TaprootBuilder::IsEmpty
+Subject: [PATCH 03/48] Add TaprootBuilder::IsEmpty
 
 Helper function to know whether the tree has any data in it.
 ---
@@ -150,10 +150,10 @@ Helper function to know whether the tree has any data in it.
  1 file changed, 2 insertions(+)
 
 diff --git a/src/script/standard.h b/src/script/standard.h
-index 6e0dbca61c..3836f7efd8 100644
+index 0e1cbc4690..824709134f 100644
 --- a/src/script/standard.h
 +++ b/src/script/standard.h
-@@ -304,6 +304,8 @@ public:
+@@ -313,6 +313,8 @@ public:
  
      /** Return true if so far all input was valid. */
      bool IsValid() const { return m_valid; }
@@ -163,13 +163,13 @@ index 6e0dbca61c..3836f7efd8 100644
      bool IsComplete() const { return m_valid && (m_branch.size() == 0 || (m_branch.size() == 1 && m_branch[0].has_value())); }
      /** Compute scriptPubKey (after Finalize()). */
 -- 
-2.35.1
+2.36.0
 
 
-From 87b3e137d2a81d2fc755f58c5009a7061a44449f Mon Sep 17 00:00:00 2001
+From c1638c6fe466774c113316b7042eb5dfe17c971e Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:06:20 -0400
-Subject: [PATCH 04/46] Add serialization methods to XOnlyPubKey
+Subject: [PATCH 04/48] Add serialization methods to XOnlyPubKey
 
 It is useful to have serialzation methods for XOnlyPubKey. These will
 serialize the internal uint256, so it is not prefixed with the length as
@@ -193,20 +193,20 @@ index dfe06f834c..463efe1b00 100644
  
  struct CExtPubKey {
 -- 
-2.35.1
+2.36.0
 
 
-From 01f0f968f7c445de85a42439d71ed9a15c7e6bfa Mon Sep 17 00:00:00 2001
+From 1a811f948c236a0d8c8e17188c34267019c88959 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:07:08 -0400
-Subject: [PATCH 05/46] Implement de/ser of PSBT's Taproot fields
+Subject: [PATCH 05/48] Implement de/ser of PSBT's Taproot fields
 
 ---
  src/psbt.h | 246 +++++++++++++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 246 insertions(+)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index e2dbf48679..740db5fa1e 100644
+index e0512feb4f..13e6a787ca 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -41,12 +41,21 @@ static constexpr uint8_t PSBT_IN_RIPEMD160 = 0x0A;
@@ -511,13 +511,13 @@ index e2dbf48679..740db5fa1e 100644
                  {
                      PSBTProprietary this_prop;
 -- 
-2.35.1
+2.36.0
 
 
-From 84b8f7e9c2c41d93556102e94b5b57f102291387 Mon Sep 17 00:00:00 2001
+From 5adbdd9d32527e5b85d8997fdbec8dc98fbbb99d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 15:29:29 -0400
-Subject: [PATCH 06/46] Fill PSBT Taproot input data to/from SignatureData
+Subject: [PATCH 06/48] Fill PSBT Taproot input data to/from SignatureData
 
 ---
  src/psbt.cpp      | 36 ++++++++++++++++++++++++++++++++++++
@@ -525,7 +525,7 @@ Subject: [PATCH 06/46] Fill PSBT Taproot input data to/from SignatureData
  2 files changed, 37 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index c8c73e130b..6bc3d08b0d 100644
+index 6465e353be..df01a1288b 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -113,6 +113,24 @@ void PSBTInput::FillSignatureData(SignatureData& sigdata) const
@@ -591,20 +591,20 @@ index 7301826ba5..f195a9128b 100644
      std::vector<CKeyID> missing_sigs; ///< KeyIDs of pubkeys for signatures which could not be found
      uint160 missing_redeem_script; ///< ScriptID of the missing redeemScript (if any)
 -- 
-2.35.1
+2.36.0
 
 
-From cb9f8af48bf8e2a869a1614325e97d4b6cc9c8c4 Mon Sep 17 00:00:00 2001
+From c801ad119262cf717cb097f09b719b2f5934f240 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 15:29:55 -0400
-Subject: [PATCH 07/46] Fetch key origins for Taproot keys
+Subject: [PATCH 07/48] Fetch key origins for Taproot keys
 
 ---
  src/script/sign.cpp | 19 +++++++++++++++++++
  1 file changed, 19 insertions(+)
 
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index 371a937bc8..a12d97d4f4 100644
+index d77515f16c..6467320442 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -169,6 +169,17 @@ static bool SignTaprootScript(const SigningProvider& provider, const BaseSignatu
@@ -625,7 +625,7 @@ index 371a937bc8..a12d97d4f4 100644
          std::vector<unsigned char> sig;
          if (CreateTaprootScriptSig(creator, sigdata, provider, sig, pubkey, leaf_hash, sigversion)) {
              result = Vector(std::move(sig));
-@@ -190,6 +201,14 @@ static bool SignTaproot(const SigningProvider& provider, const BaseSignatureCrea
+@@ -213,6 +224,14 @@ static bool SignTaproot(const SigningProvider& provider, const BaseSignatureCrea
  
      // Try key path spending.
      {
@@ -641,13 +641,13 @@ index 371a937bc8..a12d97d4f4 100644
          if (sigdata.taproot_key_path_sig.size() == 0) {
              if (creator.CreateSchnorrSig(provider, sig, spenddata.internal_key, nullptr, &spenddata.merkle_root, SigVersion::TAPROOT)) {
 -- 
-2.35.1
+2.36.0
 
 
-From 20cd7ff354931905fa2121d41c005f11ad2f62e2 Mon Sep 17 00:00:00 2001
+From dd5d3832a4f35e7139685f9955b55e2489b196ac Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:01:12 -0400
-Subject: [PATCH 08/46] Store TaprootBuilder in SigningProviders instead of
+Subject: [PATCH 08/48] Store TaprootBuilder in SigningProviders instead of
  TaprootSpendData
 
 TaprootSpendData can be gotten from TaprootBuilder, however for PSBT, we
@@ -661,10 +661,10 @@ is needed, we generate it on the fly using the stored builder.
  3 files changed, 21 insertions(+), 7 deletions(-)
 
 diff --git a/src/script/descriptor.cpp b/src/script/descriptor.cpp
-index 84040bf847..81a22f924f 100644
+index cece0b60ce..ca0170c84b 100644
 --- a/src/script/descriptor.cpp
 +++ b/src/script/descriptor.cpp
-@@ -850,7 +850,7 @@ protected:
+@@ -882,7 +882,7 @@ protected:
          if (!xpk.IsFullyValid()) return {};
          builder.Finalize(xpk);
          WitnessV1Taproot output = builder.GetOutput();
@@ -756,13 +756,13 @@ index f1bded1a8c..792cc903f2 100644
  
  FlatSigningProvider Merge(const FlatSigningProvider& a, const FlatSigningProvider& b);
 -- 
-2.35.1
+2.36.0
 
 
-From e721633370106c5cab62306050f5fe30f13da9f1 Mon Sep 17 00:00:00 2001
+From c673cf588369be3bd10ea4f20564a9d4f8ca55c7 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:02:36 -0400
-Subject: [PATCH 09/46] Fill PSBT Taproot output data to/from SignatureData
+Subject: [PATCH 09/48] Fill PSBT Taproot output data to/from SignatureData
 
 ---
  src/psbt.cpp        | 19 +++++++++++++++++++
@@ -771,7 +771,7 @@ Subject: [PATCH 09/46] Fill PSBT Taproot output data to/from SignatureData
  3 files changed, 24 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 6bc3d08b0d..fc89f1c376 100644
+index df01a1288b..8aaefe4e70 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -213,6 +213,16 @@ void PSBTOutput::FillSignatureData(SignatureData& sigdata) const
@@ -808,10 +808,10 @@ index 6bc3d08b0d..fc89f1c376 100644
  
  bool PSBTOutput::IsNull() const
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index a12d97d4f4..7c40fd4dde 100644
+index 6467320442..8528f69432 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
-@@ -193,11 +193,15 @@ static bool SignTaprootScript(const SigningProvider& provider, const BaseSignatu
+@@ -216,11 +216,15 @@ static bool SignTaprootScript(const SigningProvider& provider, const BaseSignatu
  static bool SignTaproot(const SigningProvider& provider, const BaseSignatureCreator& creator, const WitnessV1Taproot& output, SignatureData& sigdata, std::vector<valtype>& result)
  {
      TaprootSpendData spenddata;
@@ -840,23 +840,23 @@ index f195a9128b..663f343a66 100644
      std::map<CKeyID, std::pair<CPubKey, KeyOriginInfo>> misc_pubkeys;
      std::vector<unsigned char> taproot_key_path_sig; /// Schnorr signature for key path spending
 -- 
-2.35.1
+2.36.0
 
 
-From 96c80dbbf7fcc2fe9c4dcd81c629d69d82c86be5 Mon Sep 17 00:00:00 2001
+From 24c00f71c87a690cf0cbd82c3a25b7da7272de7d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:54:16 -0400
-Subject: [PATCH 10/46] Implement decodepsbt for Taproot fields
+Subject: [PATCH 10/48] Implement decodepsbt for Taproot fields
 
 ---
  src/rpc/rawtransaction.cpp | 169 ++++++++++++++++++++++++++++++++++++-
  1 file changed, 168 insertions(+), 1 deletion(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index ff0d8a4e0f..b5189eb684 100644
+index ce8f16540f..22550b5150 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -1187,6 +1187,43 @@ static RPCHelpMan decodepsbt()
+@@ -790,6 +790,43 @@ static RPCHelpMan decodepsbt()
                                  {
                                      {RPCResult::Type::STR, "hash", "The hash and preimage that corresponds to it."},
                                  }},
@@ -900,7 +900,7 @@ index ff0d8a4e0f..b5189eb684 100644
                                  {RPCResult::Type::OBJ_DYN, "unknown", /*optional=*/ true, "The unknown input fields",
                                  {
                                      {RPCResult::Type::STR_HEX, "key", "(key-value pair) An unknown key-value pair"},
-@@ -1228,7 +1265,30 @@ static RPCHelpMan decodepsbt()
+@@ -831,7 +868,30 @@ static RPCHelpMan decodepsbt()
                                          {RPCResult::Type::STR, "path", "The path"},
                                      }},
                                  }},
@@ -932,7 +932,7 @@ index ff0d8a4e0f..b5189eb684 100644
                                  {
                                      {RPCResult::Type::STR_HEX, "key", "(key-value pair) An unknown key-value pair"},
                                  }},
-@@ -1442,6 +1502,72 @@ static RPCHelpMan decodepsbt()
+@@ -1045,6 +1105,72 @@ static RPCHelpMan decodepsbt()
              in.pushKV("hash256_preimages", hash256_preimages);
          }
  
@@ -1005,7 +1005,7 @@ index ff0d8a4e0f..b5189eb684 100644
          // Proprietary
          if (!input.m_proprietary.empty()) {
              UniValue proprietary(UniValue::VARR);
-@@ -1500,6 +1626,47 @@ static RPCHelpMan decodepsbt()
+@@ -1103,6 +1229,47 @@ static RPCHelpMan decodepsbt()
              out.pushKV("bip32_derivs", keypaths);
          }
  
@@ -1054,13 +1054,13 @@ index ff0d8a4e0f..b5189eb684 100644
          if (!output.m_proprietary.empty()) {
              UniValue proprietary(UniValue::VARR);
 -- 
-2.35.1
+2.36.0
 
 
-From f6d68be0d65f2a7d27deba7bcd3bdc5993aaf41e Mon Sep 17 00:00:00 2001
+From 5b3fe60ae599c084a4e06cc1d9eef0e458e7b7ab Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 20 Jul 2021 20:04:33 -0400
-Subject: [PATCH 11/46] psbt: Remove non_witness_utxo for segwit v1+
+Subject: [PATCH 11/48] psbt: Remove non_witness_utxo for segwit v1+
 
 If all inputs are segwit v1+, the non_witness_utxos can be removed.
 ---
@@ -1069,7 +1069,7 @@ If all inputs are segwit v1+, the non_witness_utxos can be removed.
  2 files changed, 32 insertions(+), 3 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index fc89f1c376..ec691c24b9 100644
+index 8aaefe4e70..5610490b9a 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -184,7 +184,6 @@ void PSBTInput::Merge(const PSBTInput& input)
@@ -1095,10 +1095,10 @@ index fc89f1c376..ec691c24b9 100644
  
      // Fill in the missing info
 diff --git a/src/wallet/wallet.cpp b/src/wallet/wallet.cpp
-index 84962af906..ae069ca9fc 100644
+index 79faf29907..e473bfd745 100644
 --- a/src/wallet/wallet.cpp
 +++ b/src/wallet/wallet.cpp
-@@ -1989,6 +1989,35 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
+@@ -2013,6 +2013,35 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
          }
      }
  
@@ -1135,13 +1135,13 @@ index 84962af906..ae069ca9fc 100644
      complete = true;
      for (const auto& input : psbtx.inputs) {
 -- 
-2.35.1
+2.36.0
 
 
-From ab5ca8b4bee9cf010609a3cc51b51d29f647e2d4 Mon Sep 17 00:00:00 2001
+From 33dd3797456727fc5f6029da87e2c2939c1a6511 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Fri, 23 Jul 2021 18:50:54 -0400
-Subject: [PATCH 12/46] tests: Test taproot fields for PSBT
+Subject: [PATCH 12/48] tests: Test taproot fields for PSBT
 
 ---
  test/functional/data/rpc_psbt.json | 21 +++++++++++++++++++--
@@ -1187,13 +1187,13 @@ index 8672400a92..430a1802a8 100644
      "creator" : [
          {
 -- 
-2.35.1
+2.36.0
 
 
-From 9ad29ab156411dbaa165fdf11bc481abf160cb41 Mon Sep 17 00:00:00 2001
+From 5cc8f1b2c383f760fbece0f43825afab2da14c28 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 26 Jul 2021 16:23:50 -0400
-Subject: [PATCH 13/46] taproot: Use pre-existing signatures if available
+Subject: [PATCH 13/48] taproot: Use pre-existing signatures if available
 
 Actually use pre-existing signatures in CreateTaprootScriptSig if a
 signature is found for the given key and leaf hash.
@@ -1203,7 +1203,7 @@ signature is found for the given key and leaf hash.
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index 7c40fd4dde..ce1c382e94 100644
+index 8528f69432..9f4f6a4f0b 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -150,6 +150,7 @@ static bool CreateTaprootScriptSig(const BaseSignatureCreator& creator, Signatur
@@ -1215,10 +1215,10 @@ index 7c40fd4dde..ce1c382e94 100644
      if (creator.CreateSchnorrSig(provider, sig_out, pubkey, &leaf_hash, nullptr, sigversion)) {
          sigdata.taproot_script_sigs[lookup_key] = sig_out;
 diff --git a/test/functional/wallet_taproot.py b/test/functional/wallet_taproot.py
-index 17eab25457..2a2a99414e 100755
+index 41bb86f962..cf7ce5b8ac 100755
 --- a/test/functional/wallet_taproot.py
 +++ b/test/functional/wallet_taproot.py
-@@ -416,8 +416,7 @@ class WalletTaprootTest(BitcoinTestFramework):
+@@ -446,8 +446,7 @@ class WalletTaprootTest(BitcoinTestFramework):
          assert(self.rpc_online.gettransaction(txid)["confirmations"] > 0)
  
          psbt = self.psbt_online.walletcreatefundedpsbt([], [{self.boring.getnewaddress(): self.psbt_online.getbalance()}], None, {"subtractFeeFromOutputs": [0]})['psbt']
@@ -1229,29 +1229,31 @@ index 17eab25457..2a2a99414e 100755
          txid = self.nodes[0].sendrawtransaction(rawtx)
          self.generatetoaddress(self.nodes[0], 1, self.boring.getnewaddress(), sync_fun=self.no_op)
 -- 
-2.35.1
+2.36.0
 
 
-From 34b09fb1a32f080386669ff7c5c265b2aa47407e Mon Sep 17 00:00:00 2001
+From 455eee6b7c47c3fb7b547baf70d9ee279f7a99c2 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 26 Jul 2021 16:25:42 -0400
-Subject: [PATCH 14/46] psbt, test: Check for taproot fields in taproot psbt
+Subject: [PATCH 14/48] psbt, test: Check for taproot fields in taproot psbt
  test
 
 ---
- test/functional/wallet_taproot.py | 16 ++++++++++++++--
- 1 file changed, 14 insertions(+), 2 deletions(-)
+ test/functional/wallet_taproot.py | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
 diff --git a/test/functional/wallet_taproot.py b/test/functional/wallet_taproot.py
-index 2a2a99414e..cb5443172f 100755
+index cf7ce5b8ac..c9d511d8f6 100755
 --- a/test/functional/wallet_taproot.py
 +++ b/test/functional/wallet_taproot.py
-@@ -307,8 +307,20 @@ class WalletTaprootTest(BitcoinTestFramework):
+@@ -305,9 +305,21 @@ class WalletTaprootTest(BitcoinTestFramework):
              test_balance = int(self.psbt_online.getbalance() * 100000000)
              ret_amnt = random.randrange(100000, test_balance)
-             psbt = self.psbt_online.walletcreatefundedpsbt([], [{self.boring.getnewaddress(): Decimal(ret_amnt) / 100000000}], None, {"subtractFeeFromOutputs":[0]})['psbt']
+             # Increase fee_rate to compensate for the wallet's inability to estimate fees for script path spends.
+-            psbt = self.psbt_online.walletcreatefundedpsbt([], [{self.boring.getnewaddress(): Decimal(ret_amnt) / 100000000}], None, {"subtractFeeFromOutputs":[0], "fee_rate": 200})['psbt']
 -            res = self.psbt_offline.walletprocesspsbt(psbt)
 -            assert(res['complete'])
++            psbt = self.psbt_online.walletcreatefundedpsbt([], [{self.boring.getnewaddress(): Decimal(ret_amnt) / 100000000}], None, {"subtractFeeFromOutputs":[0], "fee_rate": 200, "change_type": "bech32m"})['psbt']
 +            res = self.psbt_offline.walletprocesspsbt(psbt=psbt, finalize=False)
 +
 +            decoded = self.psbt_offline.decodepsbt(res["psbt"])
@@ -1270,20 +1272,20 @@ index 2a2a99414e..cb5443172f 100755
              txid = self.nodes[0].sendrawtransaction(rawtx)
              self.generatetoaddress(self.nodes[0], 1, self.boring.getnewaddress(), sync_fun=self.no_op)
 -- 
-2.35.1
+2.36.0
 
 
-From e7790e139a6929027b0ef8a38f2066c8348b964b Mon Sep 17 00:00:00 2001
+From 6170faf10be17b73f4137fcef382a3a441c3053d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Wed, 24 Nov 2021 22:50:10 -0500
-Subject: [PATCH 15/46] psbt: Implement merge for Taproot fields
+Subject: [PATCH 15/48] psbt: Implement merge for Taproot fields
 
 ---
  src/psbt.cpp | 9 +++++++++
  1 file changed, 9 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index ec691c24b9..891ed4c99d 100644
+index 5610490b9a..1073c84422 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -194,11 +194,17 @@ void PSBTInput::Merge(const PSBTInput& input)
@@ -1318,20 +1320,103 @@ index ec691c24b9..891ed4c99d 100644
  bool PSBTInputSigned(const PSBTInput& input)
  {
 -- 
-2.35.1
+2.36.0
 
 
-From 3ca35742e2832b2dea56c26cc1f6340d6200c5fd Mon Sep 17 00:00:00 2001
+From 221b85b8249634c64203daa4e2cf1981523c21c7 Mon Sep 17 00:00:00 2001
+From: Andrew Chow <achow101-github@achow101.com>
+Date: Mon, 2 May 2022 11:28:49 -0400
+Subject: [PATCH 16/48] sign: Use sigdata taproot spenddata when signing
+
+The taproot spenddata stored in a sigdata is the combination of data
+existing previously (e.g. in a PSBT) and the data stored in a
+SigningProvider. In order to use the external data when signing, we need
+to be using the sigdata's spenddata.
+---
+ src/script/sign.cpp | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/script/sign.cpp b/src/script/sign.cpp
+index 9f4f6a4f0b..ec508e0ccb 100644
+--- a/src/script/sign.cpp
++++ b/src/script/sign.cpp
+@@ -230,16 +230,16 @@ static bool SignTaproot(const SigningProvider& provider, const BaseSignatureCrea
+     // Try key path spending.
+     {
+         KeyOriginInfo info;
+-        if (provider.GetKeyOriginByXOnly(spenddata.internal_key, info)) {
+-            auto it = sigdata.taproot_misc_pubkeys.find(spenddata.internal_key);
++        if (provider.GetKeyOriginByXOnly(sigdata.tr_spenddata.internal_key, info)) {
++            auto it = sigdata.taproot_misc_pubkeys.find(sigdata.tr_spenddata.internal_key);
+             if (it == sigdata.taproot_misc_pubkeys.end()) {
+-                sigdata.taproot_misc_pubkeys.emplace(spenddata.internal_key, std::make_pair(std::set<uint256>(), info));
++                sigdata.taproot_misc_pubkeys.emplace(sigdata.tr_spenddata.internal_key, std::make_pair(std::set<uint256>(), info));
+             }
+         }
+ 
+         std::vector<unsigned char> sig;
+         if (sigdata.taproot_key_path_sig.size() == 0) {
+-            if (creator.CreateSchnorrSig(provider, sig, spenddata.internal_key, nullptr, &spenddata.merkle_root, SigVersion::TAPROOT)) {
++            if (creator.CreateSchnorrSig(provider, sig, sigdata.tr_spenddata.internal_key, nullptr, &sigdata.tr_spenddata.merkle_root, SigVersion::TAPROOT)) {
+                 sigdata.taproot_key_path_sig = sig;
+             }
+         }
+-- 
+2.36.0
+
+
+From 8f37bea10435246819b4e68f5f8638f31de259e8 Mon Sep 17 00:00:00 2001
+From: Andrew Chow <achow101-github@achow101.com>
+Date: Mon, 2 May 2022 11:30:03 -0400
+Subject: [PATCH 17/48] wallet: also search taproot pubkeys in FillPSBT
+
+When filling a PSBT, we search the listed pubkeys in order to determine
+whether the current DescriptorScriptPubKeyMan could sign the transaction
+even if it is not watching the scripts. With Taproot, the taproot
+pubkeys need to be searched as well.
+---
+ src/wallet/scriptpubkeyman.cpp | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/wallet/scriptpubkeyman.cpp b/src/wallet/scriptpubkeyman.cpp
+index 8633e7c62c..1fec82a485 100644
+--- a/src/wallet/scriptpubkeyman.cpp
++++ b/src/wallet/scriptpubkeyman.cpp
+@@ -2180,6 +2180,19 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
+                     *keys = Merge(*keys, *pk_keys);
+                 }
+             }
++            for (const auto& pk_pair : input.m_tap_bip32_paths) {
++                const XOnlyPubKey& pubkey = pk_pair.first;
++                for (unsigned char prefix : {0x02, 0x03}) {
++                    unsigned char b[33] = {prefix};
++                    std::copy(pubkey.begin(), pubkey.end(), b + 1);
++                    CPubKey fullpubkey;
++                    fullpubkey.Set(b, b + 33);
++                    std::unique_ptr<FlatSigningProvider> pk_keys = GetSigningProvider(fullpubkey);
++                    if (pk_keys) {
++                        *keys = Merge(*keys, *pk_keys);
++                    }
++                }
++            }
+         }
+ 
+         SignPSBTInput(HidingSigningProvider(keys.get(), !sign, !bip32derivs), psbtx, i, &txdata, sighash_type, nullptr, finalize);
+-- 
+2.36.0
+
+
+From a0e884243195c54ff88ac3c3b0a824dd6ff99cdf Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 15:20:02 -0500
-Subject: [PATCH 16/46] Define psbtv2 field numbers
+Subject: [PATCH 18/48] Define psbtv2 field numbers
 
 ---
  src/psbt.h | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index 740db5fa1e..dde50d66d8 100644
+index 13e6a787ca..5086c165b1 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -24,6 +24,11 @@ static constexpr uint8_t PSBT_MAGIC_BYTES[5] = {'p', 's', 'b', 't', 0xff};
@@ -1368,13 +1453,13 @@ index 740db5fa1e..dde50d66d8 100644
  static constexpr uint8_t PSBT_OUT_TAP_TREE = 0x06;
  static constexpr uint8_t PSBT_OUT_TAP_BIP32_DERIVATION = 0x07;
 -- 
-2.35.1
+2.36.0
 
 
-From f05255fba7bceefc4fd8aa2f983c401269dfa0e8 Mon Sep 17 00:00:00 2001
+From 1699a6481fb2108fadc7b902873393e5ab58c55d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 16:56:36 -0500
-Subject: [PATCH 17/46] Change PSBT unknown fields test to use higher numbers
+Subject: [PATCH 19/48] Change PSBT unknown fields test to use higher numbers
 
 Previously these tests were using 0x0f as the field number. Changed to
 use 0xf0 instead as it is unlikely we will hit that anytime soon.
@@ -1402,10 +1487,10 @@ index 430a1802a8..19b62b6125 100644
      ],
      "finalizer" : [
 diff --git a/test/functional/rpc_psbt.py b/test/functional/rpc_psbt.py
-index b037807b53..872b684f11 100755
+index 444e56610e..d00135c835 100755
 --- a/test/functional/rpc_psbt.py
 +++ b/test/functional/rpc_psbt.py
-@@ -423,7 +423,7 @@ class PSBTTest(BitcoinTestFramework):
+@@ -427,7 +427,7 @@ class PSBTTest(BitcoinTestFramework):
          # BIP 174 Test Vectors
  
          # Check that unknown values are just passed through
@@ -1415,21 +1500,21 @@ index b037807b53..872b684f11 100755
          assert_equal(unknown_psbt, unknown_out)
  
 -- 
-2.35.1
+2.36.0
 
 
-From b7128861a645b1cddbfb280824e79df387ba0bcd Mon Sep 17 00:00:00 2001
+From 3aa7fb396e227cfcf58163a24f4141d347842490 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 16:07:25 -0500
-Subject: [PATCH 18/46] Implement PSBTv2 fields de/ser
+Subject: [PATCH 20/48] Implement PSBTv2 fields de/ser
 
 ---
- src/psbt.h      | 225 +++++++++++++++++++++++++++++++++++++++++++++++-
+ src/psbt.h      | 222 +++++++++++++++++++++++++++++++++++++++++++++++-
  src/serialize.h |  13 +++
- 2 files changed, 234 insertions(+), 4 deletions(-)
+ 2 files changed, 231 insertions(+), 4 deletions(-)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index dde50d66d8..cc56996321 100644
+index 5086c165b1..6eff336806 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -15,8 +15,10 @@
@@ -1550,22 +1635,16 @@ index dde50d66d8..cc56996321 100644
                  case PSBT_IN_TAP_KEY_SIG:
                  {
                      if (!key_lookup.emplace(key).second) {
-@@ -720,9 +808,14 @@ struct PSBTOutput
+@@ -720,6 +808,8 @@ struct PSBTOutput
      CScript redeem_script;
      CScript witness_script;
      std::map<CPubKey, KeyOriginInfo> hd_keypaths;
-+    
 +    std::optional<CAmount> amount;
 +    std::optional<CScript> script;
-+    
      XOnlyPubKey m_tap_internal_key;
      TaprootBuilder m_tap_tree;
      std::map<XOnlyPubKey, std::pair<std::set<uint256>, KeyOriginInfo>> m_tap_bip32_paths;
-+    
-     std::map<std::vector<unsigned char>, std::vector<unsigned char>> unknown;
-     std::set<PSBTProprietary> m_proprietary;
- 
-@@ -749,6 +842,16 @@ struct PSBTOutput
+@@ -749,6 +839,16 @@ struct PSBTOutput
          // Write any hd keypaths
          SerializeHDKeypaths(s, hd_keypaths, CompactSizeWriter(PSBT_OUT_BIP32_DERIVATION));
  
@@ -1582,8 +1661,8 @@ index dde50d66d8..cc56996321 100644
          // Write proprietary things
          for (const auto& entry : m_proprietary) {
              s << entry.key;
-@@ -859,6 +962,30 @@ struct PSBTOutput
-                     UnserializeFromVector(s, m_tap_internal_key);
+@@ -849,6 +949,30 @@ struct PSBTOutput
+                     DeserializeHDKeypaths(s, key, hd_keypaths);
                      break;
                  }
 +                case PSBT_OUT_AMOUNT:
@@ -1610,10 +1689,10 @@ index dde50d66d8..cc56996321 100644
 +                    script = v;
 +                    break;
 +                }
-                 case PSBT_OUT_TAP_TREE:
+                 case PSBT_OUT_TAP_INTERNAL_KEY:
                  {
                      if (!key_lookup.emplace(key).second) {
-@@ -944,6 +1071,9 @@ struct PartiallySignedTransaction
+@@ -944,6 +1068,9 @@ struct PartiallySignedTransaction
      // We use a vector of CExtPubKey in the event that there happens to be the same KeyOriginInfos for different CExtPubKeys
      // Note that this map swaps the key and values from the serialization
      std::map<KeyOriginInfo, std::set<CExtPubKey>> m_xpubs;
@@ -1623,7 +1702,7 @@ index dde50d66d8..cc56996321 100644
      std::vector<PSBTInput> inputs;
      std::vector<PSBTOutput> outputs;
      std::map<std::vector<unsigned char>, std::vector<unsigned char>> unknown;
-@@ -994,6 +1124,26 @@ struct PartiallySignedTransaction
+@@ -994,6 +1121,26 @@ struct PartiallySignedTransaction
              }
          }
  
@@ -1650,7 +1729,7 @@ index dde50d66d8..cc56996321 100644
          // PSBT version
          if (GetVersion() > 0) {
              SerializeToVector(s, CompactSizeWriter(PSBT_GLOBAL_VERSION));
-@@ -1043,6 +1193,10 @@ struct PartiallySignedTransaction
+@@ -1043,6 +1190,10 @@ struct PartiallySignedTransaction
  
          // Read global data
          bool found_sep = false;
@@ -1661,7 +1740,7 @@ index dde50d66d8..cc56996321 100644
          while(!s.empty()) {
              // Read
              std::vector<unsigned char> key;
-@@ -1079,6 +1233,69 @@ struct PartiallySignedTransaction
+@@ -1079,6 +1230,69 @@ struct PartiallySignedTransaction
                              throw std::ios_base::failure("Unsigned tx does not have empty scriptSigs and scriptWitnesses.");
                          }
                      }
@@ -1731,7 +1810,7 @@ index dde50d66d8..cc56996321 100644
                      break;
                  }
                  case PSBT_GLOBAL_XPUB:
-@@ -1164,7 +1381,7 @@ struct PartiallySignedTransaction
+@@ -1164,7 +1378,7 @@ struct PartiallySignedTransaction
  
          // Read input data
          unsigned int i = 0;
@@ -1740,7 +1819,7 @@ index dde50d66d8..cc56996321 100644
              PSBTInput input;
              s >> input;
              inputs.push_back(input);
-@@ -1176,20 +1393,20 @@ struct PartiallySignedTransaction
+@@ -1176,20 +1390,20 @@ struct PartiallySignedTransaction
              ++i;
          }
          // Make sure that the number of inputs matches the number of inputs in the transaction
@@ -1765,7 +1844,7 @@ index dde50d66d8..cc56996321 100644
          }
      }
 diff --git a/src/serialize.h b/src/serialize.h
-index 44bb471f25..fa1c64c41a 100644
+index a1cce78451..45748b99ab 100644
 --- a/src/serialize.h
 +++ b/src/serialize.h
 @@ -520,6 +520,19 @@ struct CompactSizeFormatter
@@ -1789,13 +1868,13 @@ index 44bb471f25..fa1c64c41a 100644
  {
  protected:
 -- 
-2.35.1
+2.36.0
 
 
-From 07d5788864542b168403d30dd77530b118b491d6 Mon Sep 17 00:00:00 2001
+From b0d4ef0d4f7d185504fe389f8db7aeb4aec0734c Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 17:23:10 -0500
-Subject: [PATCH 19/46] Have PSBTInput and PSBTOutput know the PSBT's version
+Subject: [PATCH 21/48] Have PSBTInput and PSBTOutput know the PSBT's version
 
 ---
  src/psbt.cpp                  |  4 ++--
@@ -1805,7 +1884,7 @@ Subject: [PATCH 19/46] Have PSBTInput and PSBTOutput know the PSBT's version
  4 files changed, 18 insertions(+), 12 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 891ed4c99d..5d334f776a 100644
+index 1073c84422..f0c3aff3ad 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -10,8 +10,8 @@
@@ -1820,7 +1899,7 @@ index 891ed4c99d..5d334f776a 100644
  
  bool PartiallySignedTransaction::IsNull() const
 diff --git a/src/psbt.h b/src/psbt.h
-index cc56996321..ebefe204e9 100644
+index 6eff336806..b9d79fb501 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -236,11 +236,13 @@ struct PSBTInput
@@ -1838,7 +1917,7 @@ index cc56996321..ebefe204e9 100644
  
      template <typename Stream>
      inline void Serialize(Stream& s) const {
-@@ -819,11 +821,13 @@ struct PSBTOutput
+@@ -816,11 +818,13 @@ struct PSBTOutput
      std::map<std::vector<unsigned char>, std::vector<unsigned char>> unknown;
      std::set<PSBTProprietary> m_proprietary;
  
@@ -1853,7 +1932,7 @@ index cc56996321..ebefe204e9 100644
  
      template <typename Stream>
      inline void Serialize(Stream& s) const {
-@@ -1379,10 +1383,12 @@ struct PartiallySignedTransaction
+@@ -1376,10 +1380,12 @@ struct PartiallySignedTransaction
              throw std::ios_base::failure("No unsigned transcation was provided");
          }
  
@@ -1867,7 +1946,7 @@ index cc56996321..ebefe204e9 100644
              s >> input;
              inputs.push_back(input);
  
-@@ -1400,7 +1406,7 @@ struct PartiallySignedTransaction
+@@ -1397,7 +1403,7 @@ struct PartiallySignedTransaction
          // Read output data
          i = 0;
          while (!s.empty() && i < output_count) {
@@ -1877,10 +1956,10 @@ index cc56996321..ebefe204e9 100644
              outputs.push_back(output);
              ++i;
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index b5189eb684..1453676256 100644
+index 22550b5150..3f2eb3a395 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -1852,10 +1852,10 @@ static RPCHelpMan createpsbt()
+@@ -1455,10 +1455,10 @@ static RPCHelpMan createpsbt()
      PartiallySignedTransaction psbtx;
      psbtx.tx = rawTx;
      for (unsigned int i = 0; i < rawTx.vin.size(); ++i) {
@@ -1893,7 +1972,7 @@ index b5189eb684..1453676256 100644
      }
  
      // Serialize the PSBT
-@@ -1921,10 +1921,10 @@ static RPCHelpMan converttopsbt()
+@@ -1524,10 +1524,10 @@ static RPCHelpMan converttopsbt()
      PartiallySignedTransaction psbtx;
      psbtx.tx = tx;
      for (unsigned int i = 0; i < tx.vin.size(); ++i) {
@@ -1907,10 +1986,10 @@ index b5189eb684..1453676256 100644
  
      // Serialize the PSBT
 diff --git a/src/test/fuzz/deserialize.cpp b/src/test/fuzz/deserialize.cpp
-index ed6f172a2a..d248195fbe 100644
+index 0a7d0c55bd..a71b054ffd 100644
 --- a/src/test/fuzz/deserialize.cpp
 +++ b/src/test/fuzz/deserialize.cpp
-@@ -178,11 +178,11 @@ FUZZ_TARGET_DESERIALIZE(prefilled_transaction_deserialize, {
+@@ -179,11 +179,11 @@ FUZZ_TARGET_DESERIALIZE(prefilled_transaction_deserialize, {
      DeserializeFromFuzzingInput(buffer, prefilled_transaction);
  })
  FUZZ_TARGET_DESERIALIZE(psbt_input_deserialize, {
@@ -1925,13 +2004,13 @@ index ed6f172a2a..d248195fbe 100644
  })
  FUZZ_TARGET_DESERIALIZE(block_deserialize, {
 -- 
-2.35.1
+2.36.0
 
 
-From a4c70c184c593124845f903ec814eef1ffa08352 Mon Sep 17 00:00:00 2001
+From a5cd98f01f4b88343315ee6571c81efc71fac55b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 17:23:56 -0500
-Subject: [PATCH 20/46] Enforce PSBT version constraints
+Subject: [PATCH 22/48] Enforce PSBT version constraints
 
 With PSBTv2, some fields are not allowed in PSBTv2, and some are
 required. Enforce those.
@@ -1940,7 +2019,7 @@ required. Enforce those.
  1 file changed, 127 insertions(+), 51 deletions(-)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index ebefe204e9..f2f8ba8c15 100644
+index b9d79fb501..4afca03a48 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -368,26 +368,29 @@ struct PSBTInput
@@ -2055,7 +2134,7 @@ index ebefe204e9..f2f8ba8c15 100644
      }
  
      template <typename Stream>
-@@ -846,14 +869,16 @@ struct PSBTOutput
+@@ -843,14 +866,16 @@ struct PSBTOutput
          // Write any hd keypaths
          SerializeHDKeypaths(s, hd_keypaths, CompactSizeWriter(PSBT_OUT_BIP32_DERIVATION));
  
@@ -2080,7 +2159,7 @@ index ebefe204e9..f2f8ba8c15 100644
          }
  
          // Write proprietary things
-@@ -1060,6 +1085,16 @@ struct PSBTOutput
+@@ -1057,6 +1082,16 @@ struct PSBTOutput
          if (!found_sep) {
              throw std::ios_base::failure("Separator is missing at the end of an output map");
          }
@@ -2097,7 +2176,7 @@ index ebefe204e9..f2f8ba8c15 100644
      }
  
      template <typename Stream>
-@@ -1109,12 +1144,14 @@ struct PartiallySignedTransaction
+@@ -1106,12 +1141,14 @@ struct PartiallySignedTransaction
          // magic bytes
          s << PSBT_MAGIC_BYTES;
  
@@ -2117,7 +2196,7 @@ index ebefe204e9..f2f8ba8c15 100644
  
          // Write xpubs
          for (const auto& xpub_pair : m_xpubs) {
-@@ -1128,24 +1165,24 @@ struct PartiallySignedTransaction
+@@ -1125,24 +1162,24 @@ struct PartiallySignedTransaction
              }
          }
  
@@ -2154,7 +2233,7 @@ index ebefe204e9..f2f8ba8c15 100644
          }
  
          // PSBT version
-@@ -1378,13 +1415,52 @@ struct PartiallySignedTransaction
+@@ -1375,13 +1412,52 @@ struct PartiallySignedTransaction
              throw std::ios_base::failure("Separator is missing at the end of the global map");
          }
  
@@ -2212,7 +2291,7 @@ index ebefe204e9..f2f8ba8c15 100644
          // Read input data
          unsigned int i = 0;
          while (!s.empty() && i < input_count) {
-@@ -1393,7 +1469,7 @@ struct PartiallySignedTransaction
+@@ -1390,7 +1466,7 @@ struct PartiallySignedTransaction
              inputs.push_back(input);
  
              // Make sure the non-witness utxo matches the outpoint
@@ -2222,13 +2301,13 @@ index ebefe204e9..f2f8ba8c15 100644
              }
              ++i;
 -- 
-2.35.1
+2.36.0
 
 
-From ef3d392aa719abf0aa91d77069dc21097e362214 Mon Sep 17 00:00:00 2001
+From 4fec11b5dedd6a980ed69ec94b3d66db77c49c04 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:34:38 -0500
-Subject: [PATCH 21/46] Add PSBT::CacheUnsignedTxPieces
+Subject: [PATCH 23/48] Add PSBT::CacheUnsignedTxPieces
 
 Fetches the PSBTv2 fields from PSBTv0's global unsigned tx. This allows
 us to pretend everything internally is a PSBTv2 and makes things easier
@@ -2239,10 +2318,10 @@ to work with.
  2 files changed, 35 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 5d334f776a..1b4d963dce 100644
+index f0c3aff3ad..57c89c2d35 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
-@@ -484,3 +484,36 @@ uint32_t PartiallySignedTransaction::GetVersion() const
+@@ -483,3 +483,36 @@ uint32_t PartiallySignedTransaction::GetVersion() const
      }
      return 0;
  }
@@ -2280,10 +2359,10 @@ index 5d334f776a..1b4d963dce 100644
 +    }
 +}
 diff --git a/src/psbt.h b/src/psbt.h
-index f2f8ba8c15..9404bf8816 100644
+index 4afca03a48..ec10586aa4 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1127,6 +1127,8 @@ struct PartiallySignedTransaction
+@@ -1124,6 +1124,8 @@ struct PartiallySignedTransaction
      [[nodiscard]] bool Merge(const PartiallySignedTransaction& psbt);
      bool AddInput(const CTxIn& txin, PSBTInput& psbtin);
      bool AddOutput(const CTxOut& txout, const PSBTOutput& psbtout);
@@ -2293,20 +2372,20 @@ index f2f8ba8c15..9404bf8816 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
      /**
 -- 
-2.35.1
+2.36.0
 
 
-From 865c14fccfd2586397ef8dd56cc320da081e532b Mon Sep 17 00:00:00 2001
+From 335eace0669edcc014d9446ef164f43be7da5a6d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:35:32 -0500
-Subject: [PATCH 22/46] Call CacheUnsignedTxPieces in PSBT constructor
+Subject: [PATCH 24/48] Call CacheUnsignedTxPieces in PSBT constructor
 
 ---
  src/psbt.cpp | 1 +
  1 file changed, 1 insertion(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 1b4d963dce..25f8ac0b58 100644
+index 57c89c2d35..9d3ca688ad 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -12,6 +12,7 @@ PartiallySignedTransaction::PartiallySignedTransaction(const CMutableTransaction
@@ -2318,13 +2397,13 @@ index 1b4d963dce..25f8ac0b58 100644
  
  bool PartiallySignedTransaction::IsNull() const
 -- 
-2.35.1
+2.36.0
 
 
-From 86d17328e625aa02e0eff07aa7b9c22a2ffff21e Mon Sep 17 00:00:00 2001
+From ec03cbda2a35d52dedb2c02ddcfee1e321e89b0b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:27:38 -0500
-Subject: [PATCH 23/46] Convert PSBTv0 unsigned tx to PSBTv2 fields
+Subject: [PATCH 25/48] Convert PSBTv0 unsigned tx to PSBTv2 fields
 
 This is just a convenience and doesn't effect serialization.
 ---
@@ -2332,10 +2411,10 @@ This is just a convenience and doesn't effect serialization.
  1 file changed, 2 insertions(+)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index 9404bf8816..6190d259e1 100644
+index ec10586aa4..4fe43557e2 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1493,6 +1493,8 @@ struct PartiallySignedTransaction
+@@ -1490,6 +1490,8 @@ struct PartiallySignedTransaction
          if (outputs.size() != output_count) {
              throw std::ios_base::failure("Outputs provided does not match the number of outputs in transaction.");
          }
@@ -2345,13 +2424,13 @@ index 9404bf8816..6190d259e1 100644
  
      template <typename Stream>
 -- 
-2.35.1
+2.36.0
 
 
-From 5e408789209004f060a99a5426414170532613b5 Mon Sep 17 00:00:00 2001
+From a6970245a4920b3def6d6bcde274bfadfebd2525 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:50:27 -0500
-Subject: [PATCH 24/46] Replace PSBT::GetInputUTXO with PSBTInput::GetUTXO
+Subject: [PATCH 26/48] Replace PSBT::GetInputUTXO with PSBTInput::GetUTXO
 
 Now that PSBTInput's track their own prevouts, there's no need for a
 PSBT global function to fetch input specific data.
@@ -2385,7 +2464,7 @@ index 5a932f435d..eca2da5fd4 100644
                  break;
              } else {
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 25f8ac0b58..8cc8581fc8 100644
+index 9d3ca688ad..5fc93e50c4 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -65,20 +65,18 @@ bool PartiallySignedTransaction::AddOutput(const CTxOut& txout, const PSBTOutput
@@ -2430,7 +2509,7 @@ index 25f8ac0b58..8cc8581fc8 100644
      PrecomputedTransactionData txdata;
      if (have_all_spent_outputs) {
 diff --git a/src/psbt.h b/src/psbt.h
-index 6190d259e1..9eb6687163 100644
+index 4fe43557e2..47dc1ac36c 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -242,6 +242,13 @@ struct PSBTInput
@@ -2447,7 +2526,7 @@ index 6190d259e1..9eb6687163 100644
      PSBTInput(uint32_t version) : m_psbt_version(version) {}
  
      template <typename Stream>
-@@ -1131,14 +1138,6 @@ struct PartiallySignedTransaction
+@@ -1128,14 +1135,6 @@ struct PartiallySignedTransaction
      void CacheUnsignedTxPieces();
      PartiallySignedTransaction() {}
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
@@ -2463,10 +2542,10 @@ index 6190d259e1..9eb6687163 100644
      template <typename Stream>
      inline void Serialize(Stream& s) const {
 diff --git a/src/test/fuzz/psbt.cpp b/src/test/fuzz/psbt.cpp
-index 669688a80d..733fccb4a7 100644
+index baa64bba0f..e38b7e97b9 100644
 --- a/src/test/fuzz/psbt.cpp
 +++ b/src/test/fuzz/psbt.cpp
-@@ -63,7 +63,7 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
+@@ -64,7 +64,7 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
  
      for (size_t i = 0; i < psbt.tx->vin.size(); ++i) {
          CTxOut tx_out;
@@ -2476,13 +2555,13 @@ index 669688a80d..733fccb4a7 100644
              (void)tx_out.ToString();
          }
 -- 
-2.35.1
+2.36.0
 
 
-From 2e1e5833f127882c40a3f047c8209b9a055011a7 Mon Sep 17 00:00:00 2001
+From e752717bc20ab30efbc5ecec6e7881faf0b8d96f Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:15:04 -0500
-Subject: [PATCH 25/46] Add PSBT::ComputeLockTime()
+Subject: [PATCH 27/48] Add PSBT::ComputeLockTime()
 
 Function to compute the lock time for the transaction
 ---
@@ -2491,7 +2570,7 @@ Function to compute the lock time for the transaction
  2 files changed, 36 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 8cc8581fc8..0ac39e9c73 100644
+index 5fc93e50c4..b4d6985f41 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -45,6 +45,41 @@ bool PartiallySignedTransaction::Merge(const PartiallySignedTransaction& psbt)
@@ -2537,10 +2616,10 @@ index 8cc8581fc8..0ac39e9c73 100644
  {
      if (std::find(tx->vin.begin(), tx->vin.end(), txin) != tx->vin.end()) {
 diff --git a/src/psbt.h b/src/psbt.h
-index 9eb6687163..6b0eaa1ac8 100644
+index 47dc1ac36c..112b681363 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1136,6 +1136,7 @@ struct PartiallySignedTransaction
+@@ -1133,6 +1133,7 @@ struct PartiallySignedTransaction
      bool AddOutput(const CTxOut& txout, const PSBTOutput& psbtout);
      void SetupFromTx(const CMutableTransaction& tx);
      void CacheUnsignedTxPieces();
@@ -2549,13 +2628,13 @@ index 9eb6687163..6b0eaa1ac8 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.35.1
+2.36.0
 
 
-From fc33e4b1e2a702b149fc803710a94cf1ebaab654 Mon Sep 17 00:00:00 2001
+From 2694d7eedc1343148edad3b0cf5e60f9df5209c9 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:21:42 -0500
-Subject: [PATCH 26/46] Add PSBT::GetUnsignedTx
+Subject: [PATCH 28/48] Add PSBT::GetUnsignedTx
 
 A helper function for getting the unsigned transaction regardless of
 psbt version.
@@ -2565,7 +2644,7 @@ psbt version.
  2 files changed, 29 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 0ac39e9c73..0173834100 100644
+index b4d6985f41..60980f3e8f 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -4,6 +4,7 @@
@@ -2611,10 +2690,10 @@ index 0ac39e9c73..0173834100 100644
  {
      if (std::find(tx->vin.begin(), tx->vin.end(), txin) != tx->vin.end()) {
 diff --git a/src/psbt.h b/src/psbt.h
-index 6b0eaa1ac8..a67e8081a3 100644
+index 112b681363..e1ea4704c9 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1137,6 +1137,7 @@ struct PartiallySignedTransaction
+@@ -1134,6 +1134,7 @@ struct PartiallySignedTransaction
      void SetupFromTx(const CMutableTransaction& tx);
      void CacheUnsignedTxPieces();
      bool ComputeTimeLock(uint32_t& locktime) const;
@@ -2623,13 +2702,13 @@ index 6b0eaa1ac8..a67e8081a3 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.35.1
+2.36.0
 
 
-From faaeaf46321d3ba48f6a447fb91197a6708cd9c8 Mon Sep 17 00:00:00 2001
+From 6bf2dbf194ced9525d4cb1d57da06844df568307 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:51:44 -0500
-Subject: [PATCH 27/46] Add PSBT::GetUniqueID
+Subject: [PATCH 29/48] Add PSBT::GetUniqueID
 
 The unique ID for PSBTv2 is different from v0. Use this function to get
 the ID without requiring the caller to know the version number.
@@ -2639,7 +2718,7 @@ the ID without requiring the caller to know the version number.
  2 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 0173834100..bd41b28ad4 100644
+index 60980f3e8f..dffd76a6fa 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -24,7 +24,7 @@ bool PartiallySignedTransaction::IsNull() const
@@ -2676,10 +2755,10 @@ index 0173834100..bd41b28ad4 100644
  {
      if (std::find(tx->vin.begin(), tx->vin.end(), txin) != tx->vin.end()) {
 diff --git a/src/psbt.h b/src/psbt.h
-index a67e8081a3..ff5d842135 100644
+index e1ea4704c9..c9be566f76 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1138,6 +1138,7 @@ struct PartiallySignedTransaction
+@@ -1135,6 +1135,7 @@ struct PartiallySignedTransaction
      void CacheUnsignedTxPieces();
      bool ComputeTimeLock(uint32_t& locktime) const;
      CMutableTransaction GetUnsignedTx() const;
@@ -2688,13 +2767,13 @@ index a67e8081a3..ff5d842135 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.35.1
+2.36.0
 
 
-From 84d4c0f2b367aa00a42775a24f10ac9b2bed5625 Mon Sep 17 00:00:00 2001
+From 3466cb7ff62e930309115a8da61766212cb6ddfb Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:50:58 -0500
-Subject: [PATCH 28/46] Change PSBT::AddInput to take just PSBTInput
+Subject: [PATCH 30/48] Change PSBT::AddInput to take just PSBTInput
 
 ---
  src/psbt.cpp               | 31 +++++++++++++++++++++++--------
@@ -2704,7 +2783,7 @@ Subject: [PATCH 28/46] Change PSBT::AddInput to take just PSBTInput
  4 files changed, 28 insertions(+), 13 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index bd41b28ad4..f6472c6c70 100644
+index dffd76a6fa..e2d0a0df8f 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -125,17 +125,32 @@ uint256 PartiallySignedTransaction::GetUniqueID() const
@@ -2749,10 +2828,10 @@ index bd41b28ad4..f6472c6c70 100644
  
  bool PartiallySignedTransaction::AddOutput(const CTxOut& txout, const PSBTOutput& psbtout)
 diff --git a/src/psbt.h b/src/psbt.h
-index ff5d842135..d088696fcb 100644
+index c9be566f76..b20a70a475 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1132,7 +1132,7 @@ struct PartiallySignedTransaction
+@@ -1129,7 +1129,7 @@ struct PartiallySignedTransaction
      /** Merge psbt into this. The two psbts must have the same underlying CTransaction (i.e. the
        * same actual Bitcoin transaction.) Returns true if the merge succeeded, false otherwise. */
      [[nodiscard]] bool Merge(const PartiallySignedTransaction& psbt);
@@ -2762,10 +2841,10 @@ index ff5d842135..d088696fcb 100644
      void SetupFromTx(const CMutableTransaction& tx);
      void CacheUnsignedTxPieces();
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index 1453676256..edfa879f6e 100644
+index 3f2eb3a395..f0f06c6a19 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -2087,7 +2087,7 @@ static RPCHelpMan joinpsbts()
+@@ -1690,7 +1690,7 @@ static RPCHelpMan joinpsbts()
      // Merge
      for (auto& psbt : psbtxs) {
          for (unsigned int i = 0; i < psbt.tx->vin.size(); ++i) {
@@ -2774,7 +2853,7 @@ index 1453676256..edfa879f6e 100644
                  throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input %s:%d exists in multiple PSBTs", psbt.tx->vin[i].prevout.hash.ToString(), psbt.tx->vin[i].prevout.n));
              }
          }
-@@ -2119,7 +2119,7 @@ static RPCHelpMan joinpsbts()
+@@ -1722,7 +1722,7 @@ static RPCHelpMan joinpsbts()
      shuffled_psbt.tx->nVersion = merged_psbt.tx->nVersion;
      shuffled_psbt.tx->nLockTime = merged_psbt.tx->nLockTime;
      for (int i : input_indices) {
@@ -2784,10 +2863,10 @@ index 1453676256..edfa879f6e 100644
      for (int i : output_indices) {
          shuffled_psbt.AddOutput(merged_psbt.tx->vout[i], merged_psbt.outputs[i]);
 diff --git a/src/test/fuzz/psbt.cpp b/src/test/fuzz/psbt.cpp
-index 733fccb4a7..c05d797738 100644
+index e38b7e97b9..d7f99e84c8 100644
 --- a/src/test/fuzz/psbt.cpp
 +++ b/src/test/fuzz/psbt.cpp
-@@ -87,8 +87,8 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
+@@ -89,8 +89,8 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
      psbt_mut = psbt;
      (void)CombinePSBTs(psbt_mut, {psbt_mut, psbt_merge});
      psbt_mut = psbt;
@@ -2799,13 +2878,13 @@ index 733fccb4a7..c05d797738 100644
      for (unsigned int i = 0; i < psbt_merge.tx->vout.size(); ++i) {
          Assert(psbt_mut.AddOutput(psbt_merge.tx->vout[i], psbt_merge.outputs[i]));
 -- 
-2.35.1
+2.36.0
 
 
-From 17658aaa64c0ad91215834b8e70eb4c68094431a Mon Sep 17 00:00:00 2001
+From cc8ed892937b7ed7f42c4378af48c92549daecbe Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:59:29 -0500
-Subject: [PATCH 29/46] Change PSBT::AddOutput to take just PSBTOutput
+Subject: [PATCH 31/48] Change PSBT::AddOutput to take just PSBTOutput
 
 ---
  src/psbt.cpp               | 15 +++++++++++----
@@ -2815,7 +2894,7 @@ Subject: [PATCH 29/46] Change PSBT::AddOutput to take just PSBTOutput
  4 files changed, 16 insertions(+), 9 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index f6472c6c70..180ac6684d 100644
+index e2d0a0df8f..9456e2a86b 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -153,11 +153,18 @@ bool PartiallySignedTransaction::AddInput(PSBTInput& psbtin)
@@ -2842,10 +2921,10 @@ index f6472c6c70..180ac6684d 100644
  
  bool PSBTInput::GetUTXO(CTxOut& utxo) const
 diff --git a/src/psbt.h b/src/psbt.h
-index d088696fcb..e47a7a1a0f 100644
+index b20a70a475..de9d6eb6ad 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1133,7 +1133,7 @@ struct PartiallySignedTransaction
+@@ -1130,7 +1130,7 @@ struct PartiallySignedTransaction
        * same actual Bitcoin transaction.) Returns true if the merge succeeded, false otherwise. */
      [[nodiscard]] bool Merge(const PartiallySignedTransaction& psbt);
      bool AddInput(PSBTInput& psbtin);
@@ -2855,10 +2934,10 @@ index d088696fcb..e47a7a1a0f 100644
      void CacheUnsignedTxPieces();
      bool ComputeTimeLock(uint32_t& locktime) const;
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index edfa879f6e..f34614001a 100644
+index f0f06c6a19..d0b76d8c0c 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -2092,7 +2092,7 @@ static RPCHelpMan joinpsbts()
+@@ -1695,7 +1695,7 @@ static RPCHelpMan joinpsbts()
              }
          }
          for (unsigned int i = 0; i < psbt.tx->vout.size(); ++i) {
@@ -2867,7 +2946,7 @@ index edfa879f6e..f34614001a 100644
          }
          for (auto& xpub_pair : psbt.m_xpubs) {
              if (merged_psbt.m_xpubs.count(xpub_pair.first) == 0) {
-@@ -2122,7 +2122,7 @@ static RPCHelpMan joinpsbts()
+@@ -1725,7 +1725,7 @@ static RPCHelpMan joinpsbts()
          shuffled_psbt.AddInput(merged_psbt.inputs[i]);
      }
      for (int i : output_indices) {
@@ -2877,10 +2956,10 @@ index edfa879f6e..f34614001a 100644
      shuffled_psbt.unknown.insert(merged_psbt.unknown.begin(), merged_psbt.unknown.end());
  
 diff --git a/src/test/fuzz/psbt.cpp b/src/test/fuzz/psbt.cpp
-index c05d797738..8bac8d7c2b 100644
+index d7f99e84c8..86fbefaecf 100644
 --- a/src/test/fuzz/psbt.cpp
 +++ b/src/test/fuzz/psbt.cpp
-@@ -90,8 +90,8 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
+@@ -92,8 +92,8 @@ FUZZ_TARGET_INIT(psbt, initialize_psbt)
      for (auto& psbt_in : psbt_merge.inputs) {
          (void)psbt_mut.AddInput(psbt_in);
      }
@@ -2892,20 +2971,20 @@ index c05d797738..8bac8d7c2b 100644
      psbt_mut.unknown.insert(psbt_merge.unknown.begin(), psbt_merge.unknown.end());
  }
 -- 
-2.35.1
+2.36.0
 
 
-From 6c396557f43361fa332686b187f30d8925b9c746 Mon Sep 17 00:00:00 2001
+From 7e97ac90374816194e5206f231b966e965cc658d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:18:31 -0500
-Subject: [PATCH 30/46] Implement PSBTv2 field merging
+Subject: [PATCH 32/48] Implement PSBTv2 field merging
 
 ---
  src/psbt.cpp | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 180ac6684d..02e9b74bbf 100644
+index 9456e2a86b..c9a7dc476f 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -28,6 +28,7 @@ bool PartiallySignedTransaction::Merge(const PartiallySignedTransaction& psbt)
@@ -2935,16 +3014,16 @@ index 180ac6684d..02e9b74bbf 100644
      if (!non_witness_utxo && input.non_witness_utxo) non_witness_utxo = input.non_witness_utxo;
      if (witness_utxo.IsNull() && !input.witness_utxo.IsNull()) {
          witness_utxo = input.witness_utxo;
-@@ -303,6 +309,9 @@ void PSBTInput::Merge(const PSBTInput& input)
-     if (witness_script.empty() && !input.witness_script.empty()) witness_script = input.witness_script;
-     if (final_script_sig.empty() && !input.final_script_sig.empty()) final_script_sig = input.final_script_sig;
-     if (final_script_witness.IsNull() && !input.final_script_witness.IsNull()) final_script_witness = input.final_script_witness;
-+    if (sequence == std::nullopt && input.sequence != std::nullopt) sequence = input.sequence;
-+    if (time_locktime == std::nullopt && input.time_locktime != std::nullopt) time_locktime = input.time_locktime;
-+    if (height_locktime == std::nullopt && input.height_locktime != std::nullopt) height_locktime = input.height_locktime;
+@@ -306,6 +312,9 @@ void PSBTInput::Merge(const PSBTInput& input)
      if (m_tap_key_sig.empty() && !input.m_tap_key_sig.empty()) m_tap_key_sig = input.m_tap_key_sig;
      if (m_tap_internal_key.IsNull() && !input.m_tap_internal_key.IsNull()) m_tap_internal_key = input.m_tap_internal_key;
      if (m_tap_merkle_root.IsNull() && !input.m_tap_merkle_root.IsNull()) m_tap_merkle_root = input.m_tap_merkle_root;
++    if (sequence == std::nullopt && input.sequence != std::nullopt) sequence = input.sequence;
++    if (time_locktime == std::nullopt && input.time_locktime != std::nullopt) time_locktime = input.time_locktime;
++    if (height_locktime == std::nullopt && input.height_locktime != std::nullopt) height_locktime = input.height_locktime;
+ }
+ 
+ void PSBTOutput::FillSignatureData(SignatureData& sigdata) const
 @@ -360,6 +369,9 @@ bool PSBTOutput::IsNull() const
  
  void PSBTOutput::Merge(const PSBTOutput& output)
@@ -2956,13 +3035,13 @@ index 180ac6684d..02e9b74bbf 100644
      unknown.insert(output.unknown.begin(), output.unknown.end());
      m_tap_bip32_paths.insert(output.m_tap_bip32_paths.begin(), output.m_tap_bip32_paths.end());
 -- 
-2.35.1
+2.36.0
 
 
-From 8a7ff11c4b1a2511eac070d1c5035ab31618ab7f Mon Sep 17 00:00:00 2001
+From 111ce138af15bd3351bf9d03829bace298bd8e1c Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:48:30 -0500
-Subject: [PATCH 31/46] Add PSBTInput::GetOutPoint
+Subject: [PATCH 33/48] Add PSBTInput::GetOutPoint
 
 Helper for getting the PSBTInput COutPoint
 ---
@@ -2971,7 +3050,7 @@ Helper for getting the PSBTInput COutPoint
  2 files changed, 6 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 02e9b74bbf..696dc5d005 100644
+index c9a7dc476f..b7a0b55b66 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -188,6 +188,11 @@ bool PSBTInput::GetUTXO(CTxOut& utxo) const
@@ -2987,7 +3066,7 @@ index 02e9b74bbf..696dc5d005 100644
  {
      return !non_witness_utxo && witness_utxo.IsNull() && partial_sigs.empty() && unknown.empty() && hd_keypaths.empty() && redeem_script.empty() && witness_script.empty();
 diff --git a/src/psbt.h b/src/psbt.h
-index e47a7a1a0f..a08223fadb 100644
+index de9d6eb6ad..9165bcf4a5 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -249,6 +249,7 @@ struct PSBTInput
@@ -2999,20 +3078,20 @@ index e47a7a1a0f..a08223fadb 100644
  
      template <typename Stream>
 -- 
-2.35.1
+2.36.0
 
 
-From 5c00672c4f988118ddc7e1b5402f3dc039f83d31 Mon Sep 17 00:00:00 2001
+From b40e36fd160fbbb505aaa7f370ad78810defdaf2 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:18:54 -0500
-Subject: [PATCH 32/46] Update SignPSBTInput for PSBTv2
+Subject: [PATCH 34/48] Update SignPSBTInput for PSBTv2
 
 ---
  src/psbt.cpp | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 696dc5d005..6d7fe8aac1 100644
+index b7a0b55b66..4d635ae0f4 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -442,7 +442,7 @@ PrecomputedTransactionData PrecomputePSBTData(const PartiallySignedTransaction&
@@ -3034,20 +3113,20 @@ index 696dc5d005..6d7fe8aac1 100644
              return false;
          }
 -- 
-2.35.1
+2.36.0
 
 
-From 98d57dc164abaa4750fa34adaa2b4fad12122585 Mon Sep 17 00:00:00 2001
+From 4a541e67dfccb8ea26f43b0633c7f44431d199e8 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Fri, 18 Jun 2021 19:12:26 -0400
-Subject: [PATCH 33/46] Change PrecomputePSBTData to use GetUnsignedTx
+Subject: [PATCH 35/48] Change PrecomputePSBTData to use GetUnsignedTx
 
 ---
  src/psbt.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 6d7fe8aac1..10ceefa996 100644
+index 4d635ae0f4..43bf17b92e 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -424,7 +424,7 @@ void UpdatePSBTOutput(const SigningProvider& provider, PartiallySignedTransactio
@@ -3060,20 +3139,20 @@ index 6d7fe8aac1..10ceefa996 100644
      std::vector<CTxOut> utxos;
      for (const PSBTInput& input : psbt.inputs) {
 -- 
-2.35.1
+2.36.0
 
 
-From e55b9ba47601900cc8bfc834dd72a2ba6aa8d1d7 Mon Sep 17 00:00:00 2001
+From 377b901f4497347fb198d1ef3c6ffd38e34aaaa0 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:19:06 -0500
-Subject: [PATCH 34/46] Update FinalizeAndExtract for v2
+Subject: [PATCH 36/48] Update FinalizeAndExtract for v2
 
 ---
  src/psbt.cpp | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 10ceefa996..e84fd4f985 100644
+index 43bf17b92e..fceba944a2 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -520,7 +520,7 @@ bool FinalizePSBT(PartiallySignedTransaction& psbtx)
@@ -3095,13 +3174,13 @@ index 10ceefa996..e84fd4f985 100644
          result.vin[i].scriptSig = psbtx.inputs[i].final_script_sig;
          result.vin[i].scriptWitness = psbtx.inputs[i].final_script_witness;
 -- 
-2.35.1
+2.36.0
 
 
-From 7264b427d46f70ce200e89bb7439749354d80c74 Mon Sep 17 00:00:00 2001
+From 3b3f9eeb2ff354a4478634757f0443a0bc468f20 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:21:34 -0500
-Subject: [PATCH 35/46] Update AnalyzePSBT for PSBTv2
+Subject: [PATCH 37/48] Update AnalyzePSBT for PSBTv2
 
 ---
  src/node/psbt.cpp | 22 +++++++++++-----------
@@ -3185,23 +3264,23 @@ index eca2da5fd4..888d298465 100644
          }
  
 -- 
-2.35.1
+2.36.0
 
 
-From b861adf7e5033d0368b05299616dadd52035b08e Mon Sep 17 00:00:00 2001
+From ea078007464e2e03f1173fbc3feb9e8c41d86dca Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:59:22 -0500
-Subject: [PATCH 36/46] Update PSBT Operations Dialog for v2
+Subject: [PATCH 38/48] Update PSBT Operations Dialog for v2
 
 ---
  src/qt/psbtoperationsdialog.cpp | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/src/qt/psbtoperationsdialog.cpp b/src/qt/psbtoperationsdialog.cpp
-index d328290cbc..e6c11d6822 100644
+index 333766ce21..69b702351d 100644
 --- a/src/qt/psbtoperationsdialog.cpp
 +++ b/src/qt/psbtoperationsdialog.cpp
-@@ -173,12 +173,12 @@ std::string PSBTOperationsDialog::renderTransaction(const PartiallySignedTransac
+@@ -176,12 +176,12 @@ std::string PSBTOperationsDialog::renderTransaction(const PartiallySignedTransac
  {
      QString tx_description = "";
      CAmount totalAmount = 0;
@@ -3213,46 +3292,46 @@ index d328290cbc..e6c11d6822 100644
 +        ExtractDestination(*out.script, address);
 +        totalAmount += *out.amount;
          tx_description.append(tr(" * Sends %1 to %2")
--            .arg(BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, out.nValue))
-+            .arg(BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, *out.amount))
+-            .arg(BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, out.nValue))
++            .arg(BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, *out.amount))
              .arg(QString::fromStdString(EncodeDestination(address))));
          tx_description.append("<br>");
      }
 -- 
-2.35.1
+2.36.0
 
 
-From 140750baa5cbb45f4109cee4563d4f73a973df18 Mon Sep 17 00:00:00 2001
+From 347e0d6826c2ab9a13d36643e288c0907264851b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:00:22 -0500
-Subject: [PATCH 37/46] Update RPCs for PSBTv2
+Subject: [PATCH 39/48] Update RPCs for PSBTv2
 
 ---
  src/rpc/rawtransaction.cpp | 50 ++++++++++++++++++++++----------------
  1 file changed, 29 insertions(+), 21 deletions(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index f34614001a..e7cf0c0738 100644
+index d0b76d8c0c..d810ac5e48 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -1323,10 +1323,12 @@ static RPCHelpMan decodepsbt()
+@@ -926,10 +926,12 @@ static RPCHelpMan decodepsbt()
  
      UniValue result(UniValue::VOBJ);
  
 -    // Add the decoded tx
 -    UniValue tx_univ(UniValue::VOBJ);
--    TxToUniv(CTransaction(*psbtx.tx), uint256(), tx_univ, false);
+-    TxToUniv(CTransaction(*psbtx.tx), /*block_hash=*/uint256(), /*entry=*/tx_univ, /*include_hex=*/false);
 -    result.pushKV("tx", tx_univ);
 +    if (psbtx.tx != std::nullopt) {
 +        // Add the decoded tx
 +        UniValue tx_univ(UniValue::VOBJ);
-+        TxToUniv(CTransaction(*psbtx.tx), uint256(), tx_univ, false);
++        TxToUniv(CTransaction(*psbtx.tx), /*block_hash=*/uint256(), /*entry=*/tx_univ, /*include_hex=*/false);
 +        result.pushKV("tx", tx_univ);
 +    }
  
      // Add the global xpubs
      UniValue global_xpubs(UniValue::VARR);
-@@ -1392,7 +1394,7 @@ static RPCHelpMan decodepsbt()
+@@ -995,7 +997,7 @@ static RPCHelpMan decodepsbt()
              have_a_utxo = true;
          }
          if (input.non_witness_utxo) {
@@ -3260,8 +3339,8 @@ index f34614001a..e7cf0c0738 100644
 +            txout = input.non_witness_utxo->vout[*input.prev_out];
  
              UniValue non_wit(UniValue::VOBJ);
-             TxToUniv(*input.non_witness_utxo, uint256(), non_wit, false);
-@@ -1693,8 +1695,8 @@ static RPCHelpMan decodepsbt()
+             TxToUniv(*input.non_witness_utxo, /*block_hash=*/uint256(), /*entry=*/non_wit, /*include_hex=*/false);
+@@ -1296,8 +1298,8 @@ static RPCHelpMan decodepsbt()
          outputs.push_back(out);
  
          // Fee calculation
@@ -3272,7 +3351,7 @@ index f34614001a..e7cf0c0738 100644
          } else {
              // Hack to just not show fee later
              have_all_utxos = false;
-@@ -1990,8 +1992,8 @@ static RPCHelpMan utxoupdatepsbt()
+@@ -1593,8 +1595,8 @@ static RPCHelpMan utxoupdatepsbt()
          CCoinsViewMemPool viewMempool(&viewChain, mempool);
          view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
  
@@ -3283,7 +3362,7 @@ index f34614001a..e7cf0c0738 100644
          }
  
          view.SetBackend(viewDummy); // switch back to avoid locking mempool for too long
-@@ -1999,14 +2001,14 @@ static RPCHelpMan utxoupdatepsbt()
+@@ -1602,14 +1604,14 @@ static RPCHelpMan utxoupdatepsbt()
  
      // Fill the inputs
      const PrecomputedTransactionData txdata = PrecomputePSBTData(psbtx);
@@ -3300,7 +3379,7 @@ index f34614001a..e7cf0c0738 100644
  
          if (IsSegWitOutput(provider, coin.out.scriptPubKey)) {
              input.witness_utxo = coin.out;
-@@ -2019,7 +2021,7 @@ static RPCHelpMan utxoupdatepsbt()
+@@ -1622,7 +1624,7 @@ static RPCHelpMan utxoupdatepsbt()
      }
  
      // Update script/keypath information using descriptor data.
@@ -3309,7 +3388,7 @@ index f34614001a..e7cf0c0738 100644
          UpdatePSBTOutput(public_provider, psbtx, i);
      }
  
-@@ -2059,7 +2061,7 @@ static RPCHelpMan joinpsbts()
+@@ -1662,7 +1664,7 @@ static RPCHelpMan joinpsbts()
          throw JSONRPCError(RPC_INVALID_PARAMETER, "At least two PSBTs are required to join PSBTs.");
      }
  
@@ -3318,7 +3397,7 @@ index f34614001a..e7cf0c0738 100644
      uint32_t best_locktime = 0xffffffff;
      for (unsigned int i = 0; i < txs.size(); ++i) {
          PartiallySignedTransaction psbtx;
-@@ -2069,29 +2071,32 @@ static RPCHelpMan joinpsbts()
+@@ -1672,29 +1674,32 @@ static RPCHelpMan joinpsbts()
          }
          psbtxs.push_back(psbtx);
          // Choose the highest version number
@@ -3359,7 +3438,7 @@ index f34614001a..e7cf0c0738 100644
              merged_psbt.AddOutput(psbt.outputs[i]);
          }
          for (auto& xpub_pair : psbt.m_xpubs) {
-@@ -2115,6 +2120,9 @@ static RPCHelpMan joinpsbts()
+@@ -1718,6 +1723,9 @@ static RPCHelpMan joinpsbts()
      Shuffle(output_indices.begin(), output_indices.end(), FastRandomContext());
  
      PartiallySignedTransaction shuffled_psbt;
@@ -3370,13 +3449,13 @@ index f34614001a..e7cf0c0738 100644
      shuffled_psbt.tx->nVersion = merged_psbt.tx->nVersion;
      shuffled_psbt.tx->nLockTime = merged_psbt.tx->nLockTime;
 -- 
-2.35.1
+2.36.0
 
 
-From eb16ec293a2136266fe313c1f250d90ce40a8620 Mon Sep 17 00:00:00 2001
+From 2297c67540db80338adc6e18802d7cabc935e335 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:00:54 -0500
-Subject: [PATCH 38/46] Update wallet for PSBTv2
+Subject: [PATCH 40/48] Update wallet for PSBTv2
 
 ---
  src/wallet/scriptpubkeyman.cpp        | 18 ++++++++----------
@@ -3385,10 +3464,10 @@ Subject: [PATCH 38/46] Update wallet for PSBTv2
  3 files changed, 11 insertions(+), 15 deletions(-)
 
 diff --git a/src/wallet/scriptpubkeyman.cpp b/src/wallet/scriptpubkeyman.cpp
-index 7218ed11dc..b5884dfa9d 100644
+index 1fec82a485..d144b5d9c2 100644
 --- a/src/wallet/scriptpubkeyman.cpp
 +++ b/src/wallet/scriptpubkeyman.cpp
-@@ -625,8 +625,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
+@@ -631,8 +631,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
      if (n_signed) {
          *n_signed = 0;
      }
@@ -3398,7 +3477,7 @@ index 7218ed11dc..b5884dfa9d 100644
          PSBTInput& input = psbtx.inputs.at(i);
  
          if (PSBTInputSigned(input)) {
-@@ -640,7 +639,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
+@@ -646,7 +645,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
  
          // Check non_witness_utxo has specified prevout
          if (input.non_witness_utxo) {
@@ -3407,7 +3486,7 @@ index 7218ed11dc..b5884dfa9d 100644
                  return TransactionError::MISSING_INPUTS;
              }
          } else if (input.witness_utxo.IsNull()) {
-@@ -661,7 +660,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
+@@ -667,7 +666,7 @@ TransactionError LegacyScriptPubKeyMan::FillPSBT(PartiallySignedTransaction& psb
      }
  
      // Fill in the bip32 keypaths and redeemscripts for the outputs so that hardware wallets can identify change
@@ -3416,7 +3495,7 @@ index 7218ed11dc..b5884dfa9d 100644
          UpdatePSBTOutput(HidingSigningProvider(this, true, !bip32derivs), psbtx, i);
      }
  
-@@ -2106,8 +2105,7 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
+@@ -2137,8 +2136,7 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
      if (n_signed) {
          *n_signed = 0;
      }
@@ -3426,7 +3505,7 @@ index 7218ed11dc..b5884dfa9d 100644
          PSBTInput& input = psbtx.inputs.at(i);
  
          if (PSBTInputSigned(input)) {
-@@ -2124,10 +2122,10 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
+@@ -2155,10 +2153,10 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
          if (!input.witness_utxo.IsNull()) {
              script = input.witness_utxo.scriptPubKey;
          } else if (input.non_witness_utxo) {
@@ -3439,7 +3518,7 @@ index 7218ed11dc..b5884dfa9d 100644
          } else {
              // There's no UTXO so we can just skip this now
              continue;
-@@ -2163,8 +2161,8 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
+@@ -2207,8 +2205,8 @@ TransactionError DescriptorScriptPubKeyMan::FillPSBT(PartiallySignedTransaction&
      }
  
      // Fill in the bip32 keypaths and redeemscripts for the outputs so that hardware wallets can identify change
@@ -3451,7 +3530,7 @@ index 7218ed11dc..b5884dfa9d 100644
              continue;
          }
 diff --git a/src/wallet/test/psbt_wallet_tests.cpp b/src/wallet/test/psbt_wallet_tests.cpp
-index b953f402a2..33a3a7086b 100644
+index 62053ae8d2..1dfe8db39d 100644
 --- a/src/wallet/test/psbt_wallet_tests.cpp
 +++ b/src/wallet/test/psbt_wallet_tests.cpp
 @@ -64,6 +64,7 @@ BOOST_AUTO_TEST_CASE(psbt_updater_test)
@@ -3463,10 +3542,10 @@ index b953f402a2..33a3a7086b 100644
      // Try to sign the mutated input
      SignatureData sigdata;
 diff --git a/src/wallet/wallet.cpp b/src/wallet/wallet.cpp
-index ae069ca9fc..cd17592638 100644
+index e473bfd745..69f95f5b8b 100644
 --- a/src/wallet/wallet.cpp
 +++ b/src/wallet/wallet.cpp
-@@ -1955,17 +1955,14 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
+@@ -1979,17 +1979,14 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
      const PrecomputedTransactionData txdata = PrecomputePSBTData(psbtx);
      LOCK(cs_wallet);
      // Get all of the previous transactions
@@ -3487,20 +3566,20 @@ index ae069ca9fc..cd17592638 100644
              if (it != mapWallet.end()) {
                  const CWalletTx& wtx = it->second;
 -- 
-2.35.1
+2.36.0
 
 
-From 4638d543fe0f0dc022f7690004c4120c506c9633 Mon Sep 17 00:00:00 2001
+From 3a95ed2cd78b723b30cedd5bdcce82003d3f3f03 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 15:27:05 -0500
-Subject: [PATCH 39/46] Implement PSBTv2 AddInput and AddOutput
+Subject: [PATCH 41/48] Implement PSBTv2 AddInput and AddOutput
 
 ---
  src/psbt.cpp | 78 ++++++++++++++++++++++++++++++++++++++++++++++++----
  1 file changed, 73 insertions(+), 5 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index e84fd4f985..71bef16e25 100644
+index fceba944a2..d20840502f 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -130,7 +130,10 @@ uint256 PartiallySignedTransaction::GetUniqueID() const
@@ -3607,23 +3686,33 @@ index e84fd4f985..71bef16e25 100644
  
  bool PSBTInput::GetUTXO(CTxOut& utxo) const
 -- 
-2.35.1
+2.36.0
 
 
-From 56279bb4d3c262ac9bb6b6e8631a17cc38c7fc0e Mon Sep 17 00:00:00 2001
+From 646468a2f7a6dceabe078d19ec44e6d0f5f93bd6 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 16:31:18 -0500
-Subject: [PATCH 40/46] Implement PSBTv2 in decodepsbt
+Subject: [PATCH 42/48] Implement PSBTv2 in decodepsbt
 
 ---
- src/rpc/rawtransaction.cpp | 68 +++++++++++++++++++++++++++++++++++++-
- 1 file changed, 67 insertions(+), 1 deletion(-)
+ src/rpc/rawtransaction.cpp  | 68 +++++++++++++++++++++++++++++++++++--
+ test/functional/rpc_psbt.py |  2 +-
+ 2 files changed, 67 insertions(+), 3 deletions(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index e7cf0c0738..d435bc3efc 100644
+index d810ac5e48..ef3ba869f2 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -1102,7 +1102,16 @@ static RPCHelpMan decodepsbt()
+@@ -691,7 +691,7 @@ static RPCHelpMan decodepsbt()
+                 RPCResult{
+                     RPCResult::Type::OBJ, "", "",
+                     {
+-                        {RPCResult::Type::OBJ, "tx", "The decoded network-serialized unsigned transaction.",
++                        {RPCResult::Type::OBJ, "tx", /*optional=*/true, "The decoded network-serialized unsigned transaction.",
+                         {
+                             {RPCResult::Type::ELISION, "", "The layout is the same as the output of decoderawtransaction."},
+                         }},
+@@ -704,7 +704,14 @@ static RPCHelpMan decodepsbt()
                                  {RPCResult::Type::STR, "path", "The path"},
                              }},
                          }},
@@ -3632,39 +3721,37 @@ index e7cf0c0738..d435bc3efc 100644
 +                        {RPCResult::Type::NUM, "fallback_locktime", /* optional */ true, "The locktime to fallback to if no inputs specify a required locktime."},
 +                        {RPCResult::Type::NUM, "input_count", /* optional */ true, "The number of inputs in this psbt"},
 +                        {RPCResult::Type::NUM, "output_count", /* optional */ true, "The number of outputs in this psbt."},
-+                        {RPCResult::Type::NUM, "inputs_modifiable", /* optional */ true, "Whether inputs can be modified"},
-+                        {RPCResult::Type::NUM, "outputs_modifiable", /* optional */ true, "Whether outputs can be modified"},
-+                        {RPCResult::Type::ARR, "sighash_single_indexes", /* optional */ true, "The indexes which have SIGHASH_SINGLE signatures",
-+                            {{RPCResult::Type::NUM, "", "Index of an input with a SIGHASH_SINGLE signature"}},
-+                        },
++                        {RPCResult::Type::BOOL, "inputs_modifiable", /* optional */ true, "Whether inputs can be modified"},
++                        {RPCResult::Type::BOOL, "outputs_modifiable", /* optional */ true, "Whether outputs can be modified"},
++                        {RPCResult::Type::BOOL, "has_sighash_single", /* optional */ true, "Whether this PSBT has SIGHASH_SINGLE inputs"},
 +                        {RPCResult::Type::NUM, "psbt_version", /* optional */ true, "The PSBT version number. Not to be confused with the unsigned transaction version"},
                          {RPCResult::Type::ARR, "proprietary", "The global proprietary map",
                          {
                              {RPCResult::Type::OBJ, "", "",
-@@ -1187,6 +1196,11 @@ static RPCHelpMan decodepsbt()
-                                 {
-                                     {RPCResult::Type::STR, "hash", "The hash and preimage that corresponds to it."},
+@@ -827,6 +834,11 @@ static RPCHelpMan decodepsbt()
                                  }},
+                                 {RPCResult::Type::STR_HEX, "taproot_internal_key", /*optional=*/ true, "The hex-encoded Taproot x-only internal key"},
+                                 {RPCResult::Type::STR_HEX, "taproot_merkle_root", /*optional=*/ true, "The hex-encoded Taproot merkle root"},
 +                                {RPCResult::Type::STR_HEX, "previous_txid", /*optional=*/ true, "TXID of the transaction containing the output being spent by this input."},
 +                                {RPCResult::Type::NUM, "previous_vout", /* optional=*/ true, "Index of the output being spent"},
 +                                {RPCResult::Type::NUM, "sequence", /* optional=*/ true, "Sequence number for this inputs"},
 +                                {RPCResult::Type::NUM, "time_locktime", /* optional=*/ true, "Required time-based locktime for this input"},
 +                                {RPCResult::Type::NUM, "height_locktime", /* optional=*/ true, "Required height-based locktime for this input"},
-                                 {RPCResult::Type::STR_HEX, "taproot_key_path_sig", /*optional=*/ true, "hex-encoded signature for the Taproot key path spend"},
-                                 {RPCResult::Type::ARR, "taproot_script_path_sigs", /*optional=*/ true, "",
+                                 {RPCResult::Type::OBJ_DYN, "unknown", /*optional=*/ true, "The unknown input fields",
                                  {
-@@ -1265,6 +1279,10 @@ static RPCHelpMan decodepsbt()
-                                         {RPCResult::Type::STR, "path", "The path"},
+                                     {RPCResult::Type::STR_HEX, "key", "(key-value pair) An unknown key-value pair"},
+@@ -891,6 +903,10 @@ static RPCHelpMan decodepsbt()
+                                         }},
                                      }},
                                  }},
 +                                {RPCResult::Type::NUM, "amount", /* optional=*/ true, "The amount (nValue) for this output"},
 +                                {RPCResult::Type::OBJ, "script", /* optional=*/ true, "The output script (scriptPubKey) for this output",
 +                                    {{RPCResult::Type::ELISION, "", "The layout is the same as the output of scriptPubKeys in decoderawtransaction."}},
 +                                },
-                                 {RPCResult::Type::STR_HEX, "taproot_internal_key", /*optional=*/ true, "The hex-encoded Taproot x-only internal key"},
-                                 {RPCResult::Type::ARR, "taproot_tree", /*optional=*/ true, "The tuples that make up the Taproot tree, in depth first search order",
+                                 {RPCResult::Type::OBJ_DYN, "unknown", /*optional=*/true, "The unknown output fields",
                                  {
-@@ -1347,6 +1365,23 @@ static RPCHelpMan decodepsbt()
+                                     {RPCResult::Type::STR_HEX, "key", "(key-value pair) An unknown key-value pair"},
+@@ -950,6 +966,23 @@ static RPCHelpMan decodepsbt()
      }
      result.pushKV("global_xpubs", global_xpubs);
  
@@ -3688,8 +3775,8 @@ index e7cf0c0738..d435bc3efc 100644
      // PSBT version
      result.pushKV("psbt_version", static_cast<uint64_t>(psbtx.GetVersion()));
  
-@@ -1504,6 +1539,25 @@ static RPCHelpMan decodepsbt()
-             in.pushKV("hash256_preimages", hash256_preimages);
+@@ -1173,6 +1206,25 @@ static RPCHelpMan decodepsbt()
+             in.pushKV("taproot_merkle_root", HexStr(input.m_tap_merkle_root));
          }
  
 +        // PSBTv2
@@ -3711,11 +3798,11 @@ index e7cf0c0738..d435bc3efc 100644
 +            }
 +        }
 +
-         // Taproot key path signature
-         if (!input.m_tap_key_sig.empty()) {
-             in.pushKV("taproot_key_path_sig", HexStr(input.m_tap_key_sig));
-@@ -1628,6 +1682,18 @@ static RPCHelpMan decodepsbt()
-             out.pushKV("bip32_derivs", keypaths);
+         // Proprietary
+         if (!input.m_proprietary.empty()) {
+             UniValue proprietary(UniValue::VARR);
+@@ -1272,6 +1324,18 @@ static RPCHelpMan decodepsbt()
+             out.pushKV("taproot_bip32_derivs", keypaths);
          }
  
 +        // PSBTv2 stuff
@@ -3725,22 +3812,35 @@ index e7cf0c0738..d435bc3efc 100644
 +            }
 +            if (output.script.has_value()) {
 +                UniValue spk(UniValue::VOBJ);
-+                ScriptPubKeyToUniv(*output.script, spk, true /* fIncludeHex */);
++                ScriptToUniv(*output.script, spk, /*include_hex=*/true, /*include_address=*/true);
 +                out.pushKV("script", spk);
 +            }
 +        }
 +
-         // Taproot internal key
-         if (!output.m_tap_internal_key.IsNull()) {
-             out.pushKV("taproot_internal_key", HexStr(output.m_tap_internal_key));
+         // Proprietary
+         if (!output.m_proprietary.empty()) {
+             UniValue proprietary(UniValue::VARR);
+diff --git a/test/functional/rpc_psbt.py b/test/functional/rpc_psbt.py
+index d00135c835..e905d40921 100755
+--- a/test/functional/rpc_psbt.py
++++ b/test/functional/rpc_psbt.py
+@@ -104,7 +104,7 @@ class PSBTTest(BitcoinTestFramework):
+         assert_raises_rpc_error(-4, "Insufficient funds", self.nodes[0].walletcreatefundedpsbt, [{"txid": utxo1['txid'], "vout": utxo1['vout']}], {self.nodes[2].getnewaddress():90})
+ 
+         psbtx1 = self.nodes[0].walletcreatefundedpsbt([{"txid": utxo1['txid'], "vout": utxo1['vout']}], {self.nodes[2].getnewaddress():90}, 0, {"add_inputs": True})['psbt']
+-        assert_equal(len(self.nodes[0].decodepsbt(psbtx1)['tx']['vin']), 2)
++        assert_equal(len(self.nodes[0].decodepsbt(psbtx1)['inputs']), 2)
+ 
+         # Inputs argument can be null
+         self.nodes[0].walletcreatefundedpsbt(None, {self.nodes[2].getnewaddress():10})
 -- 
-2.35.1
+2.36.0
 
 
-From e7f044ed5feb02a87bfb4b0ae870d9ab7370e52d Mon Sep 17 00:00:00 2001
+From 65430282502477e62ce93fbd2ace93d722bae930 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 16:55:20 -0500
-Subject: [PATCH 41/46] Allow specifying PSBT version in constructor
+Subject: [PATCH 43/48] Allow specifying PSBT version in constructor
 
 ---
  src/psbt.cpp | 7 +++++--
@@ -3748,7 +3848,7 @@ Subject: [PATCH 41/46] Allow specifying PSBT version in constructor
  2 files changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 71bef16e25..42adb35f33 100644
+index d20840502f..0b6b19b398 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -9,11 +9,14 @@
@@ -3769,10 +3869,10 @@ index 71bef16e25..42adb35f33 100644
  
  bool PartiallySignedTransaction::IsNull() const
 diff --git a/src/psbt.h b/src/psbt.h
-index a08223fadb..072dfa72cc 100644
+index 9165bcf4a5..5fd9d74426 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1141,7 +1141,7 @@ struct PartiallySignedTransaction
+@@ -1138,7 +1138,7 @@ struct PartiallySignedTransaction
      CMutableTransaction GetUnsignedTx() const;
      uint256 GetUniqueID() const;
      PartiallySignedTransaction() {}
@@ -3782,20 +3882,20 @@ index a08223fadb..072dfa72cc 100644
      template <typename Stream>
      inline void Serialize(Stream& s) const {
 -- 
-2.35.1
+2.36.0
 
 
-From 60394ab7216527323d277a6ab60f46d50da5c7c7 Mon Sep 17 00:00:00 2001
+From 7eefc79403e81d9396d15cc7b7aa63b9a0c4341e Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 17:12:48 -0500
-Subject: [PATCH 42/46] Update PSBT::UpdatePSBTOutput to use GetUnsignedTx
+Subject: [PATCH 44/48] Update PSBT::UpdatePSBTOutput to use GetUnsignedTx
 
 ---
  src/psbt.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 42adb35f33..0a50265e19 100644
+index 0b6b19b398..7a15916dc0 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -475,7 +475,7 @@ size_t CountPSBTUnsignedInputs(const PartiallySignedTransaction& psbt) {
@@ -3808,23 +3908,23 @@ index 42adb35f33..0a50265e19 100644
      PSBTOutput& psbt_out = psbt.outputs.at(index);
  
 -- 
-2.35.1
+2.36.0
 
 
-From cbabbb663bf847fbab9b40cd4b9344e64b69a4fc Mon Sep 17 00:00:00 2001
+From 099646740f16698d5dfae3658257cf785a70919d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 25 Jan 2021 16:11:50 -0500
-Subject: [PATCH 43/46] Restrict joinpsbts to PSBTv0 only
+Subject: [PATCH 45/48] Restrict joinpsbts to PSBTv0 only
 
 ---
  src/rpc/rawtransaction.cpp | 3 +++
  1 file changed, 3 insertions(+)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index d435bc3efc..1d26207be2 100644
+index ef3ba869f2..d3a340155b 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -2135,6 +2135,9 @@ static RPCHelpMan joinpsbts()
+@@ -1736,6 +1736,9 @@ static RPCHelpMan joinpsbts()
          if (!DecodeBase64PSBT(psbtx, txs[i].get_str(), error)) {
              throw JSONRPCError(RPC_DESERIALIZATION_ERROR, strprintf("TX decode failed %s", error));
          }
@@ -3835,30 +3935,30 @@ index d435bc3efc..1d26207be2 100644
          // Choose the highest version number
          if (*psbtx.tx_version > best_version) {
 -- 
-2.35.1
+2.36.0
 
 
-From 95c685a4291220bad8520ac8df9b29a4936906ad Mon Sep 17 00:00:00 2001
+From 38b82589326b238045023bc1fb1cedc5b2ce2216 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 17:13:27 -0500
-Subject: [PATCH 44/46] Allow createpsbt and walletcreatefundedpsbt to take
+Subject: [PATCH 46/48] Allow createpsbt and walletcreatefundedpsbt to take
  psbt version
 
 Use v2 for other RPCs. For some tests to work, PSBTv0 is set explicitly.
 ---
  src/psbt.h                                    |  2 +-
  src/rpc/client.cpp                            |  2 +
- src/rpc/rawtransaction.cpp                    | 31 ++++----
+ src/rpc/rawtransaction.cpp                    | 30 +++----
  src/wallet/rpc/spend.cpp                      | 18 ++++-
  test/functional/data/rpc_psbt.json            |  1 +
- test/functional/rpc_psbt.py                   | 75 +++++++++++--------
+ test/functional/rpc_psbt.py                   | 79 +++++++++++--------
  test/functional/wallet_bumpfee.py             |  4 +-
  .../wallet_multisig_descriptor_psbt.py        |  8 +-
- test/functional/wallet_send.py                |  4 +-
- 9 files changed, 86 insertions(+), 59 deletions(-)
+ test/functional/wallet_send.py                | 10 +--
+ 9 files changed, 88 insertions(+), 66 deletions(-)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index 072dfa72cc..d76282111d 100644
+index 5fd9d74426..6ddd8d6235 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
 @@ -81,7 +81,7 @@ static constexpr uint8_t PSBT_SEPARATOR = 0x00;
@@ -3871,7 +3971,7 @@ index 072dfa72cc..d76282111d 100644
  /** A structure for PSBT proprietary types */
  struct PSBTProprietary
 diff --git a/src/rpc/client.cpp b/src/rpc/client.cpp
-index c480a093a4..71a49c9593 100644
+index 23e9d4074c..ba59e376c3 100644
 --- a/src/rpc/client.cpp
 +++ b/src/rpc/client.cpp
 @@ -118,6 +118,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
@@ -3891,18 +3991,10 @@ index c480a093a4..71a49c9593 100644
      { "joinpsbts", 0, "txs"},
      { "finalizepsbt", 1, "extract"},
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index 1d26207be2..5b3e402428 100644
+index d3a340155b..3052822fdd 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
-@@ -37,6 +37,7 @@
- #include <util/moneystr.h>
- #include <util/strencodings.h>
- #include <util/string.h>
-+#include <util/vector.h>
- #include <validation.h>
- #include <validationinterface.h>
- 
-@@ -1892,7 +1893,12 @@ static RPCHelpMan createpsbt()
+@@ -1493,7 +1493,12 @@ static RPCHelpMan createpsbt()
      return RPCHelpMan{"createpsbt",
                  "\nCreates a transaction in the Partially Signed Transaction format.\n"
                  "Implements the Creator role.\n",
@@ -3916,7 +4008,7 @@ index 1d26207be2..5b3e402428 100644
                  RPCResult{
                      RPCResult::Type::STR, "", "The resulting raw transaction (base64-encoded string)"
                  },
-@@ -1907,6 +1913,7 @@ static RPCHelpMan createpsbt()
+@@ -1508,6 +1513,7 @@ static RPCHelpMan createpsbt()
          UniValueType(), // ARR or OBJ, checked later
          UniValue::VNUM,
          UniValue::VBOOL,
@@ -3924,7 +4016,7 @@ index 1d26207be2..5b3e402428 100644
          }, true
      );
  
-@@ -1917,15 +1924,16 @@ static RPCHelpMan createpsbt()
+@@ -1518,15 +1524,16 @@ static RPCHelpMan createpsbt()
      CMutableTransaction rawTx = ConstructTransaction(request.params[0], request.params[1], request.params[2], rbf);
  
      // Make a blank psbt
@@ -3947,7 +4039,7 @@ index 1d26207be2..5b3e402428 100644
      // Serialize the PSBT
      CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
      ssTx << psbtx;
-@@ -1986,14 +1994,7 @@ static RPCHelpMan converttopsbt()
+@@ -1587,14 +1594,7 @@ static RPCHelpMan converttopsbt()
      }
  
      // Make a blank psbt
@@ -3964,10 +4056,19 @@ index 1d26207be2..5b3e402428 100644
      // Serialize the PSBT
      CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
 diff --git a/src/wallet/rpc/spend.cpp b/src/wallet/rpc/spend.cpp
-index 433b5a1815..b559482072 100644
+index 07119133b7..62ec027037 100644
 --- a/src/wallet/rpc/spend.cpp
 +++ b/src/wallet/rpc/spend.cpp
-@@ -996,7 +996,7 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
+@@ -79,7 +79,7 @@ static void InterpretFeeEstimationInstructions(const UniValue& conf_target, cons
+ static UniValue FinishTransaction(const std::shared_ptr<CWallet> pwallet, const UniValue& options, const CMutableTransaction& rawTx)
+ {
+     // Make a blank psbt
+-    PartiallySignedTransaction psbtx(rawTx);
++    PartiallySignedTransaction psbtx(rawTx, /*version=*/2);
+ 
+     // First fill transaction with our data without signing,
+     // so external signers are not asked sign more than once.
+@@ -1098,7 +1098,7 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
  
          result.pushKV("txid", txid.GetHex());
      } else {
@@ -3976,16 +4077,7 @@ index 433b5a1815..b559482072 100644
          bool complete = false;
          const TransactionError err = pwallet->FillPSBT(psbtx, complete, SIGHASH_DEFAULT, false /* sign */, true /* bip32derivs */);
          CHECK_NONFATAL(err == TransactionError::OK);
-@@ -1185,7 +1185,7 @@ RPCHelpMan send()
-             }
- 
-             // Make a blank psbt
--            PartiallySignedTransaction psbtx(rawTx);
-+            PartiallySignedTransaction psbtx(rawTx, /* version=*/ 2);
- 
-             // First fill transaction with our data without signing,
-             // so external signers are not asked sign more than once.
-@@ -1370,6 +1370,7 @@ RPCHelpMan walletcreatefundedpsbt()
+@@ -1619,6 +1619,7 @@ RPCHelpMan walletcreatefundedpsbt()
                          FundTxDoc()),
                          "options"},
                      {"bip32derivs", RPCArg::Type::BOOL, RPCArg::Default{true}, "Include BIP 32 derivation paths for public keys if we know them"},
@@ -3993,7 +4085,7 @@ index 433b5a1815..b559482072 100644
                  },
                  RPCResult{
                      RPCResult::Type::OBJ, "", "",
-@@ -1398,7 +1399,8 @@ RPCHelpMan walletcreatefundedpsbt()
+@@ -1647,7 +1648,8 @@ RPCHelpMan walletcreatefundedpsbt()
          UniValueType(), // ARR or OBJ, checked later
          UniValue::VNUM,
          UniValue::VOBJ,
@@ -4003,8 +4095,8 @@ index 433b5a1815..b559482072 100644
          }, true
      );
  
-@@ -1421,7 +1423,15 @@ RPCHelpMan walletcreatefundedpsbt()
-     FundTransaction(wallet, rawTx, fee, change_position, options, coin_control, /* override_min_fee */ true);
+@@ -1670,7 +1672,15 @@ RPCHelpMan walletcreatefundedpsbt()
+     FundTransaction(wallet, rawTx, fee, change_position, options, coin_control, /*override_min_fee=*/true);
  
      // Make a blank psbt
 -    PartiallySignedTransaction psbtx(rawTx);
@@ -4033,10 +4125,10 @@ index 19b62b6125..cd82cf1f0b 100644
          }
      ],
 diff --git a/test/functional/rpc_psbt.py b/test/functional/rpc_psbt.py
-index 872b684f11..936935b7df 100755
+index e905d40921..a0f58673e9 100755
 --- a/test/functional/rpc_psbt.py
 +++ b/test/functional/rpc_psbt.py
-@@ -89,7 +89,7 @@ class PSBTTest(BitcoinTestFramework):
+@@ -93,7 +93,7 @@ class PSBTTest(BitcoinTestFramework):
          # The decodepsbt RPC is stateless and independent of any settings, we can always just call it on the first node
          decoded_psbt = self.nodes[0].decodepsbt(psbtx["psbt"])
          changepos = psbtx["changepos"]
@@ -4045,16 +4137,7 @@ index 872b684f11..936935b7df 100755
  
      def run_test(self):
          # Create and fund a raw tx for sending 10 BTC
-@@ -100,7 +100,7 @@ class PSBTTest(BitcoinTestFramework):
-         assert_raises_rpc_error(-4, "Insufficient funds", self.nodes[0].walletcreatefundedpsbt, [{"txid": utxo1['txid'], "vout": utxo1['vout']}], {self.nodes[2].getnewaddress():90})
- 
-         psbtx1 = self.nodes[0].walletcreatefundedpsbt([{"txid": utxo1['txid'], "vout": utxo1['vout']}], {self.nodes[2].getnewaddress():90}, 0, {"add_inputs": True})['psbt']
--        assert_equal(len(self.nodes[0].decodepsbt(psbtx1)['tx']['vin']), 2)
-+        assert_equal(len(self.nodes[0].decodepsbt(psbtx1)['inputs']), 2)
- 
-         # Inputs argument can be null
-         self.nodes[0].walletcreatefundedpsbt(None, {self.nodes[2].getnewaddress():10})
-@@ -329,12 +329,14 @@ class PSBTTest(BitcoinTestFramework):
+@@ -333,12 +333,14 @@ class PSBTTest(BitcoinTestFramework):
          # Update psbts, should only have data for one input and not the other
          psbt1 = self.nodes[1].walletprocesspsbt(psbt_orig, False, "ALL")['psbt']
          psbt1_decoded = self.nodes[0].decodepsbt(psbt1)
@@ -4071,7 +4154,7 @@ index 872b684f11..936935b7df 100755
          # Check that BIP32 paths were not added
          assert "bip32_derivs" not in psbt2_decoded['inputs'][1]
  
-@@ -356,33 +358,33 @@ class PSBTTest(BitcoinTestFramework):
+@@ -360,33 +362,33 @@ class PSBTTest(BitcoinTestFramework):
          unspent = self.nodes[0].listunspent()[0]
          psbtx_info = self.nodes[0].walletcreatefundedpsbt([{"txid":unspent["txid"], "vout":unspent["vout"]}], [{self.nodes[2].getnewaddress():unspent["amount"]+1}], block_height+2, {"replaceable": False, "add_inputs": True}, False)
          decoded_psbt = self.nodes[0].decodepsbt(psbtx_info["psbt"])
@@ -4116,7 +4199,7 @@ index 872b684f11..936935b7df 100755
              assert "bip32_derivs" in psbt_in
  
          # Make sure change address wallet does not have P2SH innerscript access to results in success
-@@ -448,7 +450,7 @@ class PSBTTest(BitcoinTestFramework):
+@@ -452,7 +454,7 @@ class PSBTTest(BitcoinTestFramework):
  
          # Creator Tests
          for creator in creators:
@@ -4125,7 +4208,7 @@ index 872b684f11..936935b7df 100755
              assert_equal(created_tx, creator['result'])
  
          # Signer tests
-@@ -505,6 +507,8 @@ class PSBTTest(BitcoinTestFramework):
+@@ -509,6 +511,8 @@ class PSBTTest(BitcoinTestFramework):
          vout3 = find_output(self.nodes[0], txid3, 11)
          self.sync_all()
  
@@ -4134,7 +4217,7 @@ index 872b684f11..936935b7df 100755
          def test_psbt_input_keys(psbt_input, keys):
              """Check that the psbt input has only the expected keys."""
              assert_equal(set(keys), set(psbt_input.keys()))
-@@ -512,48 +516,57 @@ class PSBTTest(BitcoinTestFramework):
+@@ -516,48 +520,57 @@ class PSBTTest(BitcoinTestFramework):
          # Create a PSBT. None of the inputs are filled initially
          psbt = self.nodes[1].createpsbt([{"txid":txid1, "vout":vout1},{"txid":txid2, "vout":vout2},{"txid":txid3, "vout":vout3}], {self.nodes[0].getnewaddress():32.999})
          decoded = self.nodes[1].decodepsbt(psbt)
@@ -4207,11 +4290,25 @@ index 872b684f11..936935b7df 100755
              shuffled |= joined != shuffled_joined
              if shuffled:
                  break
+@@ -653,11 +666,9 @@ class PSBTTest(BitcoinTestFramework):
+         final = self.nodes[0].finalizepsbt(signed['psbt'], False)
+ 
+         dec = self.nodes[0].decodepsbt(signed["psbt"])
+-        for i, txin in enumerate(dec["tx"]["vin"]):
+-            if txin["txid"] == ext_utxo["txid"] and txin["vout"] == ext_utxo["vout"]:
+-                input_idx = i
++        for psbt_in in dec["inputs"]:
++            if psbt_in["previous_txid"] == ext_utxo["txid"] and psbt_in["previous_vout"] == ext_utxo["vout"]:
+                 break
+-        psbt_in = dec["inputs"][input_idx]
+         # Calculate the input weight
+         # (prevout + sequence + length of scriptSig + scriptsig + 1 byte buffer) * WITNESS_SCALE_FACTOR + num scriptWitness stack items + (length of stack item + stack item) * N stack items + 1 byte buffer
+         len_scriptsig = len(psbt_in["final_scriptSig"]["hex"]) // 2 if "final_scriptSig" in psbt_in else 0
 diff --git a/test/functional/wallet_bumpfee.py b/test/functional/wallet_bumpfee.py
-index f6843d597d..080c32998a 100755
+index 3b23ee8e94..9cc60c2bc1 100755
 --- a/test/functional/wallet_bumpfee.py
 +++ b/test/functional/wallet_bumpfee.py
-@@ -446,14 +446,14 @@ def test_watchonly_psbt(self, peer_node, rbf_node, dest_address):
+@@ -448,14 +448,14 @@ def test_watchonly_psbt(self, peer_node, rbf_node, dest_address):
      psbt_signed = signer.walletprocesspsbt(psbt=psbt, sign=True, sighashtype="ALL", bip32derivs=True)
      psbt_final = watcher.finalizepsbt(psbt_signed["psbt"])
      original_txid = watcher.sendrawtransaction(psbt_final["hex"])
@@ -4251,10 +4348,10 @@ index 2b565db137..10c094e165 100755
  
      def participants_create_multisigs(self, xpubs):
 diff --git a/test/functional/wallet_send.py b/test/functional/wallet_send.py
-index 843a9f52b7..b1f9c70f9c 100755
+index 07baa0595e..25c309ac36 100755
 --- a/test/functional/wallet_send.py
 +++ b/test/functional/wallet_send.py
-@@ -419,10 +419,10 @@ class WalletSendTest(BitcoinTestFramework):
+@@ -424,10 +424,10 @@ class WalletSendTest(BitcoinTestFramework):
          assert res["complete"]
          res = self.test_send(from_wallet=w0, to_wallet=w1, amount=1, add_to_wallet=False, change_address=change_address, change_position=0)
          assert res["complete"]
@@ -4267,14 +4364,28 @@ index 843a9f52b7..b1f9c70f9c 100755
          assert change_address[0] == "m" or change_address[0] == "n"
  
          self.log.info("Set lock time...")
+@@ -524,11 +524,9 @@ class WalletSendTest(BitcoinTestFramework):
+         self.nodes[0].finalizepsbt(signed["psbt"])
+ 
+         dec = self.nodes[0].decodepsbt(signed["psbt"])
+-        for i, txin in enumerate(dec["tx"]["vin"]):
+-            if txin["txid"] == ext_utxo["txid"] and txin["vout"] == ext_utxo["vout"]:
+-                input_idx = i
++        for psbt_in in dec["inputs"]:
++            if psbt_in["previous_txid"] == ext_utxo["txid"] and psbt_in["previous_vout"] == ext_utxo["vout"]:
+                 break
+-        psbt_in = dec["inputs"][input_idx]
+         # Calculate the input weight
+         # (prevout + sequence + length of scriptSig + scriptsig + 1 byte buffer) * WITNESS_SCALE_FACTOR + num scriptWitness stack items + (length of stack item + stack item) * N stack items + 1 byte buffer
+         len_scriptsig = len(psbt_in["final_scriptSig"]["hex"]) // 2 if "final_scriptSig" in psbt_in else 0
 -- 
-2.35.1
+2.36.0
 
 
-From fc8e7ffabac6823b8b70f89dab695ef822b5c787 Mon Sep 17 00:00:00 2001
+From 3dce50dfb3d8e22b1c61b51a5e6455d27bd6901f Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 5 Apr 2021 16:17:34 -0400
-Subject: [PATCH 45/46] Add a PSBT constructor for providing the version
+Subject: [PATCH 47/48] Add a PSBT constructor for providing the version
 
 Also changes CTransaction::CURRENT_VERSION to constexpr as otherwise
 there will be a linker error.
@@ -4285,7 +4396,7 @@ there will be a linker error.
  3 files changed, 10 insertions(+), 1 deletion(-)
 
 diff --git a/src/primitives/transaction.h b/src/primitives/transaction.h
-index 1fcbc45c72..89be97fd72 100644
+index fb98fb6868..80dea6456f 100644
 --- a/src/primitives/transaction.h
 +++ b/src/primitives/transaction.h
 @@ -280,7 +280,7 @@ class CTransaction
@@ -4298,7 +4409,7 @@ index 1fcbc45c72..89be97fd72 100644
      // The local variables are made const to prevent unintended modification
      // without updating the cached hash value. However, CTransaction is not
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 0a50265e19..ac4dc18281 100644
+index 7a15916dc0..5e8ce0f3f6 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -19,6 +19,14 @@ PartiallySignedTransaction::PartiallySignedTransaction(const CMutableTransaction
@@ -4317,10 +4428,10 @@ index 0a50265e19..ac4dc18281 100644
  {
      return !tx && inputs.empty() && outputs.empty() && unknown.empty();
 diff --git a/src/psbt.h b/src/psbt.h
-index d76282111d..b091dd97f9 100644
+index 6ddd8d6235..08eee2cc9d 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1141,6 +1141,7 @@ struct PartiallySignedTransaction
+@@ -1138,6 +1138,7 @@ struct PartiallySignedTransaction
      CMutableTransaction GetUnsignedTx() const;
      uint256 GetUniqueID() const;
      PartiallySignedTransaction() {}
@@ -4329,13 +4440,13 @@ index d76282111d..b091dd97f9 100644
  
      template <typename Stream>
 -- 
-2.35.1
+2.36.0
 
 
-From e98abe60849b35b888058d6230e927098e1ba89e Mon Sep 17 00:00:00 2001
+From 55329571f6e62586bfa03581762d63f207915e6f Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 5 Apr 2021 16:39:48 -0400
-Subject: [PATCH 46/46] Use GetUnsignedTx when serializing in PSBTv0
+Subject: [PATCH 48/48] Use GetUnsignedTx when serializing in PSBTv0
 
 If we are asked to make a PSBTv0, we may not necessarily have made an
 unsigned transaction. So instead use GetUnsignedTx which will either
@@ -4347,10 +4458,10 @@ want to serialize those as v0.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/psbt.h b/src/psbt.h
-index b091dd97f9..ec8733ccc8 100644
+index 08eee2cc9d..6707252ae5 100644
 --- a/src/psbt.h
 +++ b/src/psbt.h
-@@ -1156,7 +1156,7 @@ struct PartiallySignedTransaction
+@@ -1153,7 +1153,7 @@ struct PartiallySignedTransaction
  
              // Write serialized tx to a stream
              OverrideStream<Stream> os(&s, s.GetType(), s.GetVersion() | SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -4360,5 +4471,5 @@ index b091dd97f9..ec8733ccc8 100644
  
          // Write xpubs
 -- 
-2.35.1
+2.36.0
 
