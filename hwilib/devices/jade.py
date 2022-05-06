@@ -234,6 +234,7 @@ class JadeClient(HardwareWalletClient):
                     input_txn_bytes = psbtin.non_witness_utxo.serialize_without_witness()
                 if utxo is None:
                     raise Exception('PSBT is missing input utxo information, cannot sign')
+                sats_value = utxo.nValue
                 scriptcode = utxo.scriptPubKey
 
                 if is_p2sh(scriptcode):
@@ -267,8 +268,8 @@ class JadeClient(HardwareWalletClient):
                         signing_multisigs[multisig_name] = (script_variant, threshold, signers)
 
                 # Build the input and add to the list - include some host entropy for AE sigs (although we won't verify)
-                jade_inputs.append({'is_witness': witness_input, 'input_tx': input_txn_bytes, 'script': scriptcode, 'path': path,
-                                    'ae_host_entropy': os.urandom(32), 'ae_host_commitment': os.urandom(32)})
+                jade_inputs.append({'is_witness': witness_input, 'satoshi': sats_value, 'script': scriptcode, 'path': path,
+                                    'input_tx': input_txn_bytes, 'ae_host_entropy': os.urandom(32), 'ae_host_commitment': os.urandom(32)})
 
             # Change output details
             # This is optional, in that if we send it Jade validates the change output script
