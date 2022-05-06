@@ -330,7 +330,8 @@ if [[ -n ${build_jade} ]]; then
             --disable-gtk \
             --disable-vhost-scsi \
             --disable-qom-cast-debug \
-            --disable-tpm
+            --disable-tpm \
+            --extra-cflags=-Wno-array-parameter
     else
         cd qemu
         git fetch
