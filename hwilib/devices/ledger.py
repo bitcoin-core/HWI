@@ -80,7 +80,8 @@ SIMULATOR_PATH = 'tcp:127.0.0.1:9999'
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_MODEL_IDS = {
     0x10: "ledger_nano_s",
-    0x40: "ledger_nano_x"
+    0x40: "ledger_nano_x",
+    0x50: "ledger_nano_s_plus"
 }
 LEDGER_LEGACY_PRODUCT_IDS = {
     0x0001: "ledger_nano_s",
