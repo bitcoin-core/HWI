@@ -280,23 +280,23 @@ class KeyOriginInfo(object):
         r += struct.pack("<" + "I" * len(self.path), *self.path)
         return r
 
-    def _path_string(self) -> str:
+    def _path_string(self, hardened_char: str = "h") -> str:
         s = ""
         for i in self.path:
             hardened = is_hardened(i)
             i &= ~HARDENED_FLAG
             s += "/" + str(i)
             if hardened:
-                s += "h"
+                s += hardened_char
         return s
 
-    def to_string(self) -> str:
+    def to_string(self, hardened_char: str = "h") -> str:
         """
         Return the KeyOriginInfo as a string in the form <fingerprint>/<index>/<index>/...
         This is the same way that KeyOriginInfo is shown in descriptors
         """
         s = binascii.hexlify(self.fingerprint).decode()
-        s += self._path_string()
+        s += self._path_string(hardened_char)
         return s
 
     @classmethod
