@@ -288,7 +288,7 @@ class LedgerClient(HardwareWalletClient):
                         for xpub_bytes, xpub_origin in psbt2.xpub.items():
                             xpub = ExtendedKey.from_bytes(xpub_bytes)
                             if (xpub_origin.fingerprint == pk_origin.fingerprint) and (xpub_origin.path == pk_origin.path[:len(xpub_origin.path)]):
-                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), "/**").to_string())
+                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), "/**").to_string(hardened_char="'"))
                                 break
                         else:
                             # No xpub, Ledger will not accept this multisig
@@ -448,7 +448,7 @@ class LedgerClient(HardwareWalletClient):
         # Build a PubkeyProvider for the key we're going to use
         origin = KeyOriginInfo(self.get_master_fingerprint(), path)
         pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), "/**")
-        key_str = pk_prov.to_string()
+        key_str = pk_prov.to_string(hardened_char="'")
 
         # Make the Wallet object
         return PolicyMapWallet(name="", policy_map=template, keys_info=[key_str])
@@ -474,7 +474,7 @@ class LedgerClient(HardwareWalletClient):
                 BadArgumentError("Unknown address type")
 
             origin = KeyOriginInfo(self.get_master_fingerprint(), path)
-            wallet = PolicyMapWallet(name="", policy_map=template, keys_info=[f"[{origin.to_string()}]"])
+            wallet = PolicyMapWallet(name="", policy_map=template, keys_info=["[{}]".format(origin.to_string(hardened_char="'"))])
         else:
             if not is_standard_path(path, addr_type, self.chain):
                 raise BadArgumentError("Ledger requires BIP 44 standard paths")

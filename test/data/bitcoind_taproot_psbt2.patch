@@ -1,4 +1,4 @@
-From a18ac68f4cfb7a3e8627ec28910e6ebacead1e8e Mon Sep 17 00:00:00 2001
+From ed386479463cf5ec398dbcdebf2eec41baf0ef69 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 15:31:12 -0400
 Subject: [PATCH 01/48] Move individual KeyOriginInfo de/ser to separate
@@ -83,10 +83,10 @@ index 8a9cbd33d2..e0512feb4f 100644
  template<typename Stream>
  void SerializeHDKeypaths(Stream& s, const std::map<CPubKey, KeyOriginInfo>& hd_keypaths, CompactSizeWriter type)
 -- 
-2.36.0
+2.36.1
 
 
-From 61c44af8d53e995c578cbb0bd9a97fc9d6f26507 Mon Sep 17 00:00:00 2001
+From a41b109ad71ad924fb9c34deba1439d4a77c6624 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:04:46 -0400
 Subject: [PATCH 02/48] Add TaprootBuilder::GetTreeTuples
@@ -136,10 +136,10 @@ index f0b143c52b..0e1cbc4690 100644
  
  /** Given a TaprootSpendData and the output key, reconstruct its script tree.
 -- 
-2.36.0
+2.36.1
 
 
-From bf29c1c6dd202a2a07eaf9027e5b6021121c3720 Mon Sep 17 00:00:00 2001
+From a7728d5c735c18342d17209a6bebde041c8ed9d3 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:05:42 -0400
 Subject: [PATCH 03/48] Add TaprootBuilder::IsEmpty
@@ -163,10 +163,10 @@ index 0e1cbc4690..824709134f 100644
      bool IsComplete() const { return m_valid && (m_branch.size() == 0 || (m_branch.size() == 1 && m_branch[0].has_value())); }
      /** Compute scriptPubKey (after Finalize()). */
 -- 
-2.36.0
+2.36.1
 
 
-From c1638c6fe466774c113316b7042eb5dfe17c971e Mon Sep 17 00:00:00 2001
+From 180a70823e31f2c5b4f3c477d246793075da2c9b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:06:20 -0400
 Subject: [PATCH 04/48] Add serialization methods to XOnlyPubKey
@@ -193,10 +193,10 @@ index dfe06f834c..463efe1b00 100644
  
  struct CExtPubKey {
 -- 
-2.36.0
+2.36.1
 
 
-From 1a811f948c236a0d8c8e17188c34267019c88959 Mon Sep 17 00:00:00 2001
+From 5d3e0bae9b1c1cfd0bb7f87b79b54f4124db9f67 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 12 Jul 2021 17:07:08 -0400
 Subject: [PATCH 05/48] Implement de/ser of PSBT's Taproot fields
@@ -511,10 +511,10 @@ index e0512feb4f..13e6a787ca 100644
                  {
                      PSBTProprietary this_prop;
 -- 
-2.36.0
+2.36.1
 
 
-From 5adbdd9d32527e5b85d8997fdbec8dc98fbbb99d Mon Sep 17 00:00:00 2001
+From 8b72bff08f781ebcec9607b95b2580e045d6cc8b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 15:29:29 -0400
 Subject: [PATCH 06/48] Fill PSBT Taproot input data to/from SignatureData
@@ -525,7 +525,7 @@ Subject: [PATCH 06/48] Fill PSBT Taproot input data to/from SignatureData
  2 files changed, 37 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 6465e353be..df01a1288b 100644
+index c1c8a385cc..ba32d7acae 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -113,6 +113,24 @@ void PSBTInput::FillSignatureData(SignatureData& sigdata) const
@@ -579,10 +579,10 @@ index 6465e353be..df01a1288b 100644
  
  void PSBTInput::Merge(const PSBTInput& input)
 diff --git a/src/script/sign.h b/src/script/sign.h
-index 7301826ba5..f195a9128b 100644
+index 71203d08ec..cb3c229298 100644
 --- a/src/script/sign.h
 +++ b/src/script/sign.h
-@@ -72,6 +72,7 @@ struct SignatureData {
+@@ -74,6 +74,7 @@ struct SignatureData {
      std::map<CKeyID, std::pair<CPubKey, KeyOriginInfo>> misc_pubkeys;
      std::vector<unsigned char> taproot_key_path_sig; /// Schnorr signature for key path spending
      std::map<std::pair<XOnlyPubKey, uint256>, std::vector<unsigned char>> taproot_script_sigs; ///< (Partial) schnorr signatures, indexed by XOnlyPubKey and leaf_hash.
@@ -591,10 +591,10 @@ index 7301826ba5..f195a9128b 100644
      std::vector<CKeyID> missing_sigs; ///< KeyIDs of pubkeys for signatures which could not be found
      uint160 missing_redeem_script; ///< ScriptID of the missing redeemScript (if any)
 -- 
-2.36.0
+2.36.1
 
 
-From c801ad119262cf717cb097f09b719b2f5934f240 Mon Sep 17 00:00:00 2001
+From bb88ff7afe95c16e388d8da0d5f4483e9e9614c9 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 15:29:55 -0400
 Subject: [PATCH 07/48] Fetch key origins for Taproot keys
@@ -604,7 +604,7 @@ Subject: [PATCH 07/48] Fetch key origins for Taproot keys
  1 file changed, 19 insertions(+)
 
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index d77515f16c..6467320442 100644
+index 2d569d674a..e46d9be7d4 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -169,6 +169,17 @@ static bool SignTaprootScript(const SigningProvider& provider, const BaseSignatu
@@ -641,10 +641,10 @@ index d77515f16c..6467320442 100644
          if (sigdata.taproot_key_path_sig.size() == 0) {
              if (creator.CreateSchnorrSig(provider, sig, spenddata.internal_key, nullptr, &spenddata.merkle_root, SigVersion::TAPROOT)) {
 -- 
-2.36.0
+2.36.1
 
 
-From dd5d3832a4f35e7139685f9955b55e2489b196ac Mon Sep 17 00:00:00 2001
+From b3087589961f971308106384f378973e6b0a3e69 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:01:12 -0400
 Subject: [PATCH 08/48] Store TaprootBuilder in SigningProviders instead of
@@ -756,10 +756,10 @@ index f1bded1a8c..792cc903f2 100644
  
  FlatSigningProvider Merge(const FlatSigningProvider& a, const FlatSigningProvider& b);
 -- 
-2.36.0
+2.36.1
 
 
-From c673cf588369be3bd10ea4f20564a9d4f8ca55c7 Mon Sep 17 00:00:00 2001
+From b96772eb1ab9396de913177a753ac45b3e8f2082 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:02:36 -0400
 Subject: [PATCH 09/48] Fill PSBT Taproot output data to/from SignatureData
@@ -771,7 +771,7 @@ Subject: [PATCH 09/48] Fill PSBT Taproot output data to/from SignatureData
  3 files changed, 24 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index df01a1288b..8aaefe4e70 100644
+index ba32d7acae..2b2070e66e 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -213,6 +213,16 @@ void PSBTOutput::FillSignatureData(SignatureData& sigdata) const
@@ -808,7 +808,7 @@ index df01a1288b..8aaefe4e70 100644
  
  bool PSBTOutput::IsNull() const
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index 6467320442..8528f69432 100644
+index e46d9be7d4..5cd773f6ee 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -216,11 +216,15 @@ static bool SignTaprootScript(const SigningProvider& provider, const BaseSignatu
@@ -828,10 +828,10 @@ index 6467320442..8528f69432 100644
      // Try key path spending.
      {
 diff --git a/src/script/sign.h b/src/script/sign.h
-index f195a9128b..663f343a66 100644
+index cb3c229298..fed0450114 100644
 --- a/src/script/sign.h
 +++ b/src/script/sign.h
-@@ -68,6 +68,7 @@ struct SignatureData {
+@@ -70,6 +70,7 @@ struct SignatureData {
      CScript witness_script; ///< The witnessScript (if any) for the input. witnessScripts are used in P2WSH outputs.
      CScriptWitness scriptWitness; ///< The scriptWitness of an input. Contains complete signatures or the traditional partial signatures format. scriptWitness is part of a transaction input per BIP 144.
      TaprootSpendData tr_spenddata; ///< Taproot spending data.
@@ -840,10 +840,10 @@ index f195a9128b..663f343a66 100644
      std::map<CKeyID, std::pair<CPubKey, KeyOriginInfo>> misc_pubkeys;
      std::vector<unsigned char> taproot_key_path_sig; /// Schnorr signature for key path spending
 -- 
-2.36.0
+2.36.1
 
 
-From 24c00f71c87a690cf0cbd82c3a25b7da7272de7d Mon Sep 17 00:00:00 2001
+From d4b12ba7ba2844a83ab6c210f12f195da1938d49 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 19 Jul 2021 16:54:16 -0400
 Subject: [PATCH 10/48] Implement decodepsbt for Taproot fields
@@ -853,7 +853,7 @@ Subject: [PATCH 10/48] Implement decodepsbt for Taproot fields
  1 file changed, 168 insertions(+), 1 deletion(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index ce8f16540f..22550b5150 100644
+index b9b8c36bb3..5a5743325b 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -790,6 +790,43 @@ static RPCHelpMan decodepsbt()
@@ -1054,10 +1054,10 @@ index ce8f16540f..22550b5150 100644
          if (!output.m_proprietary.empty()) {
              UniValue proprietary(UniValue::VARR);
 -- 
-2.36.0
+2.36.1
 
 
-From 5b3fe60ae599c084a4e06cc1d9eef0e458e7b7ab Mon Sep 17 00:00:00 2001
+From 689d17536b07b91551b936b3f1deaad70d9938dc Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 20 Jul 2021 20:04:33 -0400
 Subject: [PATCH 11/48] psbt: Remove non_witness_utxo for segwit v1+
@@ -1069,7 +1069,7 @@ If all inputs are segwit v1+, the non_witness_utxos can be removed.
  2 files changed, 32 insertions(+), 3 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 8aaefe4e70..5610490b9a 100644
+index 2b2070e66e..0c331de6e9 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -184,7 +184,6 @@ void PSBTInput::Merge(const PSBTInput& input)
@@ -1095,10 +1095,10 @@ index 8aaefe4e70..5610490b9a 100644
  
      // Fill in the missing info
 diff --git a/src/wallet/wallet.cpp b/src/wallet/wallet.cpp
-index 79faf29907..e473bfd745 100644
+index 6c333c709b..aafbf341ff 100644
 --- a/src/wallet/wallet.cpp
 +++ b/src/wallet/wallet.cpp
-@@ -2013,6 +2013,35 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
+@@ -2015,6 +2015,35 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
          }
      }
  
@@ -1135,10 +1135,10 @@ index 79faf29907..e473bfd745 100644
      complete = true;
      for (const auto& input : psbtx.inputs) {
 -- 
-2.36.0
+2.36.1
 
 
-From 33dd3797456727fc5f6029da87e2c2939c1a6511 Mon Sep 17 00:00:00 2001
+From e9d664eaa526ab4cbe1c57e90c3d74e8fde0bfeb Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Fri, 23 Jul 2021 18:50:54 -0400
 Subject: [PATCH 12/48] tests: Test taproot fields for PSBT
@@ -1187,10 +1187,10 @@ index 8672400a92..430a1802a8 100644
      "creator" : [
          {
 -- 
-2.36.0
+2.36.1
 
 
-From 5cc8f1b2c383f760fbece0f43825afab2da14c28 Mon Sep 17 00:00:00 2001
+From 9ac1a734153c666b85de9d1b4a18d804530ad465 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 26 Jul 2021 16:23:50 -0400
 Subject: [PATCH 13/48] taproot: Use pre-existing signatures if available
@@ -1203,7 +1203,7 @@ signature is found for the given key and leaf hash.
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index 8528f69432..9f4f6a4f0b 100644
+index 5cd773f6ee..12f2ec4d3a 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -150,6 +150,7 @@ static bool CreateTaprootScriptSig(const BaseSignatureCreator& creator, Signatur
@@ -1215,13 +1215,13 @@ index 8528f69432..9f4f6a4f0b 100644
      if (creator.CreateSchnorrSig(provider, sig_out, pubkey, &leaf_hash, nullptr, sigversion)) {
          sigdata.taproot_script_sigs[lookup_key] = sig_out;
 diff --git a/test/functional/wallet_taproot.py b/test/functional/wallet_taproot.py
-index 41bb86f962..cf7ce5b8ac 100755
+index a4d836c8fe..da8fa6fe03 100755
 --- a/test/functional/wallet_taproot.py
 +++ b/test/functional/wallet_taproot.py
 @@ -446,8 +446,7 @@ class WalletTaprootTest(BitcoinTestFramework):
          assert(self.rpc_online.gettransaction(txid)["confirmations"] > 0)
  
-         psbt = self.psbt_online.walletcreatefundedpsbt([], [{self.boring.getnewaddress(): self.psbt_online.getbalance()}], None, {"subtractFeeFromOutputs": [0]})['psbt']
+         psbt = self.psbt_online.sendall(recipients=[self.boring.getnewaddress()], options={"psbt": True})["psbt"]
 -        res = self.psbt_offline.walletprocesspsbt(psbt)
 -        assert(res['complete'])
 +        res = self.psbt_offline.walletprocesspsbt(psbt=psbt, finalize=False)
@@ -1229,10 +1229,10 @@ index 41bb86f962..cf7ce5b8ac 100755
          txid = self.nodes[0].sendrawtransaction(rawtx)
          self.generatetoaddress(self.nodes[0], 1, self.boring.getnewaddress(), sync_fun=self.no_op)
 -- 
-2.36.0
+2.36.1
 
 
-From 455eee6b7c47c3fb7b547baf70d9ee279f7a99c2 Mon Sep 17 00:00:00 2001
+From 722b12006b46fb3a8bcf2ab6d4f506f203f85d92 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 26 Jul 2021 16:25:42 -0400
 Subject: [PATCH 14/48] psbt, test: Check for taproot fields in taproot psbt
@@ -1243,7 +1243,7 @@ Subject: [PATCH 14/48] psbt, test: Check for taproot fields in taproot psbt
  1 file changed, 15 insertions(+), 3 deletions(-)
 
 diff --git a/test/functional/wallet_taproot.py b/test/functional/wallet_taproot.py
-index cf7ce5b8ac..c9d511d8f6 100755
+index da8fa6fe03..6218647f17 100755
 --- a/test/functional/wallet_taproot.py
 +++ b/test/functional/wallet_taproot.py
 @@ -305,9 +305,21 @@ class WalletTaprootTest(BitcoinTestFramework):
@@ -1272,10 +1272,10 @@ index cf7ce5b8ac..c9d511d8f6 100755
              txid = self.nodes[0].sendrawtransaction(rawtx)
              self.generatetoaddress(self.nodes[0], 1, self.boring.getnewaddress(), sync_fun=self.no_op)
 -- 
-2.36.0
+2.36.1
 
 
-From 6170faf10be17b73f4137fcef382a3a441c3053d Mon Sep 17 00:00:00 2001
+From a29f6051a8e60db7218a8139b83645f1cc6d8610 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Wed, 24 Nov 2021 22:50:10 -0500
 Subject: [PATCH 15/48] psbt: Implement merge for Taproot fields
@@ -1285,7 +1285,7 @@ Subject: [PATCH 15/48] psbt: Implement merge for Taproot fields
  1 file changed, 9 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 5610490b9a..1073c84422 100644
+index 0c331de6e9..d038fced08 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -194,11 +194,17 @@ void PSBTInput::Merge(const PSBTInput& input)
@@ -1320,10 +1320,10 @@ index 5610490b9a..1073c84422 100644
  bool PSBTInputSigned(const PSBTInput& input)
  {
 -- 
-2.36.0
+2.36.1
 
 
-From 221b85b8249634c64203daa4e2cf1981523c21c7 Mon Sep 17 00:00:00 2001
+From cf3f0dfdc64c1e8b8c3c2ce0218f54865a5224d8 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 2 May 2022 11:28:49 -0400
 Subject: [PATCH 16/48] sign: Use sigdata taproot spenddata when signing
@@ -1337,7 +1337,7 @@ to be using the sigdata's spenddata.
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/src/script/sign.cpp b/src/script/sign.cpp
-index 9f4f6a4f0b..ec508e0ccb 100644
+index 12f2ec4d3a..a3681d26cc 100644
 --- a/src/script/sign.cpp
 +++ b/src/script/sign.cpp
 @@ -230,16 +230,16 @@ static bool SignTaproot(const SigningProvider& provider, const BaseSignatureCrea
@@ -1362,10 +1362,10 @@ index 9f4f6a4f0b..ec508e0ccb 100644
              }
          }
 -- 
-2.36.0
+2.36.1
 
 
-From 8f37bea10435246819b4e68f5f8638f31de259e8 Mon Sep 17 00:00:00 2001
+From c966eb2aceeee6dbce861fb8799cc29782d0f1b6 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 2 May 2022 11:30:03 -0400
 Subject: [PATCH 17/48] wallet: also search taproot pubkeys in FillPSBT
@@ -1403,10 +1403,10 @@ index 8633e7c62c..1fec82a485 100644
  
          SignPSBTInput(HidingSigningProvider(keys.get(), !sign, !bip32derivs), psbtx, i, &txdata, sighash_type, nullptr, finalize);
 -- 
-2.36.0
+2.36.1
 
 
-From a0e884243195c54ff88ac3c3b0a824dd6ff99cdf Mon Sep 17 00:00:00 2001
+From e0e8bd528b6a2a309e87f0e67efb9b573ae488e0 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 15:20:02 -0500
 Subject: [PATCH 18/48] Define psbtv2 field numbers
@@ -1453,10 +1453,10 @@ index 13e6a787ca..5086c165b1 100644
  static constexpr uint8_t PSBT_OUT_TAP_TREE = 0x06;
  static constexpr uint8_t PSBT_OUT_TAP_BIP32_DERIVATION = 0x07;
 -- 
-2.36.0
+2.36.1
 
 
-From 1699a6481fb2108fadc7b902873393e5ab58c55d Mon Sep 17 00:00:00 2001
+From acff05e0768120a1a45effd892b9fc4a3ef970dd Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 16:56:36 -0500
 Subject: [PATCH 19/48] Change PSBT unknown fields test to use higher numbers
@@ -1500,10 +1500,10 @@ index 444e56610e..d00135c835 100755
          assert_equal(unknown_psbt, unknown_out)
  
 -- 
-2.36.0
+2.36.1
 
 
-From 3aa7fb396e227cfcf58163a24f4141d347842490 Mon Sep 17 00:00:00 2001
+From 1f2da61adafd75e783f89c8293d8e82e4bba1594 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 16:07:25 -0500
 Subject: [PATCH 20/48] Implement PSBTv2 fields de/ser
@@ -1868,10 +1868,10 @@ index a1cce78451..45748b99ab 100644
  {
  protected:
 -- 
-2.36.0
+2.36.1
 
 
-From b0d4ef0d4f7d185504fe389f8db7aeb4aec0734c Mon Sep 17 00:00:00 2001
+From ffdb4b86ed68fda50a9ce8f56b4357d5a5be232c Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 17:23:10 -0500
 Subject: [PATCH 21/48] Have PSBTInput and PSBTOutput know the PSBT's version
@@ -1884,7 +1884,7 @@ Subject: [PATCH 21/48] Have PSBTInput and PSBTOutput know the PSBT's version
  4 files changed, 18 insertions(+), 12 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 1073c84422..f0c3aff3ad 100644
+index d038fced08..6ffe86acce 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -10,8 +10,8 @@
@@ -1956,7 +1956,7 @@ index 6eff336806..b9d79fb501 100644
              outputs.push_back(output);
              ++i;
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index 22550b5150..3f2eb3a395 100644
+index 5a5743325b..16ad18a031 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -1455,10 +1455,10 @@ static RPCHelpMan createpsbt()
@@ -2004,10 +2004,10 @@ index 0a7d0c55bd..a71b054ffd 100644
  })
  FUZZ_TARGET_DESERIALIZE(block_deserialize, {
 -- 
-2.36.0
+2.36.1
 
 
-From a5cd98f01f4b88343315ee6571c81efc71fac55b Mon Sep 17 00:00:00 2001
+From abdd28f586c6aac889839551a2230c5dbea5329b Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 4 Jan 2021 17:23:56 -0500
 Subject: [PATCH 22/48] Enforce PSBT version constraints
@@ -2301,10 +2301,10 @@ index b9d79fb501..4afca03a48 100644
              }
              ++i;
 -- 
-2.36.0
+2.36.1
 
 
-From 4fec11b5dedd6a980ed69ec94b3d66db77c49c04 Mon Sep 17 00:00:00 2001
+From 7190ff353a66ec1b2fd47d93fe82a15aa13421c8 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:34:38 -0500
 Subject: [PATCH 23/48] Add PSBT::CacheUnsignedTxPieces
@@ -2318,7 +2318,7 @@ to work with.
  2 files changed, 35 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index f0c3aff3ad..57c89c2d35 100644
+index 6ffe86acce..df6a5eb647 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -483,3 +483,36 @@ uint32_t PartiallySignedTransaction::GetVersion() const
@@ -2372,10 +2372,10 @@ index 4afca03a48..ec10586aa4 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
      /**
 -- 
-2.36.0
+2.36.1
 
 
-From 335eace0669edcc014d9446ef164f43be7da5a6d Mon Sep 17 00:00:00 2001
+From 433f638a28349272aff3b76152939cabcf930114 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:35:32 -0500
 Subject: [PATCH 24/48] Call CacheUnsignedTxPieces in PSBT constructor
@@ -2385,7 +2385,7 @@ Subject: [PATCH 24/48] Call CacheUnsignedTxPieces in PSBT constructor
  1 file changed, 1 insertion(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 57c89c2d35..9d3ca688ad 100644
+index df6a5eb647..57a66b9c43 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -12,6 +12,7 @@ PartiallySignedTransaction::PartiallySignedTransaction(const CMutableTransaction
@@ -2397,10 +2397,10 @@ index 57c89c2d35..9d3ca688ad 100644
  
  bool PartiallySignedTransaction::IsNull() const
 -- 
-2.36.0
+2.36.1
 
 
-From ec03cbda2a35d52dedb2c02ddcfee1e321e89b0b Mon Sep 17 00:00:00 2001
+From 20e6feb1a6ccb42fc569ac43d677dae97f3cb084 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:27:38 -0500
 Subject: [PATCH 25/48] Convert PSBTv0 unsigned tx to PSBTv2 fields
@@ -2424,10 +2424,10 @@ index ec10586aa4..4fe43557e2 100644
  
      template <typename Stream>
 -- 
-2.36.0
+2.36.1
 
 
-From a6970245a4920b3def6d6bcde274bfadfebd2525 Mon Sep 17 00:00:00 2001
+From 648900098177b746afd55cb40b1b0e745702c1a0 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:50:27 -0500
 Subject: [PATCH 26/48] Replace PSBT::GetInputUTXO with PSBTInput::GetUTXO
@@ -2464,7 +2464,7 @@ index 5a932f435d..eca2da5fd4 100644
                  break;
              } else {
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 9d3ca688ad..5fc93e50c4 100644
+index 57a66b9c43..583d3de976 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -65,20 +65,18 @@ bool PartiallySignedTransaction::AddOutput(const CTxOut& txout, const PSBTOutput
@@ -2555,10 +2555,10 @@ index baa64bba0f..e38b7e97b9 100644
              (void)tx_out.ToString();
          }
 -- 
-2.36.0
+2.36.1
 
 
-From e752717bc20ab30efbc5ecec6e7881faf0b8d96f Mon Sep 17 00:00:00 2001
+From ba87da62bba8be3b69b39a2f28d90674ffe2ae3c Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:15:04 -0500
 Subject: [PATCH 27/48] Add PSBT::ComputeLockTime()
@@ -2570,7 +2570,7 @@ Function to compute the lock time for the transaction
  2 files changed, 36 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 5fc93e50c4..b4d6985f41 100644
+index 583d3de976..eed5c6dce6 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -45,6 +45,41 @@ bool PartiallySignedTransaction::Merge(const PartiallySignedTransaction& psbt)
@@ -2628,10 +2628,10 @@ index 47dc1ac36c..112b681363 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.36.0
+2.36.1
 
 
-From 2694d7eedc1343148edad3b0cf5e60f9df5209c9 Mon Sep 17 00:00:00 2001
+From 2ef8c101f60831905acc3e97ab9ffc2655538544 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:21:42 -0500
 Subject: [PATCH 28/48] Add PSBT::GetUnsignedTx
@@ -2644,7 +2644,7 @@ psbt version.
  2 files changed, 29 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index b4d6985f41..60980f3e8f 100644
+index eed5c6dce6..823bc5ce8c 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -4,6 +4,7 @@
@@ -2702,10 +2702,10 @@ index 112b681363..e1ea4704c9 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.36.0
+2.36.1
 
 
-From 6bf2dbf194ced9525d4cb1d57da06844df568307 Mon Sep 17 00:00:00 2001
+From 9f080dc894b6095fd6a521fb6908ddce5de92b53 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 15:51:44 -0500
 Subject: [PATCH 29/48] Add PSBT::GetUniqueID
@@ -2718,7 +2718,7 @@ the ID without requiring the caller to know the version number.
  2 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 60980f3e8f..dffd76a6fa 100644
+index 823bc5ce8c..2d8c93dafd 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -24,7 +24,7 @@ bool PartiallySignedTransaction::IsNull() const
@@ -2767,10 +2767,10 @@ index e1ea4704c9..c9be566f76 100644
      explicit PartiallySignedTransaction(const CMutableTransaction& tx);
  
 -- 
-2.36.0
+2.36.1
 
 
-From 3466cb7ff62e930309115a8da61766212cb6ddfb Mon Sep 17 00:00:00 2001
+From f9d1cf129d582d964a973d163a1703e6793af9e4 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:50:58 -0500
 Subject: [PATCH 30/48] Change PSBT::AddInput to take just PSBTInput
@@ -2783,7 +2783,7 @@ Subject: [PATCH 30/48] Change PSBT::AddInput to take just PSBTInput
  4 files changed, 28 insertions(+), 13 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index dffd76a6fa..e2d0a0df8f 100644
+index 2d8c93dafd..d36322e5b0 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -125,17 +125,32 @@ uint256 PartiallySignedTransaction::GetUniqueID() const
@@ -2841,7 +2841,7 @@ index c9be566f76..b20a70a475 100644
      void SetupFromTx(const CMutableTransaction& tx);
      void CacheUnsignedTxPieces();
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index 3f2eb3a395..f0f06c6a19 100644
+index 16ad18a031..4b5c924e02 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -1690,7 +1690,7 @@ static RPCHelpMan joinpsbts()
@@ -2878,10 +2878,10 @@ index e38b7e97b9..d7f99e84c8 100644
      for (unsigned int i = 0; i < psbt_merge.tx->vout.size(); ++i) {
          Assert(psbt_mut.AddOutput(psbt_merge.tx->vout[i], psbt_merge.outputs[i]));
 -- 
-2.36.0
+2.36.1
 
 
-From cc8ed892937b7ed7f42c4378af48c92549daecbe Mon Sep 17 00:00:00 2001
+From 9a3f748172f3c16cdb6fb8f7ed8b583eda4a1745 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 16:59:29 -0500
 Subject: [PATCH 31/48] Change PSBT::AddOutput to take just PSBTOutput
@@ -2894,7 +2894,7 @@ Subject: [PATCH 31/48] Change PSBT::AddOutput to take just PSBTOutput
  4 files changed, 16 insertions(+), 9 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index e2d0a0df8f..9456e2a86b 100644
+index d36322e5b0..d1bfba0e45 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -153,11 +153,18 @@ bool PartiallySignedTransaction::AddInput(PSBTInput& psbtin)
@@ -2934,7 +2934,7 @@ index b20a70a475..de9d6eb6ad 100644
      void CacheUnsignedTxPieces();
      bool ComputeTimeLock(uint32_t& locktime) const;
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index f0f06c6a19..d0b76d8c0c 100644
+index 4b5c924e02..3b99792c21 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -1695,7 +1695,7 @@ static RPCHelpMan joinpsbts()
@@ -2971,10 +2971,10 @@ index d7f99e84c8..86fbefaecf 100644
      psbt_mut.unknown.insert(psbt_merge.unknown.begin(), psbt_merge.unknown.end());
  }
 -- 
-2.36.0
+2.36.1
 
 
-From 7e97ac90374816194e5206f231b966e965cc658d Mon Sep 17 00:00:00 2001
+From c3566015d6e436e8ddb1913753c875b7b67fcb8d Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:18:31 -0500
 Subject: [PATCH 32/48] Implement PSBTv2 field merging
@@ -2984,7 +2984,7 @@ Subject: [PATCH 32/48] Implement PSBTv2 field merging
  1 file changed, 12 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 9456e2a86b..c9a7dc476f 100644
+index d1bfba0e45..4cbe580bbc 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -28,6 +28,7 @@ bool PartiallySignedTransaction::Merge(const PartiallySignedTransaction& psbt)
@@ -3035,10 +3035,10 @@ index 9456e2a86b..c9a7dc476f 100644
      unknown.insert(output.unknown.begin(), output.unknown.end());
      m_tap_bip32_paths.insert(output.m_tap_bip32_paths.begin(), output.m_tap_bip32_paths.end());
 -- 
-2.36.0
+2.36.1
 
 
-From 111ce138af15bd3351bf9d03829bace298bd8e1c Mon Sep 17 00:00:00 2001
+From 646a629a2ea966bf68652e74b19206060741a094 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:48:30 -0500
 Subject: [PATCH 33/48] Add PSBTInput::GetOutPoint
@@ -3050,7 +3050,7 @@ Helper for getting the PSBTInput COutPoint
  2 files changed, 6 insertions(+)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index c9a7dc476f..b7a0b55b66 100644
+index 4cbe580bbc..f4a2bd001c 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -188,6 +188,11 @@ bool PSBTInput::GetUTXO(CTxOut& utxo) const
@@ -3078,10 +3078,10 @@ index de9d6eb6ad..9165bcf4a5 100644
  
      template <typename Stream>
 -- 
-2.36.0
+2.36.1
 
 
-From b40e36fd160fbbb505aaa7f370ad78810defdaf2 Mon Sep 17 00:00:00 2001
+From 1d41aeac1d458159f507b3fcb99c64979f91311e Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:18:54 -0500
 Subject: [PATCH 34/48] Update SignPSBTInput for PSBTv2
@@ -3091,7 +3091,7 @@ Subject: [PATCH 34/48] Update SignPSBTInput for PSBTv2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index b7a0b55b66..4d635ae0f4 100644
+index f4a2bd001c..81cf394baf 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -442,7 +442,7 @@ PrecomputedTransactionData PrecomputePSBTData(const PartiallySignedTransaction&
@@ -3113,10 +3113,10 @@ index b7a0b55b66..4d635ae0f4 100644
              return false;
          }
 -- 
-2.36.0
+2.36.1
 
 
-From 4a541e67dfccb8ea26f43b0633c7f44431d199e8 Mon Sep 17 00:00:00 2001
+From 07f944a5f3f5e305feb2206f850faba2391f1db6 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Fri, 18 Jun 2021 19:12:26 -0400
 Subject: [PATCH 35/48] Change PrecomputePSBTData to use GetUnsignedTx
@@ -3126,7 +3126,7 @@ Subject: [PATCH 35/48] Change PrecomputePSBTData to use GetUnsignedTx
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 4d635ae0f4..43bf17b92e 100644
+index 81cf394baf..298de9f29e 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -424,7 +424,7 @@ void UpdatePSBTOutput(const SigningProvider& provider, PartiallySignedTransactio
@@ -3139,10 +3139,10 @@ index 4d635ae0f4..43bf17b92e 100644
      std::vector<CTxOut> utxos;
      for (const PSBTInput& input : psbt.inputs) {
 -- 
-2.36.0
+2.36.1
 
 
-From 377b901f4497347fb198d1ef3c6ffd38e34aaaa0 Mon Sep 17 00:00:00 2001
+From 346ef3594b2f4dbb836ccc92936465783e8ee974 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:19:06 -0500
 Subject: [PATCH 36/48] Update FinalizeAndExtract for v2
@@ -3152,7 +3152,7 @@ Subject: [PATCH 36/48] Update FinalizeAndExtract for v2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 43bf17b92e..fceba944a2 100644
+index 298de9f29e..3627ca53f9 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -520,7 +520,7 @@ bool FinalizePSBT(PartiallySignedTransaction& psbtx)
@@ -3174,10 +3174,10 @@ index 43bf17b92e..fceba944a2 100644
          result.vin[i].scriptSig = psbtx.inputs[i].final_script_sig;
          result.vin[i].scriptWitness = psbtx.inputs[i].final_script_witness;
 -- 
-2.36.0
+2.36.1
 
 
-From 3b3f9eeb2ff354a4478634757f0443a0bc468f20 Mon Sep 17 00:00:00 2001
+From d14a06bbfb5b94cb7d7f6c075b764635cdaad2b3 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:21:34 -0500
 Subject: [PATCH 37/48] Update AnalyzePSBT for PSBTv2
@@ -3264,10 +3264,10 @@ index eca2da5fd4..888d298465 100644
          }
  
 -- 
-2.36.0
+2.36.1
 
 
-From ea078007464e2e03f1173fbc3feb9e8c41d86dca Mon Sep 17 00:00:00 2001
+From d654e724541fe360ed7541686693994d29834ddb Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 17:59:22 -0500
 Subject: [PATCH 38/48] Update PSBT Operations Dialog for v2
@@ -3298,10 +3298,10 @@ index 333766ce21..69b702351d 100644
          tx_description.append("<br>");
      }
 -- 
-2.36.0
+2.36.1
 
 
-From 347e0d6826c2ab9a13d36643e288c0907264851b Mon Sep 17 00:00:00 2001
+From 050bb2909feb5eef6cea3136d9330e2661a29d4f Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:00:22 -0500
 Subject: [PATCH 39/48] Update RPCs for PSBTv2
@@ -3311,7 +3311,7 @@ Subject: [PATCH 39/48] Update RPCs for PSBTv2
  1 file changed, 29 insertions(+), 21 deletions(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index d0b76d8c0c..d810ac5e48 100644
+index 3b99792c21..3150426159 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -926,10 +926,12 @@ static RPCHelpMan decodepsbt()
@@ -3449,10 +3449,10 @@ index d0b76d8c0c..d810ac5e48 100644
      shuffled_psbt.tx->nVersion = merged_psbt.tx->nVersion;
      shuffled_psbt.tx->nLockTime = merged_psbt.tx->nLockTime;
 -- 
-2.36.0
+2.36.1
 
 
-From 2297c67540db80338adc6e18802d7cabc935e335 Mon Sep 17 00:00:00 2001
+From 117f6d045cb2ee2f6342e8f403d53bca3c96de72 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 11 Jan 2021 18:00:54 -0500
 Subject: [PATCH 40/48] Update wallet for PSBTv2
@@ -3542,10 +3542,10 @@ index 62053ae8d2..1dfe8db39d 100644
      // Try to sign the mutated input
      SignatureData sigdata;
 diff --git a/src/wallet/wallet.cpp b/src/wallet/wallet.cpp
-index e473bfd745..69f95f5b8b 100644
+index aafbf341ff..eef55c28f0 100644
 --- a/src/wallet/wallet.cpp
 +++ b/src/wallet/wallet.cpp
-@@ -1979,17 +1979,14 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
+@@ -1981,17 +1981,14 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
      const PrecomputedTransactionData txdata = PrecomputePSBTData(psbtx);
      LOCK(cs_wallet);
      // Get all of the previous transactions
@@ -3566,10 +3566,10 @@ index e473bfd745..69f95f5b8b 100644
              if (it != mapWallet.end()) {
                  const CWalletTx& wtx = it->second;
 -- 
-2.36.0
+2.36.1
 
 
-From 3a95ed2cd78b723b30cedd5bdcce82003d3f3f03 Mon Sep 17 00:00:00 2001
+From 0bd4b7e75c38674d4881fcf8cbff2e735266e7ea Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 15:27:05 -0500
 Subject: [PATCH 41/48] Implement PSBTv2 AddInput and AddOutput
@@ -3579,7 +3579,7 @@ Subject: [PATCH 41/48] Implement PSBTv2 AddInput and AddOutput
  1 file changed, 73 insertions(+), 5 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index fceba944a2..d20840502f 100644
+index 3627ca53f9..67d9c608f6 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -130,7 +130,10 @@ uint256 PartiallySignedTransaction::GetUniqueID() const
@@ -3686,10 +3686,10 @@ index fceba944a2..d20840502f 100644
  
  bool PSBTInput::GetUTXO(CTxOut& utxo) const
 -- 
-2.36.0
+2.36.1
 
 
-From 646468a2f7a6dceabe078d19ec44e6d0f5f93bd6 Mon Sep 17 00:00:00 2001
+From e97320e4113be515b88bb2db2aac798235686b32 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 16:31:18 -0500
 Subject: [PATCH 42/48] Implement PSBTv2 in decodepsbt
@@ -3700,7 +3700,7 @@ Subject: [PATCH 42/48] Implement PSBTv2 in decodepsbt
  2 files changed, 67 insertions(+), 3 deletions(-)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index d810ac5e48..ef3ba869f2 100644
+index 3150426159..9f07a78610 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -691,7 +691,7 @@ static RPCHelpMan decodepsbt()
@@ -3834,10 +3834,10 @@ index d00135c835..e905d40921 100755
          # Inputs argument can be null
          self.nodes[0].walletcreatefundedpsbt(None, {self.nodes[2].getnewaddress():10})
 -- 
-2.36.0
+2.36.1
 
 
-From 65430282502477e62ce93fbd2ace93d722bae930 Mon Sep 17 00:00:00 2001
+From 7ac7be46168a7b2e43b08d5d2d12948472af9604 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 16:55:20 -0500
 Subject: [PATCH 43/48] Allow specifying PSBT version in constructor
@@ -3848,7 +3848,7 @@ Subject: [PATCH 43/48] Allow specifying PSBT version in constructor
  2 files changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index d20840502f..0b6b19b398 100644
+index 67d9c608f6..2e83f6da55 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -9,11 +9,14 @@
@@ -3882,10 +3882,10 @@ index 9165bcf4a5..5fd9d74426 100644
      template <typename Stream>
      inline void Serialize(Stream& s) const {
 -- 
-2.36.0
+2.36.1
 
 
-From 7eefc79403e81d9396d15cc7b7aa63b9a0c4341e Mon Sep 17 00:00:00 2001
+From 3dbd5da1535e278d1b86af1c4842c943927f0623 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 17:12:48 -0500
 Subject: [PATCH 44/48] Update PSBT::UpdatePSBTOutput to use GetUnsignedTx
@@ -3895,7 +3895,7 @@ Subject: [PATCH 44/48] Update PSBT::UpdatePSBTOutput to use GetUnsignedTx
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 0b6b19b398..7a15916dc0 100644
+index 2e83f6da55..cbd2d12135 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -475,7 +475,7 @@ size_t CountPSBTUnsignedInputs(const PartiallySignedTransaction& psbt) {
@@ -3908,10 +3908,10 @@ index 0b6b19b398..7a15916dc0 100644
      PSBTOutput& psbt_out = psbt.outputs.at(index);
  
 -- 
-2.36.0
+2.36.1
 
 
-From 099646740f16698d5dfae3658257cf785a70919d Mon Sep 17 00:00:00 2001
+From e4c3d282693df65896f7c70022f6935ec4d23fa8 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 25 Jan 2021 16:11:50 -0500
 Subject: [PATCH 45/48] Restrict joinpsbts to PSBTv0 only
@@ -3921,7 +3921,7 @@ Subject: [PATCH 45/48] Restrict joinpsbts to PSBTv0 only
  1 file changed, 3 insertions(+)
 
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index ef3ba869f2..d3a340155b 100644
+index 9f07a78610..79f7fd257b 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -1736,6 +1736,9 @@ static RPCHelpMan joinpsbts()
@@ -3935,10 +3935,10 @@ index ef3ba869f2..d3a340155b 100644
          // Choose the highest version number
          if (*psbtx.tx_version > best_version) {
 -- 
-2.36.0
+2.36.1
 
 
-From 38b82589326b238045023bc1fb1cedc5b2ce2216 Mon Sep 17 00:00:00 2001
+From eb7d6bb1d110c800db3f3f78ffd75af8c01bc033 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 18 Jan 2021 17:13:27 -0500
 Subject: [PATCH 46/48] Allow createpsbt and walletcreatefundedpsbt to take
@@ -3991,7 +3991,7 @@ index 23e9d4074c..ba59e376c3 100644
      { "joinpsbts", 0, "txs"},
      { "finalizepsbt", 1, "extract"},
 diff --git a/src/rpc/rawtransaction.cpp b/src/rpc/rawtransaction.cpp
-index d3a340155b..3052822fdd 100644
+index 79f7fd257b..ab53aed499 100644
 --- a/src/rpc/rawtransaction.cpp
 +++ b/src/rpc/rawtransaction.cpp
 @@ -1493,7 +1493,12 @@ static RPCHelpMan createpsbt()
@@ -4056,7 +4056,7 @@ index d3a340155b..3052822fdd 100644
      // Serialize the PSBT
      CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
 diff --git a/src/wallet/rpc/spend.cpp b/src/wallet/rpc/spend.cpp
-index 07119133b7..62ec027037 100644
+index c7b57ba4be..cc3d304ea1 100644
 --- a/src/wallet/rpc/spend.cpp
 +++ b/src/wallet/rpc/spend.cpp
 @@ -79,7 +79,7 @@ static void InterpretFeeEstimationInstructions(const UniValue& conf_target, cons
@@ -4068,7 +4068,7 @@ index 07119133b7..62ec027037 100644
  
      // First fill transaction with our data without signing,
      // so external signers are not asked sign more than once.
-@@ -1098,7 +1098,7 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
+@@ -1097,7 +1097,7 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
  
          result.pushKV("txid", txid.GetHex());
      } else {
@@ -4077,7 +4077,7 @@ index 07119133b7..62ec027037 100644
          bool complete = false;
          const TransactionError err = pwallet->FillPSBT(psbtx, complete, SIGHASH_DEFAULT, false /* sign */, true /* bip32derivs */);
          CHECK_NONFATAL(err == TransactionError::OK);
-@@ -1619,6 +1619,7 @@ RPCHelpMan walletcreatefundedpsbt()
+@@ -1618,6 +1618,7 @@ RPCHelpMan walletcreatefundedpsbt()
                          FundTxDoc()),
                          "options"},
                      {"bip32derivs", RPCArg::Type::BOOL, RPCArg::Default{true}, "Include BIP 32 derivation paths for public keys if we know them"},
@@ -4085,7 +4085,7 @@ index 07119133b7..62ec027037 100644
                  },
                  RPCResult{
                      RPCResult::Type::OBJ, "", "",
-@@ -1647,7 +1648,8 @@ RPCHelpMan walletcreatefundedpsbt()
+@@ -1646,7 +1647,8 @@ RPCHelpMan walletcreatefundedpsbt()
          UniValueType(), // ARR or OBJ, checked later
          UniValue::VNUM,
          UniValue::VOBJ,
@@ -4095,7 +4095,7 @@ index 07119133b7..62ec027037 100644
          }, true
      );
  
-@@ -1670,7 +1672,15 @@ RPCHelpMan walletcreatefundedpsbt()
+@@ -1669,7 +1671,15 @@ RPCHelpMan walletcreatefundedpsbt()
      FundTransaction(wallet, rawTx, fee, change_position, options, coin_control, /*override_min_fee=*/true);
  
      // Make a blank psbt
@@ -4379,10 +4379,10 @@ index 07baa0595e..25c309ac36 100755
          # (prevout + sequence + length of scriptSig + scriptsig + 1 byte buffer) * WITNESS_SCALE_FACTOR + num scriptWitness stack items + (length of stack item + stack item) * N stack items + 1 byte buffer
          len_scriptsig = len(psbt_in["final_scriptSig"]["hex"]) // 2 if "final_scriptSig" in psbt_in else 0
 -- 
-2.36.0
+2.36.1
 
 
-From 3dce50dfb3d8e22b1c61b51a5e6455d27bd6901f Mon Sep 17 00:00:00 2001
+From 2b14847d07b7db6e04efaa6278f33c96708d371f Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 5 Apr 2021 16:17:34 -0400
 Subject: [PATCH 47/48] Add a PSBT constructor for providing the version
@@ -4409,7 +4409,7 @@ index fb98fb6868..80dea6456f 100644
      // The local variables are made const to prevent unintended modification
      // without updating the cached hash value. However, CTransaction is not
 diff --git a/src/psbt.cpp b/src/psbt.cpp
-index 7a15916dc0..5e8ce0f3f6 100644
+index cbd2d12135..61bf688332 100644
 --- a/src/psbt.cpp
 +++ b/src/psbt.cpp
 @@ -19,6 +19,14 @@ PartiallySignedTransaction::PartiallySignedTransaction(const CMutableTransaction
@@ -4440,10 +4440,10 @@ index 6ddd8d6235..08eee2cc9d 100644
  
      template <typename Stream>
 -- 
-2.36.0
+2.36.1
 
 
-From 55329571f6e62586bfa03581762d63f207915e6f Mon Sep 17 00:00:00 2001
+From 527dd83827220f2f23916cf18032eae40ef1d088 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Mon, 5 Apr 2021 16:39:48 -0400
 Subject: [PATCH 48/48] Use GetUnsignedTx when serializing in PSBTv0
@@ -4471,5 +4471,5 @@ index 08eee2cc9d..6707252ae5 100644
  
          // Write xpubs
 -- 
-2.36.0
+2.36.1
 
