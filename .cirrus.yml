@@ -105,6 +105,28 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
 
+python_version_matrix_template: &PYTHON_VERSION_MATRIX_TEMPLATE
+  - container:
+      dockerfile: ci/cirrus.Dockerfile
+    env:
+      PYTHON: 3.6
+  - container:
+      dockerfile: ci/py37.Dockerfile
+    env:
+      PYTHON: 3.7
+  - container:
+      dockerfile: ci/py38.Dockerfile
+    env:
+      PYTHON: 3.8
+  - container:
+      dockerfile: ci/py39.Dockerfile
+    env:
+      PYTHON: 3.9
+  - container:
+      dockerfile: ci/py310.Dockerfile
+    env:
+      PYTHON: 3.10
+
 lint_task:
   test_script:
     - flake8
@@ -280,26 +302,7 @@ task:
 
 task:
   matrix:
-    - container:
-        dockerfile: ci/cirrus.Dockerfile
-      env:
-        PYTHON: 3.6
-    - container:
-        dockerfile: ci/py37.Dockerfile
-      env:
-        PYTHON: 3.7
-    - container:
-        dockerfile: ci/py38.Dockerfile
-      env:
-        PYTHON: 3.8
-    - container:
-        dockerfile: ci/py39.Dockerfile
-      env:
-        PYTHON: 3.9
-    - container:
-        dockerfile: ci/py310.Dockerfile
-      env:
-        PYTHON: 3.10
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
   install_script: poetry install
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
