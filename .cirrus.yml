@@ -107,7 +107,7 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
 
 python_version_matrix_template: &PYTHON_VERSION_MATRIX_TEMPLATE
   - container:
-      dockerfile: ci/cirrus.Dockerfile
+      dockerfile: ci/py36.Dockerfile
     env:
       PYTHON: 3.6
   - container:
