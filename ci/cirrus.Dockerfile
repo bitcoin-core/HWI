@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:3-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
