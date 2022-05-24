@@ -283,6 +283,8 @@ dist_builder_task:
 task:
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
+  matrix:
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
   fetch_dist_script:
     - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/dist_builder/built_dist.zip"
     - unzip built_dist.zip
