@@ -92,6 +92,7 @@ class BitBox02Error(UnavailableActionError):
         )
         msg += "m/49'/0'/<account'> for p2wpkh-p2sh; "
         msg += "m/84'/0'/<account'> for p2wpkh; "
+        msg += "m/86'/0'/<account'> for p2tr; "
         msg += "m/48'/0'/<account'>/2' for p2wsh multisig; "
         msg += "m/48'/0'/<account'>/1' for p2wsh-p2sh multisig; "
         msg += "m/48'/0'/<account'>' for any supported multisig; "
@@ -365,6 +366,7 @@ class Bitbox02Client(HardwareWalletClient):
 
         - `m/49'/0'/<account'>` for `p2wpkh-p2sh` (segwit wrapped in P2SH)
         - `m/84'/0'/<account'>` for `p2wpkh` (native segwit v0)
+        - `m/86'/0'/<account'>` for `p2tr` (native segwit v1)
         - `m/48'/0'/<account'>/2'` for p2wsh multisig (native segwit v0 multisig).
         - `m/48'/0'/<account'>/1'` for p2wsh-p2sh multisig (p2sh-wrapped segwit v0 multisig).
         - `m/48'/0'/<account'>` for p2wsh and p2wsh-p2sh multisig.
@@ -468,7 +470,9 @@ class Bitbox02Client(HardwareWalletClient):
                 "The BitBox02 does not support legacy p2pkh addresses"
             )
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("BitBox02 does not support displaying Taproot addresses yet")
+            script_config = bitbox02.btc.BTCScriptConfig(
+                simple_type=bitbox02.btc.BTCScriptConfig.P2TR
+            )
         else:
             raise BadArgumentError("Unknown address type")
         address = self.init().btc_address(
@@ -529,7 +533,7 @@ class Bitbox02Client(HardwareWalletClient):
         """
         Sign a transaction with the BitBox02.
 
-        he BitBox02 allows mixing inputs of different script types (e.g. and `p2wpkh-p2sh` `p2wpkh`), as
+        The BitBox02 allows mixing inputs of different script types (e.g. and `p2wpkh-p2sh` `p2wpkh`), as
         long as the keypaths use the appropriate bip44 purpose field per input (e.g. `49'` and `84'`) and
         all account indexes are the same.
 
@@ -539,7 +543,9 @@ class Bitbox02Client(HardwareWalletClient):
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
             """
-            Keypaths is a map of pubkey to hd keypath, where the first element in the keypath is the master fingerprint. We attempt to find the key which belongs to the BitBox02 by matching the fingerprint, and then matching the pubkey.
+            Keypaths is a map of pubkey to hd keypath, where the first element in the keypath is the master
+            fingerprint. We attempt to find the key which belongs to the BitBox02 by matching the fingerprint,
+            and then matching the pubkey.
             Returns the pubkey and the keypath, without the fingerprint.
             """
             for pubkey, origin in keypaths.items():
