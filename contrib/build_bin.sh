@@ -4,6 +4,8 @@
 
 set -ex
 
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+
 eval "$(pyenv init --path)"
 eval "$(pyenv virtualenv-init -)"
 pip install -U pip
@@ -12,7 +14,7 @@ pip install poetry
 gui_support="${1:---with-gui}";
 
 # Setup poetry and install the dependencies
-if [[ $gui_support == "--with-gui" ]]; then
+if [[ $gui_support == "--with-gui" && $ARCH == "x86_64" ]]; then
     poetry install -E qt
 else
     poetry install
@@ -26,7 +28,7 @@ TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" 
 export PYTHONHASHSEED=42
 poetry run pyinstaller hwi.spec
 
-if [[ $gui_support == "--with-gui" ]]; then
+if [[ $gui_support == "--with-gui" && $ARCH == "x86_64" ]]; then
     poetry run contrib/generate-ui.sh
     poetry run pyinstaller hwi-qt.spec
 fi
@@ -40,7 +42,7 @@ OS=`uname | tr '[:upper:]' '[:lower:]'`
 if [[ $OS == "darwin" ]]; then
     OS="mac"
 fi
-ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+
 target_tarfile="hwi-${VERSION}-${OS}-${ARCH}.tar.gz"
 
 if [[ $gui_support == "--with-gui" ]]; then
@@ -54,7 +56,7 @@ target_dir="$target_tarfile.dir"
 mkdir $target_dir
 mv hwi $target_dir
 
-if [[ $gui_support == "--with-gui" ]]; then
+if [[ $gui_support == "--with-gui" && $arch == "x86_64" ]]; then
     mv hwi-qt $target_dir
 fi
 
