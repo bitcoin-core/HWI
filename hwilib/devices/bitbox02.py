@@ -80,7 +80,6 @@ from bitbox02.communication.bitbox_api_protocol import (
     BitBoxNoiseConfig,
 )
 
-
 class BitBox02Error(UnavailableActionError):
     def __init__(self, msg: str):
         """
@@ -603,6 +602,13 @@ class Bitbox02Client(HardwareWalletClient):
                     ),
                     keypath=_keypath_hardened_prefix(keypath),
                 )
+            if is_p2tr(output.scriptPubKey):
+                return bitbox02.btc.BTCScriptConfigWithKeypath(
+                    script_config=bitbox02.btc.BTCScriptConfig(
+                        simple_type=bitbox02.btc.BTCScriptConfig.P2TR
+                    ),
+                    keypath=_keypath_hardened_prefix(keypath),
+                )
             # Check for segwit multisig (p2wsh or p2wsh-p2sh).
             is_p2wsh_p2sh = output.is_p2sh() and is_p2wsh(redeem_script)
             if output.is_p2wsh() or is_p2wsh_p2sh:
@@ -656,7 +662,7 @@ class Bitbox02Client(HardwareWalletClient):
             # - https://medium.com/shiftcrypto/bitbox-app-firmware-update-6-2020-c70f733a5330
             # - https://blog.trezor.io/details-of-firmware-updates-for-trezor-one-version-1-9-1-and-trezor-model-t-version-2-3-1-1eba8f60f2dd.
             # - https://github.com/zkSNACKs/WalletWasabi/pull/3822
-            # The BitBox02 for now requires the prevtx, at least until Taproot activates.
+            # The BitBox02 requires all prevtxs if not all of the inputs are taproot.
 
             if psbt_in.non_witness_utxo:
                 assert psbt_in.non_witness_utxo.sha256 is not None
@@ -673,12 +679,20 @@ class Bitbox02Client(HardwareWalletClient):
                 utxo = psbt_in.witness_utxo
             if utxo is None:
                 raise BadArgumentError("No utxo found for input {}".format(input_index))
-            if prevtx is None:
-                raise BadArgumentError(
-                    "Previous transaction missing for input {}".format(input_index)
-                )
 
-            found_pubkey, keypath = find_our_key(psbt_in.hd_keypaths)
+            key_origin_infos = psbt_in.hd_keypaths.copy()
+            if len(psbt_in.tap_internal_key) > 0:
+                # adding taproot keys to the keypaths to be checked
+                for pubkey, (leaf_hashes, key_origin_info) in psbt_in.tap_bip32_paths.items():
+                    if len(leaf_hashes) > 0:
+                        raise BadArgumentError(
+                            "The BitBox02 does not support Taproot script path spending. Found leaf hashes: {}"
+                            .format(leaf_hashes)
+                        )
+                    key_origin_infos[pubkey] = key_origin_info
+
+            found_pubkey, keypath = find_our_key(key_origin_infos)
+
             if not found_pubkey:
                 raise BadArgumentError("No key found for input {}".format(input_index))
             assert keypath is not None
@@ -704,7 +718,7 @@ class Bitbox02Client(HardwareWalletClient):
                     "sequence": psbt_in.sequence,
                     "keypath": keypath,
                     "script_config_index": script_config_index,
-                    "prev_tx": {
+                    "prev_tx": None if prevtx is None else {
                         "version": prevtx.nVersion,
                         "locktime": prevtx.nLockTime,
                         "inputs": [
@@ -732,7 +746,19 @@ class Bitbox02Client(HardwareWalletClient):
         for output_index, psbt_out in builtins.enumerate(psbt.outputs):
             tx_out = psbt_out.get_txout()
 
-            _, keypath = find_our_key(psbt_out.hd_keypaths)
+            key_origin_infos = psbt_out.hd_keypaths.copy()
+            if len(psbt_out.tap_internal_key) > 0:
+                # adding taproot keys to the keypaths to be checked
+                for pubkey, (leaf_hashes, key_origin_info) in psbt_out.tap_bip32_paths.items():
+                    if len(leaf_hashes) > 0:
+                        raise BadArgumentError(
+                            "The BitBox02 does not support Taproot script path spending. Found leaf hashes: {}"
+                            .format(leaf_hashes)
+                        )
+                    key_origin_infos.update({pubkey: key_origin_info})
+
+            _, keypath = find_our_key(key_origin_infos)
+
             is_change = keypath and keypath[-2] == 1
             if is_change:
                 assert keypath is not None
@@ -798,8 +824,13 @@ class Bitbox02Client(HardwareWalletClient):
 
         for (_, sig), pubkey, psbt_in in zip(sigs, found_pubkeys, psbt.inputs):
             r, s = sig[:32], sig[32:64]
-            # ser_sig_der() adds SIGHASH_ALL
-            psbt_in.partial_sigs[pubkey] = ser_sig_der(r, s)
+
+            if len(psbt_in.tap_internal_key) > 0:
+                # taproot keypath input
+                psbt_in.tap_key_sig = sig
+            else:
+                # ser_sig_der() adds SIGHASH_ALL
+                psbt_in.partial_sigs[pubkey] = ser_sig_der(r, s)
 
         return psbt
 
