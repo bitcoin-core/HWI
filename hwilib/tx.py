@@ -138,7 +138,7 @@ class CTxOut(object):
 
     def __repr__(self) -> str:
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
-            % (self.nValue, self.nValue, self.scriptPubKey.hex())
+            % (self.nValue // 100_000_000, self.nValue % 100_000_000, self.scriptPubKey.hex())
 
 
 class CScriptWitness(object):
