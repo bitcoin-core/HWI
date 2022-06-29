@@ -140,7 +140,6 @@ if [[ -n ${build_coldcard} ]]; then
     fi
     # Apply patch to make simulator work in linux environments
     git am ../../data/coldcard-multisig.patch
-    git am ../../data/coldcard-ffilib.patch
 
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
