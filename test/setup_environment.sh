@@ -415,9 +415,6 @@ if [[ -n ${build_bitcoind} ]]; then
     make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1
     popd
 
-    # Apply Taproot PSBT and PSBTv2 fields patch
-    git am ../../data/bitcoind_taproot_psbt2.patch
-
     # Do the build
     ./autogen.sh
     CONFIG_SITE=$PWD/depends/x86_64-pc-linux-gnu/share/config.site ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
