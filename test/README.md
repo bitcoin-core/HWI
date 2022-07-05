@@ -46,7 +46,7 @@ $ cd work
 In order to build the Trezor emulator, the following packages will need to be installed:
 
 ```
-build-essential curl git python3 python3-pip libsdl2-dev libsdl2-image-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-multilib
+build-essential curl git python3 python3-pip libsdl2-dev libsdl2-image-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-multilib protobuf-compiler clang
 ```
 
 The python packages can be installed with
@@ -307,6 +307,28 @@ Build the emulator:
 $ cmake -Bbuild -H.
 $ make -C build/
 ```
+
+## Coldcard emulator
+
+Clone the repository:
+
+```
+git clone --recursive https://github.com/Coldcard/firmware.git
+```
+
+### Dependencies
+
+In order to build the Coldcard emulator, the following packages will need to be installed:
+
+```
+build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi libffi-dev xterm swig libpcsclite-dev
+```
+You also have to install its python dependencies
+
+```
+pip install -r requirements.txt
+```
+
 
 ## Bitcoin Core
 
