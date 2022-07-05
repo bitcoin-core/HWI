@@ -277,6 +277,37 @@ $ cp jade/main/qemu/qemu_efuse.bin simulator/
 $ cd ..
 ```
 
+## Ledger emulator
+
+### Dependencies
+
+In order to build the Ledger emulator, the following packages will need to be installed:
+
+```
+cmake gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gdb-multiarch qemu-user-static
+```
+
+The python packages can be installed with
+
+```
+pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+```
+
+### Building
+
+Clone the repository:
+
+```
+$ git clone --recursive https://github.com/LedgerHQ/speculos.git
+```
+
+Build the emulator:
+
+```
+$ cmake -Bbuild -H.
+$ make -C build/
+```
+
 ## Bitcoin Core
 
 In order to build `bitcoind`, see [Bitcoin Core's build documentation](https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md#linux-distribution-specific-instructions) to get all of the dependencies installed and for instructions on how to build.
