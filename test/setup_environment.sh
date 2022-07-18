@@ -140,7 +140,6 @@ if [[ -n ${build_coldcard} ]]; then
     fi
     # Apply patch to make simulator work in linux environments
     git am ../../data/coldcard-multisig.patch
-    git am ../../data/coldcard-ffilib.patch
 
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
@@ -415,9 +414,6 @@ if [[ -n ${build_bitcoind} ]]; then
     pushd depends
     make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1
     popd
-
-    # Apply Taproot PSBT and PSBTv2 fields patch
-    git am ../../data/bitcoind_taproot_psbt2.patch
 
     # Do the build
     ./autogen.sh
