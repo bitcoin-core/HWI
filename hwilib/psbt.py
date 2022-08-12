@@ -16,10 +16,12 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    Any,
 )
 
+from .common import hash256
 from .key import KeyOriginInfo
-from .errors import PSBTSerializationError
+from .errors import PSBTSerializationError, BadArgumentError
 from .tx import (
     COutPoint,
     CTransaction,
@@ -36,6 +38,7 @@ from ._serialize import (
     ser_uint256,
     uint256_from_str,
 )
+from ._script import is_witness, is_p2wsh, is_p2wpkh, is_p2pk, is_p2pkh, is_p2sh
 
 def DeserializeHDKeypath(
     f: Readable,
@@ -1064,3 +1067,105 @@ class PSBT(object):
         self._convert_version(0)
         self.tx = self.get_unsigned_tx()
         self.explicit_version = False
+
+    def get_sighash_tuples(self, master_fp: bytes) -> Optional[List[Tuple[bytes, KeyOriginInfo, Any, bytes]]]:
+        # Create a transaction with all scriptsigs blanked out
+        blank_tx = self.get_unsigned_tx()
+
+        # create sighashes
+        sighash_tuples = []
+        for txin, psbt_in, i_num in zip(blank_tx.vin, self.inputs, range(len(blank_tx.vin))):
+            sighash = b""
+            utxo = None
+            if psbt_in.witness_utxo:
+                utxo = psbt_in.witness_utxo
+            if psbt_in.non_witness_utxo:
+                if txin.prevout.hash != psbt_in.non_witness_utxo.sha256:
+                    raise BadArgumentError('Input {} has a non_witness_utxo with the wrong hash'.format(i_num))
+                utxo = psbt_in.non_witness_utxo.vout[txin.prevout.n]
+            if utxo is None:
+                continue
+            scriptcode = utxo.scriptPubKey
+
+            # Check if P2SH
+            p2sh = False
+            if is_p2sh(scriptcode):
+                # Look up redeemscript
+                if len(psbt_in.redeem_script) == 0:
+                    continue
+                scriptcode = psbt_in.redeem_script
+                p2sh = True
+
+            is_wit, _, _ = is_witness(scriptcode)
+
+            # Check if P2WSH
+            if is_p2wsh(scriptcode):
+                # Look up witnessscript
+                if len(psbt_in.witness_script) == 0:
+                    continue
+                scriptcode = psbt_in.witness_script
+
+            if not is_wit:
+                if p2sh or is_p2pkh(scriptcode) or is_p2pk(scriptcode):
+                    # Add to blank_tx
+                    txin.scriptSig = scriptcode
+                # We don't know what this is, skip it
+                else:
+                    continue
+
+                # Serialize and add sighash ALL
+                ser_tx = blank_tx.serialize_without_witness()
+                ser_tx += b"\x01\x00\x00\x00"
+
+                # Hash it
+                sighash += hash256(ser_tx)
+                txin.scriptSig = b""
+            else:
+                assert psbt_in.witness_utxo is not None
+                # Calculate hashPrevouts and hashSequence
+                prevouts_preimage = b""
+                sequence_preimage = b""
+                for inputs in blank_tx.vin:
+                    prevouts_preimage += inputs.prevout.serialize()
+                    sequence_preimage += struct.pack("<I", inputs.nSequence)
+                hashPrevouts = hash256(prevouts_preimage)
+                hashSequence = hash256(sequence_preimage)
+
+                # Calculate hashOutputs
+                outputs_preimage = b""
+                for output in blank_tx.vout:
+                    outputs_preimage += output.serialize()
+                hashOutputs = hash256(outputs_preimage)
+
+                # Check if scriptcode is p2wpkh
+                if is_p2wpkh(scriptcode):
+                    _, _, wit_prog = is_witness(scriptcode)
+                    scriptcode = b"\x76\xa9\x14" + wit_prog + b"\x88\xac"
+
+                # Make sighash preimage
+                preimage = b""
+                preimage += struct.pack("<i", blank_tx.nVersion)
+                preimage += hashPrevouts
+                preimage += hashSequence
+                preimage += txin.prevout.serialize()
+                preimage += ser_string(scriptcode)
+                preimage += struct.pack("<q", psbt_in.witness_utxo.nValue)
+                preimage += struct.pack("<I", txin.nSequence)
+                preimage += hashOutputs
+                preimage += struct.pack("<I", blank_tx.nLockTime)
+                preimage += b"\x01\x00\x00\x00"
+
+                # hash it
+                sighash = hash256(preimage)
+
+            # Figure out which keypath thing is for this input
+            for pubkey, keypath in psbt_in.hd_keypaths.items():
+                if master_fp == keypath.fingerprint:
+                    # Create tuples and add to List
+                    tup = (sighash, keypath, i_num, pubkey)
+                    sighash_tuples.append(tup)
+
+        # Return early if nothing to do
+        if len(sighash_tuples) == 0:
+            return None
+        return sighash_tuples
