@@ -16,22 +16,24 @@ It uses the [Keepkey firmware emulator](https://github.com/keepkey/keepkey-firmw
 It also tests usage with `bitcoind`.
 - `test_coldcard.py` tests the command line interface and Coldcard implementation.
 It uses the [Coldcard simulator](https://github.com/Coldcard/firmware/tree/master/unix#coldcard-desktop-simulator).
+- `test_tapsigner.py` tests the command line interface and Tapsigner implementation.
+It uses the [Coinkite ecard simulator](https://github.com/coinkite/coinkite-tap-proto#emulator).
 It also tests usage with `bitcoind`.
 - `test_jade.py` tests the command line interface and Blockstream Jade implementation.
 It uses the [Espressif fork of the Qemu emulator](https://github.com/espressif/qemu.git).
 It also tests usage with `bitcoind`.
 
-`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
-if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, Coinkite ecard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
+if run in the `test/` directory, these will be built in `test/work/trezor-firmware`, `test/work/firmware`, `test/work/keepkey-firmware`, `test/work/coinkite-tap-proto`, `test/work/mcu`, and `test/work/bitcoin` respectively.
 In order to build each simulator/emulator, you will need to use command line arguments.
-These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
+These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--tapsigner`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
 If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
-`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, Jade emulator, and bitcoind.
+`run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Coinkite ecard simulator,  Keepkey emulator, Digital Bitbox simulator, Jade emulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
 `test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, `test_jade.py`, and `test/test_digitalbitbox.py` can be disabled.
 
-If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Jade emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
+If you are building the Trezor emulator, the Coldcard simulator, Coinkite ecard simulator, the Keepkey emulator, the Jade emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
 ```
 $ cd test
@@ -105,6 +107,24 @@ $ cd firmware/unix
 $ make setup
 $ make
 ```
+
+## Coinkite ecard simulator
+
+### Dependencies
+
+Coinkite ecard simulator is able to simulate both SATSCARD and TAPSIGNER (only tapsigner implemented in HWI for now)
+In order to build the Coinkite ecard simulator, the following packages will need to be installed:
+
+```
+git python3 python3-pip libpcsclite-dev swig
+```
+
+After cloninig the [coinkite-tap-proto](https://github.com/coinkite/coinkite-tap-proto) repo into this testing folder, the python packages can be installed with:
+
+```
+pip install -r coinkite-tap-proto/emulator/requirements.txt
+```
+
 
 ## Bitbox Simulator
 

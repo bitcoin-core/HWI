@@ -22,6 +22,7 @@ modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
 ['bitbox02>=6.0.0,<7.0.0',
+ 'coinkite-tap-protocol>=1.1.0',
  'cbor>=1.0.0,<2.0.0',
  'ecdsa>=0,<1',
  'hidapi>=0,<1',

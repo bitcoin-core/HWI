@@ -14,6 +14,10 @@ while [[ $# -gt 0 ]]; do
         build_coldcard=1
         shift
         ;;
+        --tapsigner)
+        build_tapsigner=1
+        shift
+        ;;
         --bitbox01)
         build_bitbox01=1
         shift
@@ -42,6 +46,7 @@ while [[ $# -gt 0 ]]; do
         build_trezor_1=1
         build_trezor_t=1
         build_coldcard=1
+        build_tapsigner=1
         build_bitbox01=1
         build_ledger=1
         build_keepkey=1
@@ -155,6 +160,31 @@ if [[ -n ${build_coldcard} ]]; then
         make ngu-setup
     fi
     make
+    cd ../..
+fi
+
+if [[ -n ${build_tapsigner} ]]; then
+    if [ ! -d "coinkite-tap-proto" ]; then
+        git clone https://github.com/coinkite/coinkite-tap-proto.git
+        cd coinkite-tap-proto
+    else
+        cd coinkite-tap-proto
+        git fetch
+        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+        UPSTREAM=${1:-'@{u}'}
+        LOCAL=$(git rev-parse @)
+        REMOTE=$(git rev-parse "$UPSTREAM")
+        BASE=$(git merge-base @ "$UPSTREAM")
+
+        if [ $LOCAL = $REMOTE ]; then
+            echo "Up-to-date"
+        elif [ $LOCAL = $BASE ]; then
+            git pull
+        fi
+    fi
+    cd emulator
+    pip install -U pip wheel
+    pip install -r requirements.txt
     cd ../..
 fi
 

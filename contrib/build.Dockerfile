@@ -29,7 +29,9 @@ RUN apt-get install -y \
     zip \
     dos2unix \
     g++-mingw-w64-x86-64 \
-    qt5-default
+    qt5-default \
+    libpcsclite-dev \
+    swig
 
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT="/root/.pyenv"

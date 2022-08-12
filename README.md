@@ -15,7 +15,7 @@ Python 3 is required. The libraries and [udev rules](hwilib/udev/README.md) for 
 
 For Ubuntu/Debian:
 ```
-sudo apt install libusb-1.0-0-dev libudev-dev python3-dev
+sudo apt install libusb-1.0-0-dev libudev-dev python3-dev swig libpcsclite-dev  # swig and libpcsclite only needed for tapsigner
 ```
 
 For Centos:

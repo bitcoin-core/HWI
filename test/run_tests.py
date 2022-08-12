@@ -8,6 +8,7 @@ from test_base58 import TestBase58
 from test_bech32 import TestSegwitAddress
 from test_bip32 import TestBIP32
 from test_coldcard import coldcard_test_suite
+from test_tapsigner import tapsigner_test_suite
 from test_descriptor import TestDescriptor
 from test_device import Bitcoind
 from test_psbt import TestPSBT
@@ -30,6 +31,11 @@ trezor_t_group.add_argument('--trezor-t', dest='trezor_t', help='Run Trezor T te
 coldcard_group = parser.add_mutually_exclusive_group()
 coldcard_group.add_argument('--no-coldcard', dest='coldcard', help='Do not run Coldcard test with simulator', action='store_false')
 coldcard_group.add_argument('--coldcard', dest='coldcard', help='Run Coldcard test with simulator', action='store_true')
+
+tapsigner_group = parser.add_mutually_exclusive_group()
+tapsigner_group.add_argument('--no-tapsigner', dest='tapsigner', help='Do not run Tapsigner test with simulator', action='store_false')
+tapsigner_group.add_argument('--tapsigner', dest='tapsigner', help='Run Tapsigner test with simulator', action='store_true')
+
 
 ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--no-ledger', dest='ledger', help='Do not run Ledger test with emulator', action='store_false')
@@ -54,6 +60,7 @@ dbb_group.add_argument('--bitbox01', dest='bitbox01', help='Run Digital Bitbox t
 parser.add_argument('--trezor-1-path', dest='trezor_1_path', help='Path to Trezor 1 emulator', default='work/trezor-firmware/legacy/firmware/trezor.elf')
 parser.add_argument('--trezor-t-path', dest='trezor_t_path', help='Path to Trezor T emulator', default='work/trezor-firmware/core/emu.sh')
 parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldcar simulator', default='work/firmware/unix/headless.py')
+parser.add_argument('--tapsigner-path', dest='tapsigner_path', help='Path to Tapsigner simulator', default='work/coinkite-tap-proto/emulator/ecard.py')
 parser.add_argument('--keepkey-path', dest='keepkey_path', help='Path to Keepkey emulator', default='work/keepkey-firmware/bin/kkemu')
 parser.add_argument('--bitbox01-path', dest='bitbox01_path', help='Path to Digital Bitbox simulator', default='work/mcu/build/bin/simulator')
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
@@ -65,7 +72,7 @@ parser.add_argument('--interface', help='Which interface to send commands over',
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
-parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None)
+parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, tapsigner=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None)
 
 args = parser.parse_args()
 
@@ -87,6 +94,7 @@ if args.all:
     args.trezor_1 = True if args.trezor_1 is None else args.trezor_1
     args.trezor_t = True if args.trezor_t is None else args.trezor_t
     args.coldcard = True if args.coldcard is None else args.coldcard
+    args.tapsigner = True if args.tapsigner is None else args.tapsigner
     args.keepkey = True if args.keepkey is None else args.keepkey
     args.bitbox01 = True if args.bitbox01 is None else args.bitbox01
     args.ledger = True if args.ledger is None else args.ledger
@@ -97,13 +105,14 @@ else:
     args.trezor_1 = False if args.trezor_1 is None else args.trezor_1
     args.trezor_t = False if args.trezor_t is None else args.trezor_t
     args.coldcard = False if args.coldcard is None else args.coldcard
+    args.tapsigner = False if args.tapsigner is None else args.tapsigner
     args.keepkey = False if args.keepkey is None else args.keepkey
     args.bitbox01 = False if args.bitbox01 is None else args.bitbox01
     args.ledger = False if args.ledger is None else args.ledger
     args.ledger_legacy = False if args.ledger_legacy is None else args.ledger_legacy
     args.jade = False if args.jade is None else args.jade
 
-if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade:
+if args.trezor_1 or args.trezor_t or args.coldcard or args.tapsigner or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade:
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
@@ -111,6 +120,8 @@ if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.ledger
         success &= digitalbitbox_test_suite(args.bitbox01_path, bitcoind, args.interface)
     if success and args.coldcard:
         success &= coldcard_test_suite(args.coldcard_path, bitcoind, args.interface)
+    if success and args.tapsigner:
+        success &= tapsigner_test_suite(args.tapsigner_path, bitcoind, args.interface)
     if success and args.trezor_1:
         success &= trezor_test_suite(args.trezor_1_path, bitcoind, args.interface, '1')
     if success and args.trezor_t:
