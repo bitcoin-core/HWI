@@ -21,6 +21,15 @@ from test_device import (
 )
 
 
+def is_tapsigner_extra_installed():
+    try:
+        import cktap
+        sys.stderr.write("cktap version %s" % cktap.__version__)
+        return True
+    except ImportError:
+        return False
+
+
 class TapsignerSimulator(DeviceEmulator):
     def __init__(self, simulator, setup_needed: bool = False):
         try:
@@ -130,7 +139,7 @@ class TestTapsignerGetXpub(DeviceTestCase):
         self.assertTrue(result['testnet'])
         self.assertFalse(result['private'])
         self.assertEqual(result['depth'], 3)
-        self.assertEqual(result['parent_fingerprint'], '00000000')  # cause it is hardened
+        self.assertEqual(result['parent_fingerprint'], '00000000')
         self.assertEqual(result['child_num'], 2 ** 31)
         self.assertEqual(result['chaincode'], '40d3561481c82d1f9b1da7ff635c4f382e76efdfb818e35b10d63872f7c2691d')
         self.assertEqual(result['pubkey'], '030df106563eb9cce8bfd182ba563ff4acf5cfc78b6c7da8e2d8cd49151a78c567')
@@ -213,6 +222,14 @@ class TestTapsignerSignMessage(DeviceTestCase):
 
 
 def tapsigner_test_suite(simulator, bitcoind, interface):
+    if not is_tapsigner_extra_installed():
+        sys.stderr.write("Tapsigner extras not installed. Run `poetry install -E tapsigner` or "
+                         "`pip3 install .[tapsigner]` to install Tapsigner extras\n")
+        return True
+    if interface.lower() == "bindist":
+        sys.stderr.write("Tapsigner is not part of binary HWI distribution.\n")
+        return True
+
     dev_emulator = TapsignerSimulator(simulator)
     dev_emulator_fresh = TapsignerSimulator(simulator, setup_needed=True)
 
@@ -238,7 +255,7 @@ def tapsigner_test_suite(simulator, bitcoind, interface):
     return result.wasSuccessful()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Test Coldcard implementation')
+    parser = argparse.ArgumentParser(description='Test Tapsigner implementation')
     parser.add_argument('simulator', help='Path to the Tapsigner simulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')

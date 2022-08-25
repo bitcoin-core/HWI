@@ -128,7 +128,7 @@ lint_task:
 
 task:
   install_script:
-    - poetry install
+    - poetry install -E tapsigner
   matrix:
     - name: Type Check
       type_check_script: >
@@ -307,11 +307,11 @@ task:
     - unzip built_dist.zip
   matrix:
     - name: $DEVICE Wheel
-      install_script: pip install dist/*.whl
-      test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+      install_script: poetry run pip install $(find dist -name "*.whl" -exec sh -c "echo {}[tapsigner]" \;)
+      test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
     - name: $DEVICE Sdist
-      install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*")
-      test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+      install_script: poetry run pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*" -exec sh -c "echo {}[tapsigner]" \;)
+      test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
     - name: $DEVICE Bindist
       install_script: poetry install
       untar_bindist_script: cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
@@ -337,7 +337,7 @@ task:
         dockerfile: ci/py310.Dockerfile
       env:
         PYTHON: 3.10
-  install_script: poetry install
+  install_script: poetry install -E tapsigner
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   matrix:

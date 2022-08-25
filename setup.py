@@ -22,7 +22,6 @@ modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
 ['bitbox02>=6.0.0,<7.0.0',
- 'coinkite-tap-protocol>=1.1.0',
  'cbor>=1.0.0,<2.0.0',
  'ecdsa>=0,<1',
  'hidapi>=0,<1',
@@ -34,7 +33,8 @@ install_requires = \
 
 extras_require = \
 {':python_version >= "3.6" and python_version < "3.7"': ['dataclasses>=0.8,<0.9'],
- 'qt:python_version < "3.10"': ['pyside2>=5.14.0,<6.0.0']}
+ 'qt:python_version < "3.10"': ['pyside2>=5.14.0,<6.0.0'],
+ 'tapsigner': ['coinkite-tap-protocol>=1.1.0', 'pyscard>=2.0.2']}
 
 entry_points = \
 {'console_scripts': ['hwi = hwilib._cli:main', 'hwi-qt = hwilib._gui:main']}

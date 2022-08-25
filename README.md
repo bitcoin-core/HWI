@@ -15,7 +15,7 @@ Python 3 is required. The libraries and [udev rules](hwilib/udev/README.md) for 
 
 For Ubuntu/Debian:
 ```
-sudo apt install libusb-1.0-0-dev libudev-dev python3-dev swig libpcsclite-dev  # swig and libpcsclite only needed for tapsigner
+sudo apt install libusb-1.0-0-dev libudev-dev python3-dev
 ```
 
 For Centos:
@@ -26,6 +26,12 @@ sudo yum -y install python3-devel libusbx-devel systemd-devel
 For macOS:
 ```
 brew install libusb
+```
+
+## Extras
+To use Tapsigner additional (NFC) dependencies are required.
+```
+sudo apt install swig libpcsclite-dev
 ```
 
 ## Install
@@ -58,6 +64,27 @@ python3 setup.py install
 ## Dependencies
 
 See `pyproject.toml` for all dependencies. Dependencies under `[tool.poetry.dependencies]` are user dependencies, and `[tool.poetry.dev-dependencies]` for development based dependencies. These dependencies will be installed with any of the three above installation methods.
+Dependencies under `[tool.poetry.extras]` are optional. These dependencies are NOT installed by default (with above commands).
+To install extra/optional dependency:
+```
+pip3 install .[<name>]
+# or
+poetry install -E <name>
+```
+
+To install HWI with Tapsigner:
+```
+pip3 install .[tapsigner]
+# or
+poetry install -E tapsigner
+```
+
+To install HWI with both Tapsigner and Qt:
+```
+pip3 install .[tapsigner,qt]
+# or
+poetry install -E tapsigner -E qt
+```
 
 ## Usage
 

@@ -9,7 +9,7 @@ pip install -U pip
 pip install poetry
 
 # Setup poetry and install the dependencies
-poetry install -E qt
+poetry install -E qt -E tapsigner
 
 # Make the distribution archives for pypi
 poetry build -f wheel

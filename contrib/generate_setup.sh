@@ -4,7 +4,7 @@
 set -ex
 
 # Setup poetry and install the dependencies
-poetry install -E qt
+poetry install -E qt -E tapsigner
 
 # Build the source distribution
 poetry build -f sdist
