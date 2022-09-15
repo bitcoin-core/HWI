@@ -84,7 +84,7 @@ class JadeEmulator(DeviceEmulator):
                 try:
                     # Try to connect and set the test seed
                     with JadeAPI.create_serial(JADE_PATH, timeout=5) as jade:
-                        if jade.set_seed(TEST_SEED, temporary_wallet=True):
+                        if jade.set_seed(TEST_SEED):
                             break
 
                 except Exception as e:

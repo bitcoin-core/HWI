@@ -33,12 +33,24 @@ class JadeSerialImpl:
                                  timeout=self.timeout,
                                  write_timeout=self.timeout)
         assert self.ser is not None
-        self.ser.__enter__()
+
+        if not self.ser.is_open:
+            self.ser.open()
+
+        # Ensure RTS and DTR are not set (as this can cause the hw to reboot)
+        self.ser.setRTS(False)
+        self.ser.setDTR(False)
+
         logger.info('Connected')
 
     def disconnect(self):
         assert self.ser is not None
-        self.ser.__exit__()
+
+        # Ensure RTS and DTR are not set (as this can cause the hw to reboot)
+        # and then close the connection
+        self.ser.setRTS(False)
+        self.ser.setDTR(False)
+        self.ser.close()
 
         # Reset state
         self.ser = None
