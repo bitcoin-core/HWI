@@ -7,4 +7,4 @@ This stripped down version was made from tag [0.1.32](https://github.com/Blockst
 ## Changes
 
 - Removed BLE module, reducing transitive dependencies
-
+- Have tcp connection (for simulator) respect passed timeout - backported from master

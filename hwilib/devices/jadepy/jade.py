@@ -509,7 +509,7 @@ class JadeInterface:
     @staticmethod
     def create_serial(device=None, baud=None, timeout=None):
         if device and JadeTCPImpl.isSupportedDevice(device):
-            impl = JadeTCPImpl(device)
+            impl = JadeTCPImpl(device, timeout or DEFAULT_SERIAL_TIMEOUT)
         else:
             impl = JadeSerialImpl(device or DEFAULT_SERIAL_DEVICE,
                                   baud or DEFAULT_BAUD_RATE,
