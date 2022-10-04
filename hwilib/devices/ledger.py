@@ -442,7 +442,7 @@ class LedgerClient(HardwareWalletClient):
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
-        The Coldcard does not support setup via software.
+        Ledgers do not support setup via software.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -450,7 +450,7 @@ class LedgerClient(HardwareWalletClient):
 
     def wipe_device(self) -> bool:
         """
-        The Coldcard does not support wiping via software.
+        Ledgers do not support wiping via software.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -458,7 +458,7 @@ class LedgerClient(HardwareWalletClient):
 
     def restore_device(self, label: str = "", word_count: int = 24) -> bool:
         """
-        The Coldcard does not support restoring via software.
+        Ledgers do not support restoring via software.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -466,7 +466,7 @@ class LedgerClient(HardwareWalletClient):
 
     def backup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
-        The Coldcard does not support backing up via software.
+        Ledgers do not support backing up via software.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -477,7 +477,7 @@ class LedgerClient(HardwareWalletClient):
 
     def prompt_pin(self) -> bool:
         """
-        The Coldcard does not need a PIN sent from the host.
+        Ledgers do not need a PIN sent from the host.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -485,7 +485,7 @@ class LedgerClient(HardwareWalletClient):
 
     def send_pin(self, pin: str) -> bool:
         """
-        The Coldcard does not need a PIN sent from the host.
+        Ledgers do not need a PIN sent from the host.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
@@ -493,7 +493,7 @@ class LedgerClient(HardwareWalletClient):
 
     def toggle_passphrase(self) -> bool:
         """
-        The Coldcard does not support toggling passphrase from the host.
+        Ledgers do not support toggling passphrase from the host.
 
         :raises UnavailableActionError: Always, this function is unavailable
         """
