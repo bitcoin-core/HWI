@@ -378,28 +378,7 @@ class LedgerClient(HardwareWalletClient):
 
     @ledger_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
-        app = btchip(DongleAdaptor(self.transport_client))
-
-        if not check_keypath(keypath):
-            raise BadArgumentError("Invalid keypath")
-        if isinstance(message, str):
-            message = bytearray(message, 'utf-8')
-        else:
-            message = bytearray(message)
-        keypath = keypath[2:]
-        # First display on screen what address you're signing for
-        app.getWalletPublicKey(keypath, True)
-        app.signMessagePrepare(keypath, message)
-        signature = app.signMessageSign()
-
-        # Make signature into standard bitcoin format
-        rLength = signature[3]
-        r = int.from_bytes(signature[4: 4 + rLength], byteorder="big", signed=True)
-        s = int.from_bytes(signature[4 + rLength + 2:], byteorder="big", signed=True)
-
-        sig = bytearray(chr(27 + 4 + (signature[0] & 0x01)), 'utf8') + r.to_bytes(32, byteorder="big", signed=False) + s.to_bytes(32, byteorder="big", signed=False)
-
-        return base64.b64encode(sig).decode('utf-8')
+        return self.client.sign_message(message, keypath)
 
     def _get_singlesig_default_wallet_policy(self, addr_type: AddressType, account: int) -> WalletPolicy:
         if addr_type == AddressType.LEGACY:

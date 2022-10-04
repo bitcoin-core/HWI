@@ -263,6 +263,24 @@ class NewClient(Client):
 
         return response
 
+    def sign_message(self, message: Union[str, bytes], bip32_path: str) -> str:
+        if isinstance(message, str):
+            message_bytes = message.encode("utf-8")
+        else:
+            message_bytes = message
+
+        chunks = [message_bytes[64 * i: 64 * i + 64] for i in range((len(message_bytes) + 63) // 64)]
+
+        client_intepreter = ClientCommandInterpreter()
+        client_intepreter.add_known_list(chunks)
+
+        sw, response = self._make_request(self.builder.sign_message(message_bytes, bip32_path), client_intepreter)
+
+        if sw != 0x9000:
+            raise DeviceException(error_code=sw, ins=BitcoinInsType.GET_EXTENDED_PUBKEY)
+
+        return base64.b64encode(response).decode('utf-8')
+
 
 def createClient(comm_client: Optional[TransportClient] = None, chain: Chain = Chain.MAIN, debug: bool = False) -> Union[LegacyClient, NewClient]:
     if comm_client is None:
