@@ -43,7 +43,7 @@ from .ledger_bitcoin.client_legacy import DongleAdaptor
 from .ledger_bitcoin.exception import NotSupportedError
 from .ledger_bitcoin.wallet import (
     MultisigWallet,
-    PolicyMapWallet,
+    WalletPolicy,
 )
 from .ledger_bitcoin.btchip.btchipException import BTChipException
 from .ledger_bitcoin.btchip.btchip import btchip
@@ -188,11 +188,11 @@ class LedgerClient(HardwareWalletClient):
 
         The scripts supported depend on the version of the Bitcoin Application installed on the Ledger.
 
-        For application versions 1.x:
+        For application versions 1.x and 2.0.x:
 
         - Transactions containing both segwit and non-segwit inputs are not entirely supported; only the segwit inputs will be signed in this case.
 
-        For application versions 2.x:
+        For application versions 2.1.x and above:
 
         - Transactions containing OP_RETURN outputs are not supported.
         - Transactions containing multisig inputs involving the device more than once and also have Taproot outputs are currently not supported.
@@ -205,12 +205,12 @@ class LedgerClient(HardwareWalletClient):
             client = self.client
             if not isinstance(client, LegacyClient):
                 client = LegacyClient(self.transport_client, self.chain)
-            wallet = PolicyMapWallet("", "wpkh(@0)", [""])
+            wallet = WalletPolicy("", "wpkh(@0/**)", [""])
             legacy_input_sigs = client.sign_psbt(tx, wallet, None)
 
-            for idx, sigs in legacy_input_sigs.items():
+            for idx, pubkey, sig in legacy_input_sigs:
                 psbt_in = tx.inputs[idx]
-                psbt_in.partial_sigs.update(sigs)
+                psbt_in.partial_sigs[pubkey] = sig
             return tx
 
         if isinstance(self.client, LegacyClient):
@@ -223,7 +223,7 @@ class LedgerClient(HardwareWalletClient):
             psbt2.convert_to_v2()
 
         # Figure out which wallets are signing
-        wallets: Dict[bytes, Tuple[int, AddressType, PolicyMapWallet, Optional[bytes]]] = {}
+        wallets: Dict[bytes, Tuple[int, AddressType, WalletPolicy, Optional[bytes]]] = {}
         pubkeys: Dict[int, bytes] = {}
         retry_legacy = False
         for input_num, psbt_in in builtins.enumerate(psbt2.inputs):
@@ -288,7 +288,7 @@ class LedgerClient(HardwareWalletClient):
                         for xpub_bytes, xpub_origin in psbt2.xpub.items():
                             xpub = ExtendedKey.from_bytes(xpub_bytes)
                             if (xpub_origin.fingerprint == pk_origin.fingerprint) and (xpub_origin.path == pk_origin.path[:len(xpub_origin.path)]):
-                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), "/**").to_string(hardened_char="'"))
+                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), None).to_string(hardened_char="'"))
                                 break
                         else:
                             # No xpub, Ledger will not accept this multisig
@@ -358,7 +358,7 @@ class LedgerClient(HardwareWalletClient):
 
             input_sigs = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
 
-            for idx, sig in input_sigs.items():
+            for idx, pubkey, sig in input_sigs:
                 psbt_in = psbt2.inputs[idx]
 
                 utxo = None
@@ -378,7 +378,6 @@ class LedgerClient(HardwareWalletClient):
                     # For now, assume key path signature
                     psbt_in.tap_key_sig = sig
                 else:
-                    pubkey = pubkeys[idx]
                     psbt_in.partial_sigs[pubkey] = sig
 
         # Extract the sigs from psbt2 and put them into tx
@@ -431,15 +430,15 @@ class LedgerClient(HardwareWalletClient):
 
         return base64.b64encode(sig).decode('utf-8')
 
-    def _get_singlesig_default_wallet_policy(self, addr_type: AddressType, account: int) -> PolicyMapWallet:
+    def _get_singlesig_default_wallet_policy(self, addr_type: AddressType, account: int) -> WalletPolicy:
         if addr_type == AddressType.LEGACY:
-            template = "pkh(@0)"
+            template = "pkh(@0/**)"
         elif addr_type == AddressType.WIT:
-            template = "wpkh(@0)"
+            template = "wpkh(@0/**)"
         elif addr_type == AddressType.SH_WIT:
-            template = "sh(wpkh(@0))"
+            template = "sh(wpkh(@0/**))"
         elif addr_type == AddressType.TAP:
-            template = "tr(@0)"
+            template = "tr(@0/**)"
         else:
             BadArgumentError("Unknown address type")
 
@@ -447,11 +446,11 @@ class LedgerClient(HardwareWalletClient):
 
         # Build a PubkeyProvider for the key we're going to use
         origin = KeyOriginInfo(self.get_master_fingerprint(), path)
-        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), "/**")
+        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), None)
         key_str = pk_prov.to_string(hardened_char="'")
 
         # Make the Wallet object
-        return PolicyMapWallet(name="", policy_map=template, keys_info=[key_str])
+        return WalletPolicy(name="", descriptor_template=template, keys_info=[key_str])
 
     @ledger_exception
     def display_singlesig_address(
@@ -463,18 +462,18 @@ class LedgerClient(HardwareWalletClient):
 
         if isinstance(self.client, LegacyClient):
             if addr_type == AddressType.LEGACY:
-                template = "pkh(@0)"
+                template = "pkh(@0/**)"
             elif addr_type == AddressType.WIT:
-                template = "wpkh(@0)"
+                template = "wpkh(@0/**)"
             elif addr_type == AddressType.SH_WIT:
-                template = "sh(wpkh(@0))"
+                template = "sh(wpkh(@0/**))"
             elif addr_type == AddressType.TAP:
                 BadArgumentError("Taproot is not supported by this version of the Bitcoin App")
             else:
                 BadArgumentError("Unknown address type")
 
             origin = KeyOriginInfo(self.get_master_fingerprint(), path)
-            wallet = PolicyMapWallet(name="", policy_map=template, keys_info=["[{}]".format(origin.to_string(hardened_char="'"))])
+            wallet = WalletPolicy(name="", descriptor_template=template, keys_info=["[{}]".format(origin.to_string(hardened_char="'"))])
         else:
             if not is_standard_path(path, addr_type, self.chain):
                 raise BadArgumentError("Ledger requires BIP 44 standard paths")

@@ -1,4 +1,4 @@
-from typing import Tuple, Mapping, Optional, Union
+from typing import Tuple, Optional, Union, List
 from io import BytesIO
 
 from .ledgercomm import Transport
@@ -8,7 +8,7 @@ from ...common import Chain
 from .command_builder import DefaultInsType
 from .exception import DeviceException
 
-from .wallet import Wallet
+from .wallet import WalletPolicy
 from ...psbt import PSBT
 from ..._serialize import deser_string
 
@@ -130,13 +130,13 @@ class Client:
 
         raise NotImplementedError
 
-    def register_wallet(self, wallet: Wallet) -> Tuple[bytes, bytes]:
+    def register_wallet(self, wallet: WalletPolicy) -> Tuple[bytes, bytes]:
         """Registers a wallet policy with the user. After approval returns the wallet id and hmac to be stored on the client.
 
         Parameters
         ----------
-        wallet : Wallet
-            The Wallet policy to register on the device.
+        wallet : WalletPolicy
+            The wallet policy to register on the device.
 
         Returns
         -------
@@ -149,7 +149,7 @@ class Client:
 
     def get_wallet_address(
         self,
-        wallet: Wallet,
+        wallet: WalletPolicy,
         wallet_hmac: Optional[bytes],
         change: int,
         address_index: int,
@@ -160,7 +160,7 @@ class Client:
 
         Parameters
         ----------
-        wallet : Wallet
+        wallet : WalletPolicy
             The registered wallet policy, or a standard wallet policy.
 
         wallet_hmac: Optional[bytes]
@@ -183,7 +183,7 @@ class Client:
 
         raise NotImplementedError
 
-    def sign_psbt(self, psbt: PSBT, wallet: Wallet, wallet_hmac: Optional[bytes]) -> Mapping[int, bytes]:
+    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, bytes, bytes]]:
         """Signs a PSBT using a registered wallet (or a standard wallet that does not need registration).
 
         Signature requires explicit approval from the user.
@@ -196,7 +196,7 @@ class Client:
             The non-witness UTXO must be present for both legacy and SegWit inputs, or the hardware wallet will reject
             signing (this will change for Taproot inputs).
 
-        wallet : Wallet
+        wallet : WalletPolicy
             The registered wallet policy, or a standard wallet policy.
 
         wallet_hmac: Optional[bytes]
@@ -204,8 +204,11 @@ class Client:
 
         Returns
         -------
-        Mapping[int, bytes]
-            A mapping that has as keys the indexes of inputs that the Hardware Wallet signed, and the corresponding signatures as values.
+        List[Tuple[int, bytes, bytes]]
+            A list of tuples returned by the hardware wallets, where each element is a tuple of:
+            - an integer, the index of the input being signed;
+            - a `bytes` array of length 33 (compressed ecdsa pubkey) or 32 (x-only BIP-0340 pubkey), the corresponding pubkey for this signature;
+            - a `bytes` array with the signature.
         """
 
         raise NotImplementedError
