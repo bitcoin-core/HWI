@@ -222,7 +222,6 @@ class LedgerClient(HardwareWalletClient):
         # Figure out which wallets are signing
         wallets: Dict[bytes, Tuple[int, AddressType, WalletPolicy, Optional[bytes]]] = {}
         pubkeys: Dict[int, bytes] = {}
-        retry_legacy = False
         for input_num, psbt_in in builtins.enumerate(psbt2.inputs):
             utxo = None
             scriptcode = b""
@@ -292,7 +291,6 @@ class LedgerClient(HardwareWalletClient):
                             ok = False
 
                 if not ok:
-                    retry_legacy = True
                     continue
 
                 # Make and register the MultisigWallet
@@ -375,22 +373,6 @@ class LedgerClient(HardwareWalletClient):
             psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
             if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
                 psbt_in.tap_key_sig = sig_in.tap_key_sig
-
-        # There are some situations where we want to retry with the legacy protocol
-        # So do that if we should.
-        if retry_legacy:
-            # But the legacy protocol only supports legacy and segwit v0, so only retry if those are the only outputs types
-            for output in tx.outputs:
-                if not (
-                    is_opreturn(output.script)
-                    or is_p2sh(output.script)
-                    or is_p2pkh(output.script)
-                    or is_p2wpkh(output.script)
-                    or is_p2wsh(output.script)
-                ):
-                    break
-            else:
-                return legacy_sign_tx()
 
         return tx
 
