@@ -194,7 +194,7 @@ class LedgerClient(HardwareWalletClient):
 
         For application versions 2.1.x and above:
 
-        - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported.
+        - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported for single signature addresses.
         """
         master_fp = self.get_master_fingerprint()
 
