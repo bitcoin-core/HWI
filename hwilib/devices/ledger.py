@@ -438,7 +438,39 @@ class LedgerClient(HardwareWalletClient):
         addr_type: AddressType,
         multisig: MultisigDescriptor,
     ) -> str:
-        raise BadArgumentError("The Ledger Nano S and X do not support P2(W)SH address display")
+        if isinstance(self.client, LegacyClient):
+            raise BadArgumentError("Displaying multisignature addresses is not supported by this version of the Bitcoin App")
+
+        def is_valid_der_path(path: Optional[str]) -> bool:
+            if path is None:
+                return False
+            path_parts = path.split("/")
+            return len(path_parts) == 3 and path_parts[1] in ["0", "1"] and path_parts[2].isdigit() and 0 <= int(path_parts[2]) <= 0x7fffffff
+
+        if any(not is_valid_der_path(pk.deriv_path) for pk in multisig.pubkeys):
+            raise BadArgumentError("Ledger Bitcoin app requires derivation paths ending with /0/* or /1/* for multisig")
+
+        if not (all(pk.deriv_path == multisig.pubkeys[0].deriv_path for pk in multisig.pubkeys)):
+            raise BadArgumentError("Ledger Bitcoin app requires all derivation paths to end with /0/*, or all with /1/* for multisig")
+
+        if any(pk.origin is not None and len(pk.origin.path) > 4 for pk in multisig.pubkeys):
+            raise BadArgumentError("Ledger Bitcoin app requires extended keys with derivation length at most 4")
+
+        def format_key_info(pubkey: PubkeyProvider) -> str:
+            assert pubkey.origin is not None and pubkey.extkey is not None
+            hardened_char = "'"
+            return f"[{pubkey.origin.to_string(hardened_char=hardened_char)}]{pubkey.extkey.to_string()}"
+
+        keys_info = [format_key_info(pk) for pk in multisig.pubkeys]
+
+        multisig_wallet = MultisigWallet(f"{multisig.thresh} of {len(keys_info)} Multisig", addr_type, multisig.thresh, keys_info=keys_info, sorted=multisig.is_sorted)
+        _, registered_hmac = self.client.register_wallet(multisig_wallet)
+
+        assert multisig.pubkeys[0].deriv_path is not None  # already checked above with is_valid_der_path
+        change = 0 if multisig.pubkeys[0].deriv_path[:3] == "/0/" else 1
+        address_index = int(multisig.pubkeys[0].deriv_path.split("/")[2])
+
+        return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
