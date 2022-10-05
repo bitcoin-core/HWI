@@ -39,16 +39,13 @@ from .ledger_bitcoin.client import (
     LegacyClient,
     TransportClient,
 )
-from .ledger_bitcoin.client_legacy import DongleAdaptor
 from .ledger_bitcoin.exception import NotSupportedError
 from .ledger_bitcoin.wallet import (
     MultisigWallet,
     WalletPolicy,
 )
 from .ledger_bitcoin.btchip.btchipException import BTChipException
-from .ledger_bitcoin.btchip.btchip import btchip
 
-import base64
 import builtins
 import copy
 import hid
@@ -63,10 +60,7 @@ from ..key import (
     parse_path,
 )
 from .._script import (
-    is_opreturn,
-    is_p2pkh,
     is_p2sh,
-    is_p2wpkh,
     is_p2wsh,
     is_witness,
     parse_multisig,
