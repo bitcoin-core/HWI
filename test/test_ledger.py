@@ -51,7 +51,7 @@ class LedgerEmulator(DeviceEmulator):
         super().start()
         automation_path = os.path.abspath("data/speculos-automation.json")
         app_path = "./apps/nanos#btc#2.0#ce796c1b.elf" if self.legacy else "./apps/btc-test.elf"
-        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.0" if self.legacy else "Bitcoin Test:2.0.1"
+        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.0" if self.legacy else "Bitcoin Test:2.1.0"
 
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
