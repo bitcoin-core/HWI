@@ -528,9 +528,9 @@ class LedgerClient(HardwareWalletClient):
     @ledger_exception
     def can_sign_taproot(self) -> bool:
         """
-        Ledgers support Taproot if the Bitcoin App version greater than 2.0.0.
+        Ledgers support Taproot if the Bitcoin App version greater than 2.0.0; support here is for versions 2.1.0 and above.
 
-        :returns: True if Bitcoin App version is greater than or equal to 2.0.0. False otherwise.
+        :returns: True if Bitcoin App version is greater than or equal to 2.1.0, and not the "Legacy" release. False otherwise.
         """
         return isinstance(self.client, NewClient)
 
