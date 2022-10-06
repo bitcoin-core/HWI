@@ -6,11 +6,14 @@ The :class:`HardwareWalletClient` is the class which all of the specific device 
 """
 
 from typing import (
+    Any,
     Dict,
     Optional,
     Union,
 )
-from .descriptor import MultisigDescriptor
+
+from .wallet_policy import WalletPolicy
+from .descriptor import MultisigDescriptor, parse_descriptor
 from .key import (
     ExtendedKey,
     get_bip44_purpose,
@@ -237,3 +240,106 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    def can_register_wallet_policies(self) -> bool:
+        """
+        Whether the device can register wallet policies
+
+        :return: Whether wallet policies are supported
+        """
+        return False
+
+    def register_wallet_policy(self, wallet_policy: WalletPolicy, extra: Dict[str, Any]) -> bytes:
+        """
+        Registers a wallet policy on the device.
+
+        :param wallet_policy: The WalletPolicy to register
+        :param extra: A dictionary with any additional parameters needed from the hardware wallet
+        :return: A binary string to be used as proof_of_registration if required from the hardware wallet, or
+                 an empty binary string b'' if the hardware wallet does not require a proof of registration
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def display_wallet_policy_address(self, wallet_policy: WalletPolicy, is_change: bool, address_index: int, extra: Dict[str, Any]) -> str:
+        """
+        Display and return the specified address for the wallet policy.
+
+        :param wallet_policy: The WalletPolicy to be used to show an address from
+        :param is_change: False if a normal receive address is shown, True for a change address
+        :param address_index: The index of the address to show. It must be at least 0 and at most 2147483647.
+        :param extra: Any additional parameters needed from the hardware wallet
+        :return: The retrieved address also being shown by the device
+        """
+
+        # TODO: Default behavior: if the wallet policy is a standard single signature address, use display_singlesig_address;
+        #       if standard multisig, use display_multisig_address; otherwise, fail.
+
+        fpr = self.get_master_fingerprint()
+
+        if len(wallet_policy.keys_info) == 1 and wallet_policy.keys_info[0][0] == '[':
+
+            key_info = wallet_policy.keys_info[0]
+            key_fingerprint = bytes.fromhex(key_info[1:9])
+
+            assert key_info.find(']') != -1
+
+            if fpr == key_fingerprint:
+                if wallet_policy.descriptor_template in ["pkh(@0/**)", "pkh(@0/<0;1>/*)"]:
+                    addr_type = AddressType.LEGACY
+                elif wallet_policy.descriptor_template in ["wpkh(@0/**)", "wpkh(@0/<0;1>/*)"]:
+                    addr_type = AddressType.WIT
+                elif wallet_policy.descriptor_template in ["sh(wpkh(@0/**))", "sh(wpkh(@0/<0;1>/*))"]:
+                    addr_type = AddressType.SH_WIT
+                elif wallet_policy.descriptor_template in ["tr(@0/**)", "tr(@0/<0;1>/*)"]:
+                    addr_type = AddressType.TAP
+                else:
+                    raise NotImplementedError("The HardwareWalletClient base class "
+                                              "does not implement this method")
+
+            # TODO we're assuming here that if the fingerprint matches, it's an internal input.
+            #      we might want to compare the derived pubkey and compare in order to be sure
+
+            key_origin_path = key_info[10:key_info.find(']')]
+            bip32_path = f"m/{key_origin_path}/{int(is_change)}/{address_index}"
+
+            return self.display_singlesig_address(bip32_path, addr_type)
+        else:
+            desc = wallet_policy.to_descriptor()
+            desc = desc.replace("/<0;1>/*", f"/{int(is_change)}/{address_index}")
+
+            addr_type: Optional[AddressType] = None
+
+            if desc.startswith("sh(wsh("):
+                multisig_desc = desc[len("sh(wsh("):-2]
+                addr_type = AddressType.SH_WIT
+            elif desc.startswith("wsh("):
+                multisig_desc = desc[len("wsh("):-1]
+                addr_type = AddressType.WIT
+            elif desc.startswith("sh("):
+                multisig_desc = desc[len("sh("):-1]
+                addr_type = AddressType.LEGACY
+
+            if addr_type is not None:
+                descriptor = parse_descriptor(multisig_desc)
+                return self.display_multisig_address(addr_type, descriptor)
+
+        raise NotImplementedError("The HardwareWalletClient base class does not "
+                                  "implement this method for the given parameters")
+
+    def sign_tx_with_wallet_policy(self, psbt: PSBT, wallet_policy: WalletPolicy, extra: Dict[str, Any]) -> PSBT:
+        """
+        Sign a partially signed bitcoin transaction (PSBT) using the specified wallet policy.
+        Inputs that do not belong to the wallet policy (or with insufficient information in the PSBT) are not signed.
+
+        :param psbt: The PSBT to sign
+        :param wallet_policy: The WalletPolicy to be used for signing
+        :param extra: A dictionary with any additional parameters needed from the hardware wallet
+        :return: The PSBT after being processed by the hardware wallet
+        """
+
+        # TODO: Default behavior: fail if not standard wallet policy; then, sign using sign_tx, but only retain signatures
+        #       for inputs that match the wallet policy
+
+        # TODO: just for initial testing, yolo-sign everything
+        return self.sign_tx(psbt)
