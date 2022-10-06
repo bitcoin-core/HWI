@@ -17,7 +17,7 @@ from typing import List, Tuple, Optional, Union
 from ...common import AddressType, Chain, hash160
 from ...key import ExtendedKey, parse_path
 from ...psbt import PSBT
-from .wallet import WalletPolicy
+from ...wallet_policy import WalletPolicy
 
 from ..._script import is_p2sh, is_witness, is_p2wpkh, is_p2wsh
 

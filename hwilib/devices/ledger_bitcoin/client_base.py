@@ -8,7 +8,7 @@ from ...common import Chain
 from .command_builder import DefaultInsType
 from .exception import DeviceException
 
-from .wallet import WalletPolicy
+from ...wallet_policy import WalletPolicy
 from ...psbt import PSBT
 from ..._serialize import deser_string
 
