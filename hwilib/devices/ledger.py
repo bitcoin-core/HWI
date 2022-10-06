@@ -346,8 +346,6 @@ class LedgerClient(HardwareWalletClient):
                 if psbt_in.witness_utxo:
                     utxo = psbt_in.witness_utxo
                 if psbt_in.non_witness_utxo:
-                    if psbt_in.prev_txid != psbt_in.non_witness_utxo.hash:
-                        raise BadArgumentError(f"Input {input_num} has a non_witness_utxo with the wrong hash")
                     assert psbt_in.prev_out is not None
                     utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
                 assert utxo is not None
