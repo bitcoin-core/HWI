@@ -12,6 +12,7 @@ from .commands import (
     getdescriptors,
     prompt_pin,
     toggle_passphrase,
+    registerpolicy,
     restore_device,
     send_pin,
     setup_device,
@@ -57,7 +58,7 @@ def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
 def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
-    return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
+    return displayaddress(client, desc=args.desc, path=args.path, policy=args.policy, addr_type=args.addr_type, name=args.name, keys=args.keys, change=args.change, index=args.index, extra=args.extra)
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password)
@@ -74,6 +75,9 @@ def getkeypool_handler(args: argparse.Namespace, client: HardwareWalletClient) -
 def getdescriptors_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, List[str]]:
     return getdescriptors(client, account=args.account)
 
+def registerpolicy_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+    return registerpolicy(client, name=args.name, policy=args.policy, keys=args.keys, extra=args.extra)
+
 def restore_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
         return restore_device(client, label=args.label, word_count=args.word_count)
@@ -88,7 +92,7 @@ def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) 
     return signmessage(client, message=args.message, path=args.path)
 
 def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[bool, str]]:
-    return signtx(client, psbt=args.psbt)
+    return signtx(client, psbt=args.psbt, name=args.name, policy=args.policy, keys=args.keys, extra=args.extra)
 
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
@@ -160,6 +164,11 @@ def get_parser() -> HWIArgumentParser:
 
     signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
     signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign')
+    signtx_parser.add_argument('--policy', help='The descriptor template of the wallet policy. E.g. wpkh(@0/**)', type=str)
+    signtx_parser.add_argument('--name', help='The name of the policy. E.g. "Cold storage"', type=str)
+    signtx_parser.add_argument('--keys', help='The list of keys in the wallet policy, encoded in JSON', type=str)
+    signtx_parser.add_argument('--extra', help='JSON encoded string; it might contain proof_of_registration, or vendor-specific fields', type=str, default="{}")
+
     signtx_parser.set_defaults(func=signtx_handler)
 
     getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')
@@ -192,8 +201,14 @@ def get_parser() -> HWIArgumentParser:
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
+    group.add_argument('--policy', help='The descriptor template of the wallet policy. E.g. wpkh(@0/**)')
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
     displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT) # type: ignore
+    displayaddr_parser.add_argument('--name', help='The name of the policy. E.g. "Cold storage". Can be empty for default single-signature wallets')
+    displayaddr_parser.add_argument('--keys', help='The list of keys in the wallet policy, encoded in JSON')
+    displayaddr_parser.add_argument('--change', type=int, help='0 if not change, 1 if change', default=0)  # TODO: can we use 'choices=' here?
+    displayaddr_parser.add_argument('--index', help='address index', type=int, default=0)
+    displayaddr_parser.add_argument('--extra', help='JSON encoded string; it might contain proof_of_registration, or vendor-specific fields', type=str, default="{}")
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')
@@ -203,6 +218,13 @@ def get_parser() -> HWIArgumentParser:
 
     wipedev_parser = subparsers.add_parser('wipe', help='Wipe a device')
     wipedev_parser.set_defaults(func=wipe_device_handler)
+
+    registerpolicy_parser = subparsers.add_parser('registerpolicy', help='Register a policy')
+    registerpolicy_parser.add_argument('--name', help='The name of the policy. E.g. "Cold storage"', type=str, required=True)
+    registerpolicy_parser.add_argument('--policy', help='The descriptor template of the wallet policy. E.g. wpkh(@0/**)', type=str, required=True)
+    registerpolicy_parser.add_argument('--keys', help='The list of keys in the wallet policy, encoded in JSON', type=str, required=True)
+    registerpolicy_parser.add_argument('--extra', help='JSON encoded string; it might contain proof_of_registration, or vendor-specific fields', type=str, default="{}")
+    registerpolicy_parser.set_defaults(func=registerpolicy_handler)
 
     restore_parser = subparsers.add_parser('restore', help='Initiate the device restoring process. Requires interactive mode')
     restore_parser.add_argument('--word_count', '-w', help='Word count of your BIP39 recovery phrase (options: 12/18/24)', type=int, default=24)
