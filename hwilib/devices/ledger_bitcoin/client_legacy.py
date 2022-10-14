@@ -37,22 +37,6 @@ def get_address_type_for_policy(policy: WalletPolicy) -> AddressType:
         raise ValueError("Invalid or unsupported policy")
 
 
-# minimal checking of string keypath
-# taken from HWI
-def check_keypath(key_path: str) -> bool:
-    parts = re.split("/", key_path)
-    if parts[0] != "m":
-        return False
-    # strip hardening chars
-    for index in parts[1:]:
-        index_int = re.sub('[hH\']', '', index)
-        if not index_int.isdigit():
-            return False
-        if int(index_int) > 0x80000000:
-            return False
-    return True
-
-
 class DongleAdaptor:
     # TODO: type for comm_client
     def __init__(self, comm_client) -> None:
@@ -315,10 +299,6 @@ class LegacyClient(Client):
         return hash160(compress_public_key(master_pubkey["publicKey"]))[:4]
 
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
-        # copied verbatim from HWI
-
-        if not check_keypath(keypath):
-            raise ValueError("Invalid keypath")
         if isinstance(message, str):
             message = bytearray(message, 'utf-8')
         else:

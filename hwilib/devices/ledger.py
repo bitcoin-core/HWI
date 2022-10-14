@@ -370,6 +370,12 @@ class LedgerClient(HardwareWalletClient):
 
     @ledger_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
+        if not check_keypath(keypath):
+            raise ValueError("Invalid keypath")
+
+        # Ledger requires the character "'" for hardened derivations since version 2.0.0
+        keypath = keypath.replace("h", "'")
+
         return self.client.sign_message(message, keypath)
 
     def _get_singlesig_default_wallet_policy(self, addr_type: AddressType, account: int) -> WalletPolicy:
