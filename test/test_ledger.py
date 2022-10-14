@@ -39,13 +39,13 @@ class LedgerEmulator(DeviceEmulator):
         self.fingerprint = 'f5acc2fd'
         self.master_xpub = 'tpubDCwYjpDhUdPGP5rS3wgNg13mTrrjBuG8V9VpWbyptX6TRPbNoZVXsoVUSkCjmQ8jJycjuDKBb9eataSymXakTTaGifxR6kmVsfFehH1ZgJT'
         self.password = ""
-        self.supports_ms_display = False
-        self.supports_xpub_ms_display = False
-        self.supports_unsorted_ms = False
+        self.supports_ms_display = False # Legacy does not multisig address display; tests not updated for new app
+        self.supports_xpub_ms_display = False # Legacy does not multisig address display; tests not updated for new app
+        self.supports_unsorted_ms = False # Legacy does not support unsorted multisig; tests not updated for new app
         self.supports_taproot = not legacy # Legacy does not support Taproot
         self.strict_bip48 = True
         self.include_xpubs = True
-        self.supports_device_multiple_multisig = legacy
+        self.supports_device_multiple_multisig = True
 
     def start(self):
         super().start()
