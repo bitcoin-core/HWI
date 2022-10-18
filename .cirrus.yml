@@ -298,10 +298,6 @@ task:
     - container:
         dockerfile: ci/cirrus.Dockerfile
       env:
-        PYTHON: 3.6
-    - container:
-        dockerfile: ci/py37.Dockerfile
-      env:
         PYTHON: 3.7
     - container:
         dockerfile: ci/py38.Dockerfile
