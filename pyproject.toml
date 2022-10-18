@@ -33,7 +33,7 @@ dataclasses = {version = "^0.8", python = ">=3.6,<3.7"}
 qt = ["pyside2"]
 
 [tool.poetry.dev-dependencies]
-pyinstaller = "^4.0"
+pyinstaller = "^5.3"
 autopep8 = "~1"
 flake8 = ">=3"
 mypy = "~0"
