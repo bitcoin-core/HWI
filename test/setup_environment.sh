@@ -273,7 +273,7 @@ if [[ -n ${build_jade} ]]; then
         cd jade
     else
         cd jade
-        git fetch
+        git fetch --tags --recurse-submodules
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
         UPSTREAM=${1:-'@{u}'}
@@ -282,7 +282,7 @@ if [[ -n ${build_jade} ]]; then
         BASE=$(git merge-base @ "$UPSTREAM")
 
         if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
+            echo "Jade master up-to-date"
         elif [ $LOCAL = $BASE ]; then
             git pull
         fi
@@ -296,10 +296,30 @@ if [[ -n ${build_jade} ]]; then
     ESP_QEMU_COMMIT=$(grep "ARG ESP_QEMU_COMMIT=" Dockerfile | cut -d\= -f2)
     cd ..
 
-    # Build the qemu emulator
+    # Build the qemu emulator if required
+
+    # If the directory exists, see if it is at the expected commit
+    # If not, remove the entire directory (it will be re-cloned below)
+    if [ -d "qemu" ]; then
+        cd qemu
+        LOCAL=$(git rev-parse @)
+        if [ $LOCAL = $ESP_QEMU_COMMIT ]; then
+            echo "esp-qemu up-to-date"
+            cd ..
+        else
+            cd ..
+            rm -fr qemu
+        fi
+    fi
+
+    # Clone the upstream if the directory does not exist
+    # Then build the emulator
     if [ ! -d "qemu" ]; then
         git clone --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --recursive https://github.com/espressif/qemu.git ./qemu
         cd qemu
+
+        git checkout ${ESP_QEMU_COMMIT}
+        git submodule update --recursive --init
         ./configure \
             --target-list=xtensa-softmmu \
             --enable-gcrypt \
@@ -331,32 +351,46 @@ if [[ -n ${build_jade} ]]; then
             --disable-qom-cast-debug \
             --disable-tpm \
             --extra-cflags=-Wno-array-parameter
-    else
-        cd qemu
-        git fetch
+        ninja -C build
+        cd ..
     fi
-    git checkout ${ESP_QEMU_COMMIT}
-    git submodule update --recursive --init
-    ninja -C build
-    cd ..
 
-    # Build the esp-idf toolchain
+    # Build the esp-idf toolchain if required
+
     # We will install the esp-idf tools in a given location (otherwise defaults to user home dir)
     export IDF_TOOLS_PATH="$(pwd)/esp-idf-tools"
+
+    # If the directory exists, see if it is at the expected commit
+    # If not, remove the entire directory (it will be re-cloned below)
+    if [ -d "esp-idf" ]; then
+        cd esp-idf
+        LOCAL=$(git rev-parse @)
+        if [ $LOCAL = $ESP_IDF_COMMIT ]; then
+            echo "esp-idf up-to-date"
+            cd ..
+        else
+            cd ..
+            rm -fr esp-idf
+        fi
+    fi
+
+    # Clone the upstream if the directory does not exist
+    # Then build and install the tools
     if [ ! -d "esp-idf" ]; then
         git clone --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git ./esp-idf
         cd esp-idf
-    else
-        cd esp-idf
-        git fetch
-    fi
-    git checkout ${ESP_IDF_COMMIT}
-    git submodule update --recursive --init
 
-    # Only install the tools we need (ie. esp32)
-    ./install.sh esp32
-    . ./export.sh
-    cd ..
+        git checkout ${ESP_IDF_COMMIT}
+        git submodule update --recursive --init
+
+        # Only install the tools we need (ie. esp32)
+        rm -fr ${IDF_TOOLS_PATH}
+        ./install.sh esp32
+        cd ..
+    fi
+
+    # Export the tools
+    . ./esp-idf/export.sh
 
     # Build Blockstream Jade firmware configured for the emulator
     cd jade
