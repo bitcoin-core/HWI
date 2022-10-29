@@ -114,7 +114,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
     for module in all_devs:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
-            result.extend(imported_dev.enumerate(password)) # type: ignore
+            result.extend(imported_dev.enumerate(password))
         except ImportError as e:
             # Warn for ImportErrors, but largely ignore them to allow users not install
             # all device dependencies if only one or some devices are wanted.
