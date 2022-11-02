@@ -225,7 +225,7 @@ if [[ -n ${build_keepkey} ]]; then
     make
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
-    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
+    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/local/bin/protoc
     make
     # Delete any emulator.img file
     find . -name "emulator.img" -exec rm {} \;
