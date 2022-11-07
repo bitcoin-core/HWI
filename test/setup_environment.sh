@@ -98,8 +98,10 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     if [[ -n ${build_trezor_t} ]]; then
-        rustup toolchain uninstall stable
-        rustup toolchain install stable
+        # trezor requires nightly rust since August 2022
+        # see https://github.com/trezor/trezor-firmware/pull/2461
+        rustup toolchain uninstall nightly
+        rustup toolchain install nightly
         rustup update
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
