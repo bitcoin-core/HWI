@@ -621,6 +621,7 @@ class TrezorClient(HardwareWalletClient):
                 prev_txes=prevtxs,
                 version=tx.tx_version,
                 lock_time=tx.compute_lock_time(),
+                serialize=False,
             )
 
             # Each input has one signature
