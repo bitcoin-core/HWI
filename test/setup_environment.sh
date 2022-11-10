@@ -382,12 +382,18 @@ if [[ -n ${build_jade} ]]; then
 
         git checkout ${ESP_IDF_COMMIT}
         git submodule update --recursive --init
-
-        # Only install the tools we need (ie. esp32)
-        rm -fr ${IDF_TOOLS_PATH}
-        ./install.sh esp32
         cd ..
     fi
+
+    # Install the tools every run regardless
+    # (Otherwise a cached CI run which skips the above esp-idf clone does not
+    # always seem to pick up the locally installed python virtualenv, and instead uses
+    # the system python/no-virtualenv which fails ...)
+    # Only install the tools we need (ie. esp32)
+    cd esp-idf
+    rm -fr ${IDF_TOOLS_PATH}
+    ./install.sh esp32
+    cd ..
 
     # Export the tools
     . ./esp-idf/export.sh
