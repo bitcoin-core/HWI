@@ -89,7 +89,8 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # But there should be some caching that makes this faster
         poetry install
         cd legacy
-        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
+        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+        poetry run pip install -U protobuf
         poetry run script/setup
         poetry run script/cibuild
         # Delete any emulator.img file
@@ -98,9 +99,10 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     if [[ -n ${build_trezor_t} ]]; then
-        rustup toolchain uninstall stable
-        rustup toolchain install stable
         rustup update
+        rustup toolchain uninstall nightly
+        rustup toolchain install nightly
+        rustup default nightly
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
         poetry install
@@ -224,7 +226,7 @@ if [[ -n ${build_keepkey} ]]; then
     make
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
-    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
+    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/local/bin/protoc
     make
     # Delete any emulator.img file
     find . -name "emulator.img" -exec rm {} \;

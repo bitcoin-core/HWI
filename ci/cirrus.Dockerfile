@@ -35,7 +35,6 @@ RUN apt-get install -y \
     libusb-1.0-0-dev \
     ninja-build \
     pkg-config \
-    protobuf-compiler \
     qemu-user-static \
     swig
 
@@ -43,6 +42,9 @@ RUN pip install poetry flake8
 RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
 RUN chmod +x rustup-init && ./rustup-init -y
 ENV PATH="/root/.cargo/bin:$PATH"
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.9/protoc-21.9-linux-x86_64.zip
+RUN unzip protoc-21.9-linux-x86_64.zip -d /usr/local
+RUN protoc --version
 
 ####################
 # Local build/test steps

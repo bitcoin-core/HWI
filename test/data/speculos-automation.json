@@ -2,7 +2,7 @@
     "version": 1,
     "rules": [
         {
-            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path|external inputs|Register wallet|Policy map|Key|Path|Public key|Spend from).*",
+            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path|external inputs|Register wallet|Policy map|Key|Path|Public key|Spend from|Wallet name|Wallet policy).*",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
