@@ -24,7 +24,7 @@ from test_device import (
 from hwilib.devices.jadepy.jade import JadeAPI
 
 USE_SIMULATOR = True
-JADE_PATH = 'tcp:127.0.0.1:2222' if USE_SIMULATOR else '/dev/ttyUSB0'
+JADE_PATH = 'tcp:127.0.0.1:30121' if USE_SIMULATOR else '/dev/ttyUSB0'
 TEST_SEED = bytes.fromhex('b90e532426d0dc20fffe01037048c018e940300038b165c211915c672e07762c')
 
 LOGGING = None  # logging.INFO
@@ -66,7 +66,7 @@ class JadeEmulator(DeviceEmulator):
                     '-machine', 'esp32',
                     '-m', '4M',
                     '-drive', 'file=flash_image.bin,if=mtd,format=raw',
-                    '-nic', 'user,model=open_eth,id=lo0,hostfwd=tcp:0.0.0.0:2222-:2222',
+                    '-nic', 'user,model=open_eth,id=lo0,hostfwd=tcp:0.0.0.0:30121-:30121',
                     '-drive', 'file=qemu_efuse.bin,if=none,format=raw,id=efuse',
                     '-global', 'driver=nvram.esp32.efuse,property=drive,value=efuse',
                     '-serial', 'pty'
