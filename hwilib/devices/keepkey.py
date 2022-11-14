@@ -141,7 +141,7 @@ class KeepkeyDebugLinkState(DebugLinkState): # type: ignore
 
 
 class KeepkeyClient(TrezorClient):
-    def __init__(self, path: str, password: str = "", expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
         """
         The `KeepkeyClient` is a `HardwareWalletClient` for interacting with the Keepkey.
 
@@ -171,7 +171,7 @@ class KeepkeyClient(TrezorClient):
         return False
 
 
-def enumerate(password: str = "") -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate(usb_ids=KEEPKEY_HID_IDS)
     devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=KEEPKEY_WEBUSB_IDS))
@@ -202,7 +202,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
             d_data['needs_passphrase_sent'] = client.client.features.passphrase_protection # always need the passphrase sent for Keepkey if it has passphrase protection enabled
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Keepkey is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
-            if d_data['needs_passphrase_sent'] and not password:
+            if d_data['needs_passphrase_sent'] and password is None:
                 raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
             if client.client.features.initialized:
                 d_data['fingerprint'] = client.get_master_fingerprint().hex()

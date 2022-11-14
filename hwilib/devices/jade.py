@@ -125,7 +125,7 @@ class JadeClient(HardwareWalletClient):
         hash_summary = sha256(summary.encode()).hex()
         return 'hwi' + hash_summary[:12]
 
-    def __init__(self, path: str, password: str = '', expert: bool = False, chain: Chain = Chain.MAIN, timeout: Optional[int] = None) -> None:
+    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, timeout: Optional[int] = None) -> None:
         super(JadeClient, self).__init__(path, password, expert, chain)
         self.jade = JadeAPI.create_serial(path, timeout=timeout)
         self.jade.connect()
@@ -508,7 +508,7 @@ class JadeClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: str = '') -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
 
     def _get_device_entry(device_model: str, device_path: str) -> Dict[str, Any]:
