@@ -9,7 +9,7 @@ from .client_base import Client, TransportClient
 from .client_legacy import LegacyClient
 from .exception import DeviceException, NotSupportedError
 from .merkle import get_merkleized_map_commitment
-from .wallet import Wallet, WalletType, PolicyMapWallet
+from .wallet import WalletPolicy, WalletType
 from ...psbt import PSBT
 from ..._serialize import deser_string
 
@@ -30,6 +30,37 @@ def parse_stream_to_map(f: BufferedReader) -> Mapping[bytes, bytes]:
 
         result[key] = value
     return result
+
+
+def read_uint(buf: BytesIO,
+              bit_len: int,
+              byteorder: str = 'little') -> int:
+    assert byteorder in ['little', 'big']
+
+    size: int = bit_len // 8
+    b: bytes = buf.read(size)
+
+    if len(b) < size:
+        raise ValueError(f"Can't read u{bit_len} in buffer!")
+
+    return int.from_bytes(b, byteorder)
+
+
+def read_varint(buf: BytesIO,
+                prefix: Optional[bytes] = None) -> int:
+    b: bytes = prefix if prefix else buf.read(1)
+
+    if not b:
+        raise ValueError(f"Can't read prefix: '{b}'!")
+
+    n: int = {b"\xfd": 2, b"\xfe": 4, b"\xff": 8}.get(b, 1)  # default to 1
+
+    b = buf.read(n) if n > 1 else b
+
+    if len(b) != n:
+        raise ValueError("Can't read varint!")
+
+    return int.from_bytes(b, byteorder="little")
 
 
 class NewClient(Client):
@@ -65,13 +96,16 @@ class NewClient(Client):
 
         return response.decode()
 
-    def register_wallet(self, wallet: Wallet) -> Tuple[bytes, bytes]:
-        if wallet.type != WalletType.POLICYMAP:
-            raise ValueError("wallet type must be POLICYMAP")
+    def register_wallet(self, wallet: WalletPolicy) -> Tuple[bytes, bytes]:
+        if wallet.version not in [WalletType.WALLET_POLICY_V1, WalletType.WALLET_POLICY_V2]:
+            raise ValueError("invalid wallet policy version")
 
         client_intepreter = ClientCommandInterpreter()
         client_intepreter.add_known_preimage(wallet.serialize())
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
+
+        # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
+        client_intepreter.add_known_preimage(wallet.descriptor_template.encode())
 
         sw, response = self._make_request(
             self.builder.register_wallet(wallet), client_intepreter
@@ -90,17 +124,15 @@ class NewClient(Client):
 
     def get_wallet_address(
         self,
-        wallet: Wallet,
+        wallet: WalletPolicy,
         wallet_hmac: Optional[bytes],
         change: int,
         address_index: int,
         display: bool,
     ) -> str:
 
-        if wallet.type != WalletType.POLICYMAP or not isinstance(
-            wallet, PolicyMapWallet
-        ):
-            raise ValueError("wallet type must be POLICYMAP")
+        if not isinstance(wallet, WalletPolicy) or wallet.version not in [WalletType.WALLET_POLICY_V1, WalletType.WALLET_POLICY_V2]:
+            raise ValueError("wallet type must be WalletPolicy, with version either WALLET_POLICY_V1 or WALLET_POLICY_V2")
 
         if change != 0 and change != 1:
             raise ValueError("Invalid change")
@@ -108,6 +140,9 @@ class NewClient(Client):
         client_intepreter = ClientCommandInterpreter()
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
         client_intepreter.add_known_preimage(wallet.serialize())
+
+        # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
+        client_intepreter.add_known_preimage(wallet.descriptor_template.encode())
 
         sw, response = self._make_request(
             self.builder.get_wallet_address(
@@ -121,7 +156,7 @@ class NewClient(Client):
 
         return response.decode()
 
-    def sign_psbt(self, psbt: PSBT, wallet: Wallet, wallet_hmac: Optional[bytes]) -> Mapping[int, bytes]:
+    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, bytes, bytes]]:
         """Signs a PSBT using a registered wallet (or a standard wallet that does not need registration).
 
         Signature requires explicit approval from the user.
@@ -132,9 +167,9 @@ class NewClient(Client):
             A PSBT of version 0 or 2, with all the necessary information to sign the inputs already filled in; what the
             required fields changes depending on the type of input.
             The non-witness UTXO must be present for both legacy and SegWit inputs, or the hardware wallet will reject
-            signing (this will change for Taproot inputs).
+            signing. This is not required for Taproot inputs.
 
-        wallet : Wallet
+        wallet : WalletPolicy
             The registered wallet policy, or a standard wallet policy.
 
         wallet_hmac: Optional[bytes]
@@ -142,8 +177,11 @@ class NewClient(Client):
 
         Returns
         -------
-        Mapping[int, bytes]
-            A mapping that has as keys the indexes of inputs that the Hardware Wallet signed, and the corresponding signatures as values.
+        List[Tuple[int, bytes, bytes]]
+            A list of tuples returned by the hardware wallets, where each element is a tuple of:
+            - an integer, the index of the input being signed;
+            - a `bytes` array of length 33 (compressed ecdsa pubkey) or 32 (x-only BIP-0340 pubkey), the corresponding pubkey for this signature;
+            - a `bytes` array with the signature.
         """
         assert psbt.version == 2
         psbt_v2 = psbt
@@ -160,6 +198,9 @@ class NewClient(Client):
         client_intepreter = ClientCommandInterpreter()
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
         client_intepreter.add_known_preimage(wallet.serialize())
+
+        # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
+        client_intepreter.add_known_preimage(wallet.descriptor_template.encode())
 
         global_map: Mapping[bytes, bytes] = parse_stream_to_map(f)
         client_intepreter.add_known_mapping(global_map)
@@ -199,7 +240,19 @@ class NewClient(Client):
         if any(len(x) <= 1 for x in results):
             raise RuntimeError("Invalid response")
 
-        return {int(res[0]): res[1:] for res in results}
+        results_list: List[Tuple[int, bytes, bytes]] = []
+        for res in results:
+            res_buffer = BytesIO(res)
+            input_index = read_varint(res_buffer)
+
+            pubkey_len = read_uint(res_buffer, 8)
+            pubkey = res_buffer.read(pubkey_len)
+
+            signature = res_buffer.read()
+
+            results_list.append((input_index, pubkey, signature))
+
+        return results_list
 
     def get_master_fingerprint(self) -> bytes:
 
@@ -210,6 +263,24 @@ class NewClient(Client):
 
         return response
 
+    def sign_message(self, message: Union[str, bytes], bip32_path: str) -> str:
+        if isinstance(message, str):
+            message_bytes = message.encode("utf-8")
+        else:
+            message_bytes = message
+
+        chunks = [message_bytes[64 * i: 64 * i + 64] for i in range((len(message_bytes) + 63) // 64)]
+
+        client_intepreter = ClientCommandInterpreter()
+        client_intepreter.add_known_list(chunks)
+
+        sw, response = self._make_request(self.builder.sign_message(message_bytes, bip32_path), client_intepreter)
+
+        if sw != 0x9000:
+            raise DeviceException(error_code=sw, ins=BitcoinInsType.GET_EXTENDED_PUBKEY)
+
+        return base64.b64encode(response).decode('utf-8')
+
 
 def createClient(comm_client: Optional[TransportClient] = None, chain: Chain = Chain.MAIN, debug: bool = False) -> Union[LegacyClient, NewClient]:
     if comm_client is None:
@@ -218,10 +289,18 @@ def createClient(comm_client: Optional[TransportClient] = None, chain: Chain = C
     base_client = Client(comm_client, chain)
     app_name, app_version, _ = base_client.get_version()
 
-    if app_name not in ["Bitcoin", "Bitcoin Test", "app"]:
+    if app_name not in ["Bitcoin", "Bitcoin Test", "Bitcoin Legacy", "Bitcoin Test Legacy", "app"]:
         raise NotSupportedError(0x6A82, None, "Ledger is not in either the Bitcoin or Bitcoin Testnet app")
 
-    if app_version >= "2":
-        return NewClient(comm_client, chain)
-    else:
+    app_version_major, app_version_minor, _ = app_version.split(".", 2)
+
+    # App versions using the legacy protocol:
+    # - any 1.*.* version
+    # - any 2.0.* version
+    # - any version if the app name is "Bitcoin Legacy" or "Bitcoin Test Legacy"
+    is_legacy = int(app_version_major) <= 1 or (int(app_version_major) == 2 and int(app_version_minor) == 0) or "Legacy" in app_name
+
+    if is_legacy:
         return LegacyClient(comm_client, chain)
+    else:
+        return NewClient(comm_client, chain)

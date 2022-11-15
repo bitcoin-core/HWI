@@ -1,11 +1,12 @@
 import enum
 from typing import List, Tuple, Mapping, Union, Iterator, Optional
 
-from ...common import AddressType
 from ..._serialize import ser_compact_size as write_varint
 from .merkle import get_merkleized_map_commitment, MerkleTree, element_hash
-from .wallet import Wallet
+from .wallet import WalletPolicy
 
+# p2 encodes the protocol version implemented
+CURRENT_PROTOCOL_VERSION = 1
 
 def bip32_path_from_string(path: str) -> List[bytes]:
     splitted_path: List[str] = path.split("/")
@@ -50,6 +51,7 @@ class BitcoinInsType(enum.IntEnum):
     GET_WALLET_ADDRESS = 0x03
     SIGN_PSBT = 0x04
     GET_MASTER_FINGERPRINT = 0x05
+    SIGN_MESSAGE = 0x10
 
 class FrameworkInsType(enum.IntEnum):
     CONTINUE_INTERRUPTED = 0x01
@@ -67,7 +69,7 @@ class BitcoinCommandBuilder:
         cla: int,
         ins: Union[int, enum.IntEnum],
         p1: int = 0,
-        p2: int = 0,
+        p2: int = CURRENT_PROTOCOL_VERSION,
         cdata: bytes = b"",
     ) -> dict:
         """Serialize the whole APDU command (header + data).
@@ -109,7 +111,7 @@ class BitcoinCommandBuilder:
             cdata=cdata,
         )
 
-    def register_wallet(self, wallet: Wallet):
+    def register_wallet(self, wallet: WalletPolicy):
         wallet_bytes = wallet.serialize()
 
         return self.serialize(
@@ -120,7 +122,7 @@ class BitcoinCommandBuilder:
 
     def get_wallet_address(
         self,
-        wallet: Wallet,
+        wallet: WalletPolicy,
         wallet_hmac: Optional[bytes],
         address_index: int,
         change: bool,
@@ -147,7 +149,7 @@ class BitcoinCommandBuilder:
         global_mapping: Mapping[bytes, bytes],
         input_mappings: List[Mapping[bytes, bytes]],
         output_mappings: List[Mapping[bytes, bytes]],
-        wallet: Wallet,
+        wallet: WalletPolicy,
         wallet_hmac: Optional[bytes],
     ):
 
@@ -181,6 +183,28 @@ class BitcoinCommandBuilder:
         return self.serialize(
             cla=self.CLA_BITCOIN,
             ins=BitcoinInsType.GET_MASTER_FINGERPRINT
+        )
+
+    def sign_message(self, message: bytes, bip32_path: str):
+        cdata = bytearray()
+
+        bip32_path: List[bytes] = bip32_path_from_string(bip32_path)
+
+        # split message in 64-byte chunks (last chunk can be smaller)
+        n_chunks = (len(message) + 63) // 64
+        chunks = [message[64 * i: 64 * i + 64] for i in range(n_chunks)]
+
+        cdata += len(bip32_path).to_bytes(1, byteorder="big")
+        cdata += b''.join(bip32_path)
+
+        cdata += write_varint(len(message))
+
+        cdata += MerkleTree(element_hash(c) for c in chunks).root
+
+        return self.serialize(
+            cla=self.CLA_BITCOIN,
+            ins=BitcoinInsType.SIGN_MESSAGE,
+            cdata=bytes(cdata)
         )
 
     def continue_interrupted(self, cdata: bytes):

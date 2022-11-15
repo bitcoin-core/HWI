@@ -39,19 +39,19 @@ class LedgerEmulator(DeviceEmulator):
         self.fingerprint = 'f5acc2fd'
         self.master_xpub = 'tpubDCwYjpDhUdPGP5rS3wgNg13mTrrjBuG8V9VpWbyptX6TRPbNoZVXsoVUSkCjmQ8jJycjuDKBb9eataSymXakTTaGifxR6kmVsfFehH1ZgJT'
         self.password = ""
-        self.supports_ms_display = False
-        self.supports_xpub_ms_display = False
-        self.supports_unsorted_ms = False
+        self.supports_ms_display = False # Legacy does not multisig address display; tests not updated for new app
+        self.supports_xpub_ms_display = False # Legacy does not multisig address display; tests not updated for new app
+        self.supports_unsorted_ms = False # Legacy does not support unsorted multisig; tests not updated for new app
         self.supports_taproot = not legacy # Legacy does not support Taproot
         self.strict_bip48 = True
         self.include_xpubs = True
-        self.supports_device_multiple_multisig = legacy
+        self.supports_device_multiple_multisig = True
 
     def start(self):
         super().start()
         automation_path = os.path.abspath("data/speculos-automation.json")
         app_path = "./apps/nanos#btc#2.0#ce796c1b.elf" if self.legacy else "./apps/btc-test.elf"
-        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.0" if self.legacy else "Bitcoin Test:2.0.1"
+        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.0" if self.legacy else "Bitcoin Test:2.1.0"
 
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
