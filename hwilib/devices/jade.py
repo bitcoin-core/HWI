@@ -56,7 +56,7 @@ import semver
 import os
 
 # The test emulator port
-SIMULATOR_PATH = 'tcp:127.0.0.1:2222'
+SIMULATOR_PATH = 'tcp:127.0.0.1:30121'
 
 JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
