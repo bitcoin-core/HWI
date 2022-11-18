@@ -289,6 +289,8 @@ class TrezorClient(HardwareWalletClient):
         sim_path: str = SIMULATOR_PATH,
         model: Optional[TrezorModel] = None
     ) -> None:
+        if password is None:
+            password = ""
         super(TrezorClient, self).__init__(path, password, expert, chain)
         self.simulator = False
         transport = get_path_transport(path, hid_ids, webusb_ids, sim_path)
@@ -879,7 +881,7 @@ def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
             if d_data['needs_passphrase_sent'] and password is None:
-                raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
+                d_data["warnings"] = [["Passphrase protection enabled but passphrase was not provided. Using default passphrase of the empty string (\"\")"]]
             if client.client.features.initialized:
                 d_data['fingerprint'] = client.get_master_fingerprint().hex()
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent
