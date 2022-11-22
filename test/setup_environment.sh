@@ -392,8 +392,8 @@ if [[ -n ${build_jade} ]]; then
     # always seem to pick up the locally installed python virtualenv, and instead uses
     # the system python/no-virtualenv which fails ...)
     # Only install the tools we need (ie. esp32)
+    rm -fr "${IDF_TOOLS_PATH}"
     cd esp-idf
-    rm -fr ${IDF_TOOLS_PATH}
     ./install.sh esp32
     cd ..
 
@@ -404,7 +404,7 @@ if [[ -n ${build_jade} ]]; then
     cd jade
     rm -fr sdkconfig
     cp configs/sdkconfig_qemu.defaults sdkconfig.defaults
-    idf.py all
+    idf.py fullclean all
 
     # Make the qemu flash image
     esptool.py --chip esp32 merge_bin --fill-flash-size 4MB -o main/qemu/flash_image.bin \
