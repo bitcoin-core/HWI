@@ -145,8 +145,8 @@ class JadeClient(HardwareWalletClient):
         else:
             if uninitialized and not HAS_NETWORKING:
                 # Wallet not initialised/unlocked nor do we have networking dependencies
-                # User must use 'Emergency Restore' feature to enter mnemonic on Jade hw
-                raise DeviceNotReadyError('Use "Emergency Restore" feature on Jade hw to enter wallet mnemonic')
+                # User must use 'Recovery Phrase Login' or 'QR Unlock' feature to access wallet
+                raise DeviceNotReadyError('Use "Recovery Phrase Login" or "QR PIN Unlock" feature on Jade hw to access wallet')
 
             # Push some host entropy into jade
             self.jade.add_entropy(os.urandom(32))
@@ -508,7 +508,7 @@ class JadeClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
     results = []
 
     def _get_device_entry(device_model: str, device_path: str) -> Dict[str, Any]:
@@ -521,7 +521,7 @@ def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
 
         client = None
         with handle_errors(common_err_msgs['enumerate'], d_data):
-            client = JadeClient(device_path, password, timeout=1)
+            client = JadeClient(device_path, password, expert, chain, timeout=1)
             d_data['fingerprint'] = client.get_master_fingerprint().hex()
 
         if client:

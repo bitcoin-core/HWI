@@ -847,7 +847,7 @@ class TrezorClient(HardwareWalletClient):
         return bool(self.client.version >= (1, 10, 4))
 
 
-def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate()
     devs.extend(webusb.WebUsbTransport.enumerate())

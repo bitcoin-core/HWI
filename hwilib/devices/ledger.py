@@ -539,7 +539,7 @@ class LedgerClient(HardwareWalletClient):
         return isinstance(self.client, NewClient)
 
 
-def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
     results = []
     devices = []
     devices.extend(hid.enumerate(LEDGER_VENDOR_ID, 0))

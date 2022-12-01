@@ -171,7 +171,7 @@ class KeepkeyClient(TrezorClient):
         return False
 
 
-def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate(usb_ids=KEEPKEY_HID_IDS)
     devs.extend(webusb.WebUsbTransport.enumerate(usb_ids=KEEPKEY_WEBUSB_IDS))

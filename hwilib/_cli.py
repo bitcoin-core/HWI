@@ -60,7 +60,7 @@ def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClien
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
-    return enumerate(password=args.password)
+    return enumerate(password=args.password, expert=args.expert, chain=args.chain)
 
 def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getmasterxpub(client, addrtype=args.addr_type, account=args.account)
