@@ -281,7 +281,7 @@ class TrezorClient(HardwareWalletClient):
     def __init__(
         self,
         path: str,
-        password: str = "",
+        password: Optional[str] = None,
         expert: bool = False,
         chain: Chain = Chain.MAIN,
         hid_ids: Set[Tuple[int, int]] = HID_IDS,
@@ -289,6 +289,8 @@ class TrezorClient(HardwareWalletClient):
         sim_path: str = SIMULATOR_PATH,
         model: Optional[TrezorModel] = None
     ) -> None:
+        if password is None:
+            password = ""
         super(TrezorClient, self).__init__(path, password, expert, chain)
         self.simulator = False
         transport = get_path_transport(path, hid_ids, webusb_ids, sim_path)
@@ -326,6 +328,8 @@ class TrezorClient(HardwareWalletClient):
             self.client.ui.disallow_passphrase()
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
+        if self.client.features.passphrase_protection and self.password is None:
+            raise NoPasswordError("Passphrase protection is enabled, passphrase must be provided")
 
     def _supports_external(self) -> bool:
         if self.client.features.model == "1" and self.client.version <= (1, 10, 5):
@@ -843,7 +847,7 @@ class TrezorClient(HardwareWalletClient):
         return bool(self.client.version >= (1, 10, 4))
 
 
-def enumerate(password: str = "") -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate()
     devs.extend(webusb.WebUsbTransport.enumerate())
@@ -876,8 +880,8 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                 d_data['needs_passphrase_sent'] = False
             if d_data['needs_pin_sent']:
                 raise DeviceNotReadyError('Trezor is locked. Unlock by using \'promptpin\' and then \'sendpin\'.')
-            if d_data['needs_passphrase_sent'] and not password:
-                raise DeviceNotReadyError("Passphrase needs to be specified before the fingerprint information can be retrieved")
+            if d_data['needs_passphrase_sent'] and password is None:
+                d_data["warnings"] = [["Passphrase protection enabled but passphrase was not provided. Using default passphrase of the empty string (\"\")"]]
             if client.client.features.initialized:
                 d_data['fingerprint'] = client.get_master_fingerprint().hex()
                 d_data['needs_passphrase_sent'] = False # Passphrase is always needed for the above to have worked, so it's already sent

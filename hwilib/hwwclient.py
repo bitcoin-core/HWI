@@ -27,7 +27,7 @@ class HardwareWalletClient(object):
     that hardware wallet subclasses should implement.
     """
 
-    def __init__(self, path: str, password: str, expert: bool, chain: Chain = Chain.MAIN) -> None:
+    def __init__(self, path: str, password: Optional[str], expert: bool, chain: Chain = Chain.MAIN) -> None:
         """
         :param path: Path to the device as returned by :func:`~hwilib.commands.enumerate`
         :param password: A password/passphrase to use with the device.

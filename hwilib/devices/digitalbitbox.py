@@ -22,6 +22,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Tuple,
     Union,
 )
@@ -345,7 +346,7 @@ def format_backup_filename(name: str) -> str:
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
-    def __init__(self, path: str, password: str, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+    def __init__(self, path: str, password: Optional[str], expert: bool = False, chain: Chain = Chain.MAIN) -> None:
         """
         The `DigitalbitboxClient` is a `HardwareWalletClient` for interacting with BitBox01 devices (previously known as the Digital BitBox).
 
@@ -353,9 +354,9 @@ class DigitalbitboxClient(HardwareWalletClient):
         :param password: The password required to communicate with the device. Must be provided.
         :param expert: Whether to be in expert mode and return additional information.
         """
-        super(DigitalbitboxClient, self).__init__(path, password, expert, chain)
-        if not password:
+        if password is None:
             raise NoPasswordError('Password must be supplied for digital BitBox')
+        super(DigitalbitboxClient, self).__init__(path, password, expert, chain)
         if path.startswith('udp:'):
             split_path = path.split(':')
             ip = split_path[1]
@@ -364,7 +365,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         else:
             self.device = hid.device()
             self.device.open_path(path.encode())
-        self.password = password
+        self.password: str = password
 
     @digitalbitbox_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
@@ -678,7 +679,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: str = "") -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)
     # Try connecting to simulator
@@ -707,7 +708,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                 client = DigitalbitboxClient(path, password)
 
                 # Check initialized
-                reply = send_encrypt('{"device" : "info"}', password, client.device)
+                reply = send_encrypt('{"device" : "info"}', "" if password is None else password, client.device)
                 if 'error' in reply and (reply['error']['code'] == 101 or reply['error']['code'] == '101'):
                     d_data['error'] = 'Not initialized'
                     d_data['code'] = DEVICE_NOT_INITIALIZED

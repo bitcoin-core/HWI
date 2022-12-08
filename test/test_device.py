@@ -137,7 +137,7 @@ class DeviceTestCase(unittest.TestCase):
         self.emulator = emulator
 
         self.dev_args = ['-t', self.emulator.type, '-d', self.emulator.path, '--chain', 'test']
-        if self.emulator.password:
+        if self.emulator.password is not None:
             self.dev_args.extend(['-p', self.emulator.password])
 
         self.interface = interface
@@ -173,7 +173,7 @@ class DeviceTestCase(unittest.TestCase):
             return process_commands(args)
 
     def get_password_args(self):
-        if self.emulator.password:
+        if self.emulator.password is not None:
             return ['-p', self.emulator.password]
         return []
 
