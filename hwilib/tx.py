@@ -138,7 +138,7 @@ class CTxOut(object):
 
     def __repr__(self) -> str:
         return "CTxOut(nValue=%i.%08i scriptPubKey=%s)" \
-            % (self.nValue, self.nValue, self.scriptPubKey.hex())
+            % (self.nValue // 100_000_000, self.nValue % 100_000_000, self.scriptPubKey.hex())
 
 
 class CScriptWitness(object):
@@ -210,7 +210,7 @@ class CTransaction(object):
             self.wit = CTxWitness()
             self.nLockTime = 0
             self.sha256: Optional[int] = None
-            self.hash: Optional[str] = None
+            self.hash: Optional[bytes] = None
         else:
             self.nVersion = tx.nVersion
             self.vin = copy.deepcopy(tx.vin)
@@ -289,7 +289,7 @@ class CTransaction(object):
 
         if self.sha256 is None:
             self.sha256 = uint256_from_str(hash256(self.serialize_without_witness()))
-        self.hash = hash256(self.serialize())[::-1].hex()
+        self.hash = hash256(self.serialize())
         return None
 
     def is_null(self) -> bool:

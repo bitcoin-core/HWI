@@ -356,8 +356,7 @@ class HWIQt(QMainWindow):
 
         # Get the client
         self.device_info = self.devices[index - 1]
-        self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase)
-        self.client.chain = self.chain
+        self.client = commands.get_client(self.device_info['model'], self.device_info['path'], self.passphrase, self.chain)
 
         if self.device_info['type'] == 'bitbox02':
             self.client.set_noise_config(BitBox02NoiseConfig())
@@ -380,7 +379,7 @@ class HWIQt(QMainWindow):
         # If it isn't initialized, show an error but don't do anything
         if 'code' in self.device_info and self.device_info['code'] == DEVICE_NOT_INITIALIZED:
             self.clear_info()
-            QMessageBox.information(None, "Not initialized yet", 'Device is not initalized yet')
+            QMessageBox.information(None, "Not initialized yet", 'Device is not initialized yet')
             return
 
         # do getkeypool and getdescriptors

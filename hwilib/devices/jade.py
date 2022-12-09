@@ -43,9 +43,6 @@ from ..key import (
     parse_path
 )
 from ..psbt import PSBT
-from ..tx import (
-    CTransaction
-)
 from .._script import (
     is_p2sh,
     is_p2wpkh,
@@ -55,12 +52,13 @@ from .._script import (
 )
 
 import logging
+import semver
 import os
 
 # The test emulator port
-SIMULATOR_PATH = 'tcp:127.0.0.1:2222'
+SIMULATOR_PATH = 'tcp:127.0.0.1:30121'
 
-JADE_DEVICE_IDS = [(0x10c4, 0xea60)]
+JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
 
 py_enumerate = enumerate # To use the enumerate built-in, since the name is overridden below
@@ -91,6 +89,7 @@ def jade_exception(f: Callable[..., Any]) -> Any:
 
 # This class extends the HardwareWalletClient for Blockstream Jade specific things
 class JadeClient(HardwareWalletClient):
+    MIN_SUPPORTED_FW_VERSION = semver.VersionInfo(0, 1, 32)
 
     NETWORKS = {Chain.MAIN: 'mainnet',
                 Chain.TEST: 'testnet',
@@ -110,30 +109,35 @@ class JadeClient(HardwareWalletClient):
                        AddressType.WIT: 'wsh(multi(k))',
                        AddressType.SH_WIT: 'sh(wsh(multi(k)))'}
 
-    @staticmethod
-    def _convertAddrType(addrType: AddressType, multisig: bool) -> str:
-        return JadeClient.MULTI_ADDRTYPES[addrType] if multisig else JadeClient.ADDRTYPES[addrType]
+    @classmethod
+    def _convertAddrType(cls, addrType: AddressType, multisig: bool) -> str:
+        return cls.MULTI_ADDRTYPES[addrType] if multisig else cls.ADDRTYPES[addrType]
 
-    # Derive a deterministic name for a multisig registration record
+    # Derive a deterministic name for a multisig registration record (ignoring bip67 key sorting)
     @staticmethod
     def _get_multisig_name(type: str, threshold: int, signers: List[Tuple[bytes, Sequence[int]]]) -> str:
-        # Concatenate script-type, threshold, and all signers fingerprints and derivation paths
+        # Concatenate script-type, threshold, and all signers fingerprints and derivation paths (sorted)
         summary = type + '|' + str(threshold) + '|'
-        for fingerprint, path in signers:
+        for fingerprint, path in sorted(signers):
             summary += fingerprint.hex() + '|' + str(path) + '|'
 
         # Hash it, get the first 6-bytes as hex, prepend with 'hwi'
         hash_summary = sha256(summary.encode()).hex()
         return 'hwi' + hash_summary[:12]
 
-    def __init__(self, path: str, password: str = '', expert: bool = False, timeout: Optional[int] = None) -> None:
-        super(JadeClient, self).__init__(path, password, expert)
+    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, timeout: Optional[int] = None) -> None:
+        super(JadeClient, self).__init__(path, password, expert, chain)
         self.jade = JadeAPI.create_serial(path, timeout=timeout)
         self.jade.connect()
 
         verinfo = self.jade.get_version_info()
         uninitialized = verinfo['JADE_STATE'] not in ['READY', 'TEMP']
 
+        # Check minimum supported firmware version (ignore candidate/build parts)
+        fw_version = semver.parse_version_info(verinfo['JADE_VERSION'])
+        if self.MIN_SUPPORTED_FW_VERSION > fw_version.finalize_version():
+            raise DeviceNotReadyError(f'Jade fw version: {fw_version} - minimum required version: {self.MIN_SUPPORTED_FW_VERSION}. '
+                                      'Please update using a Blockstream Green companion app')
         if path == SIMULATOR_PATH:
             if uninitialized:
                 # Connected to simulator but it appears to have no wallet set
@@ -185,7 +189,7 @@ class JadeClient(HardwareWalletClient):
                 paths.append(suffix)
             return signers, paths
 
-        c_txn = CTransaction(tx.tx)
+        c_txn = tx.get_unsigned_tx()
         master_fp = self.get_master_fingerprint()
         signing_singlesigs = False
         signing_multisigs = {}
@@ -197,7 +201,7 @@ class JadeClient(HardwareWalletClient):
 
             # Signing input details
             jade_inputs = []
-            for n_vin, (txin, psbtin) in py_enumerate(zip(c_txn.vin, tx.inputs)):
+            for n_vin, psbtin in py_enumerate(tx.inputs):
                 # Get bip32 path to use to sign, if required for this input
                 path = None
                 multisig_input = len(psbtin.hd_keypaths) > 1
@@ -223,12 +227,14 @@ class JadeClient(HardwareWalletClient):
                 if psbtin.witness_utxo:
                     utxo = psbtin.witness_utxo
                 if psbtin.non_witness_utxo:
-                    if txin.prevout.hash != psbtin.non_witness_utxo.sha256:
+                    if psbtin.prev_txid != psbtin.non_witness_utxo.hash:
                         raise BadArgumentError(f'Input {n_vin} has a non_witness_utxo with the wrong hash')
-                    utxo = psbtin.non_witness_utxo.vout[txin.prevout.n]
+                    assert psbtin.prev_out is not None
+                    utxo = psbtin.non_witness_utxo.vout[psbtin.prev_out]
                     input_txn_bytes = psbtin.non_witness_utxo.serialize_without_witness()
                 if utxo is None:
                     raise Exception('PSBT is missing input utxo information, cannot sign')
+                sats_value = utxo.nValue
                 scriptcode = utxo.scriptPubKey
 
                 if is_p2sh(scriptcode):
@@ -262,86 +268,87 @@ class JadeClient(HardwareWalletClient):
                         signing_multisigs[multisig_name] = (script_variant, threshold, signers)
 
                 # Build the input and add to the list - include some host entropy for AE sigs (although we won't verify)
-                jade_inputs.append({'is_witness': witness_input, 'input_tx': input_txn_bytes, 'script': scriptcode, 'path': path,
-                                    'ae_host_entropy': os.urandom(32), 'ae_host_commitment': os.urandom(32)})
+                jade_inputs.append({'is_witness': witness_input, 'satoshi': sats_value, 'script': scriptcode, 'path': path,
+                                    'input_tx': input_txn_bytes, 'ae_host_entropy': os.urandom(32), 'ae_host_commitment': os.urandom(32)})
 
             # Change output details
             # This is optional, in that if we send it Jade validates the change output script
-            # and the user need not confirm that ouptut.  If not passed the change output must
+            # and the user need not confirm that output.  If not passed the change output must
             # be confirmed by the user on the hwwallet screen, like any other spend output.
             change: List[Optional[Dict[str, Any]]] = [None] * len(tx.outputs)
 
-            # If signing multisig inputs, get registered multisigs details in case we
-            # see any multisig outputs which may be change which we can auto-validate.
-            # ie. filter speculative 'signing multisigs' to ones actually registered on the hw
-            candidate_multisigs = {}
-            if signing_multisigs:
-                registered_multisigs = self.jade.get_registered_multisigs()
-                signing_multisigs = {k: v for k, v in signing_multisigs.items()
-                                     if k in registered_multisigs
-                                     and registered_multisigs[k]['variant'] == v[0]
-                                     and registered_multisigs[k]['threshold'] == v[1]
-                                     and registered_multisigs[k]['num_signers'] == len(v[2])}
+            # Skip automatic change validation in expert mode - user checks *every* output on hw
+            if not self.expert:
+                # If signing multisig inputs, get registered multisigs details in case we
+                # see any multisig outputs which may be change which we can auto-validate.
+                # ie. filter speculative 'signing multisigs' to ones actually registered on the hw
+                if signing_multisigs:
+                    registered_multisigs = self.jade.get_registered_multisigs()
+                    signing_multisigs = {k: v for k, v in signing_multisigs.items()
+                                         if k in registered_multisigs
+                                         and registered_multisigs[k]['variant'] == v[0]
+                                         and registered_multisigs[k]['threshold'] == v[1]
+                                         and registered_multisigs[k]['num_signers'] == len(v[2])}
 
-            # Look at every output...
-            for n_vout, (txout, psbtout) in py_enumerate(zip(c_txn.vout, tx.outputs)):
-                num_signers = len(psbtout.hd_keypaths)
+                # Look at every output...
+                for n_vout, (txout, psbtout) in py_enumerate(zip(c_txn.vout, tx.outputs)):
+                    num_signers = len(psbtout.hd_keypaths)
 
-                if num_signers == 1 and signing_singlesigs:
-                    # Single-sig output - since we signed singlesig inputs this could be our change
-                    for pubkey, origin in psbtout.hd_keypaths.items():
-                        # Considers 'our' outputs as potential change as far as Jade is concerned
-                        # ie. can be verified and auto-confirmed.
-                        # Is this ok, or should check path also, assuming bip44-like ?
-                        if origin.fingerprint == master_fp and len(origin.path) > 0:
-                            change_addr_type = None
-                            if txout.is_p2pkh():
-                                change_addr_type = AddressType.LEGACY
-                            elif txout.is_witness()[0] and not txout.is_p2wsh():
-                                change_addr_type = AddressType.WIT  # ie. p2wpkh
-                            elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.SH_WIT
-                            else:
-                                continue
+                    if num_signers == 1 and signing_singlesigs:
+                        # Single-sig output - since we signed singlesig inputs this could be our change
+                        for pubkey, origin in psbtout.hd_keypaths.items():
+                            # Considers 'our' outputs as potential change as far as Jade is concerned
+                            # ie. can be verified and auto-confirmed.
+                            # Is this ok, or should check path also, assuming bip44-like ?
+                            if origin.fingerprint == master_fp and len(origin.path) > 0:
+                                change_addr_type = None
+                                if txout.is_p2pkh():
+                                    change_addr_type = AddressType.LEGACY
+                                elif txout.is_witness()[0] and not txout.is_p2wsh():
+                                    change_addr_type = AddressType.WIT  # ie. p2wpkh
+                                elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.SH_WIT
+                                else:
+                                    continue
 
-                            script_variant = self._convertAddrType(change_addr_type, multisig=False)
-                            change[n_vout] = {'path': origin.path, 'variant': script_variant}
+                                script_variant = self._convertAddrType(change_addr_type, multisig=False)
+                                change[n_vout] = {'path': origin.path, 'variant': script_variant}
 
-                elif num_signers > 1 and signing_multisigs:
-                    # Multisig output - since we signed multisig inputs this could be our change
-                    candidate_multisigs = {k: v for k, v in signing_multisigs.items() if len(v[2]) == num_signers}
-                    if not candidate_multisigs:
-                        continue
+                    elif num_signers > 1 and signing_multisigs:
+                        # Multisig output - since we signed multisig inputs this could be our change
+                        candidate_multisigs = {k: v for k, v in signing_multisigs.items() if len(v[2]) == num_signers}
+                        if not candidate_multisigs:
+                            continue
 
-                    for pubkey, origin in psbtout.hd_keypaths.items():
-                        if origin.fingerprint == master_fp and len(origin.path) > 0:
-                            change_addr_type = None
-                            if txout.is_p2sh() and not is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.LEGACY
-                                scriptcode = psbtout.redeem_script
-                            elif txout.is_p2wsh() and not txout.is_p2sh():
-                                change_addr_type = AddressType.WIT
-                                scriptcode = psbtout.witness_script
-                            elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
-                                change_addr_type = AddressType.SH_WIT
-                                scriptcode = psbtout.witness_script
-                            else:
-                                continue
+                        for pubkey, origin in psbtout.hd_keypaths.items():
+                            if origin.fingerprint == master_fp and len(origin.path) > 0:
+                                change_addr_type = None
+                                if txout.is_p2sh() and not is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.LEGACY
+                                    scriptcode = psbtout.redeem_script
+                                elif txout.is_p2wsh() and not txout.is_p2sh():
+                                    change_addr_type = AddressType.WIT
+                                    scriptcode = psbtout.witness_script
+                                elif txout.is_p2sh() and is_witness(psbtout.redeem_script)[0]:
+                                    change_addr_type = AddressType.SH_WIT
+                                    scriptcode = psbtout.witness_script
+                                else:
+                                    continue
 
-                            parsed = parse_multisig(scriptcode)
-                            if parsed:
-                                script_variant = self._convertAddrType(change_addr_type, multisig=True)
-                                threshold = parsed[0]
+                                parsed = parse_multisig(scriptcode)
+                                if parsed:
+                                    script_variant = self._convertAddrType(change_addr_type, multisig=True)
+                                    threshold = parsed[0]
 
-                                pubkeys = parsed[1]
-                                hd_keypath_origins = [psbtout.hd_keypaths[pubkey] for pubkey in pubkeys]
+                                    pubkeys = parsed[1]
+                                    hd_keypath_origins = [psbtout.hd_keypaths[pubkey] for pubkey in pubkeys]
 
-                                signers, paths = _parse_signers(hd_keypath_origins)
-                                multisig_name = self._get_multisig_name(script_variant, threshold, signers)
+                                    signers, paths = _parse_signers(hd_keypath_origins)
+                                    multisig_name = self._get_multisig_name(script_variant, threshold, signers)
+                                    matched_multisig = candidate_multisigs.get(multisig_name)
 
-                                matched_multisig = candidate_multisigs.get(multisig_name) == (script_variant, threshold, signers)
-                                if matched_multisig:
-                                    change[n_vout] = {'paths': paths, 'multisig_name': multisig_name}
+                                    if matched_multisig and matched_multisig[0] == script_variant and matched_multisig[1] == threshold and sorted(matched_multisig[2]) == sorted(signers):
+                                        change[n_vout] = {'paths': paths, 'multisig_name': multisig_name}
 
             # The txn itself
             txn_bytes = c_txn.serialize_without_witness()
@@ -384,15 +391,17 @@ class JadeClient(HardwareWalletClient):
         signer_origins = []
         signers = []
         paths = []
-        if multisig.is_sorted:
-            raise BadArgumentError('Blockstream Jade can not generate addresses for sorted multisigs')
         for pubkey in multisig.pubkeys:
             if pubkey.extkey is None:
                 raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with full extended keys')
             if pubkey.origin is None:
                 raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key origin information')
             if pubkey.deriv_path is None:
-                raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key origin derivation path information')
+                raise BadArgumentError('Blockstream Jade can only generate addresses for multisigs with key derivation paths')
+
+            if pubkey.origin.path and not is_hardened(pubkey.origin.path[-1]):
+                logging.warning(f'Final element of origin path {pubkey.origin.path} unhardened')
+                logging.warning('Blockstream Jade may not be able to identify change sent back to this descriptor')
 
             # Tuple to derive deterministic name for the registrtion
             signer_origins.append((pubkey.origin.fingerprint, pubkey.origin.path))
@@ -407,13 +416,17 @@ class JadeClient(HardwareWalletClient):
             path = pubkey.deriv_path[1:] if pubkey.deriv_path[0] == '/' else pubkey.deriv_path
             paths.append(parse_path(path))
 
-        # Get a deterministic name for this multisig wallet
+        if multisig.is_sorted and paths[:-1] != paths[1:]:
+            logging.warning('Sorted multisig with different derivations per signer')
+            logging.warning('Blockstream Jade may not be able to validate change sent back to this descriptor')
+
+        # Get a deterministic name for this multisig wallet (ignoring bip67 key sorting)
         script_variant = self._convertAddrType(addr_type, multisig=True)
         multisig_name = self._get_multisig_name(script_variant, multisig.thresh, signer_origins)
 
         # Need to ensure this multisig wallet is registered first
         # (Note: 're-registering' is a no-op)
-        self.jade.register_multisig(self._network(), multisig_name, script_variant, multisig.thresh, signers)
+        self.jade.register_multisig(self._network(), multisig_name, script_variant, multisig.is_sorted, multisig.thresh, signers)
         address = self.jade.get_receive_address(self._network(), paths, multisig_name=multisig_name)
 
         return str(address)
@@ -495,7 +508,7 @@ class JadeClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: str = '') -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
 
     def _get_device_entry(device_model: str, device_path: str) -> Dict[str, Any]:

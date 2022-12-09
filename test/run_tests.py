@@ -9,7 +9,7 @@ from test_bech32 import TestSegwitAddress
 from test_bip32 import TestBIP32
 from test_coldcard import coldcard_test_suite
 from test_descriptor import TestDescriptor
-from test_device import start_bitcoind
+from test_device import Bitcoind
 from test_psbt import TestPSBT
 from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
@@ -34,6 +34,10 @@ coldcard_group.add_argument('--coldcard', dest='coldcard', help='Run Coldcard te
 ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--no-ledger', dest='ledger', help='Do not run Ledger test with emulator', action='store_false')
 ledger_group.add_argument('--ledger', dest='ledger', help='Run Ledger test with emulator', action='store_true')
+
+ledger_legacy_group = parser.add_mutually_exclusive_group()
+ledger_legacy_group.add_argument('--no-ledger-legacy', dest='ledger_legacy', help='Do not run Ledger App legacy test with emulator', action='store_false')
+ledger_legacy_group.add_argument('--ledger-legacy', dest='ledger_legacy', help='Run Ledger App legacy test with emulator', action='store_true')
 
 keepkey_group = parser.add_mutually_exclusive_group()
 keepkey_group.add_argument('--no-keepkey', dest='keepkey', help='Do not run Keepkey test with emulator', action='store_false')
@@ -61,7 +65,7 @@ parser.add_argument('--interface', help='Which interface to send commands over',
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
-parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, jade=None)
+parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None)
 
 args = parser.parse_args()
 
@@ -86,6 +90,7 @@ if args.all:
     args.keepkey = True if args.keepkey is None else args.keepkey
     args.bitbox01 = True if args.bitbox01 is None else args.bitbox01
     args.ledger = True if args.ledger is None else args.ledger
+    args.ledger_legacy = True if args.ledger_legacy is None else args.ledger_legacy
     args.jade = True if args.jade is None else args.jade
 else:
     # Default all false unless overridden
@@ -95,25 +100,28 @@ else:
     args.keepkey = False if args.keepkey is None else args.keepkey
     args.bitbox01 = False if args.bitbox01 is None else args.bitbox01
     args.ledger = False if args.ledger is None else args.ledger
+    args.ledger_legacy = False if args.ledger_legacy is None else args.ledger_legacy
     args.jade = False if args.jade is None else args.jade
 
-if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.keepkey or args.bitbox01 or args.jade:
+if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade:
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
     if success and args.bitbox01:
-        success &= digitalbitbox_test_suite(args.bitbox01_path, rpc, userpass, args.interface)
+        success &= digitalbitbox_test_suite(args.bitbox01_path, bitcoind, args.interface)
     if success and args.coldcard:
-        success &= coldcard_test_suite(args.coldcard_path, rpc, userpass, args.interface)
+        success &= coldcard_test_suite(args.coldcard_path, bitcoind, args.interface)
     if success and args.trezor_1:
-        success &= trezor_test_suite(args.trezor_1_path, rpc, userpass, args.interface, '1')
+        success &= trezor_test_suite(args.trezor_1_path, bitcoind, args.interface, '1')
     if success and args.trezor_t:
-        success &= trezor_test_suite(args.trezor_t_path, rpc, userpass, args.interface, 't')
+        success &= trezor_test_suite(args.trezor_t_path, bitcoind, args.interface, 't')
     if success and args.keepkey:
-        success &= keepkey_test_suite(args.keepkey_path, rpc, userpass, args.interface)
+        success &= keepkey_test_suite(args.keepkey_path, bitcoind, args.interface)
     if success and args.ledger:
-        success &= ledger_test_suite(args.ledger_path, rpc, userpass, args.interface)
+        success &= ledger_test_suite(args.ledger_path, bitcoind, args.interface, False)
+    if success and args.ledger_legacy:
+        success &= ledger_test_suite(args.ledger_path, bitcoind, args.interface, True)
     if success and args.jade:
-        success &= jade_test_suite(args.jade_path, rpc, userpass, args.interface)
+        success &= jade_test_suite(args.jade_path, bitcoind, args.interface)
 
 sys.exit(not success)

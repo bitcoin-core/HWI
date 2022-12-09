@@ -147,7 +147,7 @@ class PubkeyProvider(object):
 
         return cls(origin, pubkey, deriv_path)
 
-    def to_string(self) -> str:
+    def to_string(self, hardened_char: str = "h") -> str:
         """
         Serialize the pubkey expression to a string to be used in a descriptor
 
@@ -155,7 +155,7 @@ class PubkeyProvider(object):
         """
         s = ""
         if self.origin:
-            s += "[{}]".format(self.origin.to_string())
+            s += "[{}]".format(self.origin.to_string(hardened_char))
         s += self.pubkey
         if self.deriv_path:
             s += self.deriv_path
@@ -222,14 +222,14 @@ class Descriptor(object):
     ) -> None:
         r"""
         :param pubkeys: The :class:`PubkeyProvider`\ s that are part of this descriptor
-        :param subdescriptor: The ``Descriptor``s that are part of this descriptor
+        :param subdescriptor: The ``Descriptor``\ s that are part of this descriptor
         :param name: The name of the function for this descriptor
         """
         self.pubkeys = pubkeys
         self.subdescriptors = subdescriptors
         self.name = name
 
-    def to_string_no_checksum(self) -> str:
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
         """
         Serializes the descriptor as a string without the descriptor checksum
 
@@ -237,17 +237,17 @@ class Descriptor(object):
         """
         return "{}({}{})".format(
             self.name,
-            ",".join([p.to_string() for p in self.pubkeys]),
-            self.subdescriptors[0].to_string_no_checksum() if len(self.subdescriptors) > 0 else ""
+            ",".join([p.to_string(hardened_char) for p in self.pubkeys]),
+            self.subdescriptors[0].to_string_no_checksum(hardened_char) if len(self.subdescriptors) > 0 else ""
         )
 
-    def to_string(self) -> str:
+    def to_string(self, hardened_char: str = "h") -> str:
         """
-        Serializes the descriptor as a string wtih the checksum
+        Serializes the descriptor as a string with the checksum
 
         :return: The descriptor with a checksum
         """
-        return AddChecksum(self.to_string_no_checksum())
+        return AddChecksum(self.to_string_no_checksum(hardened_char))
 
     def expand(self, pos: int) -> "ExpandedScripts":
         """
@@ -327,8 +327,8 @@ class MultisigDescriptor(Descriptor):
         if self.is_sorted:
             self.pubkeys.sort()
 
-    def to_string_no_checksum(self) -> str:
-        return "{}({},{})".format(self.name, self.thresh, ",".join([p.to_string() for p in self.pubkeys]))
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
+        return "{}({},{})".format(self.name, self.thresh, ",".join([p.to_string(hardened_char) for p in self.pubkeys]))
 
     def expand(self, pos: int) -> "ExpandedScripts":
         if self.thresh > 16:
@@ -397,16 +397,16 @@ class TRDescriptor(Descriptor):
         subdescriptors: List['Descriptor'] = [],
         depths: List[int] = []
     ) -> None:
-        """
+        r"""
         :param internal_key: The :class:`PubkeyProvider` that is the internal key for this descriptor
-        :param subdescriptors: The :class:`Descriptor`s that are the leaf scripts for this descriptor
+        :param subdescriptors: The :class:`Descriptor`\ s that are the leaf scripts for this descriptor
         :param depths: The depths of the leaf scripts in the same order as `subdescriptors`
         """
         super().__init__([internal_key], subdescriptors, "tr")
         self.depths = depths
 
-    def to_string_no_checksum(self) -> str:
-        r = f"{self.name}({self.pubkeys[0].to_string()}"
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
+        r = f"{self.name}({self.pubkeys[0].to_string(hardened_char)}"
         path: List[bool] = [] # Track left or right for each depth
         for p, depth in enumerate(self.depths):
             r += ","
@@ -414,7 +414,7 @@ class TRDescriptor(Descriptor):
                 if len(path) > 0:
                     r += "{"
                 path.append(False)
-            r += self.subdescriptors[p].to_string_no_checksum()
+            r += self.subdescriptors[p].to_string_no_checksum(hardened_char)
             while len(path) > 0 and path[-1]:
                 if len(path) > 0:
                     r += "}"
@@ -591,7 +591,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
                     except ValueError:
                         break
                     if len(branches) > MAX_TAPROOT_NODES:
-                        raise ValueError("tr() suports at most {MAX_TAPROOT_NODES} nesting levels")
+                        raise ValueError("tr() supports at most {MAX_TAPROOT_NODES} nesting levels")
                 # Process script expression
                 sarg, expr = _get_expr(expr)
                 subscripts.append(_parse_descriptor(sarg, _ParseDescriptorContext.P2TR))

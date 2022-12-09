@@ -5,94 +5,150 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
 import unittest
 
+from typing import Dict
+
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
-from hwilib.descriptor import AddChecksum
-from hwilib.key import KeyOriginInfo
+from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider
+from hwilib.key import ExtendedKey, KeyOriginInfo
 from hwilib.psbt import PSBT
-
-SUPPORTS_MS_DISPLAY = {'trezor_1', 'keepkey', 'coldcard', 'trezor_t'}
-SUPPORTS_XPUB_MS_DISPLAY = {'trezor_1', 'trezor_t'}
-SUPPORTS_UNSORTED_MS = {"trezor_1", "trezor_t"}
-SUPPORTS_MIXED = {'coldcard', 'trezor_1', 'digitalbitbox', 'keepkey', 'trezor_t', 'jade'}
-SUPPORTS_MULTISIG = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
-SUPPORTS_EXTERNAL = {'ledger', 'trezor_1', 'digitalbitbox', 'keepkey', 'coldcard', 'trezor_t', 'jade'}
-SUPPORTS_OP_RETURN = {'ledger', 'digitalbitbox', 'trezor_1', 'trezor_t', 'keepkey', 'jade'}
-SUPPORTS_TAPROOT = {}
 
 # Class for emulator control
 class DeviceEmulator():
+    def __init__(self):
+        self.type = None
+        self.path = None
+        self.fingerprint = None
+        self.master_xpub = None
+        self.password = None
+        self.supports_ms_display = None
+        self.supports_xpub_ms_display = None
+        self.supports_unsorted_ms = None
+        self.supports_taproot = None
+        self.strict_bip48 = None
+        self.include_xpubs = None
+        self.supports_device_multiple_multisig = None
+
     def start(self):
-        pass
+        assert self.type is not None
+        assert self.path is not None
+        assert self.fingerprint is not None
+        assert self.master_xpub is not None
+        assert self.password is not None
+        assert self.supports_ms_display is not None
+        assert self.supports_xpub_ms_display is not None
+        assert self.supports_unsorted_ms is not None
+        assert self.strict_bip48 is not None
+        assert self.include_xpubs is not None
+        assert self.supports_device_multiple_multisig is not None
 
     def stop(self):
         pass
 
-def start_bitcoind(bitcoind_path):
-    datadir = tempfile.mkdtemp()
-    bitcoind_proc = subprocess.Popen([bitcoind_path, '-regtest', '-datadir=' + datadir, '-noprinttoconsole', '-fallbackfee=0.0002', '-keypool=1'])
+# Class for bitcoind control and RPC
+class Bitcoind():
+    def __init__(self, bitcoind_path):
+        self.bitcoind_path = bitcoind_path
+        self.datadir = tempfile.mkdtemp()
+        self.rpc = None
+        self.bitcoind_proc = None
+        self.userpass = None
 
-    def cleanup_bitcoind():
-        bitcoind_proc.kill()
-        shutil.rmtree(datadir)
-    atexit.register(cleanup_bitcoind)
-    # Wait for cookie file to be created
-    while not os.path.exists(datadir + '/regtest/.cookie'):
-        time.sleep(0.5)
-    # Read .cookie file to get user and pass
-    with open(datadir + '/regtest/.cookie') as f:
-        userpass = f.readline().lstrip().rstrip()
-    rpc = AuthServiceProxy('http://{}@127.0.0.1:18443'.format(userpass))
+    def start(self):
 
-    # Wait for bitcoind to be ready
-    ready = False
-    while not ready:
-        try:
-            rpc.getblockchaininfo()
-            ready = True
-        except JSONRPCException:
+        def get_free_port():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("", 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+            s.close()
+            return port
+
+        self.p2p_port = get_free_port()
+        self.rpc_port = get_free_port()
+
+        self.bitcoind_proc = subprocess.Popen(
+            [
+                self.bitcoind_path,
+                "-regtest",
+                f"-datadir={self.datadir}",
+                "-noprinttoconsole",
+                "-fallbackfee=0.0002",
+                "-keypool=1",
+                f"-port={self.p2p_port}",
+                f"-rpcport={self.rpc_port}"
+            ]
+        )
+
+        atexit.register(self.cleanup)
+
+        # Wait for cookie file to be created
+        cookie_path = os.path.join(self.datadir, "regtest", ".cookie")
+        while not os.path.exists(cookie_path):
             time.sleep(0.5)
-            pass
+        # Read .cookie file to get user and pass
+        with open(cookie_path) as f:
+            self.userpass = f.readline().lstrip().rstrip()
+        self.rpc_url = f"http://{self.userpass}@127.0.0.1:{self.rpc_port}"
+        self.rpc = AuthServiceProxy(self.rpc_url)
 
-    # Make sure there are blocks and coins available
-    rpc.createwallet(wallet_name="supply")
-    wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(userpass))
-    wrpc.generatetoaddress(101, wrpc.getnewaddress())
-    return (rpc, userpass)
+        # Wait for bitcoind to be ready
+        ready = False
+        while not ready:
+            try:
+                self.rpc.getblockchaininfo()
+                ready = True
+            except JSONRPCException:
+                time.sleep(0.5)
+                pass
+
+        # Make sure there are blocks and coins available
+        self.rpc.createwallet(wallet_name="supply")
+        self.wrpc = self.get_wallet_rpc("supply")
+        self.wrpc.generatetoaddress(101, self.wrpc.getnewaddress())
+
+    def get_wallet_rpc(self, wallet):
+        url = self.rpc_url + f"/wallet/{wallet}"
+        return AuthServiceProxy(url)
+
+    def cleanup(self):
+        if self.bitcoind_proc is not None and self.bitcoind_proc.poll() is None:
+            self.bitcoind_proc.kill()
+        shutil.rmtree(self.datadir)
+
+    @staticmethod
+    def create(*args, **kwargs):
+        c = Bitcoind(*args, **kwargs)
+        c.start()
+        return c
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, bitcoind, emulator=None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
-        self.rpc = rpc
-        self.rpc_userpass = rpc_userpass
-        self.type = type
-        self.full_type = full_type
-        self.path = path
-        self.fingerprint = fingerprint
-        self.master_xpub = master_xpub
-        self.password = password
-        self.dev_args = ['-t', self.type, '-d', self.path, '--chain', 'test']
-        if emulator:
-            self.emulator = emulator
-        else:
-            self.emulator = DeviceEmulator()
-        if password:
-            self.dev_args.extend(['-p', password])
+        self.bitcoind = bitcoind
+        self.rpc = bitcoind.rpc
+        self.emulator = emulator
+
+        self.dev_args = ['-t', self.emulator.type, '-d', self.emulator.path, '--chain', 'test']
+        if self.emulator.password is not None:
+            self.dev_args.extend(['-p', self.emulator.password])
+
         self.interface = interface
 
     @staticmethod
-    def parameterize(testclass, rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password='', interface='library', emulator=None):
+    def parameterize(testclass, bitcoind, emulator, interface='library', *args, **kwargs):
         testloader = unittest.TestLoader()
         testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
         for name in testnames:
-            suite.addTest(testclass(rpc, rpc_userpass, type, full_type, path, fingerprint, master_xpub, password, emulator, interface, name))
+            suite.addTest(testclass(bitcoind, emulator, interface, name, *args, **kwargs))
         return suite
 
     def do_command(self, args):
@@ -117,21 +173,21 @@ class DeviceTestCase(unittest.TestCase):
             return process_commands(args)
 
     def get_password_args(self):
-        if self.password:
-            return ['-p', self.password]
+        if self.emulator.password is not None:
+            return ['-p', self.emulator.password]
         return []
 
     def __str__(self):
-        return '{}: {}'.format(self.full_type, super().__str__())
+        return '{}: {}'.format(self.emulator.type, super().__str__())
 
     def __repr__(self):
-        return '{}: {}'.format(self.full_type, super().__repr__())
+        return '{}: {}'.format(self.emulator.type, super().__repr__())
 
     def setup_wallets(self):
-        wallet_name = '{}_{}_test'.format(self.full_type, self.id())
+        wallet_name = '{}_{}_test'.format(self.emulator.type, self.id())
         self.rpc.createwallet(wallet_name=wallet_name, disable_private_keys=True, descriptors=True)
-        self.wrpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/{}'.format(self.rpc_userpass, wallet_name))
-        self.wpk_rpc = AuthServiceProxy('http://{}@127.0.0.1:18443/wallet/supply'.format(self.rpc_userpass))
+        self.wrpc = self.bitcoind.get_wallet_rpc(wallet_name)
+        self.wpk_rpc = self.bitcoind.get_wallet_rpc("supply")
 
     def setUp(self):
         self.emulator.start()
@@ -140,11 +196,15 @@ class DeviceTestCase(unittest.TestCase):
         self.emulator.stop()
 
 class TestDeviceConnect(DeviceTestCase):
+    def __init__(self, *args, detect_type, **kwargs):
+        super(TestDeviceConnect, self).__init__(*args, **kwargs)
+        self.detect_type = detect_type
+
     def test_enumerate(self):
         enum_res = self.do_command(self.get_password_args() + ['enumerate'])
         found = False
         for device in enum_res:
-            if (device['type'] == self.type or device['model'] == self.type) and device['path'] == self.path and device['fingerprint'] == self.fingerprint:
+            if (device['type'] == self.detect_type or device['model'] == self.detect_type) and device['path'] == self.emulator.path and device['fingerprint'] == self.emulator.fingerprint:
                 self.assertIn('type', device)
                 self.assertIn('model', device)
                 self.assertIn('path', device)
@@ -156,31 +216,31 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertTrue(found)
 
     def test_no_type(self):
-        gmxp_res = self.do_command(['getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(["--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertIn('error', gmxp_res)
         self.assertEqual(gmxp_res['error'], 'You must specify a device type or fingerprint for all commands except enumerate')
         self.assertIn('code', gmxp_res)
         self.assertEqual(gmxp_res['code'], -1)
 
     def test_path_type(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, '-d', self.path, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, '-d', self.emulator.path, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
     def test_fingerprint_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.fingerprint, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', self.emulator.fingerprint, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Nonexistent fingerprint
-        gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint')
         self.assertEqual(gmxp_res['code'], -3)
 
     def test_type_only_autodetect(self):
-        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.type, 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['xpub'], self.master_xpub)
+        gmxp_res = self.do_command(self.get_password_args() + ['-t', self.detect_type, "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
+        self.assertEqual(gmxp_res['xpub'], self.emulator.master_xpub)
 
         # Unknown device type
-        gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', 'getmasterxpub', "--addr-type", "legacy"])
+        gmxp_res = self.do_command(['-t', 'fakedev', '-d', 'fakepath', "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertEqual(gmxp_res['error'], 'Unknown device type specified')
         self.assertEqual(gmxp_res['code'], -4)
 
@@ -196,7 +256,7 @@ class TestGetKeypool(DeviceTestCase):
             ("wit", 84, "bech32"),
             ("sh_wit", 49, "p2sh-segwit"),
         ]
-        if self.full_type in SUPPORTS_TAPROOT:
+        if self.emulator.supports_taproot:
             getkeypool_args.append(("tap", 86, "bech32m"))
 
         descs = []
@@ -256,8 +316,8 @@ class TestGetDescriptors(DeviceTestCase):
 
         self.assertIn('receive', descriptors)
         self.assertIn('internal', descriptors)
-        self.assertEqual(len(descriptors['receive']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
-        self.assertEqual(len(descriptors['internal']), 4 if self.full_type in SUPPORTS_TAPROOT else 3)
+        self.assertEqual(len(descriptors['receive']), 4 if self.emulator.supports_taproot else 3)
+        self.assertEqual(len(descriptors['internal']), 4 if self.emulator.supports_taproot else 3)
 
         for descriptor in descriptors['receive']:
             self.assertNotIn("'", descriptor)
@@ -272,14 +332,23 @@ class TestGetDescriptors(DeviceTestCase):
             self.assertTrue(info_result['issolvable'])
 
 class TestSignTx(DeviceTestCase):
+    def __init__(self, *args, signtx_cases, **kwargs):
+        super(TestSignTx, self).__init__(*args, **kwargs)
+        self.signtx_cases = signtx_cases
+
     def setUp(self):
         super().setUp()
         self.setup_wallets()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
+        if not self.emulator.supports_device_multiple_multisig:
+            # We will need Core to sign so that the multisig is complete
+            core_sign_res = self.wpk_rpc.walletprocesspsbt(psbt=psbt, finalize=False)
+            psbt = core_sign_res["psbt"]
+
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
-            sign_res = self.do_command(self.dev_args + ['signtx', psbt['psbt']])
+            sign_res = self.do_command(self.dev_args + ['signtx', psbt])
             finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
             self.assertTrue(sign_res["signed"])
             self.assertTrue(finalize_res["complete"])
@@ -290,17 +359,21 @@ class TestSignTx(DeviceTestCase):
             # signing passes to ensure they are actually properly being
             # partially signed at each step.
             first_psbt = PSBT()
-            first_psbt.deserialize(psbt['psbt'])
+            first_psbt.deserialize(psbt)
             second_psbt = PSBT()
-            second_psbt.deserialize(psbt['psbt'])
+            second_psbt.deserialize(psbt)
 
             # Blank master fingerprint to make hww fail to sign
             # Single input PSBTs will be fully signed by first signer
             for psbt_input in first_psbt.inputs[1:]:
                 for pubkey, path in psbt_input.hd_keypaths.items():
                     psbt_input.hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x01", path.path)
+                for pubkey, (leaves, origin) in psbt_input.tap_bip32_paths.items():
+                    psbt_input.tap_bip32_paths[pubkey] = (leaves, KeyOriginInfo(b"\x00\x00\x00\x01", origin.path))
             for pubkey, path in second_psbt.inputs[0].hd_keypaths.items():
                 second_psbt.inputs[0].hd_keypaths[pubkey] = KeyOriginInfo(b"\x00\x00\x00\x01", path.path)
+            for pubkey, (leaves, origin) in second_psbt.inputs[0].tap_bip32_paths.items():
+                second_psbt.inputs[0].tap_bip32_paths[pubkey] = (leaves, KeyOriginInfo(b"\x00\x00\x00\x01", origin.path))
 
             single_input = len(first_psbt.inputs) == 1
 
@@ -332,40 +405,63 @@ class TestSignTx(DeviceTestCase):
             self.assertTrue(self.wrpc.testmempoolaccept([finalize_res['hex']])[0]["allowed"])
         return finalize_res['hex']
 
-    def _make_multisigs(self):
-        def get_pubkeys(t):
-            desc_pubkeys = []
-            sorted_pubkeys = []
-            for i in range(0, 3):
-                path = "/48h/1h/{}h/{}h/0/0".format(i, t)
-                origin = '{}{}'.format(self.fingerprint, path)
-                xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
-                desc_pubkeys.append("[{}]{}".format(origin, xpub["pubkey"]))
-                sorted_pubkeys.append(xpub["pubkey"])
-            sorted_pubkeys.sort()
-            return desc_pubkeys, sorted_pubkeys
+    def _make_multisig(self, addrtype):
+        if addrtype == "legacy":
+            coin_type = 0
+            desc_prefix = "sh("
+            desc_suffix = ")"
+        elif addrtype == "p2sh-segwit":
+            coin_type = 1 if self.emulator.strict_bip48 else 0
+            desc_prefix = "sh(wsh("
+            desc_suffix = "))"
+        elif addrtype == "bech32":
+            coin_type = 2 if self.emulator.strict_bip48 else 0
+            desc_prefix = "wsh("
+            desc_suffix = ")"
+        else:
+            self.fail(f"Unknown address type {addrtype}")
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(0)
-        sh_desc = AddChecksum("sh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[0], desc_pubkeys[1], desc_pubkeys[2]))
-        sh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "legacy")
-        self.assertEqual(self.rpc.deriveaddresses(sh_desc)[0], sh_ms_info["address"])
+        desc_pubkeys = []
+        xpubs: Dict[bytes, KeyOriginInfo] = {}
+        for account in range(0, 3 if self.emulator.supports_device_multiple_multisig else 1):
+            path = f"/48h/1h/{account}h/{coin_type}h"
+            origin = '{}{}'.format(self.emulator.fingerprint, path)
+            xpub = self.do_command(self.dev_args + ["getxpub", "m{}".format(path)])
+            desc_pubkeys.append("[{}]{}/0/0".format(origin, xpub["xpub"]))
+            if self.emulator.include_xpubs:
+                extkey = ExtendedKey.deserialize(xpub["xpub"])
+                xpubs[extkey.serialize()] = KeyOriginInfo.from_string(origin)
 
-        # Trezor requires that each address type uses a different derivation path.
-        # Other devices don't have this requirement, and in the tests involving multiple address types, Coldcard will fail.
-        # So for those other devices, stick to the 0 path.
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(1) if self.full_type == "trezor_t" else get_pubkeys(0)
-        sh_wsh_desc = AddChecksum("sh(wsh(sortedmulti(2,{},{},{})))".format(desc_pubkeys[1], desc_pubkeys[2], desc_pubkeys[0]))
-        sh_wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "p2sh-segwit")
-        self.assertEqual(self.rpc.deriveaddresses(sh_wsh_desc)[0], sh_wsh_ms_info["address"])
+        if not self.emulator.supports_device_multiple_multisig:
+            # If the device does not support itself in the multisig more than once,
+            # we need to fetch a key from Core, and use another key that will not be signed with
+            counter_descs = self.wpk_rpc.listdescriptors()["descriptors"]
+            desc = parse_descriptor(counter_descs[0]["desc"])
+            pubkey_prov = None
+            while pubkey_prov is None:
+                if len(desc.pubkeys) > 0:
+                    pubkey_prov = desc.pubkeys[0]
+                else:
+                    desc = desc.subdescriptors[0]
+            assert pubkey_prov.extkey is not None
+            assert pubkey_prov.origin is not None
+            pubkey_prov.deriv_path = "/0/0"
+            desc_pubkeys.append(pubkey_prov.to_string())
+            if self.emulator.include_xpubs:
+                xpubs[pubkey_prov.extkey.serialize()] = pubkey_prov.origin
 
-        desc_pubkeys, sorted_pubkeys = get_pubkeys(2) if self.full_type == "trezor_t" else get_pubkeys(0)
-        wsh_desc = AddChecksum("wsh(sortedmulti(2,{},{},{}))".format(desc_pubkeys[2], desc_pubkeys[1], desc_pubkeys[0]))
-        wsh_ms_info = self.rpc.createmultisig(2, sorted_pubkeys, "bech32")
-        self.assertEqual(self.rpc.deriveaddresses(wsh_desc)[0], wsh_ms_info["address"])
+            # A fixed key
+            fixed_extkey = ExtendedKey.deserialize("tpubDCBWBScQPGv4Xk3JSbhw6wYYpayMjb2eAYyArpbSqQTbLDpphHGAetB6VQgVeftLML8vDSUEWcC2xDi3qJJ3YCDChJDvqVzpgoYSuT52MhJ")
+            fixed_origin = KeyOriginInfo(b"\xde\xad\xbe\xef", [0x80000000])
+            desc_pubkeys.append(PubkeyProvider(fixed_origin, fixed_extkey.to_string(), "/0/0").to_string())
+            if self.emulator.include_xpubs:
+                xpubs[fixed_extkey.serialize()] = fixed_origin
 
-        return sh_desc, sh_ms_info["address"], sh_wsh_desc, sh_wsh_ms_info["address"], wsh_desc, wsh_ms_info["address"]
+        desc = AddChecksum(f"{desc_prefix}sortedmulti(2,{desc_pubkeys[0]},{desc_pubkeys[1]},{desc_pubkeys[2]}){desc_suffix}")
 
-    def _test_signtx(self, input_type, multisig, external, op_return: bool):
+        return desc, self.rpc.deriveaddresses(desc)[0], xpubs
+
+    def _test_signtx(self, input_types, multisig_types, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -373,56 +469,90 @@ class TestSignTx(DeviceTestCase):
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
         wpkh_addr = self.wrpc.getnewaddress('', 'bech32')
         pkh_addr = self.wrpc.getnewaddress('', 'legacy')
+        tr_addr = None
+        if "tap" in input_types:
+            tr_addr = self.wrpc.getnewaddress("", "bech32m")
 
-        sh_multi_desc, sh_multi_addr, sh_wsh_multi_desc, sh_wsh_multi_addr, wsh_multi_desc, wsh_multi_addr = self._make_multisigs()
-
-        sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
-        sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
-        wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
-        multi_result = self.wrpc.importdescriptors([sh_multi_import, sh_wsh_multi_import, wsh_multi_import])
-        self.assertTrue(multi_result[0]['success'])
-        self.assertTrue(multi_result[1]['success'])
-        self.assertTrue(multi_result[2]['success'])
-
-        in_amt = 3
-        out_amt = in_amt // 3 * 0.9
+        in_amt = 1
         number_inputs = 0
         # Single-sig
-        if input_type == 'segwit' or input_type == 'all':
+        if "segwit" in input_types:
             self.wpk_rpc.sendtoaddress(sh_wpkh_addr, in_amt)
             self.wpk_rpc.sendtoaddress(wpkh_addr, in_amt)
             number_inputs += 2
-        if input_type == 'legacy' or input_type == 'all':
+        if "legacy" in input_types:
             self.wpk_rpc.sendtoaddress(pkh_addr, in_amt)
             number_inputs += 1
+        if "tap" in input_types:
+            assert tr_addr is not None
+            self.wpk_rpc.sendtoaddress(tr_addr, in_amt)
+            number_inputs += 1
         # Now do segwit/legacy multisig
-        if multisig:
-            if input_type == 'legacy' or input_type == 'all':
-                self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
-                number_inputs += 1
-            if input_type == 'segwit' or input_type == 'all':
-                self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
-                self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
-                number_inputs += 2
+        xpubs: Dict[bytes, KeyOriginInfo] = {}
+        if "legacy" in multisig_types:
+            sh_multi_desc, sh_multi_addr, sh_multi_xpubs = self._make_multisig("legacy")
+
+            xpubs.update(sh_multi_xpubs)
+
+            sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
+            multi_result = self.wrpc.importdescriptors([sh_multi_import])
+            self.assertTrue(multi_result[0]['success'])
+
+            self.wpk_rpc.sendtoaddress(sh_multi_addr, in_amt)
+            number_inputs += 1
+        if "segwit" in multisig_types:
+            sh_wsh_multi_desc, sh_wsh_multi_addr, sh_wsh_xpubs = self._make_multisig("p2sh-segwit")
+            wsh_multi_desc, wsh_multi_addr, wsh_xpubs = self._make_multisig("bech32")
+
+            xpubs.update(sh_wsh_xpubs)
+            xpubs.update(wsh_xpubs)
+
+            sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
+            wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
+
+            multi_result = self.wrpc.importdescriptors([sh_wsh_multi_import, wsh_multi_import])
+            self.assertTrue(multi_result[0]['success'])
+            self.assertTrue(multi_result[1]['success'])
+
+            self.wpk_rpc.sendtoaddress(wsh_multi_addr, in_amt)
+            self.wpk_rpc.sendtoaddress(sh_wsh_multi_addr, in_amt)
+            number_inputs += 2
 
         self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
 
-        # Spend different amounts, requiring 1 to 3 inputs
-        for i in range(number_inputs):
+        # Spend different amounts, with increasing number of inputs until the wallet is swept
+        utxos = self.wrpc.listunspent()
+        for i in range(1, number_inputs + 1):
             # Create a psbt spending the above
-            change_addr = self.wrpc.getrawchangeaddress()
-            if i == number_inputs - 1:
-                self.assertEqual((i + 1) * in_amt, self.wrpc.getbalance("*", 0, True))
-                change_addr = self.wpk_rpc.getrawchangeaddress()
-            out_val = (i + 1) * out_amt
+            change_addr = self.wpk_rpc.getrawchangeaddress()
+
+            out_val = i / 4
             outputs = [
                 {self.wpk_rpc.getnewaddress('', 'legacy'): out_val},
                 {self.wpk_rpc.getnewaddress('', 'p2sh-segwit'): out_val},
                 {self.wpk_rpc.getnewaddress('', 'bech32'): out_val}
             ]
+            if self.emulator.supports_taproot:
+                outputs.append({self.wpk_rpc.getnewaddress("", "bech32m"): out_val})
             if op_return:
                 outputs.append({"data": "000102030405060708090a0b0c0d0e0f10111213141516171819101a1b1c1d1e1f"})
-            psbt = self.wrpc.walletcreatefundedpsbt([], outputs, 0, {'includeWatching': True, "changePosition": 3, "changeAddress": change_addr}, True)
+            psbt = self.wrpc.walletcreatefundedpsbt(
+                utxos[:i],
+                outputs,
+                0,
+                {
+                    "includeWatching": True,
+                    "changeAddress": change_addr,
+                    "subtractFeeFromOutputs": [0, 1, 2],
+                },
+                True
+            )["psbt"]
+
+            # We need to modify the psbt to include our xpubs as Core does not include xpubs
+            psbt_obj = PSBT()
+            psbt_obj.deserialize(psbt)
+            psbt_obj.xpub = xpubs
+            psbt = psbt_obj.serialize()
 
             if external:
                 # Sign with unknown inputs in two steps
@@ -435,39 +565,34 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
-        multisig = self.full_type in SUPPORTS_MULTISIG
-        external = self.full_type in SUPPORTS_EXTERNAL
-        op_return = self.full_type in SUPPORTS_OP_RETURN
-        with self.subTest(addrtype="legacy", multisig=multisig, external=external):
-            self._test_signtx("legacy", multisig, external, op_return)
-        with self.subTest(addrtype="segwit", multisig=multisig, external=external):
-            self._test_signtx("segwit", multisig, external, op_return)
-        if self.full_type in SUPPORTS_MIXED:
-            with self.subTest(addrtype="all", multisig=multisig, external=external):
-                self._test_signtx("all", multisig, external, op_return)
+
+        for addrtypes, multisig_types, external, op_return in self.signtx_cases:
+            with self.subTest(addrtypes=addrtypes, multisig_types=multisig_types, external=external, op_return=op_return):
+                self._test_signtx(addrtypes, multisig_types, external, op_return)
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
-        # make a huge transaction that is unrelated to the hardware wallet
+        # make a huge transaction
+        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "legacy", "0", "100"])
+        import_result = self.wrpc.importdescriptors(keypool_desc)
+        self.assertTrue(import_result[0]['success'])
         outputs = []
         num_inputs = 60
         for i in range(0, num_inputs):
-            outputs.append({self.wpk_rpc.getnewaddress('', 'legacy'): 0.001})
+            outputs.append({self.wrpc.getnewaddress('', 'legacy'): 0.001})
+        outputs.append({self.wrpc.getnewaddress("", "legacy"): 10})
         psbt = self.wpk_rpc.walletcreatefundedpsbt([], outputs, 0, {}, True)['psbt']
         psbt = self.wpk_rpc.walletprocesspsbt(psbt)['psbt']
         tx = self.wpk_rpc.finalizepsbt(psbt)['hex']
-        txid = self.wpk_rpc.sendrawtransaction(tx)
-        inputs = []
-        for i in range(0, num_inputs):
-            inputs.append({'txid': txid, 'vout': i})
-        psbt = self.wpk_rpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}], 0, {'subtractFeeFromOutputs': [0]}, True)['psbt']
+        self.wpk_rpc.sendrawtransaction(tx)
+        self.wpk_rpc.generatetoaddress(10, self.wpk_rpc.getnewaddress())
+        inputs = self.wrpc.listunspent()
+        psbt = self.wrpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}])['psbt']
         # For cli, this should throw an exception
         try:
             result = self.do_command(self.dev_args + ['signtx', psbt])
             if self.interface == 'cli':
                 self.fail('Big tx did not cause CLI to error')
-            if self.type == 'coldcard':
-                self.assertEqual(result['code'], -7)
             else:
                 self.assertNotIn('code', result)
                 self.assertNotIn('error', result)
@@ -502,37 +627,37 @@ class TestDisplayAddress(DeviceTestCase):
         legacy_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
 
         # Native SegWit address using xpub:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + account_xpub + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Native SegWit address using hex encoded pubkey:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + xpub_to_pub_hex(account_xpub) + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # P2SH wrapped SegWit address using xpub:
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.fingerprint + '/49h/1h/0h]' + p2sh_segwit_account_xpub + '/0/0))'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'sh(wpkh([' + self.emulator.fingerprint + '/49h/1h/0h]' + p2sh_segwit_account_xpub + '/0/0))'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Legacy address
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.emulator.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
         self.assertNotIn('error', result)
         self.assertNotIn('code', result)
         self.assertIn('address', result)
 
         # Should check xpub
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
 
         # Should check hex pub
-        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
+        result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])
         self.assertIn('error', result)
         self.assertIn('code', result)
         self.assertEqual(result['code'], -7)
@@ -549,7 +674,7 @@ class TestDisplayAddress(DeviceTestCase):
             path = "/48h/1h/{}h/0h/0".format(i)
             if not use_xpub:
                 path += "/0"
-            origin = '{}{}'.format(self.fingerprint, path)
+            origin = '{}{}'.format(self.emulator.fingerprint, path)
             xpub = self.do_command(self.dev_args + ["--expert", "getxpub", "m{}".format(path)])
             desc_pubkeys.append("[{}]{}{}".format(origin, xpub["xpub"] if use_xpub else xpub["pubkey"], "/0" if use_xpub else ""))
 
@@ -570,17 +695,17 @@ class TestDisplayAddress(DeviceTestCase):
         return addr, desc
 
     def test_display_address_multisig(self):
-        if self.full_type not in SUPPORTS_MS_DISPLAY and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-            raise unittest.SkipTest("{} does not support multisig display".format(self.full_type))
+        if not self.emulator.supports_ms_display and not self.emulator.supports_xpub_ms_display:
+            raise unittest.SkipTest("{} does not support multisig display".format(self.emulator.type))
 
         for addrtype in ["pkh", "sh_wpkh", "wpkh"]:
             for sort in [True, False]:
                 for derive in [True, False]:
                     with self.subTest(addrtype=addrtype):
-                        if not sort and self.full_type not in SUPPORTS_UNSORTED_MS:
-                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.full_type))
-                        if derive and self.full_type not in SUPPORTS_XPUB_MS_DISPLAY:
-                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.full_type))
+                        if not sort and not self.emulator.supports_unsorted_ms:
+                            raise unittest.SkipTest("{} does not support unsorted multisigs".format(self.emulator.type))
+                        if derive and not self.emulator.supports_xpub_ms_display:
+                            raise unittest.SkipTest("{} does not support multisig display with xpubs".format(self.emulator.type))
 
                         addr, desc = self._make_single_multisig(addrtype, sort, derive)
 

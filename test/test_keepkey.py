@@ -16,7 +16,17 @@ from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_devic
 from hwilib.devices.trezorlib import device, messages
 from hwilib.devices.trezorlib.mapping import DEFAULT_MAPPING
 from hwilib.devices.trezorlib.models import TrezorModel
-from test_device import DeviceEmulator, DeviceTestCase, start_bitcoind, TestDeviceConnect, TestDisplayAddress, TestGetKeypool, TestGetDescriptors, TestSignMessage, TestSignTx
+from test_device import (
+    Bitcoind,
+    DeviceEmulator,
+    DeviceTestCase,
+    TestDeviceConnect,
+    TestDisplayAddress,
+    TestGetKeypool,
+    TestGetDescriptors,
+    TestSignMessage,
+    TestSignTx,
+)
 
 from hwilib._cli import process_commands
 from hwilib.devices.keepkey import (
@@ -42,8 +52,21 @@ class KeepkeyEmulator(DeviceEmulator):
             os.unlink('keepkey-emulator.stdout')
         except FileNotFoundError:
             pass
+        self.type = 'keepkey'
+        self.path = 'udp:127.0.0.1:11044'
+        self.fingerprint = '95d8f670'
+        self.master_xpub = "tpubDCknDegFqAdP4V2AhHhs635DPe8N1aTjfKE9m2UFbdej8zmeNbtqDzK59SxnsYSRSx5uS3AujbwgANUiAk4oHmDNUKoGGkWWUY6c48WgjEx"
+        self.password = ""
+        self.supports_ms_display = True
+        self.supports_xpub_ms_display = False
+        self.supports_unsorted_ms = False
+        self.supports_taproot = False
+        self.strict_bip48 = False
+        self.include_xpubs = False
+        self.supports_device_multiple_multisig = True
 
     def start(self):
+        super().start()
         self.keepkey_log = open('keepkey-emulator.stdout', 'a')
         # Start the Keepkey emulator
         self.emulator_proc = subprocess.Popen(['./' + os.path.basename(self.emulator_path)], cwd=os.path.dirname(self.emulator_path), stdout=self.keepkey_log)
@@ -81,6 +104,7 @@ class KeepkeyEmulator(DeviceEmulator):
         return client
 
     def stop(self):
+        super().stop()
         self.emulator_proc.terminate()
         self.emulator_proc.wait()
 
@@ -361,27 +385,27 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         else:
             self.fail("Did not enumerate device")
 
-def keepkey_test_suite(emulator, rpc, userpass, interface):
+def keepkey_test_suite(emulator, bitcoind, interface):
     # Redirect stderr to /dev/null as it's super spammy
     sys.stderr = open(os.devnull, 'w')
 
-    # Device info for tests
-    type = 'keepkey'
-    full_type = 'keepkey'
-    path = 'udp:127.0.0.1:11044'
-    fingerprint = '95d8f670'
-    master_xpub = 'xpub6D1weXBcFAo8CqBbpP4TbH5sxQH8ZkqC5pDEvJ95rNNBZC9zrKmZP2fXMuve7ZRBe18pWQQsGg68jkq24mZchHwYENd8cCiSb71u3KD4AFH'
     dev_emulator = KeepkeyEmulator(emulator)
+
+    signtx_cases = [
+        (["legacy"], ["legacy"], True, True),
+        (["segwit"], ["segwit"], True, True),
+        (["legacy", "segwit"], ["legacy", "segwit"], True, True),
+    ]
 
     # Generic Device tests
     suite = unittest.TestSuite()
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, rpc, userpass, 'keepkey_simulator', full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignTx, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, rpc, userpass, type, full_type, path, fingerprint, master_xpub, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="keepkey"))
+    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="keepkey_simulator"))
+    suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyGetxpub, emulator=dev_emulator, interface=interface))
     suite.addTest(KeepkeyTestCase.parameterize(TestKeepkeyManCommands, emulator=dev_emulator, interface=interface))
 
@@ -397,6 +421,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Start bitcoind
-    rpc, userpass = start_bitcoind(args.bitcoind)
+    bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not keepkey_test_suite(args.emulator, rpc, userpass, args.interface))
+    sys.exit(not keepkey_test_suite(args.emulator, bitcoind, args.interface))

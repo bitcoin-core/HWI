@@ -22,6 +22,10 @@ while [[ $# -gt 0 ]]; do
         build_ledger=1
         shift
         ;;
+        --ledger-legacy)
+        build_ledger=1
+        shift
+        ;;
         --keepkey)
         build_keepkey=1
         shift
@@ -85,7 +89,8 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # But there should be some caching that makes this faster
         poetry install
         cd legacy
-        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
+        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+        poetry run pip install -U protobuf
         poetry run script/setup
         poetry run script/cibuild
         # Delete any emulator.img file
@@ -94,9 +99,10 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     if [[ -n ${build_trezor_t} ]]; then
-        rustup toolchain uninstall stable
-        rustup toolchain install stable
         rustup update
+        rustup toolchain uninstall nightly
+        rustup toolchain install nightly
+        rustup default nightly
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
         poetry install
@@ -137,11 +143,6 @@ if [[ -n ${build_coldcard} ]]; then
     # Apply patch to make simulator work in linux environments
     git am ../../data/coldcard-multisig.patch
 
-    # Apply patch to libngu to make it compile
-    pushd external/libngu
-    git am ../../../../data/coldcard-libngu.patch
-    popd
-
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
     pip install -r requirements.txt
@@ -181,7 +182,7 @@ if [[ -n ${build_bitbox01} ]]; then
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build && cd build
-    cmake .. -DBUILD_TYPE=simulator -DCMAKE_C_FLAGS="-Wno-format-truncation"
+    cmake .. -DBUILD_TYPE=simulator -DCMAKE_C_FLAGS="-Wno-format-truncation -Wno-array-parameter"
     make
     cd ../..
 fi
@@ -225,7 +226,7 @@ if [[ -n ${build_keepkey} ]]; then
     make
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
-    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/bin/protoc
+    cmake -C cmake/caches/emulator.cmake . -DNANOPB_DIR=nanopb/ -DPROTOC_BINARY=/usr/local/bin/protoc
     make
     # Delete any emulator.img file
     find . -name "emulator.img" -exec rm {} \;
@@ -274,7 +275,7 @@ if [[ -n ${build_jade} ]]; then
         cd jade
     else
         cd jade
-        git fetch
+        git fetch --tags --recurse-submodules
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
         UPSTREAM=${1:-'@{u}'}
@@ -283,7 +284,7 @@ if [[ -n ${build_jade} ]]; then
         BASE=$(git merge-base @ "$UPSTREAM")
 
         if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
+            echo "Jade master up-to-date"
         elif [ $LOCAL = $BASE ]; then
             git pull
         fi
@@ -297,47 +298,113 @@ if [[ -n ${build_jade} ]]; then
     ESP_QEMU_COMMIT=$(grep "ARG ESP_QEMU_COMMIT=" Dockerfile | cut -d\= -f2)
     cd ..
 
-    # Build the qemu emulator
+    # Build the qemu emulator if required
+
+    # If the directory exists, see if it is at the expected commit
+    # If not, remove the entire directory (it will be re-cloned below)
+    if [ -d "qemu" ]; then
+        cd qemu
+        LOCAL=$(git rev-parse @)
+        if [ $LOCAL = $ESP_QEMU_COMMIT ]; then
+            echo "esp-qemu up-to-date"
+            cd ..
+        else
+            cd ..
+            rm -fr qemu
+        fi
+    fi
+
+    # Clone the upstream if the directory does not exist
+    # Then build the emulator
     if [ ! -d "qemu" ]; then
         git clone --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --recursive https://github.com/espressif/qemu.git ./qemu
         cd qemu
-        ./configure --target-list=xtensa-softmmu \
-            --enable-gcrypt \
-            --enable-debug --enable-sanitizers \
-            --disable-strip --disable-user \
-            --disable-capstone --disable-vnc \
-            --disable-sdl --disable-gtk
-    else
-        cd qemu
-        git fetch
-    fi
-    git checkout ${ESP_QEMU_COMMIT}
-    git submodule update --recursive --init
-    ninja -C build
-    cd ..
 
-    # Build the esp-idf toolchain
+        git checkout ${ESP_QEMU_COMMIT}
+        git submodule update --recursive --init
+        ./configure \
+            --target-list=xtensa-softmmu \
+            --enable-gcrypt \
+            --disable-user \
+            --disable-opengl \
+            --disable-curses \
+            --disable-capstone \
+            --disable-vnc \
+            --disable-parallels \
+            --disable-qed \
+            --disable-vvfat \
+            --disable-vdi \
+            --disable-qcow1 \
+            --disable-dmg \
+            --disable-cloop \
+            --disable-bochs \
+            --disable-replication \
+            --disable-live-block-migration \
+            --disable-keyring \
+            --disable-containers \
+            --disable-docs \
+            --disable-libssh \
+            --disable-xen \
+            --disable-tools \
+            --disable-zlib-test \
+            --disable-sdl \
+            --disable-gtk \
+            --disable-vhost-scsi \
+            --disable-qom-cast-debug \
+            --disable-tpm \
+            --extra-cflags=-Wno-array-parameter
+        ninja -C build
+        cd ..
+    fi
+
+    # Build the esp-idf toolchain if required
+
+    # We will install the esp-idf tools in a given location (otherwise defaults to user home dir)
+    export IDF_TOOLS_PATH="$(pwd)/esp-idf-tools"
+
+    # If the directory exists, see if it is at the expected commit
+    # If not, remove the entire directory (it will be re-cloned below)
+    if [ -d "esp-idf" ]; then
+        cd esp-idf
+        LOCAL=$(git rev-parse @)
+        if [ $LOCAL = $ESP_IDF_COMMIT ]; then
+            echo "esp-idf up-to-date"
+            cd ..
+        else
+            cd ..
+            rm -fr esp-idf
+        fi
+    fi
+
+    # Clone the upstream if the directory does not exist
+    # Then build and install the tools
     if [ ! -d "esp-idf" ]; then
         git clone --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git ./esp-idf
         cd esp-idf
-    else
-        cd esp-idf
-        git fetch
-    fi
-    git checkout ${ESP_IDF_COMMIT}
-    git submodule update --recursive --init
 
-    # Install the isp-idf tools in a given location (otherwise defauts to user home dir)
-    IDF_TOOLS_PATH=$(pwd)/tools
-    ./install.sh
-    . ./export.sh
+        git checkout ${ESP_IDF_COMMIT}
+        git submodule update --recursive --init
+        cd ..
+    fi
+
+    # Install the tools every run regardless
+    # (Otherwise a cached CI run which skips the above esp-idf clone does not
+    # always seem to pick up the locally installed python virtualenv, and instead uses
+    # the system python/no-virtualenv which fails ...)
+    # Only install the tools we need (ie. esp32)
+    rm -fr "${IDF_TOOLS_PATH}"
+    cd esp-idf
+    ./install.sh esp32
     cd ..
+
+    # Export the tools
+    . ./esp-idf/export.sh
 
     # Build Blockstream Jade firmware configured for the emulator
     cd jade
     rm -fr sdkconfig
     cp configs/sdkconfig_qemu.defaults sdkconfig.defaults
-    idf.py all
+    idf.py fullclean all
 
     # Make the qemu flash image
     esptool.py --chip esp32 merge_bin --fill-flash-size 4MB -o main/qemu/flash_image.bin \
@@ -368,6 +435,7 @@ if [[ -n ${build_bitcoind} ]]; then
         bitcoind_setup_needed=true
     else
         cd bitcoin
+        git reset --hard origin/master
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -388,6 +456,8 @@ if [[ -n ${build_bitcoind} ]]; then
     pushd depends
     make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1
     popd
+
+    # Do the build
     ./autogen.sh
     CONFIG_SITE=$PWD/depends/x86_64-pc-linux-gnu/share/config.site ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
     make src/bitcoind

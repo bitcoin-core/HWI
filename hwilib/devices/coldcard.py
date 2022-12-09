@@ -67,6 +67,7 @@ from binascii import b2a_hex
 from typing import (
     Any,
     Callable,
+    Optional,
 )
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
@@ -89,8 +90,8 @@ def coldcard_exception(f: Callable[..., Any]) -> Callable[..., Any]:
 # This class extends the HardwareWalletClient for ColdCard specific things
 class ColdcardClient(HardwareWalletClient):
 
-    def __init__(self, path: str, password: str = "", expert: bool = False) -> None:
-        super(ColdcardClient, self).__init__(path, password, expert)
+    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+        super(ColdcardClient, self).__init__(path, password, expert, chain)
         # Simulator hard coded pipe socket
         if path == CC_SIMULATOR_SOCK:
             self.device = ColdcardDevice(sn=path)
@@ -142,6 +143,7 @@ class ColdcardClient(HardwareWalletClient):
 
         for _ in range(passes):
             # Get psbt in hex and then make binary
+            tx.convert_to_v0()
             fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
             # learn size (portable way)
@@ -397,7 +399,7 @@ class ColdcardClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: str = "") -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
     devices.append({'path': CC_SIMULATOR_SOCK.encode()})

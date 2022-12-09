@@ -22,6 +22,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Tuple,
     Union,
 )
@@ -57,9 +58,6 @@ from .._script import (
     is_witness,
 )
 from ..psbt import PSBT
-from ..tx import (
-    CTransaction,
-)
 from .._serialize import (
     ser_sig_der,
     ser_sig_compact,
@@ -348,7 +346,7 @@ def format_backup_filename(name: str) -> str:
 # This class extends the HardwareWalletClient for Digital Bitbox specific things
 class DigitalbitboxClient(HardwareWalletClient):
 
-    def __init__(self, path: str, password: str, expert: bool = False) -> None:
+    def __init__(self, path: str, password: Optional[str], expert: bool = False, chain: Chain = Chain.MAIN) -> None:
         """
         The `DigitalbitboxClient` is a `HardwareWalletClient` for interacting with BitBox01 devices (previously known as the Digital BitBox).
 
@@ -356,9 +354,9 @@ class DigitalbitboxClient(HardwareWalletClient):
         :param password: The password required to communicate with the device. Must be provided.
         :param expert: Whether to be in expert mode and return additional information.
         """
-        super(DigitalbitboxClient, self).__init__(path, password, expert)
-        if not password:
+        if password is None:
             raise NoPasswordError('Password must be supplied for digital BitBox')
+        super(DigitalbitboxClient, self).__init__(path, password, expert, chain)
         if path.startswith('udp:'):
             split_path = path.split(':')
             ip = split_path[1]
@@ -367,7 +365,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         else:
             self.device = hid.device()
             self.device.open_path(path.encode())
-        self.password = password
+        self.password: str = password
 
     @digitalbitbox_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
@@ -391,8 +389,8 @@ class DigitalbitboxClient(HardwareWalletClient):
     @digitalbitbox_exception
     def sign_tx(self, tx: PSBT) -> PSBT:
 
-        # Create a transaction with all scriptsigs blanekd out
-        blank_tx = CTransaction(tx.tx)
+        # Create a transaction with all scriptsigs blanked out
+        blank_tx = tx.get_unsigned_tx()
 
         # Get the master key fingerprint
         master_fp = self.get_master_fingerprint()
@@ -477,7 +475,7 @@ class DigitalbitboxClient(HardwareWalletClient):
                 preimage += struct.pack("<q", psbt_in.witness_utxo.nValue)
                 preimage += struct.pack("<I", txin.nSequence)
                 preimage += hashOutputs
-                preimage += struct.pack("<I", tx.tx.nLockTime)
+                preimage += struct.pack("<I", blank_tx.nLockTime)
                 preimage += b"\x01\x00\x00\x00"
 
                 # hash it
@@ -497,42 +495,45 @@ class DigitalbitboxClient(HardwareWalletClient):
         if len(sighash_tuples) == 0:
             return tx
 
-        # Sign the sighashes
-        to_send = '{"sign":{"data":['
-        for tup in sighash_tuples:
-            to_send += '{"hash":"'
-            to_send += tup[0]
-            to_send += '","keypath":"'
-            to_send += tup[1]
-            to_send += '"},'
-        if to_send[-1] == ',':
-            to_send = to_send[:-1]
-        to_send += ']}}'
-        logging.debug(to_send)
+        for i in range(0, len(sighash_tuples), 15):
+            tups = sighash_tuples[i:i + 15]
 
-        reply = send_encrypt(to_send, self.password, self.device)
-        logging.debug(reply)
-        if 'error' in reply:
-            raise DBBError(reply)
-        print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
-        reply = send_encrypt(to_send, self.password, self.device)
-        logging.debug(reply)
-        if 'error' in reply:
-            raise DBBError(reply)
+            # Sign the sighashes
+            to_send = '{"sign":{"data":['
+            for tup in tups:
+                to_send += '{"hash":"'
+                to_send += tup[0]
+                to_send += '","keypath":"'
+                to_send += tup[1]
+                to_send += '"},'
+            if to_send[-1] == ',':
+                to_send = to_send[:-1]
+            to_send += ']}}'
+            logging.debug(to_send)
 
-        # Extract sigs
-        sigs = []
-        for item in reply['sign']:
-            sigs.append(binascii.unhexlify(item['sig']))
+            reply = send_encrypt(to_send, self.password, self.device)
+            logging.debug(reply)
+            if 'error' in reply:
+                raise DBBError(reply)
+            print("Touch the device for 3 seconds to sign. Touch briefly to cancel", file=sys.stderr)
+            reply = send_encrypt(to_send, self.password, self.device)
+            logging.debug(reply)
+            if 'error' in reply:
+                raise DBBError(reply)
 
-        # Make sigs der
-        der_sigs = []
-        for sig in sigs:
-            der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+            # Extract sigs
+            sigs = []
+            for item in reply['sign']:
+                sigs.append(binascii.unhexlify(item['sig']))
 
-        # add sigs to tx
-        for tup, sig in zip(sighash_tuples, der_sigs):
-            tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
+            # Make sigs der
+            der_sigs = []
+            for sig in sigs:
+                der_sigs.append(ser_sig_der(sig[0:32], sig[32:64]))
+
+            # add sigs to tx
+            for tup, sig in zip(tups, der_sigs):
+                tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
         return tx
 
@@ -678,7 +679,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: str = "") -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)
     # Try connecting to simulator
@@ -707,7 +708,7 @@ def enumerate(password: str = "") -> List[Dict[str, Any]]:
                 client = DigitalbitboxClient(path, password)
 
                 # Check initialized
-                reply = send_encrypt('{"device" : "info"}', password, client.device)
+                reply = send_encrypt('{"device" : "info"}', "" if password is None else password, client.device)
                 if 'error' in reply and (reply['error']['code'] == 101 or reply['error']['code'] == '101'):
                     d_data['error'] = 'Not initialized'
                     d_data['code'] = DEVICE_NOT_INITIALIZED

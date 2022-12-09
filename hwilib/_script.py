@@ -101,6 +101,20 @@ def is_p2wsh(script: bytes) -> bool:
         return False
     return len(wit_prog) == 32
 
+def is_p2tr(script: bytes) -> bool:
+    """
+    Determine whether a script is a P2TR output script.
+
+    :param script: The script
+    :returns: Whether the script is a P2TR output script
+    """
+    is_wit, wit_ver, wit_prog = is_witness(script)
+    if not is_wit:
+        return False
+    elif wit_ver != 1:
+        return False
+    return len(wit_prog) == 32
+
 
 # Only handles up to 15 of 15. Returns None if this script is not a
 # multisig script. Returns (m, pubkeys) otherwise.

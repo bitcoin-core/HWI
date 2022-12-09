@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:3.7
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -26,6 +26,7 @@ RUN apt-get install -y \
     libevent-dev \
     libgcrypt20-dev \
     libnewlib-arm-none-eabi \
+    libpcsclite-dev \
     libsdl2-dev \
     libsdl2-image-dev \
     libssl-dev \
@@ -34,13 +35,16 @@ RUN apt-get install -y \
     libusb-1.0-0-dev \
     ninja-build \
     pkg-config \
-    protobuf-compiler \
-    qemu-user-static
+    qemu-user-static \
+    swig
 
 RUN pip install poetry flake8
 RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
 RUN chmod +x rustup-init && ./rustup-init -y
 ENV PATH="/root/.cargo/bin:$PATH"
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.9/protoc-21.9-linux-x86_64.zip
+RUN unzip protoc-21.9-linux-x86_64.zip -d /usr/local
+RUN protoc --version
 
 ####################
 # Local build/test steps
