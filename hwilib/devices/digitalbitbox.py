@@ -679,7 +679,7 @@ class DigitalbitboxClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: Optional[str] = None) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)
     # Try connecting to simulator
