@@ -3,7 +3,7 @@ Release Process
 
 1. Bump version number in ``pyproject.toml`` and ``hwilib/__init__.py``, generate the setup.py file, and git tag release
 2. Build distribution archives for PyPi with ``contrib/build_dist.sh``
-3. For MacOS and Linux, use ``contrib/build_bin.sh``. This needs to be run on a MacOS machine for the MacOS binary and on a Linux machine for the linux one.
+3. For MacOS and Linux, use ``contrib/build_bin.sh``. This needs to be run on a macOS machine for the macOS binary and on a Linux machine for the linux one.
 4. For Windows, use ``contrib/build_wine.sh`` to build the Windows binary using wine
 5. Make ``SHA256SUMS.txt`` using ``contrib/make_shasums.sh``.
 6. Make ``SHA256SUMS.txt.asc`` using ``gpg --clearsign SHA256SUMS.txt``
