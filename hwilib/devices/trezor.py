@@ -26,6 +26,7 @@ from ..errors import (
     DeviceConnectionError,
     DEVICE_NOT_INITIALIZED,
     DeviceNotReadyError,
+    NoPasswordError,
     UnavailableActionError,
     common_err_msgs,
     handle_errors,

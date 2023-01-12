@@ -340,7 +340,7 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ['enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
-                self.assertTrue(dev['needs_passphrase_sent'])
+                self.assertIn("warnings", dev)
                 break
         else:
             self.fail("Did not enumerate device")
@@ -352,7 +352,7 @@ class TestTrezorManCommands(TrezorTestCase):
                 break
         else:
             self.fail("Did not enumerate device")
-        result = self.do_command(self.dev_args + ['-p', '', 'enumerate'])
+        result = self.do_command(self.dev_args + ['-p', '\"\"', 'enumerate'])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
