@@ -29,7 +29,7 @@ install_requires = \
  'mnemonic>=0,<1',
  'pyaes>=1.6,<2.0',
  'pyserial>=3.5,<4.0',
- 'typing-extensions>=3.7,<4.0']
+ 'typing-extensions>=3.7']
 
 extras_require = \
 {':python_version >= "3.6" and python_version < "3.7"': ['dataclasses>=0.8,<0.9'],
