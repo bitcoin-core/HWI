@@ -166,7 +166,7 @@ class PubkeyProvider(object):
             if self.deriv_path is not None:
                 path_str = self.deriv_path[1:]
                 if path_str[-1] == "*":
-                    path_str = path_str[-1] + str(pos)
+                    path_str = path_str[:-1] + str(pos)
                 path = parse_path(path_str)
                 child_key = self.extkey.derive_pub_path(path)
                 return child_key.pubkey
