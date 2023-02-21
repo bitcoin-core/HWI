@@ -448,7 +448,7 @@ class TrezorClient(HardwareWalletClient):
                     # Add to txinputtype
                     txinputtype.multisig = multisig
                     if not is_wit:
-                        if utxo.is_p2sh:
+                        if utxo.is_p2sh():
                             txinputtype.script_type = messages.InputScriptType.SPENDMULTISIG
                         else:
                             # Cannot sign bare multisig, ignore it
