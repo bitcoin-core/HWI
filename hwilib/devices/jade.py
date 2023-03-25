@@ -58,7 +58,7 @@ import os
 # The test emulator port
 SIMULATOR_PATH = 'tcp:127.0.0.1:30121'
 
-JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4)]
+JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4), (0x0403, 0x6001)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
 
 py_enumerate = enumerate # To use the enumerate built-in, since the name is overridden below
