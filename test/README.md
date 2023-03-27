@@ -11,6 +11,9 @@ It implements all of the [BIP 174 serialization test vectors](https://github.com
 - `test_trezor.py` tests the command line interface and the Trezor implementation.
 It uses the [Trezor One firmware emulator](https://github.com/trezor/trezor-firmware/blob/master/docs/legacy/index.md#local-development-build) and [Trezor Model T firmware emulator](https://github.com/trezor/trezor-firmware/blob/master/docs/core/emulator/index.md).
 It also tests usage with `bitcoind`.
+- `test_onekey.py` tests the command line interface and the Onekey implementation.
+It uses the [Onekey Legacy firmware emulator](https://github.com/OnekeyHQ/firmware/blob/bixin_dev/docs/legacy/index.md#local-development-build) and [OneKey Touch emulator](https://github.com/OnekeyHQ/firmware/blob/touch/docs/core/emulator/index.md).
+It also tests usage with `bitcoind`.
 - `test_keepkey.py` tests the command line interface and the Keepkey implementation.
 It uses the [Keepkey firmware emulator](https://github.com/keepkey/keepkey-firmware/blob/master/docs/Build.md).
 It also tests usage with `bitcoind`.
@@ -21,15 +24,15 @@ It also tests usage with `bitcoind`.
 It uses the [Espressif fork of the Qemu emulator](https://github.com/espressif/qemu.git).
 It also tests usage with `bitcoind`.
 
-`setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
-if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
+`setup_environment.sh` will build the Trezor emulator, the Onekey emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
+if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/onekey-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
 In order to build each simulator/emulator, you will need to use command line arguments.
-These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
+These are `--trezor-1`, `--trezor-t`, `--onekey-1`, `--onekey-t`, `--coldcard`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
 If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
 `run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, Jade emulator, and bitcoind.
 Otherwise the paths to those will need to be specified on the command line.
-`test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, `test_jade.py`, and `test/test_digitalbitbox.py` can be disabled.
+`test_trezor.py`, `test_onekey.py`, `test_coldcard.py`, `test_keepkey.py`, `test_jade.py`, and `test/test_digitalbitbox.py` can be disabled.
 
 If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Jade emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
@@ -71,6 +74,44 @@ $ export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
 $ script/setup
 $ pipenv install
 $ pipenv run script/cibuild
+```
+
+## Onekey emulator
+
+### Dependencies
+
+In order to build the Onekey emulator, the [Nix](https://nixos.org) will need to be installed:
+
+```
+sh <(curl -L https://nixos.org/nix/install)
+```
+
+### Building
+
+Clone the repository:
+
+```
+$ git clone --recursive https://github.com/OneKeyHQ/firmware.git onekey-firmware
+```
+
+For the Onekey Legacy firmware emulator:
+```
+$ git checkout bixin_dev
+$ cd onekey-firmware
+$ nix-shell
+$ poetry install
+$ export EMULATOR=1 DEBUG_LINK=1
+$ poetry run script/setup
+$ poetry run script/cibuild
+```
+For the Onekey Touch emulator:
+```
+$ git checkout touch
+$ cd onekey-firmware
+$ nix-shell
+$ poetry install
+$ cd core
+$ poetry run make build_unix
 ```
 
 ## Coldcard simulator
