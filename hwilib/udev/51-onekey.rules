@@ -1,0 +1,16 @@
+# OneKey: Hold your own key
+# https://onekey.so/
+#
+# Put this file into /etc/udev/rules.d
+#
+# If you are creating a distribution package,
+# put this into /usr/lib/udev/rules.d or /lib/udev/rules.d
+# depending on your distribution
+
+# OneKey
+# onekey boot
+SUBSYSTEM=="usb", ATTR{idVendor}=="1209", ATTR{idProduct}=="4F4A", MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl", SYMLINK+="onekey%n"
+# onekey firmware
+SUBSYSTEM=="usb", ATTR{idVendor}=="1209", ATTR{idProduct}=="4F4B", MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl", SYMLINK+="onekey%n"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1209", ATTR{idProduct}=="53c1", MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl", SYMLINK+="onekey%n"
+KERNEL=="hidraw*", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="4F4B",  MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl"
