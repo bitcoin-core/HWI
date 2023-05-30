@@ -21,7 +21,7 @@ package_data = \
 modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
-['bitbox02>=6.1.0,<7.0.0',
+['bitbox02>=6.2.0,<7.0.0',
  'cbor>=1.0.0,<2.0.0',
  'ecdsa>=0,<1',
  'hidapi>=0,<1',
