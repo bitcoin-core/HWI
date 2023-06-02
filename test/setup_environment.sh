@@ -325,33 +325,14 @@ if [[ -n ${build_jade} ]]; then
         ./configure \
             --target-list=xtensa-softmmu \
             --enable-gcrypt \
+            --disable-sanitizers \
+            --disable-strip \
             --disable-user \
-            --disable-opengl \
-            --disable-curses \
             --disable-capstone \
             --disable-vnc \
-            --disable-parallels \
-            --disable-qed \
-            --disable-vvfat \
-            --disable-vdi \
-            --disable-qcow1 \
-            --disable-dmg \
-            --disable-cloop \
-            --disable-bochs \
-            --disable-replication \
-            --disable-live-block-migration \
-            --disable-keyring \
-            --disable-containers \
-            --disable-docs \
-            --disable-libssh \
-            --disable-xen \
-            --disable-tools \
-            --disable-zlib-test \
             --disable-sdl \
             --disable-gtk \
-            --disable-vhost-scsi \
-            --disable-qom-cast-debug \
-            --disable-tpm \
+            --enable-slirp \
             --extra-cflags=-Wno-array-parameter
         ninja -C build
         cd ..
