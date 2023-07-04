@@ -42,9 +42,7 @@ class ChecksigClient(HardwareWalletClient):
         psbt.deserialize(resp.get_raw_value())
         return psbt
 
-    def sign_message(
-        self, message: Union[str, bytes], bip32_path: str
-    ) -> str:
+    def sign_message(self, message: Union[str, bytes], bip32_path: str) -> str:
         if isinstance(message, str):
             message = message.encode()
         sock = ipc_connect(self.port)
@@ -80,7 +78,9 @@ class ChecksigClient(HardwareWalletClient):
         msg = IpcMessage(XPUB, data)
         resp = ipc_send_and_get_response(sock, msg)
         if resp is None:
-            raise ActionCanceledError("CheckSig device did not return pubkey at bip32_path")
+            raise ActionCanceledError(
+                "CheckSig device did not return pubkey at bip32_path"
+            )
 
         xpub = base64.b64decode(resp.get_raw_value()).decode("utf-8")
 
@@ -90,7 +90,7 @@ class ChecksigClient(HardwareWalletClient):
         return ExtendedKey.deserialize(xpub)
 
 
-def enumerate(password=""):
+def enumerate(password: str = "", expert: bool = False, chain: Chain = Chain.MAIN):
     results = []
 
     # Loop on the range port to check listening devices

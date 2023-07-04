@@ -7,8 +7,12 @@ from hwilib.key import ExtendedKey
 
 from hwilib.psbt import PSBT
 from hwilib.hwwclient import HardwareWalletClient
-from hwilib.errors import (ActionCanceledError, BadArgumentError,
-                           DeviceBusyError, UnavailableActionError)
+from hwilib.errors import (
+    ActionCanceledError,
+    BadArgumentError,
+    DeviceBusyError,
+    UnavailableActionError,
+)
 from hwilib._base58 import xpub_main_2_test
 import hwilib._base58 as b58
 from hwilib.descriptor import Descriptor
@@ -67,9 +71,7 @@ class SpecterClient(HardwareWalletClient):
                 psbt.inputs[i].partial_sigs[k] = signed_psbt.inputs[i].partial_sigs[k]
         return psbt
 
-    def sign_message(
-            self, message: Union[str, bytes], bip32_path: str
-    ) -> str:
+    def sign_message(self, message: Union[str, bytes], bip32_path: str) -> str:
         # convert message string to bytes
         if isinstance(message, str):
             msg = message.encode()
@@ -132,7 +134,7 @@ class SpecterClient(HardwareWalletClient):
         pass
 
 
-def enumerate(password=""):
+def enumerate(password: str = "", expert: bool = False, chain: Chain = Chain.MAIN):
     """
     Returns a list of detected Specter devices
     with their fingerprints and client's paths
@@ -281,16 +283,17 @@ class SpecterSimulator(SpecterBase):
         s.close()
         return res.decode()
 
+
 ###### test for communication ######
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     devices = enumerate()
     if len(devices) == 0:
         print("No devices found")
         sys.exit()
-    inp = 0;
+    inp = 0
     if len(devices) > 1:
         print("Found %d devices." % len(devices))
         for i, dev in enumerate(devices):
@@ -309,7 +312,7 @@ if __name__ == '__main__':
         print(f"Full key: [{mfp}{derivation[1:]}]{xpub}")
     else:
         if "-i" not in sys.argv:
-            cmd = (" ".join(sys.argv[1:]))
+            cmd = " ".join(sys.argv[1:])
             print("Running command:", cmd)
             print(dev.query(cmd))
         else:
