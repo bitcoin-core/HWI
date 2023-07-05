@@ -84,6 +84,21 @@ def decode(s: str) -> bytes:
             break
     return b'\x00' * pad + res
 
+def decode_check(s: str) -> bytes:
+    """
+    Decode a Base58Check encoded string, returning bytes
+
+    :param s: Base58 string to decode
+    :return: Bytes encoded by ``s``
+    """
+    data = decode(s)
+    payload = data[:-4]
+    checksum = data[-4:]
+    calc_checksum = hash256(payload)
+    if checksum != calc_checksum:
+        raise ValueError("Invalid checksum")
+    return payload
+
 def get_xpub_fingerprint(s: str) -> bytes:
     """
     Get the parent fingerprint from an extended public key
