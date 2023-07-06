@@ -61,9 +61,9 @@ from ..common import (
 
 import hid
 
-from bitbox02 import util
-from bitbox02 import bitbox02
-from bitbox02.communication import (
+from .bitbox02_lib import util
+from .bitbox02_lib import bitbox02
+from .bitbox02_lib.communication import (
     devices,
     u2fhid,
     FirmwareVersionOutdatedException,
@@ -73,7 +73,7 @@ from bitbox02.communication import (
     ERR_GENERIC,
 )
 
-from bitbox02.communication.bitbox_api_protocol import (
+from .bitbox02_lib.communication.bitbox_api_protocol import (
     Platform,
     BitBox02Edition,
     BitBoxNoiseConfig,

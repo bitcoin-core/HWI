@@ -52,40 +52,6 @@ files = [
 pytz = ">=2015.7"
 
 [[package]]
-name = "base58"
-version = "2.1.1"
-description = "Base58 and Base58Check implementation."
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "base58-2.1.1-py3-none-any.whl", hash = "sha256:11a36f4d3ce51dfc1043f3218591ac4eb1ceb172919cebe05b52a5bcc8d245c2"},
-    {file = "base58-2.1.1.tar.gz", hash = "sha256:c5d0cb3f5b6e81e8e35da5754388ddcc6d0d14b6c6a132cb93d69ed580a7278c"},
-]
-
-[package.extras]
-tests = ["PyHamcrest (>=2.0.2)", "mypy", "pytest (>=4.6)", "pytest-benchmark", "pytest-cov", "pytest-flake8"]
-
-[[package]]
-name = "bitbox02"
-version = "6.1.1"
-description = "Python library for bitbox02 communication"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "bitbox02-6.1.1-py3-none-any.whl", hash = "sha256:f37f1e571f06aa0a4005441ca1948b53e68e3bef0b642963303b42810e2b1486"},
-    {file = "bitbox02-6.1.1.tar.gz", hash = "sha256:99503409d6c61899f8e11eb11e7a29866b2754cb02c03acf34cdef99755aedd8"},
-]
-
-[package.dependencies]
-base58 = ">=2.0.0"
-ecdsa = ">=0.14"
-hidapi = ">=0.7.99.post21"
-noiseprotocol = ">=0.3"
-protobuf = ">=3.20"
-semver = ">=2.8.1"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "cbor"
 version = "1.0.0"
 description = "RFC 7049 - Concise Binary Object Representation"
@@ -1237,4 +1203,4 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7,<3.12"
-content-hash = "29afec12c1373f5b1db70be64598f785d71936bdf63b486b2a8eaa66afb7fc71"
+content-hash = "c45296e342a731894754db4cf7ca5352d1aa7ab6d3bf20028a15c8ed47c0045c"
