@@ -24,7 +24,6 @@ mnemonic = "~0"
 typing-extensions = "^4.4"
 libusb1 = ">=1.7,<3"
 pyside2 = { version = "^5.14.0", optional = true, python = "<3.10" }
-bitbox02 = ">=6.1.0,<7.0.0"
 cbor = "^1.0.0"
 pyserial = "^3.5"
 dataclasses = {version = "^0.8", python = ">=3.6,<3.7"}
