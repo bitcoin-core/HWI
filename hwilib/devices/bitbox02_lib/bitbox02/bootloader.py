@@ -19,8 +19,8 @@ import io
 import math
 import hashlib
 
-from bitbox02.communication import TransportLayer
-from bitbox02.communication.devices import DeviceInfo
+from ..communication import TransportLayer
+from ..communication.devices import DeviceInfo
 
 BOOTLOADER_CMD = 0x80 + 0x40 + 0x03
 NUM_ROOT_KEYS = 3

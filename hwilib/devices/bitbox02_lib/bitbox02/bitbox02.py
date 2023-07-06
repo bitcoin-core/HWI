@@ -23,7 +23,7 @@ from typing_extensions import TypedDict
 
 import semver
 
-from bitbox02.communication import (
+from ..communication import (
     BitBoxCommonAPI,
     Bitbox02Exception,
     ERR_GENERIC,
@@ -32,24 +32,20 @@ from bitbox02.communication import (
 
 from .secp256k1 import antiklepto_host_commit, antiklepto_verify
 
-try:
-    from bitbox02.communication.generated import hww_pb2 as hww
-    from bitbox02.communication.generated import eth_pb2 as eth
-    from bitbox02.communication.generated import btc_pb2 as btc
-    from bitbox02.communication.generated import cardano_pb2 as cardano
-    from bitbox02.communication.generated import mnemonic_pb2 as mnemonic
-    from bitbox02.communication.generated import bitbox02_system_pb2 as bitbox02_system
-    from bitbox02.communication.generated import backup_commands_pb2 as backup
-    from bitbox02.communication.generated import common_pb2 as common
-    from bitbox02.communication.generated import keystore_pb2 as keystore
-    from bitbox02.communication.generated import antiklepto_pb2 as antiklepto
+from ..communication.generated import hww_pb2 as hww
+from ..communication.generated import eth_pb2 as eth
+from ..communication.generated import btc_pb2 as btc
+from ..communication.generated import cardano_pb2 as cardano
+from ..communication.generated import mnemonic_pb2 as mnemonic
+from ..communication.generated import bitbox02_system_pb2 as bitbox02_system
+from ..communication.generated import backup_commands_pb2 as backup
+from ..communication.generated import common_pb2 as common
+from ..communication.generated import keystore_pb2 as keystore
+from ..communication.generated import antiklepto_pb2 as antiklepto
 
-    # pylint: disable=unused-import
-    # We export it in __init__.py
-    from bitbox02.communication.generated import system_pb2 as system
-except ModuleNotFoundError:
-    print("Run `make py` to generate the protobuf messages")
-    sys.exit()
+# pylint: disable=unused-import
+# We export it in __init__.py
+from ..communication.generated import system_pb2 as system
 
 try:
     # Optional rlp dependency only needed to sign ethereum transactions.
