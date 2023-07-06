@@ -33,12 +33,8 @@ from .devices import parse_device_version, DeviceInfo
 from .communication import TransportLayer
 from .devices import BITBOX02MULTI, BITBOX02BTC
 
-try:
-    from .generated import hww_pb2 as hww
-    from .generated import system_pb2 as system
-except ModuleNotFoundError:
-    print("Run `make py` to generate the protobuf messages")
-    sys.exit()
+from .generated import hww_pb2 as hww
+from .generated import system_pb2 as system
 
 
 HWW_CMD = 0x80 + 0x40 + 0x01

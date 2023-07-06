@@ -16,7 +16,7 @@
 
 import struct
 import random
-from bitbox02.communication import PhysicalLayer, TransportLayer
+from ..communication import PhysicalLayer, TransportLayer
 
 USB_REPORT_SIZE = 64
 

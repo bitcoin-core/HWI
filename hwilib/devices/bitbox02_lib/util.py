@@ -21,7 +21,7 @@ import binascii
 import base64
 import platform
 
-import base58
+from ..._base58 import decode_check
 from noise.backends.default.keypairs import KeyPair25519
 
 from .bitbox02 import common
@@ -34,7 +34,7 @@ def parse_xpub(xpub: str) -> common.XPub:
     The version is stripped, so the xpub can be any format (xpub, ypub, etc.).
     """
 
-    decoded = base58.b58decode_check(xpub)
+    decoded = decode_check(xpub)
     decoded = decoded[4:]
     depth, decoded = decoded[:1], decoded[1:]
     parent_fp, decoded = decoded[:4], decoded[4:]
