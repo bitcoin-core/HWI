@@ -17,7 +17,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.7,<3.12"
-hidapi = "~0"
+hidapi = ">=0.14.0"
 ecdsa = "~0"
 pyaes = "^1.6"
 mnemonic = "~0"
