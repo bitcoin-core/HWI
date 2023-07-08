@@ -1787,7 +1787,7 @@ class JadeInterface:
                         response = message["log"].decode("utf-8")
                         log_methods = {
                             "E": device_logger.error,
-                            "W": device_logger.warn,
+                            "W": device_logger.warning,
                             "I": device_logger.info,
                             "D": device_logger.debug,
                             "V": device_logger.debug,
