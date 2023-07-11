@@ -44,7 +44,11 @@ def ipc_read_message(sock: socket.socket) -> Optional[IpcMessage]:
 
         # read the payload
         int_size = int(size)
-        value = sock.recv(int_size)
+        value = b""
+        while int_size:
+            data = sock.recv(min(int_size, 2**15))
+            int_size -= len(data)
+            value += data
 
         return IpcMessage(cmd, str(value.decode("utf-8")))
 

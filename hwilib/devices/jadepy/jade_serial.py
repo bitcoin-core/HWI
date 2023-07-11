@@ -2,7 +2,7 @@ import serial
 import logging
 
 
-logger = logging.getLogger('jade.serial')
+logger = logging.getLogger(__name__)
 
 
 #
