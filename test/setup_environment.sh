@@ -198,6 +198,9 @@ if [[ -n ${build_keepkey} ]]; then
         keepkey_setup_needed=true
     else
         cd keepkey-firmware
+        cd deps/googletest
+        git reset --hard HEAD~1 # Undo git-am for checking and updating
+        cd ../..
         git reset --hard HEAD~1 # Undo git-am for checking and updating
         git fetch
 
@@ -214,8 +217,11 @@ if [[ -n ${build_keepkey} ]]; then
             keepkey_setup_needed=true
         fi
     fi
-    # Apply patch to make simulator build
+    # Apply patches to make simulator build
     git am ../../data/keepkey-build.patch
+    cd deps/googletest
+    git am ../../../../data/keepkey-googletest.patch
+    cd ../../
 
     # Build the simulator. This is cached, but it is also fast
     if [ "$keepkey_setup_needed" == true ] ; then
