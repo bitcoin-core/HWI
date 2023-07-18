@@ -260,8 +260,8 @@ if [[ -n ${build_ledger} ]]; then
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
-    cmake -Bbuild -H.
-    make -C build/ emu launcher copy-launcher
+    cmake -Bbuild -S .
+    make -C build/
     cd ..
 fi
 
