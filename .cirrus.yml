@@ -263,7 +263,7 @@ dist_builder_task:
 ledger_app_builder_task:
   name: Ledger App Builder
   container:
-    dockerfile: ci/ledger-app-builder.Dockerfile
+    image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
   build_script:
     - git clone https://github.com/LedgerHQ/app-bitcoin-new.git
     - cd app-bitcoin-new
