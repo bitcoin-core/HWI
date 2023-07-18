@@ -89,8 +89,8 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # But there should be some caching that makes this faster
         poetry install
         cd legacy
-        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-        poetry run pip install -U protobuf
+        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
+        poetry run pip install protobuf==3.20.0
         poetry run script/setup
         poetry run script/cibuild
         # Delete any emulator.img file
