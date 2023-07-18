@@ -1,6 +1,6 @@
 # Cache break (modify this line to break cirrus' dockerfile build cache) 1
 
-FROM python:3.7
+FROM python:3.8
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update

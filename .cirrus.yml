@@ -294,11 +294,11 @@ task:
 task:
   matrix:
     - container:
-        dockerfile: ci/cirrus.Dockerfile
+        dockerfile: ci/py37.Dockerfile
       env:
         PYTHON: 3.7
     - container:
-        dockerfile: ci/py38.Dockerfile
+        dockerfile: ci/cirrus.Dockerfile
       env:
         PYTHON: 3.8
     - container:
