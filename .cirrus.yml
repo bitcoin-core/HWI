@@ -311,6 +311,10 @@ task:
         dockerfile: ci/py310.Dockerfile
       env:
         PYTHON: 3.10
+    - container:
+        dockerfile: ci/py311.Dockerfile
+      env:
+        PYTHON: 3.11
   install_script: poetry install
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
