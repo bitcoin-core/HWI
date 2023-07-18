@@ -32,6 +32,7 @@ RUN apt-get install -y \
     libsdl2-dev \
     libsdl2-image-dev \
     libssl-dev \
+    libslirp-dev \
     libtool \
     libudev-dev \
     libusb-1.0-0-dev \
