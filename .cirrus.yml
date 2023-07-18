@@ -1,6 +1,28 @@
 env:
   EMAIL: cirrus@cirrus-ci.org
 
+python_version_matrix_template: &PYTHON_VERSION_MATRIX_TEMPLATE
+  - container:
+      dockerfile: ci/py37.Dockerfile
+    env:
+      PYTHON: 3.7
+  - container:
+      dockerfile: ci/cirrus.Dockerfile
+    env:
+      PYTHON: 3.8
+  - container:
+      dockerfile: ci/py39.Dockerfile
+    env:
+      PYTHON: 3.9
+  - container:
+      dockerfile: ci/py310.Dockerfile
+    env:
+      PYTHON: 3.10
+  - container:
+      dockerfile: ci/py311.Dockerfile
+    env:
+      PYTHON: 3.11
+
 device_matrix_template: &DEVICE_MATRIX_TEMPLATE
   - env:
       DEVICE: --trezor-1
@@ -288,21 +310,21 @@ ledger_app_builder_task:
     path: app-bitcoin-new/bin/app.elf
 
 task:
-  container:
-    dockerfile: ci/cirrus.Dockerfile
+  matrix:
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   fetch_dist_script:
     - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/dist_builder/built_dist.zip"
     - unzip built_dist.zip
   matrix:
-    - name: $DEVICE Wheel
+    - name: Python $PYTHON $DEVICE Wheel
       install_script: pip install dist/*.whl
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
-    - name: $DEVICE Sdist
+    - name: Python $PYTHON $DEVICE Sdist
       install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*")
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
-    - name: $DEVICE Bindist
+    - name: Python $PYTHON $DEVICE Bindist
       install_script: poetry install
       untar_bindist_script: cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
       test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
@@ -311,26 +333,7 @@ task:
 
 task:
   matrix:
-    - container:
-        dockerfile: ci/py37.Dockerfile
-      env:
-        PYTHON: 3.7
-    - container:
-        dockerfile: ci/cirrus.Dockerfile
-      env:
-        PYTHON: 3.8
-    - container:
-        dockerfile: ci/py39.Dockerfile
-      env:
-        PYTHON: 3.9
-    - container:
-        dockerfile: ci/py310.Dockerfile
-      env:
-        PYTHON: 3.10
-    - container:
-        dockerfile: ci/py311.Dockerfile
-      env:
-        PYTHON: 3.11
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
   install_script: poetry install
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
