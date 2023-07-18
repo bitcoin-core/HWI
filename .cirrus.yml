@@ -1,6 +1,3 @@
-container:
-  dockerfile: ci/cirrus.Dockerfile
-
 env:
   EMAIL: cirrus@cirrus-ci.org
 
@@ -110,7 +107,10 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - tar -xvf "bitcoin.tar.gz"
 
 task:
+  container:
+    image: python:latest
   install_script:
+    - pip install poetry
     - poetry install
   matrix:
     - name: Type Check
@@ -153,6 +153,8 @@ wine_builder_task:
     - find dist -type f -exec sha256sum {} \;
 
 bitcoind_builder_task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   bitcoind_cache:
     folder: test/work/bitcoin
   ccache_cache:
@@ -166,6 +168,8 @@ bitcoind_builder_task:
     path: "bitcoin.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --trezor-1
   name: Trezor 1 Sim Builder
@@ -178,6 +182,8 @@ task:
     path: "trezor-firmware.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --trezor-t
   name: Trezor T Sim Builder
@@ -190,6 +196,8 @@ task:
     path: "trezor-firmware.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --coldcard
   name: Coldcard Sim Builder
@@ -202,6 +210,8 @@ task:
     path: "coldcard-mpy.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --bitbox01
   name: Bitbox01 Sim Builder
@@ -214,6 +224,8 @@ task:
     path: "mcu.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --jade
   name: Jade Sim Builder
@@ -226,6 +238,8 @@ task:
     path: "jade.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --ledger
   name: Ledger Sim Builder
@@ -238,6 +252,8 @@ task:
     path: "speculos.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --keepkey
   name: Keepkey Sim Builder
@@ -272,6 +288,8 @@ ledger_app_builder_task:
     path: app-bitcoin-new/bin/app.elf
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   fetch_dist_script:
