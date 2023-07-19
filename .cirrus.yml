@@ -100,8 +100,8 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Ledger App Builder/built_ledger_app/app-bitcoin-new/bin/app.elf"
       - mv app.elf test/work/speculos/apps/btc-test.elf
     sim_install_script:
-      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
-      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
   - env:
       DEVICE: --ledger-legacy
     depends_on:
@@ -114,8 +114,8 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
     sim_install_script:
-      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
-      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
   - env:
       DEVICE: --keepkey
     depends_on:
