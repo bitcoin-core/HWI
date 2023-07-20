@@ -10,6 +10,14 @@ while [[ $# -gt 0 ]]; do
         build_trezor_t=1
         shift
         ;;
+        --onekey-1)
+        build_onekey_1=1
+        shift
+        ;;
+        --onekey-t)
+        build_onekey_t=1
+        shift
+        ;;
         --coldcard)
         build_coldcard=1
         shift
@@ -111,6 +119,61 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # Delete any emulator.img file
         find . -name "trezor.flash" -exec rm {} \;
         cd ..
+    fi
+    cd ..
+fi
+
+if [[ -n ${build_onekey_1} || -n ${build_onekey_t} ]]; then
+    # Clone onekey-firmware if it doesn't exist, or update it if it does
+    if [ ! -d "onekey-firmware" ]; then
+        git clone --recursive https://github.com/OneKeyHQ/firmware.git onekey-firmware
+        cd onekey-firmware
+    else
+        cd onekey-firmware
+        git fetch
+    fi
+    # set +e
+    # which nix-shell
+    # set -ex
+    # if [ $? -ne 0 ]; then
+    addgroup --gid 30000 --system nixbld # is what we talk about here
+    for i in $(seq 1 30); do \
+    adduser --system --disabled-password --home /var/empty --gecos "Nix build user $i" --uid $((30000 + $i)) --ingroup nixbld nixbld$i ; \
+    done
+    mkdir -m 0755 /nix && chown root /nix
+    sh <(curl -L https://nixos.org/nix/install) --no-daemon
+    . $HOME/.nix-profile/etc/profile.d/nix.sh
+    # fi
+
+    # # Remove .venv so that poetry can symlink everything correctly
+    # find . -type d -name ".venv" -exec rm -rf {} +
+
+    if [[ -n ${build_onekey_1} ]]; then
+        # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
+        # But there should be some caching that makes this faster
+        git checkout bixin_dev
+        git pull origin bixin_dev
+        nix-shell --run "poetry install"
+        export EMULATOR=1 DEBUG_LINK=1
+        nix-shell --run "poetry run legacy/script/setup"
+        nix-shell --run "poetry run legacy/script/cibuild"
+        # Delete any emulator.img file
+        find . -name "emulator.img" -exec rm {} \;
+    fi
+
+    if [[ -n ${build_onekey_t} ]]; then
+        # rustup update
+        # rustup toolchain uninstall nightly
+        # rustup toolchain install nightly
+        # rustup default nightly
+        # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
+        # But there should be some caching that makes this faster
+        git checkout touch
+        git pull origin touch
+        nix-shell --run "poetry install"
+        nix-shell --run "poetry run make -C core build_unix"
+        # Delete any emulator.img file
+        find . -name "trezor.flash" -exec rm {} \;
     fi
     cd ..
 fi
