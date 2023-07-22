@@ -21,7 +21,7 @@ import builtins
 import sys
 from functools import wraps
 
-from .._base58 import decode_check
+from .._base58 import decode_check, encode_check
 from ..descriptor import MultisigDescriptor
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
@@ -440,7 +440,7 @@ class Bitbox02Client(HardwareWalletClient):
                 script_config=bitbox02.btc.BTCScriptConfig(
                     multisig=bitbox02.btc.BTCScriptConfig.Multisig(
                         threshold=threshold,
-                        xpubs=[util.parse_xpub(encode_check(xpub).decode()) for xpub in xpubs],
+                        xpubs=[util.parse_xpub(encode_check(xpub)) for xpub in xpubs],
                         our_xpub_index=our_xpub_index,
                         script_type=script_type,
                     )

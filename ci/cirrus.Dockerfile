@@ -1,4 +1,6 @@
-FROM python:3.7
+# Cache break (modify this line to break cirrus' dockerfile build cache) 1
+
+FROM python:3.8
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -30,6 +32,7 @@ RUN apt-get install -y \
     libsdl2-dev \
     libsdl2-image-dev \
     libssl-dev \
+    libslirp-dev \
     libtool \
     libudev-dev \
     libusb-1.0-0-dev \

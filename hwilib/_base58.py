@@ -99,6 +99,11 @@ def decode_check(s: str) -> bytes:
         raise ValueError("Invalid checksum")
     return payload
 
+def encode_check(b: bytes) -> str:
+    checksum = hash256(b)[0:4]
+    data = b + checksum
+    return encode(data)
+
 def get_xpub_fingerprint(s: str) -> bytes:
     """
     Get the parent fingerprint from an extended public key

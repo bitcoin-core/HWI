@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:oldoldstable-slim
 
 SHELL ["/bin/bash", "-c"]
 

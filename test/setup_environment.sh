@@ -89,8 +89,8 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # But there should be some caching that makes this faster
         poetry install
         cd legacy
-        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-        poetry run pip install -U protobuf
+        export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
+        poetry run pip install protobuf==3.20.0
         poetry run script/setup
         poetry run script/cibuild
         # Delete any emulator.img file
@@ -198,6 +198,9 @@ if [[ -n ${build_keepkey} ]]; then
         keepkey_setup_needed=true
     else
         cd keepkey-firmware
+        cd deps/googletest
+        git reset --hard HEAD~1 # Undo git-am for checking and updating
+        cd ../..
         git reset --hard HEAD~1 # Undo git-am for checking and updating
         git fetch
 
@@ -214,8 +217,11 @@ if [[ -n ${build_keepkey} ]]; then
             keepkey_setup_needed=true
         fi
     fi
-    # Apply patch to make simulator build
+    # Apply patches to make simulator build
     git am ../../data/keepkey-build.patch
+    cd deps/googletest
+    git am ../../../../data/keepkey-googletest.patch
+    cd ../../
 
     # Build the simulator. This is cached, but it is also fast
     if [ "$keepkey_setup_needed" == true ] ; then
@@ -234,7 +240,7 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    speculos_packages="construct flask-restful jsonschema mnemonic pyelftools pillow requests"
+    speculos_packages="construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract"
     poetry run pip install ${speculos_packages}
     pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
@@ -260,8 +266,8 @@ if [[ -n ${build_ledger} ]]; then
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
-    cmake -Bbuild -H.
-    make -C build/ emu launcher copy-launcher
+    cmake -Bbuild -S .
+    make -C build/
     cd ..
 fi
 

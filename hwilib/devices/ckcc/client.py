@@ -248,18 +248,6 @@ class ColdcardDevice:
         self.aes_setup(self.session_key)
 
     def mitm_verify(self, sig, expected_xpub):
-        # First try with Pycoin
-        try:
-            from pycoin.key.BIP32Node import BIP32Node
-            from pycoin.contrib.msg_signing import verify_message
-            from pycoin.encoding  import from_bytes_32
-            from base64 import b64encode
-
-            mk = BIP32Node.from_wallet_key(expected_xpub)
-            return verify_message(mk, b64encode(sig), msg_hash=from_bytes_32(self.session_key))
-        except ImportError:
-            pass
-
         # If Pycoin is not available, do it using ecdsa
         from ecdsa import BadSignatureError, SECP256k1, VerifyingKey
         # of the returned (pubkey, chaincode) tuple, chaincode is not used

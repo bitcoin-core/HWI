@@ -1,0 +1,33 @@
+From a0eeedb8b7eafb760e8b01b0094cb9c947d29abb Mon Sep 17 00:00:00 2001
+From: Andrew Chow <github@achow101.com>
+Date: Tue, 18 Jul 2023 15:44:54 -0400
+Subject: [PATCH] initialize dummy
+
+---
+ googletest/src/gtest-death-test.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/googletest/src/gtest-death-test.cc b/googletest/src/gtest-death-test.cc
+index 9ecab8f9..efd339fe 100644
+--- a/googletest/src/gtest-death-test.cc
++++ b/googletest/src/gtest-death-test.cc
+@@ -1000,14 +1000,14 @@ static int ExecDeathTestChildMain(void* child_arg) {
+ static void StackLowerThanAddress(const void* ptr,
+                                   bool* result) GTEST_NO_INLINE_;
+ static void StackLowerThanAddress(const void* ptr, bool* result) {
+-  int dummy;
++  int dummy = 0;
+   *result = (&dummy < ptr);
+ }
+ 
+ // Make sure AddressSanitizer does not tamper with the stack here.
+ GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+ static bool StackGrowsDown() {
+-  int dummy;
++  int dummy = 0;
+   bool result;
+   StackLowerThanAddress(&dummy, &result);
+   return result;
+-- 
+2.41.0
+

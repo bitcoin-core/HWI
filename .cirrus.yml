@@ -1,8 +1,27 @@
-container:
-  dockerfile: ci/cirrus.Dockerfile
-
 env:
   EMAIL: cirrus@cirrus-ci.org
+
+python_version_matrix_template: &PYTHON_VERSION_MATRIX_TEMPLATE
+  - container:
+      dockerfile: ci/py37.Dockerfile
+    env:
+      PYTHON: 3.7
+  - container:
+      dockerfile: ci/cirrus.Dockerfile
+    env:
+      PYTHON: 3.8
+  - container:
+      dockerfile: ci/py39.Dockerfile
+    env:
+      PYTHON: 3.9
+  - container:
+      dockerfile: ci/py310.Dockerfile
+    env:
+      PYTHON: 3.10
+  - container:
+      dockerfile: ci/py311.Dockerfile
+    env:
+      PYTHON: 3.11
 
 device_matrix_template: &DEVICE_MATRIX_TEMPLATE
   - env:
@@ -81,8 +100,8 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Ledger App Builder/built_ledger_app/app-bitcoin-new/bin/app.elf"
       - mv app.elf test/work/speculos/apps/btc-test.elf
     sim_install_script:
-      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
-      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
   - env:
       DEVICE: --ledger-legacy
     depends_on:
@@ -95,8 +114,8 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
     sim_install_script:
-      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
-      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+      - poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+      - pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
   - env:
       DEVICE: --keepkey
     depends_on:
@@ -109,12 +128,11 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
 
-lint_task:
-  test_script:
-    - flake8
-
 task:
+  container:
+    image: python:latest
   install_script:
+    - pip install poetry
     - poetry install
   matrix:
     - name: Type Check
@@ -146,6 +164,8 @@ task:
         hwilib/udevinstaller.py
     - name: Non-Device Tests
       test_script: cd test; poetry run ./run_tests.py; cd ..
+    - name: lint
+      test_script: poetry run flake8
 
 wine_builder_task:
   container:
@@ -155,6 +175,8 @@ wine_builder_task:
     - find dist -type f -exec sha256sum {} \;
 
 bitcoind_builder_task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   bitcoind_cache:
     folder: test/work/bitcoin
   ccache_cache:
@@ -168,6 +190,8 @@ bitcoind_builder_task:
     path: "bitcoin.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --trezor-1
   name: Trezor 1 Sim Builder
@@ -180,6 +204,8 @@ task:
     path: "trezor-firmware.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --trezor-t
   name: Trezor T Sim Builder
@@ -192,6 +218,8 @@ task:
     path: "trezor-firmware.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --coldcard
   name: Coldcard Sim Builder
@@ -204,6 +232,8 @@ task:
     path: "coldcard-mpy.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --bitbox01
   name: Bitbox01 Sim Builder
@@ -216,6 +246,8 @@ task:
     path: "mcu.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --jade
   name: Jade Sim Builder
@@ -228,6 +260,8 @@ task:
     path: "jade.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --ledger
   name: Ledger Sim Builder
@@ -240,6 +274,8 @@ task:
     path: "speculos.tar.gz"
 
 task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
   env:
     DEVICE: --keepkey
   name: Keepkey Sim Builder
@@ -265,7 +301,7 @@ dist_builder_task:
 ledger_app_builder_task:
   name: Ledger App Builder
   container:
-    dockerfile: ci/ledger-app-builder.Dockerfile
+    image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
   build_script:
     - git clone https://github.com/LedgerHQ/app-bitcoin-new.git
     - cd app-bitcoin-new
@@ -275,18 +311,20 @@ ledger_app_builder_task:
 
 task:
   matrix:
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
+  matrix:
     << : *DEVICE_MATRIX_TEMPLATE
   fetch_dist_script:
     - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/dist_builder/built_dist.zip"
     - unzip built_dist.zip
   matrix:
-    - name: $DEVICE Wheel
+    - name: Python $PYTHON $DEVICE Wheel
       install_script: pip install dist/*.whl
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
-    - name: $DEVICE Sdist
+    - name: Python $PYTHON $DEVICE Sdist
       install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*")
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
-    - name: $DEVICE Bindist
+    - name: Python $PYTHON $DEVICE Bindist
       install_script: poetry install
       untar_bindist_script: cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
       test_script: cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
@@ -295,22 +333,7 @@ task:
 
 task:
   matrix:
-    - container:
-        dockerfile: ci/cirrus.Dockerfile
-      env:
-        PYTHON: 3.7
-    - container:
-        dockerfile: ci/py38.Dockerfile
-      env:
-        PYTHON: 3.8
-    - container:
-        dockerfile: ci/py39.Dockerfile
-      env:
-        PYTHON: 3.9
-    - container:
-        dockerfile: ci/py310.Dockerfile
-      env:
-        PYTHON: 3.10
+    << : *PYTHON_VERSION_MATRIX_TEMPLATE
   install_script: poetry install
   matrix:
     << : *DEVICE_MATRIX_TEMPLATE
