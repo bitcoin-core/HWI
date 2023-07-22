@@ -55,6 +55,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QToolButton" name="import_toolbutton">
+       <property name="text">
+        <string>Import PSBT</string>
+       </property>
+       <property name="popupMode">
+        <enum>QToolButton::InstantPopup</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -68,6 +78,26 @@
       </spacer>
      </item>
     </layout>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPlainTextEdit" name="psbt_in_textedit">
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>120</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
+     </property>
+    </widget>
    </item>
    <item row="3" column="0">
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -95,6 +125,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QToolButton" name="export_toolbutton">
+       <property name="text">
+        <string>Export PSBT</string>
+       </property>
+       <property name="popupMode">
+        <enum>QToolButton::InstantPopup</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="verticalSpacer_4">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -108,16 +148,6 @@
       </spacer>
      </item>
     </layout>
-   </item>
-   <item row="1" column="2">
-    <widget class="QPlainTextEdit" name="psbt_in_textedit">
-     <property name="minimumSize">
-      <size>
-       <width>300</width>
-       <height>120</height>
-      </size>
-     </property>
-    </widget>
    </item>
    <item row="3" column="2">
     <widget class="QPlainTextEdit" name="psbt_out_textedit">
@@ -174,16 +204,6 @@
       </spacer>
      </item>
     </layout>
-   </item>
-   <item row="4" column="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Close</set>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>

@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import base64
 import json
 import logging
 import sys
@@ -26,7 +27,7 @@ except ImportError:
     exit(-1)
 
 from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QMainWindow
+from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFileDialog, QLineEdit, QMessageBox, QMainWindow, QMenu
 from PySide2.QtCore import QCoreApplication, QRegExp, Signal, Slot
 
 def do_command(f, *args, **kwargs):
@@ -124,6 +125,52 @@ class SignPSBTDialog(QDialog):
 
         self.ui.sign_psbt_button.clicked.connect(self.sign_psbt_button_clicked)
         self.ui.buttonBox.clicked.connect(self.accept)
+
+        menu = QMenu()
+        self.ui.import_toolbutton.setMenu(menu)
+        menu = self.ui.import_toolbutton.menu()
+        menu.addAction("From binary").triggered.connect(self.import_binary_clicked)
+        menu.addAction("From base64").triggered.connect(self.import_base64_clicked)
+
+        menu = QMenu()
+        self.ui.export_toolbutton.setMenu(menu)
+        menu = self.ui.export_toolbutton.menu()
+        menu.addAction("To binary").triggered.connect(self.export_binary_clicked)
+        menu.addAction("To base64").triggered.connect(self.export_base64_clicked)
+
+    @Slot()
+    def import_base64_clicked(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open file')
+        if filename:
+            with open(filename, 'r', encoding='utf-8') as f:
+                b64 = f.read()
+                self.ui.psbt_in_textedit.setPlainText(b64)
+
+    @Slot()
+    def import_binary_clicked(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open file', "", "PSBT (*.psbt)")
+        if filename:
+            with open(filename, 'rb') as f:
+                bin = f.read()
+                b64 = base64.b64encode(bin).decode()
+                self.ui.psbt_in_textedit.setPlainText(b64)
+
+    @Slot()
+    def export_base64_clicked(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file')
+        if filename:
+            with open(filename, 'w') as f:
+                b64 = self.ui.psbt_out_textedit.toPlainText()
+                f.write(b64)
+
+    @Slot()
+    def export_binary_clicked(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file', "untitled.psbt")
+        if filename:
+            with open(filename, 'wb') as f:
+                b64 = self.ui.psbt_out_textedit.toPlainText()
+                bin = base64.b64decode(b64.encode())
+                f.write(bin)
 
     @Slot()
     def sign_psbt_button_clicked(self):
