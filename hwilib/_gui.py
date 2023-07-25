@@ -239,7 +239,7 @@ class GetKeypoolOptionsDialog(QDialog):
         self.ui.internal_checkbox.setChecked(opts['internal'])
         self.ui.keypool_checkbox.setChecked(opts['keypool'])
         self.ui.account_spinbox.setValue(opts['account'])
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp(r"m(/[0-9]+['Hh]?)+/\*"), None))
         if opts['account_used']:
             self.ui.account_radio.setChecked(True)
             self.ui.path_radio.setChecked(False)
