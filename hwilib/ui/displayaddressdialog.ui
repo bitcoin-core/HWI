@@ -74,7 +74,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton">
+       <widget class="QRadioButton" name="pkh_radio">
         <property name="text">
          <string>P2PKH</string>
         </property>
