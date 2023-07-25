@@ -107,7 +107,7 @@ PURPOSE_MULTISIG_P2WSH = 48 + HARDENED
 
 # External GUI tools using hwi.py as a command line tool to integrate hardware wallets usually do
 # not have an actual terminal for IO.
-_using_external_gui = not sys.stdout.isatty()
+_using_external_gui = sys.stdout is not None and not sys.stdout.isatty()
 if _using_external_gui:
     _unpaired_errmsg = "Device not paired yet. Please pair using the BitBoxApp, then close the BitBoxApp and try again."
 else:
