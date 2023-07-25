@@ -111,7 +111,7 @@ class GetXpubDialog(QDialog):
     def getxpub_button_clicked(self):
         path = self.ui.path_lineedit.text()
         res = do_command(commands.getxpub, self.client, path)
-        self.ui.xpub_lineedit.setText(res['xpub'])
+        self.ui.xpub_textedit.setText(res['xpub'])
 
 class SignPSBTDialog(QDialog):
     def __init__(self, client):
