@@ -20,7 +20,7 @@ class Chain(Enum):
     SIGNET = 3 #: Bitcoin Signet
 
     def __str__(self) -> str:
-        return self.name.lower()
+        return str(self.name).lower()
 
     def __repr__(self) -> str:
         return str(self)
@@ -43,7 +43,7 @@ class AddressType(Enum):
     TAP = 4 #: Segwit v1 Taproot address type. P2TR always.
 
     def __str__(self) -> str:
-        return self.name.lower()
+        return str(self.name).lower()
 
     def __repr__(self) -> str:
         return str(self)

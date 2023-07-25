@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import base64
 import json
 import logging
 import sys
@@ -26,10 +27,8 @@ except ImportError:
     exit(-1)
 
 from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QMainWindow
+from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFileDialog, QLineEdit, QMessageBox, QMainWindow, QMenu
 from PySide2.QtCore import QCoreApplication, QRegExp, Signal, Slot
-
-import bitbox02.util
 
 def do_command(f, *args, **kwargs):
     result = {}
@@ -127,6 +126,52 @@ class SignPSBTDialog(QDialog):
         self.ui.sign_psbt_button.clicked.connect(self.sign_psbt_button_clicked)
         self.ui.buttonBox.clicked.connect(self.accept)
 
+        menu = QMenu()
+        self.ui.import_toolbutton.setMenu(menu)
+        menu = self.ui.import_toolbutton.menu()
+        menu.addAction("From binary").triggered.connect(self.import_binary_clicked)
+        menu.addAction("From base64").triggered.connect(self.import_base64_clicked)
+
+        menu = QMenu()
+        self.ui.export_toolbutton.setMenu(menu)
+        menu = self.ui.export_toolbutton.menu()
+        menu.addAction("To binary").triggered.connect(self.export_binary_clicked)
+        menu.addAction("To base64").triggered.connect(self.export_base64_clicked)
+
+    @Slot()
+    def import_base64_clicked(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open file')
+        if filename:
+            with open(filename, 'r', encoding='utf-8') as f:
+                b64 = f.read()
+                self.ui.psbt_in_textedit.setPlainText(b64)
+
+    @Slot()
+    def import_binary_clicked(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open file', "", "PSBT (*.psbt)")
+        if filename:
+            with open(filename, 'rb') as f:
+                bin = f.read()
+                b64 = base64.b64encode(bin).decode()
+                self.ui.psbt_in_textedit.setPlainText(b64)
+
+    @Slot()
+    def export_base64_clicked(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file')
+        if filename:
+            with open(filename, 'w') as f:
+                b64 = self.ui.psbt_out_textedit.toPlainText()
+                f.write(b64)
+
+    @Slot()
+    def export_binary_clicked(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file', "untitled.psbt")
+        if filename:
+            with open(filename, 'wb') as f:
+                b64 = self.ui.psbt_out_textedit.toPlainText()
+                bin = base64.b64decode(b64.encode())
+                f.write(bin)
+
     @Slot()
     def sign_psbt_button_clicked(self):
         psbt_str = self.ui.psbt_in_textedit.toPlainText()
@@ -222,52 +267,61 @@ class GetKeypoolOptionsDialog(QDialog):
             self.ui.path_lineedit.setEnabled(True)
             self.ui.account_spinbox.setEnabled(False)
 
-class BitBox02PairingDialog(QDialog):
-    def __init__(self, pairing_code: str, device_response: Callable[[], bool]):
-        super(BitBox02PairingDialog, self).__init__()
-        self.ui = Ui_BitBox02PairingDialog()
-        self.ui.setupUi(self)
-        self.setWindowTitle('Verify BitBox02 pairing code')
-        self.ui.pairingCode.setText(pairing_code.replace("\n", "<br>"))
-        self.ui.buttonBox.setEnabled(False)
-        self.device_response = device_response
-        self.painted = False
+try:
+    # Try to import bitbox02 things
+    # Not all dependencies may be available, in which case just ignore these two classes
+    # The code that needs this should already be (implicitly) guarded by bitbox02_lib imports working
+    # so these classes will not be referenced in that case.
+    from .devices.bitbox02_lib.util import BitBoxAppNoiseConfig
 
-    def paintEvent(self, ev):
-        super().paintEvent(ev)
-        self.painted = True
+    class BitBox02PairingDialog(QDialog):
+        def __init__(self, pairing_code: str, device_response: Callable[[], bool]):
+            super(BitBox02PairingDialog, self).__init__()
+            self.ui = Ui_BitBox02PairingDialog()
+            self.ui.setupUi(self)
+            self.setWindowTitle('Verify BitBox02 pairing code')
+            self.ui.pairingCode.setText(pairing_code.replace("\n", "<br>"))
+            self.ui.buttonBox.setEnabled(False)
+            self.device_response = device_response
+            self.painted = False
 
-    def enable_buttons(self):
-        self.ui.buttonBox.setEnabled(True)
+        def paintEvent(self, ev):
+            super().paintEvent(ev)
+            self.painted = True
 
-class BitBox02NoiseConfig(bitbox02.util.BitBoxAppNoiseConfig):
-    """ GUI elements to perform the BitBox02 pairing and attestatoin check """
+        def enable_buttons(self):
+            self.ui.buttonBox.setEnabled(True)
 
-    def show_pairing(self, code: str, device_response: Callable[[], bool]) -> bool:
-        dialog = BitBox02PairingDialog(code, device_response)
-        dialog.show()
-        # render the window since the next operation is blocking
-        while True:
-            QCoreApplication.processEvents()
-            if dialog.painted:
-                break
-            time.sleep(0.1)
-        if not device_response():
-            return False
-        dialog.enable_buttons()
-        dialog.exec_()
-        return dialog.result() == QDialog.Accepted
+    class BitBox02NoiseConfig(BitBoxAppNoiseConfig):
+        """ GUI elements to perform the BitBox02 pairing and attestatoin check """
 
-    def attestation_check(self, result: bool) -> None:
-        if not result:
-            QMessageBox.warning(
-                None,
-                "BitBox02 attestation check",
-                "BitBox02 attestation check failed. Your BitBox02 might not be genuine. Please contact support@shiftcrypto.ch if the problem persists.",
-            )
+        def show_pairing(self, code: str, device_response: Callable[[], bool]) -> bool:
+            dialog = BitBox02PairingDialog(code, device_response)
+            dialog.show()
+            # render the window since the next operation is blocking
+            while True:
+                QCoreApplication.processEvents()
+                if dialog.painted:
+                    break
+                time.sleep(0.1)
+            if not device_response():
+                return False
+            dialog.enable_buttons()
+            dialog.exec_()
+            return dialog.result() == QDialog.Accepted
+
+        def attestation_check(self, result: bool) -> None:
+            if not result:
+                QMessageBox.warning(
+                    None,
+                    "BitBox02 attestation check",
+                    "BitBox02 attestation check failed. Your BitBox02 might not be genuine. Please contact support@shiftcrypto.ch if the problem persists.",
+                )
+except ImportError:
+    pass
 
 class HWIQt(QMainWindow):
-    def __init__(self, passphrase='', chain=Chain.MAIN):
+    def __init__(self, passphrase=None, chain=Chain.MAIN):
         super(HWIQt, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -466,7 +520,7 @@ class HWIQt(QMainWindow):
 
 def process_gui_commands(cli_args):
     parser = HWIArgumentParser(description='Hardware Wallet Interface Qt, version {}.\nInteractively access and send commands to a hardware wallet device with a GUI. Responses are in JSON format.'.format(__version__))
-    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default='')
+    parser.add_argument('--password', '-p', help='Device password if it has one (e.g. DigitalBitbox)', default=None)
     parser.add_argument('--chain', help='Select chain to work with', type=Chain.argparse, choices=list(Chain), default=Chain.MAIN)
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))

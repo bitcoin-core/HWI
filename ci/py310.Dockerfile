@@ -1,3 +1,5 @@
+# Cache break (modify this line to break cirrus' dockerfile build cache) 1
+
 FROM python:3.10
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -8,6 +10,7 @@ RUN apt-get install -y \
     libpcsclite-dev \
     libsdl2-dev \
     libsdl2-image-dev \
+    libslirp-dev \
     libudev-dev \
     libusb-1.0-0-dev \
     qemu-user-static \

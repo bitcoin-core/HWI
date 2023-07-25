@@ -69,6 +69,7 @@ class LedgerEmulator(DeviceEmulator):
                 'seproxyhal:DEBUG',
                 '--api-port',
                 '0',
+                '--model', 'nanos',
                 app_path
             ],
             cwd=os.path.dirname(self.emulator_path),

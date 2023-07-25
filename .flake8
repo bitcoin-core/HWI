@@ -1,4 +1,4 @@
 [flake8]
-exclude = *.pyc,__pycache__,hwilib/devices/ledger_bitcoin/,hwilib/devices/btchip,hwilib/devices/ckcc/,hwilib/devices/jadepy/,hwilib/devices/trezorlib/,test/work/,hwilib/ui
+exclude = *.pyc,__pycache__,hwilib/devices/ledger_bitcoin/,hwilib/devices/btchip,hwilib/devices/ckcc/,hwilib/devices/jadepy/,hwilib/devices/trezorlib/,test/work/,hwilib/ui,hwilib/devices/bitbox02_lib
 ignore = E261,E302,E305,E501,E722,W5
 per-file-ignores = setup.py:E122
