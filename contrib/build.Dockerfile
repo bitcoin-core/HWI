@@ -37,7 +37,7 @@ COPY contrib/reproducible-python.diff /opt/reproducible-python.diff
 ENV PYTHON_CONFIGURE_OPTS="--enable-shared"
 ENV BUILD_DATE="Jan  1 2019"
 ENV BUILD_TIME="00:00:00"
-RUN eval "$(pyenv init --path)" && eval "$(pyenv virtualenv-init -)" && cat /opt/reproducible-python.diff | pyenv install -kp 3.9.7
+RUN eval "$(pyenv init --path)" && eval "$(pyenv virtualenv-init -)" && cat /opt/reproducible-python.diff | pyenv install -kp 3.9.17
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
