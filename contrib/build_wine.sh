@@ -88,7 +88,7 @@ unset PYTHONHASHSEED
 # Make the final compressed package
 pushd dist
 VERSION=`$POETRY run hwi --version | cut -d " " -f 2 | dos2unix`
-target_zipfile="hwi-${VERSION}-windows-amd64.zip"
+target_zipfile="hwi-${VERSION}-windows-x86_64.zip"
 zip $target_zipfile hwi.exe hwi-qt.exe
 
 # Copy the binaries to subdir for shasum

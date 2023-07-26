@@ -40,7 +40,8 @@ OS=`uname | tr '[:upper:]' '[:lower:]'`
 if [[ $OS == "darwin" ]]; then
     OS="mac"
 fi
-target_tarfile="hwi-${VERSION}-${OS}-amd64.tar.gz"
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+target_tarfile="hwi-${VERSION}-${OS}-${ARCH}.tar.gz"
 
 if [[ $gui_support == "--with-gui" ]]; then
     tar -czf $target_tarfile hwi hwi-qt

@@ -322,7 +322,7 @@ task:
       install_script: pip install dist/*.whl
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
     - name: Python $PYTHON $DEVICE Sdist
-      install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*amd64*")
+      install_script: pip install $(find dist -name "*.tar.gz" -a -not -name "*linux*")
       test_script: cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
     - name: Python $PYTHON $DEVICE Bindist
       install_script: poetry install
