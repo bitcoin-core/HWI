@@ -461,15 +461,15 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "libusb1"
-version = "2.0.1"
+version = "3.0.0"
 description = "Pure-python wrapper for libusb-1.0"
 optional = false
 python-versions = "*"
 files = [
-    {file = "libusb1-2.0.1-py3-none-any.whl", hash = "sha256:81381ce1d8852a4d4345b2ee8218971d35865b5f025fef96b43ee082757099cd"},
-    {file = "libusb1-2.0.1-py3-none-win32.whl", hash = "sha256:9fda3055c98ab043cfb3beac93ef1de2900ad11d949c694f58bdf414ce2bd03c"},
-    {file = "libusb1-2.0.1-py3-none-win_amd64.whl", hash = "sha256:a97bcb90f589d863c5e971b013c8cf7e1915680a951e66c4222a2c5bb64b7153"},
-    {file = "libusb1-2.0.1.tar.gz", hash = "sha256:d3ba82ecf7ab6a48d21dac6697e26504670cc3522b8e5941bd28fb56cf3f6c46"},
+    {file = "libusb1-3.0.0-py3-none-any.whl", hash = "sha256:0e652b04cbe85ec8e74f9ee82b49f861fb14b5320ae51399387ad2601ccc0500"},
+    {file = "libusb1-3.0.0-py3-none-win32.whl", hash = "sha256:083f75e5d15cb5e2159e64c308c5317284eae926a820d6dce53a9505d18be3b2"},
+    {file = "libusb1-3.0.0-py3-none-win_amd64.whl", hash = "sha256:6f6bb010632ada35c661d17a65e135077beef0fbb2434d5ffdb3a4a911fd9490"},
+    {file = "libusb1-3.0.0.tar.gz", hash = "sha256:5792a9defee40f15d330a40d9b1800545c32e47ba7fc66b6f28f133c9fcc8538"},
 ]
 
 [[package]]
@@ -1203,4 +1203,4 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7,<3.12"
-content-hash = "c45296e342a731894754db4cf7ca5352d1aa7ab6d3bf20028a15c8ed47c0045c"
+content-hash = "fb58d9f81e83da6ac11708f02d1d0503daef1c29dcc5e77b1997868a221cb574"
