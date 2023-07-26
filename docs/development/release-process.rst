@@ -13,13 +13,15 @@ Release Process
 Deterministic builds with Docker
 ================================
 
-Create the docker image::
+Create the docker images::
 
     docker build --no-cache -t hwi-builder -f contrib/build.Dockerfile .
+    docker build --no-cache -t hwi-wine-builder -f contrib/build-wine.Dockerfile .
 
 Build everything::
 
-    docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh && contrib/build_wine.sh"
+    docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh"
+    docker run -it --name hwi-wine-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-wine-builder /bin/bash -c "contrib/build_wine.sh"
 
 Building macOS binary
 =====================

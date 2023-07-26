@@ -169,7 +169,7 @@ task:
 
 wine_builder_task:
   container:
-    dockerfile: contrib/build.Dockerfile
+    dockerfile: contrib/build-wine.Dockerfile
   build_script:
     - contrib/build_wine.sh
     - find dist -type f -exec sha256sum {} \;
