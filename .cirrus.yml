@@ -46,6 +46,31 @@ device_matrix_template: &DEVICE_MATRIX_TEMPLATE
       - tar -xvf "trezor-firmware.tar.gz"
       - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
       - tar -xvf "bitcoin.tar.gz"
+  
+  - env:
+      DEVICE: --onekey-1
+    depends_on:
+      - Onekey Legacy Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Onekey Legacy Sim Builder/sim/onekey-firmware.tar.gz"
+      - tar -xvf "onekey-firmware.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
+  
+  - env:
+      DEVICE: --onekey-t
+    depends_on:
+      - Onekey Touch Sim Builder
+      - dist_builder
+      - bitcoind_builder
+    fetch_sim_script:
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Onekey Touch Sim Builder/sim/onekey-firmware.tar.gz"
+      - tar -xvf "onekey-firmware.tar.gz"
+      - wget -nv "https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/bitcoind_builder/bitcoin/bitcoin.tar.gz"
+      - tar -xvf "bitcoin.tar.gz"
+      
   - env:
       DEVICE: --coldcard
     depends_on:
@@ -154,6 +179,7 @@ task:
         hwilib/devices/keepkey.py
         hwilib/devices/ledger.py
         hwilib/devices/trezor.py
+        hwilib/devices/onekey.py
         hwilib/errors.py
         hwilib/_script.py
         hwilib/_serialize.py
@@ -217,6 +243,34 @@ task:
   sim_artifacts:
     path: "trezor-firmware.tar.gz"
 
+task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
+  env:
+    DEVICE: --onekey-1
+  name: Onekey Legacy Sim Builder
+  sim_work_cache:
+    folder: test/work/onekey-firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf onekey-firmware.tar.gz test/work/onekey-firmware
+  sim_artifacts:
+    path: "onekey-firmware.tar.gz"
+
+task:
+  container:
+    dockerfile: ci/cirrus.Dockerfile
+  env:
+    DEVICE: --onekey-t
+  name: Onekey Touch Sim Builder
+  sim_work_cache:
+    folder: test/work/onekey-firmware
+  build_script:
+    - cd test; ./setup_environment.sh $DEVICE; cd ..
+    - tar -czf onekey-firmware.tar.gz test/work/onekey-firmware
+  sim_artifacts:
+    path: "onekey-firmware.tar.gz"
+    
 task:
   container:
     dockerfile: ci/cirrus.Dockerfile

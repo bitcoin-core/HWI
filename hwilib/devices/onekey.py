@@ -1,3 +1,4 @@
+# type: ignore
 """"
 OneKey Devices
 **************
@@ -246,7 +247,7 @@ ONEKEY_TOUCH = TrezorModel(
 ONEKEYS = (ONEKEY_LEGACY, ONEKEY_TOUCH)
 
 
-def model_by_name(name: str):
+def model_by_name(name: str) -> Optional[TrezorModel]:
     for model in ONEKEYS:
         if model.name == name:
             return model
@@ -256,7 +257,7 @@ def model_by_name(name: str):
 # ===============overwrite methods for onekey device begin============
 
 
-def _refresh_features(self: object, features: Features):
+def _refresh_features(self: object, features: Features) -> None:
     """Update internal fields based on passed-in Features message."""
     if not self.model:
         self.model = model_by_name(features.model or "1")
