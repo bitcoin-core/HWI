@@ -38,7 +38,7 @@ from typing import (
 
 py_enumerate = enumerate  # Need to use the enumerate built-in but there's another function already named that
 
-VENDORS = ("onekey.so", "trezor.io",)
+VENDORS = ("onekey.so", )
 
 
 class OnekeyFeatures(Features):
@@ -226,7 +226,7 @@ class OnekeyFeatures(Features):
 
 ONEKEY_MAPPING = DEFAULT_MAPPING.register(OnekeyFeatures)
 
-USB_IDS = {(0x1209, 0x4F4A), (0x1209, 0x4F4B), (0x1209, 0x53C1)}
+USB_IDS = {(0x1209, 0x4F4A), (0x1209, 0x4F4B), }
 
 ONEKEY_LEGACY = TrezorModel(
     name="1",
