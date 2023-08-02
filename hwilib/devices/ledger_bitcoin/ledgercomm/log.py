@@ -2,4 +2,4 @@
 
 import logging
 
-LOG = logging.getLogger("ledgercomm")
+LOG = logging.getLogger(__name__)

@@ -31,9 +31,9 @@ LOGGING = None  # logging.INFO
 
 # Enable jade logging
 if LOGGING:
-    logger = logging.getLogger('jade')
+    logger = logging.getLogger("hwilib.devices.jadepy.jade")
     logger.setLevel(LOGGING)
-    device_logger = logging.getLogger('jade-device')
+    device_logger = logging.getLogger("hwilib.devices.jadepy.jade-device")
     device_logger.setLevel(LOGGING)
 
 class JadeEmulator(DeviceEmulator):
