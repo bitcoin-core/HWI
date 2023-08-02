@@ -118,7 +118,7 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
         except ImportError as e:
             # Warn for ImportErrors, but largely ignore them to allow users not install
             # all device dependencies if only one or some devices are wanted.
-            logging.warn(f"{e}, required for {module}. Ignore if you do not want this device.")
+            logging.warning(f"{e}, required for {module}. Ignore if you do not want this device.")
             pass
     return result
 
