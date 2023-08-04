@@ -17,9 +17,8 @@ from .jade_serial import JadeSerialImpl
 from .jade_tcp import JadeTCPImpl
 
 # 'jade' logger
-logger = logging.getLogger("jade")
-device_logger = logging.getLogger("jade-device")
-
+logger = logging.getLogger(__name__)
+device_logger = logging.getLogger(f"{__name__}-device")
 
 # Default serial connection
 DEFAULT_SERIAL_DEVICE = "/dev/ttyUSB0"
@@ -815,7 +814,7 @@ class JadeAPI:
         csv_blocks=0,
         variant=None,
         multisig_name=None,
-        confidential=None
+        confidential=None,
     ):
         """
         RPC call to generate, show, and return an address for the given path.

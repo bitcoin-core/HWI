@@ -6,9 +6,9 @@ from hwilib.key import ExtendedKey
 from ..errors import ActionCanceledError, DeviceConnectionError
 from ..hwwclient import HardwareWalletClient
 from hwilib.psbt import PSBT
-from .checksiglib.ipc import ipc_connect, ipc_send_and_get_response
-from .checksiglib.ipc_message import PING, SIGN_MESSAGE, SIGN_TX, XPUB, IpcMessage
-from .checksiglib.settings import LISTEN_PORT, PORT_RANGE
+from checksighwe.ipc import ipc_connect, ipc_send_and_get_response
+from checksighwe.ipc_message import PING, SIGN_MESSAGE, SIGN_TX, XPUB, IpcMessage
+from checksighwe.settings import Settings
 from hwilib._base58 import xpub_main_2_test
 from hwilib.common import Chain
 
@@ -94,9 +94,9 @@ def enumerate(password: str = "", expert: bool = False, chain: Chain = Chain.MAI
     results = []
 
     # Loop on the range port to check listening devices
-    for i in range(PORT_RANGE):
+    for i in range(Settings.port_range):
         try:
-            port = LISTEN_PORT + i
+            port = Settings.listen_port + i
             sock = ipc_connect(port)
 
             if sock is None:
