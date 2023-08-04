@@ -198,7 +198,7 @@ class MessageType(metaclass=_MessageTypeMeta):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         if args:
-            warnings.warn(
+            warnings.warning(
                 "Positional arguments for MessageType are deprecated",
                 DeprecationWarning,
                 stacklevel=2,
@@ -223,7 +223,7 @@ class MessageType(metaclass=_MessageTypeMeta):
                 if field.repeated:
                     default = []
                 elif field.required:
-                    warnings.warn(
+                    warnings.warning(
                         f"Value of required field '{field.name}' must be provided in constructor",
                         DeprecationWarning,
                         stacklevel=2,

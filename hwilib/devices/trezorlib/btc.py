@@ -261,7 +261,7 @@ def sign_tx(
         prev_txes = {}
 
     if details is not None:
-        warnings.warn(
+        warnings.warning(
             "'details' argument is deprecated, use kwargs instead",
             DeprecationWarning,
             stacklevel=2,
