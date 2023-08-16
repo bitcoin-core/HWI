@@ -2,7 +2,7 @@ import socket
 import logging
 
 
-logger = logging.getLogger('jade.tcp')
+logger = logging.getLogger(__name__)
 
 
 #

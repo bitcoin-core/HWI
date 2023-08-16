@@ -17,8 +17,8 @@ from .jade_serial import JadeSerialImpl
 from .jade_tcp import JadeTCPImpl
 
 # 'jade' logger
-logger = logging.getLogger('jade')
-device_logger = logging.getLogger('jade-device')
+logger = logging.getLogger(__name__)
+device_logger = logging.getLogger(f'{__name__}-device')
 
 
 # Default serial connection
