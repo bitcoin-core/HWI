@@ -10,6 +10,14 @@ while [[ $# -gt 0 ]]; do
         build_trezor_t=1
         shift
         ;;
+        --onekey-1)
+        build_onekey_1=1
+        shift
+        ;;
+        --onekey-t)
+        build_onekey_t=1
+        shift
+        ;;
         --coldcard)
         build_coldcard=1
         shift
@@ -47,6 +55,8 @@ while [[ $# -gt 0 ]]; do
         build_keepkey=1
         build_jade=1
         build_bitcoind=1
+        build_onekey_1=1
+        build_onekey_t=1
         shift
         ;;
     esac
@@ -110,6 +120,54 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         poetry run make build_unix
         # Delete any emulator.img file
         find . -name "trezor.flash" -exec rm {} \;
+        cd ..
+    fi
+    cd ..
+fi
+
+if [[ -n ${build_onekey_1} || -n ${build_onekey_t} ]]; then
+    # Clone onekey-firmware if it doesn't exist, or update it if it does
+    if [ ! -d "onekey-firmware" ]; then
+            git clone --recursive https://github.com/OneKeyHQ/firmware.git onekey-firmware
+        cd onekey-firmware
+    else
+        cd onekey-firmware
+        git fetch
+    fi
+    git config pull.rebase true
+    # # Remove .venv so that poetry can symlink everything correctly
+    find . -type d -name ".venv" -exec rm -rf {} +
+
+    if [[ -n ${build_onekey_1} ]]; then
+        # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
+        # But there should be some caching that makes this faster
+        git checkout bixin_dev
+        git checkout .
+        git pull origin bixin_dev
+        poetry install
+        poetry run pip install protobuf==3.20.0
+        export EMULATOR=1 DEBUG_LINK=1 TREZOR_TRANSPORT_V1=1 
+        poetry run legacy/script/setup
+        poetry run legacy/script/cibuild
+        # Delete any emulator.img file
+        find . -name "emulator.img" -exec rm {} \;
+    fi
+
+    if [[ -n ${build_onekey_t} ]]; then
+        rustup toolchain uninstall nightly
+        rustup toolchain install nightly
+        rustup default nightly
+        # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
+        # But there should be some caching that makes this faster
+        git checkout touch
+        git checkout .
+        git pull origin touch
+        git submodule update --init --recursive vendor/lvgl_mp
+        poetry install
+        cd core
+        poetry run make build_unix
+        # Delete any emulator.img file
+        find . -name "onekey.flash" -exec rm {} \;
         cd ..
     fi
     cd ..
