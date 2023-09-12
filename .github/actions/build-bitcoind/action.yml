@@ -1,0 +1,37 @@
+name: Build bitcoind
+description: Build bitcoind with depends.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ccache
+        echo "CCACHE_DIR=${{ runner.temp }}/ccache" >> "$GITHUB_ENV"
+
+    - uses: actions/cache/restore@v3
+      id: ccache-cache
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ github.job }}-ccache-${{ github.run_id }}
+        restore-keys: ${{ github.job }}-ccache-
+
+    - shell: bash
+      env:
+        CCACHE_MAXSIZE: '20M'
+      run: |
+        ccache --zero-stats
+        cd test; ./setup_environment.sh --bitcoind; cd ..
+        ccache --show-stats --verbose
+        tar -czf bitcoind.tar.gz test/work/bitcoin/src/bitcoind
+
+    - uses: actions/cache/save@v3
+      if: github.event_name != 'pull_request' && steps.ccache-cache.outputs.cache-hit != 'true'
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ github.job }}-ccache-${{ github.run_id }}
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: bitcoind
+        path: bitcoind.tar.gz
