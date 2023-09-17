@@ -15,7 +15,7 @@ import unittest
 from hwilib.devices.trezorlib.transport.udp import UdpTransport
 from hwilib.devices.trezorlib.debuglink import TrezorClientDebugLink, load_device_by_mnemonic
 from hwilib.devices.trezorlib import device
-from hwilib.devices.onekey import _refresh_features
+from hwilib.devices.onekey import retrieval_version, ensure_model, ONEKEY_LEGACY
 from test_device import (
     Bitcoind,
     DeviceEmulator,
@@ -86,8 +86,9 @@ class OnkeyEmulator(DeviceEmulator):
                 time.sleep(1)
         # Setup the emulator
         wirelink = UdpTransport.enumerate("127.0.0.1:54935")[0]
-        client = TrezorClientDebugLink(wirelink)
-        client._refresh_features = MethodType(_refresh_features, client)
+        client = TrezorClientDebugLink(wirelink, model=ONEKEY_LEGACY)
+        client.retrieval_version = MethodType(retrieval_version, client)
+        client.ensure_model = MethodType(ensure_model, client)
         client.init_device()
         device.wipe(client)
         load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests

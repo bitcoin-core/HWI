@@ -80,12 +80,17 @@ $ pipenv run script/cibuild
 
 ### Dependencies
 
-In order to build the Onekey emulator, the [Nix](https://nixos.org) will need to be installed:
+In order to build the Onekey emulator, the following packages will need to be installed:
 
 ```
-sh <(curl -L https://nixos.org/nix/install)
+build-essential curl git python3 python3-pip libsdl2-dev libsdl2-image-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-multilib
 ```
 
+For onekey Touch `Rust` needs to be installed:
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 ### Building
 
 Clone the repository:
@@ -95,20 +100,26 @@ $ git clone --recursive https://github.com/OneKeyHQ/firmware.git onekey-firmware
 ```
 
 For the Onekey Legacy firmware emulator:
+
 ```
 $ git checkout bixin_dev
 $ cd onekey-firmware
-$ nix-shell
 $ poetry install
 $ export EMULATOR=1 DEBUG_LINK=1
 $ poetry run script/setup
 $ poetry run script/cibuild
 ```
+
 For the Onekey Touch emulator:
+
 ```
-$ git checkout touch
+$ rustup update
+$ rustup toolchain uninstall nightly
+$ rustup toolchain install nightly
+$ rustup default nightly
 $ cd onekey-firmware
-$ nix-shell
+$ git checkout touch
+$ git submodule update --init --recursive vendor/lvgl_mp
 $ poetry install
 $ cd core
 $ poetry run make build_unix

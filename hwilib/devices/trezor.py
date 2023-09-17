@@ -229,16 +229,17 @@ def mnemonic_words(expand: bool = False, language: str = "english") -> Callable[
 
 
 class PassphraseUI:
-    def __init__(self, passphrase: str) -> None:
+    def __init__(self, passphrase: str, device_type: str) -> None:
         self.passphrase = passphrase
         self.pinmatrix_shown = False
         self.prompt_shown = False
         self.always_prompt = False
         self.return_passphrase = True
+        self.device_type = device_type
 
     def button_request(self, code: Optional[int]) -> None:
         if not self.prompt_shown:
-            print("Please confirm action on your Trezor device", file=sys.stderr)
+            print(f"Please confirm action on your {self.device_type} device", file=sys.stderr)
         if not self.always_prompt:
             self.prompt_shown = True
 
@@ -288,7 +289,8 @@ class TrezorClient(HardwareWalletClient):
         hid_ids: Set[Tuple[int, int]] = HID_IDS,
         webusb_ids: Set[Tuple[int, int]] = WEBUSB_IDS,
         sim_path: str = SIMULATOR_PATH,
-        model: Optional[TrezorModel] = None
+        model: Optional[TrezorModel] = None,
+        device_type: str = "Trezor"
     ) -> None:
         if password is None:
             password = ""
@@ -301,14 +303,14 @@ class TrezorClient(HardwareWalletClient):
             self.simulator = True
             self.client.use_passphrase(password)
         else:
-            self.client = Trezor(transport=transport, ui=PassphraseUI(password), model=model, _init_device=False)
+            self.client = Trezor(transport=transport, ui=PassphraseUI(password, device_type), model=model, _init_device=False)
 
         # if it wasn't able to find a client, throw an error
         if not self.client:
             raise IOError("no Device")
 
         self.password = password
-        self.type = 'Trezor'
+        self.type = device_type
 
     def _prepare_device(self) -> None:
         self.coin_name = 'Bitcoin' if self.chain == Chain.MAIN else 'Testnet'

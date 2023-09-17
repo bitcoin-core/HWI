@@ -5,7 +5,6 @@ OneKey Devices
 """
 
 
-import sys
 from ..common import Chain
 from ..errors import (
     DEVICE_NOT_INITIALIZED,
@@ -13,7 +12,7 @@ from ..errors import (
     common_err_msgs,
     handle_errors,
 )
-from .trezorlib import protobuf, debuglink
+from .trezorlib import protobuf
 from .trezorlib.transport import (
     udp,
     webusb,
@@ -35,6 +34,7 @@ from typing import (
     Optional,
     Sequence,
 )
+import copy
 
 py_enumerate = enumerate  # Need to use the enumerate built-in but there's another function already named that
 
@@ -223,8 +223,8 @@ class OnekeyFeatures(Features):
         self.serial_no = serial_no
         self.boardloader_version = boardloader_version
 
-
-DEFAULT_MAPPING.register(OnekeyFeatures)
+ONEKEY_MAPPING = copy.deepcopy(DEFAULT_MAPPING)
+ONEKEY_MAPPING.register(OnekeyFeatures)
 
 USB_IDS = {(0x1209, 0x4F4A), (0x1209, 0x4F4B), }
 
@@ -233,7 +233,7 @@ ONEKEY_LEGACY = TrezorModel(
     minimum_version=(2, 11, 0),
     vendors=VENDORS,
     usb_ids=USB_IDS,
-    default_mapping=DEFAULT_MAPPING,
+    default_mapping=ONEKEY_MAPPING,
 )
 
 ONEKEY_TOUCH = TrezorModel(
@@ -241,7 +241,7 @@ ONEKEY_TOUCH = TrezorModel(
     minimum_version=(4, 2, 0),
     vendors=VENDORS,
     usb_ids=USB_IDS,
-    default_mapping=DEFAULT_MAPPING,
+    default_mapping=ONEKEY_MAPPING,
 )
 
 ONEKEYS = (ONEKEY_LEGACY, ONEKEY_TOUCH)
@@ -256,29 +256,14 @@ def model_by_name(name: str) -> Optional[TrezorModel]:
 
 # ===============overwrite methods for onekey device begin============
 
+def retrieval_version(self: object):
+    version = (*map(int, self.features.onekey_version.split(".")), )
+    return version
 
-def _refresh_features(self: object, features: Features) -> None:
-    """Update internal fields based on passed-in Features message."""
-    if not self.model:
-        self.model = model_by_name(features.model or "1")
-        if self.model is None:
-            raise RuntimeError("Unsupported OneKey model")
-
-    if features.vendor not in self.model.vendors:
-        raise RuntimeError("Unsupported device")
-    self.features = features
-    self.version = (*map(int, self.features.onekey_version.split(".")), )
-    self.check_firmware_version(warn_only=True)
-    if self.features.session_id is not None:
-        self.session_id = self.features.session_id
-        self.features.session_id = None
-
-def button_request(self: object, code: Optional[int]) -> None:
-    if not self.prompt_shown:
-        print("Please confirm action on your OneKey device", file=sys.stderr)
-    if not self.always_prompt:
-        self.prompt_shown = True
-
+def ensure_model(self: object, features):
+    assert self.model is not None, "Unsupported OneKey model"
+    # Correct the correct model
+    self.model = model_by_name(features.model or "1")
 
 # ===============overwrite methods for onekey device end============
 
@@ -291,12 +276,9 @@ class OnekeyClient(TrezorClient):
         expert: bool = False,
         chain: Chain = Chain.MAIN,
     ) -> None:
-        super().__init__(path, password, expert, chain, webusb_ids=USB_IDS, sim_path=ONEKEY_EMULATOR_PATH)
-        self.client._refresh_features = MethodType(_refresh_features, self.client)
-        if not isinstance(self.client.ui, debuglink.DebugUI):
-            self.client.ui.button_request = MethodType(button_request, self.client.ui)
-        self.type = "OneKey"
-
+        super().__init__(path, password, expert, chain, webusb_ids=USB_IDS, sim_path=ONEKEY_EMULATOR_PATH, model=ONEKEY_LEGACY, device_type="OneKey")
+        self.client.retrieval_version = MethodType(retrieval_version, self.client)
+        self.client.ensure_model = MethodType(ensure_model, self.client)
 
 def enumerate(
     password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN

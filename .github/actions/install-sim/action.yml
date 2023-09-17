@@ -17,7 +17,14 @@ runs:
         apt-get update
         apt-get install -y libsdl2-image-2.0-0 libusb-1.0-0
         tar -xvf trezor-firmware.tar.gz
-
+    
+    - if: startsWith(inputs.device, 'onekey-')
+      shell: bash
+      run: |
+        apt-get update
+        apt-get install -y libsdl2-image-2.0-0 libusb-1.0-0
+        tar -xvf onekey-firmware.tar.gz
+        
     - if: inputs.device == 'coldcard'
       shell: bash
       run: |
