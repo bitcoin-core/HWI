@@ -1,4 +1,4 @@
-import cbor
+import cbor2 as cbor
 import hashlib
 import json
 import time
@@ -20,9 +20,7 @@ from .jade_tcp import JadeTCPImpl
 logger = logging.getLogger(__name__)
 device_logger = logging.getLogger(f'{__name__}-device')
 
-
 # Default serial connection
-DEFAULT_SERIAL_DEVICE = '/dev/ttyUSB0'
 DEFAULT_BAUD_RATE = 115200
 DEFAULT_SERIAL_TIMEOUT = 120
 
@@ -84,21 +82,29 @@ try:
 
         # Use the first non-onion url
         url = [url for url in params['urls'] if not url.endswith('.onion')][0]
+
         if params['method'] == 'GET':
             assert 'data' not in params, 'Cannot pass body to requests.get'
-            f = requests.get(url)
+            def http_call_fn(): return requests.get(url)
         elif params['method'] == 'POST':
             data = json.dumps(params['data'])
-            f = requests.post(url, data)
+            def http_call_fn(): return requests.post(url, data)
+        else:
+            raise JadeError(1, "Only GET and POST methods supported", params['method'])
 
-        logger.debug("http_request received reply: {}".format(f.text))
+        try:
+            f = http_call_fn()
+            logger.debug("http_request received reply: {}".format(f.text))
 
-        if f.status_code != 200:
-            logger.error("http error {} : {}".format(f.status_code, f.text))
-            raise ValueError(f.status_code)
+            if f.status_code != 200:
+                logger.error("http error {} : {}".format(f.status_code, f.text))
+                raise ValueError(f.status_code)
 
-        assert params['accept'] == 'json'
-        f = f.json()
+            assert params['accept'] == 'json'
+            f = f.json()
+        except Exception as e:
+            logging.error(e)
+            f = None
 
         return {'body': f}
 
@@ -330,16 +336,41 @@ class JadeAPI:
 
         return result
 
-    def get_version_info(self):
+    def ping(self):
+        """
+        RPC call to test the connection to Jade and that Jade is powered on and receiving data, and
+        return whether the main task is currently handling a message, handling user menu navigation
+        or is idle.
+
+        NOTE: unlike all other calls this is not queued and handled in fifo order - this message is
+        handled immediately and the response sent as quickly as possible.  This call does not block.
+        If this call is made in parallel with Jade processing other messages, the replies may be
+        out of order (although the message 'id' should still be correct).  Use with caution.
+
+        Returns
+        -------
+        0 if the main task is currently idle
+        1 if the main task is handling a client message
+        2 if the main task is handling user ui menu navigation
+        """
+        return self._jadeRpc('ping')
+
+    def get_version_info(self, nonblocking=False):
         """
         RPC call to fetch summary details pertaining to the hardware unit and running firmware.
+
+        Parameters
+        ----------
+        nonblocking : bool
+            If True message will be handled immediately (see also ping()) *experimental feature*
 
         Returns
         -------
         dict
             Contains keys for various info describing the hw and running fw
         """
-        return self._jadeRpc('get_version_info')
+        params = {'nonblocking': True} if nonblocking else None
+        return self._jadeRpc('get_version_info', params)
 
     def add_entropy(self, entropy):
         """
@@ -377,7 +408,20 @@ class JadeAPI:
         params = {'epoch': epoch if epoch is not None else int(time.time())}
         return self._jadeRpc('set_epoch', params)
 
-    def ota_update(self, fwcmp, fwlen, chunksize, patchlen=None, cb=None):
+    def logout(self):
+        """
+        RPC call to logout of any wallet loaded on the Jade unit.
+        Any key material is freed and zero'd.
+        Call always returns true.
+
+        Returns
+        -------
+        bool
+            True
+        """
+        return self._jadeRpc('logout')
+
+    def ota_update(self, fwcmp, fwlen, chunksize, fwhash=None, patchlen=None, cb=None):
         """
         RPC call to attempt to update the unit's firmware.
 
@@ -393,6 +437,12 @@ class JadeAPI:
             and ack'd by the hw unit.
             The maximum supported chunk size is given in the version info data, under the key
             'JADE_OTA_MAX_CHUNK'.
+        fwhash: 32-bytes, optional
+            The sha256 hash of the full uncompressed final firmware image.  In the case of a full
+            firmware upload this should be the hash of the uncompressed file.  In the case of a
+            delta update this is the hash of the expected final image - ie. the existing firmware
+            with the uploaded delta applied.  ie. it is a verification of the fw image Jade will try
+            to boot. Optional for backward-compatibility - may become mandatory in a future release.
         patchlen: int, optional
             If the compressed firmware bytes are an incremental diff to be applied to the running
             firmware image, this is the size of that patch when uncompressed.
@@ -424,6 +474,9 @@ class JadeAPI:
                   'cmpsize': cmplen,
                   'cmphash': cmphash}
 
+        if fwhash is not None:
+            params['fwhash'] = fwhash
+
         if patchlen is not None:
             ota_method = 'ota_delta'
             params['patchsize'] = patchlen
@@ -454,8 +507,9 @@ class JadeAPI:
 
         Returns
         -------
-        bool
-            True on success.
+        int
+            Time in ms for the internal tests to run, as measured on the hw.
+            ie. excluding any messaging overhead
         """
         return self._jadeRpc('debug_selfcheck', long_timeout=True)
 
@@ -559,6 +613,38 @@ class JadeAPI:
         """
         params = {'seed': seed}
         return self._jadeRpc('debug_set_mnemonic', params)
+
+    def get_bip85_bip39_entropy(self, num_words, index, pubkey):
+        """
+        RPC call to fetch encrypted bip85-bip39 entropy.
+        NOTE: Only available in a DEBUG build of the firmware.
+
+        Parameters
+        ----------
+        num_words : int
+            The number of words the entropy is required to produce.
+
+        index : int
+            The index to use in the bip32 path to calcuate the entropy.
+
+        pubkey: 33-bytes
+            The host ephemeral pubkey to use to generate a shared ecdh secret to use as an AES key
+            to encrypt the returned entropy.
+
+        Returns
+        -------
+        dict
+            pubkey - 33-bytes, Jade's ephemeral pubkey used to generate a shared ecdh secret used as
+            an AES key to encrypt the returned entropy
+            encrypted - bytes, the requested bip85 bip39 entropy, AES encrypted with the first key
+            derived from the ecdh shared secret, prefixed with the iv
+            hmac - 32-bytes, the hmac of the encrypted buffer, using the second key derived from the
+            ecdh shared secret
+        """
+        params = {'num_words': num_words,
+                  'index': index,
+                  'pubkey': pubkey}
+        return self._jadeRpc('get_bip85_bip39_entropy', params)
 
     def set_pinserver(self, urlA=None, urlB=None, pubkey=None, cert=None):
         """
@@ -779,8 +865,59 @@ class JadeAPI:
                                  'master_blinding_key': master_blinding_key}}
         return self._jadeRpc('register_multisig', params)
 
+    def register_multisig_file(self, multisig_file):
+        """
+        RPC call to register a new multisig wallet, which must contain the hw signer.
+        A registration file is provided - as produced my several wallet apps.
+
+        Parameters
+        ----------
+        multisig_file : string
+            The multisig file as produced by several wallet apps.
+            eg:
+                Name: MainWallet
+                Policy: 2 of 3
+                Format: P2WSH
+                Derivation: m/48'/0'/0'/2'
+
+                B237FE9D: xpub6E8C7BX4c7qfTsX7urnXggcAyFuhDmYLQhwRwZGLD9maUGWPinuc9k96ejhEQ1DCk...
+                249192D2: xpub6EbXynW6xjYR3crcztum6KzSWqDJoAJQoovwamwVnLaCSHA6syXKPnJo6U3bVeGde...
+                67F90FFC: xpub6EHuWWrYd8bp5FS1XAZsMPkmCqLSjpULmygWqAqWRCCjSWQwz6ntq5KnuQnL23No2...
+
+    Returns
+    -------
+    bool
+        True on success, implying the mutisig wallet can now be used.
+    """
+        params = {'multisig_file': multisig_file}
+        return self._jadeRpc('register_multisig', params)
+
+    def register_descriptor(self, network, descriptor_name, descriptor_script, datavalues=None):
+        """
+        RPC call to register a new descriptor wallet, which must contain the hw signer.
+        A registration name is provided - if it already exists that record is overwritten.
+
+        Parameters
+        ----------
+        network : string
+            Network to which the multisig should apply - eg. 'mainnet', 'liquid', 'testnet', etc.
+
+        descriptor_name : string
+            Name to use to identify this descriptor wallet registration record.
+            If a registration record exists with the name given, that record is overwritten.
+
+        Returns
+        -------
+        bool
+            True on success, implying the descriptor wallet can now be used.
+        """
+        params = {'network': network, 'descriptor_name': descriptor_name,
+                  'descriptor': descriptor_script, 'datavalues': datavalues}
+        return self._jadeRpc('register_descriptor', params)
+
     def get_receive_address(self, *args, recovery_xpub=None, csv_blocks=0,
-                            variant=None, multisig_name=None, confidential=None):
+                            variant=None, multisig_name=None, descriptor_name=None,
+                            confidential=None):
         """
         RPC call to generate, show, and return an address for the given path.
         The call has three forms.
@@ -826,6 +963,16 @@ class JadeAPI:
             multisig_name : str
                 The name of the registered multisig wallet record used to generate the address.
 
+        4. Descriptor wallet addresses
+            branch : int
+                Multi-path derivation branch, usually 0.
+
+            pointer : int
+                Path index to descriptor
+
+            descriptor_name : str
+                The name of the registered descriptor wallet record used to generate the address.
+
         Returns
         -------
         str
@@ -836,6 +983,10 @@ class JadeAPI:
             assert len(args) == 2
             keys = ['network', 'paths', 'multisig_name']
             args += (multisig_name,)
+        elif descriptor_name is not None:
+            assert len(args) == 3
+            keys = ['network', 'branch', 'pointer', 'descriptor_name']
+            args += (descriptor_name,)
         elif variant is not None:
             assert len(args) == 2
             keys = ['network', 'path', 'variant']
@@ -895,6 +1046,26 @@ class JadeAPI:
             # Standard EC signature, simple case
             params = {'path': path, 'message': message}
             return self._jadeRpc('sign_message', params)
+
+    def sign_message_file(self, message_file):
+        """
+        RPC call to format and sign the given message, using the given bip32 path.
+        A message file is provided - as produced by eg. Specter wallet.
+        Supports RFC6979 only.
+
+        Parameters
+        ----------
+        message_file : str
+            Message file to parse and produce signature for.
+            eg:  'signmessage m/84h/0h/0h/0/0 ascii:this is a test message'
+
+        Returns
+        -------
+        str
+            base64-encoded RFC6979 signature
+        """
+        params = {'message_file': message_file}
+        return self._jadeRpc('sign_message', params)
 
     def get_identity_pubkey(self, identity, curve, key_type, index=0):
         """
@@ -1065,26 +1236,22 @@ class JadeAPI:
 
     def get_blinding_factor(self, hash_prevouts, output_index, bftype, multisig_name=None):
         """
-        RPC call to get a deterministic "trusted" blinding factor to blind an output.
-        Normally the blinding factors are generated and returned in the `get_commitments` call,
-        but for the last output the vbf must be generated on the host, so this call allows the
-        host to get a valid abf to compute the generator and then the "final" vbf.
-        Nonetheless, this call is kept generic, and can also generate vbfs, hence the "bftype"
-        parameter.
+        RPC call to get deterministic blinding factors to blind an output.
+        Predicated on the host calculating the 'hash_prevouts' value correctly.
+        Can fetch abf, vbf, or both together.
 
         Parameters
         ----------
 
         hash_prevouts : 32-bytes
-            This value is computed as specified in bip143.
-            It is verified immediately since at this point Jade doesn't have the tx in question.
-            It will be checked later during `sign_liquid_tx()`.
+            This value should be computed by the host as specified in bip143.
+            It is not verified by Jade, since at this point Jade does not have the tx in question.
 
         output_index : int
             The index of the output we are trying to blind
 
         bftype : str
-            Can be eitehr "ASSET" or "VALUE", to generate abfs or vbfs.
+            Can be "ASSET", "VALUE", or "ASSET_AND_VALUE", to generate abf, vbf, or both.
 
         multisig_name : str, optional
             The name of any registered multisig wallet for which to fetch the blinding factor.
@@ -1092,8 +1259,9 @@ class JadeAPI:
 
         Returns
         -------
-        32-bytes
-            The requested blinding factor
+        32-bytes or 64-bytes
+            The blinding factor for "ASSET" and "VALUE" requests, or both concatenated abf|vbf
+            ie. the first 32 bytes being abf, the second 32 bytes being vbf.
         """
         params = {'hash_prevouts': hash_prevouts,
                   'output_index': output_index,
@@ -1140,7 +1308,7 @@ class JadeAPI:
         Returns
         -------
         dict
-            Containing the following the blinding factors and output commitments.
+            Containing the blinding factors and output commitments.
         """
         params = {'asset_id': asset_id,
                   'value': value,
@@ -1192,7 +1360,7 @@ class JadeAPI:
             host_ae_entropy_values = []
             for txinput in inputs:
                 # ae-protocol - do not send the host entropy immediately
-                txinput = txinput.copy()  # shallow copy
+                txinput = txinput.copy() if txinput else {}  # shallow copy
                 host_ae_entropy_values.append(txinput.pop('ae_host_entropy', None))
 
                 base_id += 1
@@ -1224,6 +1392,9 @@ class JadeAPI:
             # Send all n inputs
             requests = []
             for txinput in inputs:
+                if txinput is None:
+                    txinput = {}
+
                 base_id += 1
                 msg_id = str(base_id)
                 request = self.jade.build_request(msg_id, 'tx_input', txinput)
@@ -1243,30 +1414,43 @@ class JadeAPI:
             return signatures
 
     def sign_liquid_tx(self, network, txn, inputs, commitments, change, use_ae_signatures=False,
-                       asset_info=None):
+                       asset_info=None, additional_info=None):
         """
         RPC call to sign a liquid transaction.
 
         Parameters
         ----------
         network : str
-            Network to which the address should apply - eg. 'liquid', 'liquid-testnet', etc.
+            Network to which the txn should apply - eg. 'liquid', 'liquid-testnet', etc.
 
         txn : bytes
             The transaction to sign
 
         inputs : [dict]
-            The tx inputs.   Should contain keys:
+            The tx inputs.
+                If signing this input, should contain keys:
                 is_witness, bool - whether this is a segwit input
-                value_commitment, 33-bytes - The value commitment of ths input
-
-                These are only required if signing this input:
                 script, bytes- the redeem script
                 path, [int] - the bip32 path to sign with
+                value_commitment, 33-bytes - The value commitment of ths input
+
+                This is optional if signing this input:
+                sighash, int - The sighash to use, defaults to 0x01 (SIGHASH_ALL)
 
                 These are only required for Anti-Exfil signatures:
                 ae_host_commitment, 32-bytes - The host-commitment for Anti-Exfil signatures
                 ae_host_entropy, 32-bytes - The host-entropy for Anti-Exfil signatures
+
+                These are only required for advanced transactions, eg. swaps, and only when the
+                inputs need unblinding.
+                Not needed for vanilla send-payment/redeposit etc:
+                abf, 32-bytes - asset blinding factor
+                asset_id, 32-bytes - the unblinded asset-id
+                asset_generator, 33-bytes - the (blinded) asset-generator
+                vbf, 32-bytes - the value blinding factor
+                value, int - the unblinded sats value of the input
+
+                If not signing this input a null or an empty dict can be passed.
 
         commitments : [dict]
             An array sized for the number of outputs.
@@ -1277,22 +1461,35 @@ class JadeAPI:
 
         change : [dict]
             An array sized for the number of outputs.
-            Outputs which are not change should have a 'null' placeholder element.
-            Change elements with data will be automatically verified by Jade, and not by the user.
-            Populated elements should contain sufficient data to generate the change address.
+            Outputs which are not to this wallet should have a 'null' placeholder element.
+            The output scripts for the elements with data will be verified by Jade.
+            Unless the element also contains 'is_change': False, these outputs will automatically
+            be approved and not be verified by the user.
+            Populated elements should contain sufficient data to generate the wallet address.
             See `get_receive_address()`
 
         use_ae_signatures : bool, optional
             Whether to use the anti-exfil protocol to generate the signatures.
             Defaults to False.
 
-        asset_info : [dict]
+        asset_info : [dict], optional
             Any asset-registry data relevant to the assets being transacted, such that Jade can
             display a meaningful name, issuer, ticker etc. rather than just asset-id.
             At the very least must contain 'asset_id', 'contract' and 'issuance_prevout' items,
             exactly as in the registry data.  NOTE: asset_info for the network policy-asset is
             not required.
             Defaults to None.
+
+        additional_info: dict, optional
+            Extra data about the transaction.  Only required for advanced transactions, eg. swaps.
+            Not needed for vanilla send-payment/redeposit etc:
+            tx_type, str: 'swap' indicates the tx represents an asset-swap proposal or transaction.
+            wallet_input_summary, dict:  a list of entries containing 'asset_id' (32-bytes) and
+            'satoshi' (int) showing net movement of assets out of the wallet (ie. sum of wallet
+            inputs per asset, minus any change outputs).
+            wallet_output_summary, dict:  a list of entries containing 'asset_id' (32-bytes) and
+            'satoshi' (int) showing net movement of assets into the wallet (ie. sum of wallet
+            outputs per asset, excluding any change outputs).
 
         Returns
         -------
@@ -1317,7 +1514,8 @@ class JadeAPI:
                   'trusted_commitments': commitments,
                   'use_ae_signatures': use_ae_signatures,
                   'change': change,
-                  'asset_info': asset_info}
+                  'asset_info': asset_info,
+                  'additional_info': additional_info}
 
         reply = self._jadeRpc('sign_liquid_tx', params, str(base_id))
         assert reply
@@ -1332,23 +1530,25 @@ class JadeAPI:
         Parameters
         ----------
         network : str
-            Network to which the address should apply - eg. 'mainnet', 'testnet', etc.
+            Network to which the txn should apply - eg. 'mainnet', 'testnet', etc.
 
         txn : bytes
             The transaction to sign
 
         inputs : [dict]
             The tx inputs.   Should contain keys:
-                is_witness, bool - whether this is a segwit input
-
-                These are only required if signing this input:
-                script, bytes- the redeem script
-                path, [int] - the bip32 path to sign with
-
                 One of these is required:
                 input_tx, bytes - The prior transaction which created the utxo of this input
                 satoshi, int - The satoshi amount of this input - can be used in place of
                     'input_tx' for a tx with a single segwit input
+
+                These are only required if signing this input:
+                is_witness, bool - whether this is a segwit input
+                script, bytes- the redeem script
+                path, [int] - the bip32 path to sign with
+
+                This is optional if signing this input:
+                sighash, int - The sighash to use, defaults to 0x01 (SIGHASH_ALL)
 
                 These are only required for Anti-Exfil signatures:
                 ae_host_commitment, 32-bytes - The host-commitment for Anti-Exfil signatures
@@ -1356,9 +1556,11 @@ class JadeAPI:
 
         change : [dict]
             An array sized for the number of outputs.
-            Outputs which are not change should have a 'null' placeholder element.
-            Change elements with data will be automatically verified by Jade, and not by the user.
-            Populated elements should contain sufficient data to generate the change address.
+            Outputs which are not to this wallet should have a 'null' placeholder element.
+            The output scripts for the elements with data will be verified by Jade.
+            Unless the element also contains 'is_change': False, these outputs will automatically
+            be approved and not be verified by the user.
+            Populated elements should contain sufficient data to generate the wallet address.
             See `get_receive_address()`
 
         use_ae_signatures : bool
@@ -1392,6 +1594,50 @@ class JadeAPI:
 
         # Send inputs and receive signatures
         return self._send_tx_inputs(base_id, inputs, use_ae_signatures)
+
+    def sign_psbt(self, network, psbt):
+        """
+        RPC call to sign a passed psbt as required
+
+        Parameters
+        ----------
+        network : str
+            Network to which the txn should apply - eg. 'mainnet', 'testnet', etc.
+
+        psbt : bytes
+            The psbt formatted as bytes
+
+        Returns
+        -------
+        bytes
+            The psbt, updated with any signatures required from the hw signer
+        """
+        # Send PSBT message
+        params = {'network': network, 'psbt': psbt}
+        msgid = str(random.randint(100000, 999999))
+        request = self.jade.build_request(msgid, 'sign_psbt', params)
+        self.jade.write_request(request)
+
+        # Read replies until we have them all, collate data and return.
+        # NOTE: we send 'get_extended_data' messages to request more 'chunks' of the reply data.
+        psbt_out = bytearray()
+        while True:
+            reply = self.jade.read_response()
+            self.jade.validate_reply(request, reply)
+            psbt_out.extend(self._get_result_or_raise_error(reply))
+
+            if 'seqnum' not in reply or reply['seqnum'] == reply['seqlen']:
+                break
+
+            newid = str(random.randint(100000, 999999))
+            params = {'origid': msgid,
+                      'orig': 'sign_psbt',
+                      'seqnum': reply['seqnum'] + 1,
+                      'seqlen': reply['seqlen']}
+            request = self.jade.build_request(newid, 'get_extended_data', params)
+            self.jade.write_request(request)
+
+        return psbt_out
 
 
 class JadeInterface:
@@ -1460,7 +1706,7 @@ class JadeInterface:
         if device and JadeTCPImpl.isSupportedDevice(device):
             impl = JadeTCPImpl(device, timeout or DEFAULT_SERIAL_TIMEOUT)
         else:
-            impl = JadeSerialImpl(device or DEFAULT_SERIAL_DEVICE,
+            impl = JadeSerialImpl(device,
                                   baud or DEFAULT_BAUD_RATE,
                                   timeout or DEFAULT_SERIAL_TIMEOUT)
         return JadeInterface(impl)
@@ -1541,7 +1787,7 @@ class JadeInterface:
         Log any/all outstanding messages/data.
         NOTE: can run indefinitely if data is arriving constantly.
         """
-        logger.warn("Draining interface...")
+        logger.warning("Draining interface...")
         drained = bytearray()
         finished = False
 
@@ -1552,14 +1798,14 @@ class JadeInterface:
 
             if finished or byte_ == b'\n' or len(drained) > 256:
                 try:
-                    device_logger.warn(drained.decode('utf-8'))
+                    device_logger.warning(drained.decode('utf-8'))
                 except Exception as e:
                     # Dump the bytes raw and as hex if decoding as utf-8 failed
-                    device_logger.warn("Raw:")
-                    device_logger.warn(drained)
-                    device_logger.warn("----")
-                    device_logger.warn("Hex dump:")
-                    device_logger.warn(drained.hex())
+                    device_logger.warning("Raw:")
+                    device_logger.warning(drained)
+                    device_logger.warning("----")
+                    device_logger.warning("Hex dump:")
+                    device_logger.warning(drained.hex())
 
                 # Clear and loop to continue collecting
                 drained.clear()
@@ -1693,7 +1939,7 @@ class JadeInterface:
                         response = message['log'].decode("utf-8")
                         log_methods = {
                             'E': device_logger.error,
-                            'W': device_logger.warn,
+                            'W': device_logger.warning,
                             'I': device_logger.info,
                             'D': device_logger.debug,
                             'V': device_logger.debug,
