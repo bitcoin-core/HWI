@@ -83,7 +83,7 @@ In order to build the Coldcard simulator, the following packages will need to be
 build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi
 ```
 
-After cloninig the Coldcard repo into this testing folder, the python packages can be installed with:
+After cloning the Coldcard repo into this testing folder, the python packages can be installed with:
 
 ```
 pip install -r ckcc_firmware/requirements.txt
