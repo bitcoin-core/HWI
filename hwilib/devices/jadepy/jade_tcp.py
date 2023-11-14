@@ -59,4 +59,7 @@ class JadeTCPImpl:
 
     def read(self, n):
         assert self.tcp_sock is not None
-        return self.tcp_sock.recv(n)
+        buf = self.tcp_sock.recv(n)
+        while len(buf) < n:
+            buf += self.tcp_sock.recv(n - len(buf))
+        return buf

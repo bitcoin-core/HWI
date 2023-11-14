@@ -24,7 +24,7 @@ from test_device import (
 from hwilib.devices.jadepy.jade import JadeAPI
 
 USE_SIMULATOR = True
-JADE_PATH = 'tcp:127.0.0.1:30121' if USE_SIMULATOR else '/dev/ttyUSB0'
+JADE_PATH = 'tcp:127.0.0.1:30121' if USE_SIMULATOR else None # None -> should search and find plugged unit
 TEST_SEED = bytes.fromhex('b90e532426d0dc20fffe01037048c018e940300038b165c211915c672e07762c')
 
 LOGGING = None  # logging.INFO
