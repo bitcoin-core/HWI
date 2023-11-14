@@ -432,9 +432,12 @@ def _get_func_expr(s: str) -> Tuple[str, str]:
     :return: The function name as the first element of the tuple, and the expression contained within the function as the second element
     :raises: ValueError: if a matching pair of parentheses cannot be found
     """
-    start = s.index("(")
-    end = s.rindex(")")
-    return s[0:start], s[start + 1:end]
+    try:
+        start = s.index("(")
+        end = s.rindex(")")
+        return s[0:start], s[start + 1:end]
+    except ValueError:
+        raise ValueError("A matching pair of parentheses cannot be found")
 
 
 def _get_const(s: str, const: str) -> str:
