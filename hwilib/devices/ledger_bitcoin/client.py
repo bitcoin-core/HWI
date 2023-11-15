@@ -2,14 +2,14 @@ from typing import Tuple, List, Mapping, Optional, Union
 import base64
 from io import BytesIO, BufferedReader
 
-from .command_builder import BitcoinCommandBuilder, BitcoinInsType
+from .command_builder import BitcoinCommandBuilder, BitcoinInsType, serialize_wallet_policy
 from ...common import Chain
 from .client_command import ClientCommandInterpreter
 from .client_base import Client, TransportClient
 from .client_legacy import LegacyClient
 from .exception import DeviceException, NotSupportedError
 from .merkle import get_merkleized_map_commitment
-from .wallet import WalletPolicy, WalletType
+from ...wallet_policy import WalletPolicy
 from ...psbt import PSBT
 from ..._serialize import deser_string
 
@@ -97,11 +97,8 @@ class NewClient(Client):
         return response.decode()
 
     def register_wallet(self, wallet: WalletPolicy) -> Tuple[bytes, bytes]:
-        if wallet.version not in [WalletType.WALLET_POLICY_V1, WalletType.WALLET_POLICY_V2]:
-            raise ValueError("invalid wallet policy version")
-
         client_intepreter = ClientCommandInterpreter()
-        client_intepreter.add_known_preimage(wallet.serialize())
+        client_intepreter.add_known_preimage(serialize_wallet_policy(wallet))
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
 
         # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
@@ -131,15 +128,12 @@ class NewClient(Client):
         display: bool,
     ) -> str:
 
-        if not isinstance(wallet, WalletPolicy) or wallet.version not in [WalletType.WALLET_POLICY_V1, WalletType.WALLET_POLICY_V2]:
-            raise ValueError("wallet type must be WalletPolicy, with version either WALLET_POLICY_V1 or WALLET_POLICY_V2")
-
         if change != 0 and change != 1:
             raise ValueError("Invalid change")
 
         client_intepreter = ClientCommandInterpreter()
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
-        client_intepreter.add_known_preimage(wallet.serialize())
+        client_intepreter.add_known_preimage(serialize_wallet_policy(wallet))
 
         # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
         client_intepreter.add_known_preimage(wallet.descriptor_template.encode())
@@ -197,7 +191,7 @@ class NewClient(Client):
 
         client_intepreter = ClientCommandInterpreter()
         client_intepreter.add_known_list([k.encode() for k in wallet.keys_info])
-        client_intepreter.add_known_preimage(wallet.serialize())
+        client_intepreter.add_known_preimage(serialize_wallet_policy(wallet))
 
         # necessary for version 1 of the protocol (available since version 2.1.0 of the app)
         client_intepreter.add_known_preimage(wallet.descriptor_template.encode())

@@ -21,6 +21,7 @@ For more information about the exceptions that those can raise, please see the s
 import importlib
 import logging
 import platform
+import json
 
 from ._base58 import xpub_to_pub_hex, xpub_to_xonly_pub_hex
 from .key import (
@@ -49,6 +50,7 @@ from .descriptor import (
     WPKHDescriptor,
     WSHDescriptor,
 )
+from .wallet_policy import WalletPolicy
 from .devices import __all__ as all_devs
 from .common import (
     AddressType,
@@ -182,19 +184,44 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
-def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
+def signtx(
+    client: HardwareWalletClient,
+    psbt: str,
+    policy: Optional[str],
+    name: Optional[str],
+    keys: Optional[str],
+    extra: str = "{}"
+) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
 
     :param client: The client to interact with
     :param psbt: The PSBT to sign
+    :param policy: The descriptor template for the wallet policy to display the address for. Mutually exclusive with ``desc`` or ``path``
+    :param name: The name of the wallet policy, if registered. Only works with ``policy``; if omitted, empty name is implied
+    :param keys: The list of keys information, as a JSON-encoded string. Only works with ``policy``
+    :param extra: A JSON-encoded string representing a dictionary with any additional field for the hardware wallet
     :return: A dictionary containing the processed PSBT serialized in Base64.
         Returned as ``{"psbt": <base64 psbt string>}``.
     """
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    result = client.sign_tx(tx).serialize()
+    if policy is None:
+        result = client.sign_tx(tx).serialize()
+    else:
+        if keys is None:
+            raise BadArgumentError("--keys parameter is compulsory when using --policy")
+
+        keys_info = json.loads(keys)
+        if not isinstance(keys_info, list) or any(not isinstance(k, str) for k in keys_info):
+            raise BadArgumentError("keys should be a json-encoded list of keys information")
+
+        # TODO: could do more validation of each key origin info
+
+        parsed_extra = json.loads(extra)
+        wp = WalletPolicy(name if name is not None else "", policy, keys_info, parsed_extra)
+        result = client.sign_tx_with_wallet_policy(tx, wp, parsed_extra).serialize()
     return {"psbt": result, "signed": result != psbt}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:
@@ -436,20 +463,68 @@ def getdescriptors(
 
     return result
 
-def displayaddress(
+
+def registerpolicy(
     client: HardwareWalletClient,
-    path: Optional[str] = None,
-    desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.WIT
+    policy: str,
+    name: str,
+    keys: str,
+    extra: str = "{}"
 ) -> Dict[str, str]:
     """
     Display an address on the device for client.
     The address can be specified by the path with additional parameters, or by a descriptor.
 
     :param client: The client to interact with
-    :param path: The path of the address to display. Mutually exclusive with ``desc``
-    :param desc: The descriptor to display the address for. Mutually exclusive with ``path``
+    :param policy: The descriptor template for the wallet policy to display the address for. Mutually exclusive with ``desc`` or ``path``
+    :param name: The name of the wallet policy, if registered. Only works with ``policy``; if omitted, empty name is implied
+    :param keys: The list of keys information, as a JSON-encoded string. Only works with ``policy``
+    :param extra: A JSON-encoded string representing a dictionary with any additional field for the hardware wallet
+    :return: On success, returns the proof of registration if the hardware wallet requires it.
+        Returned as ``{"proof_of_registration": <hex string>}``. The proof_of_registration is the empty string is the hardware
+        wallet does not return a proof of registration.
+    :raises: BadArgumentError: if an argument is malformed or missing.
+    """
+    if name == "":
+        raise BadArgumentError("The policy name cannot be empty")
+
+    keys_info = json.loads(keys)
+    if not isinstance(keys_info, list) or any(not isinstance(k, str) for k in keys_info):
+        raise BadArgumentError("keys should be a json-encoded list of keys information")
+
+    # TODO: could do more validation of each key origin info
+
+    parsed_extra = json.loads(extra)
+    wp = WalletPolicy(name if name is not None else "", policy, keys_info, parsed_extra)
+    return {"proof_of_registration": client.register_wallet_policy(wp, parsed_extra).hex()}
+
+
+def displayaddress(
+    client: HardwareWalletClient,
+    path: Optional[str] = None,
+    desc: Optional[str] = None,
+    policy: Optional[str] = None,
+    addr_type: AddressType = AddressType.WIT,
+    name: Optional[str] = None,
+    keys: Optional[str] = None,
+    change: Optional[int] = 0,
+    index: Optional[int] = 0,
+    extra: str = "{}"
+) -> Dict[str, str]:
+    """
+    Display an address on the device for client.
+    The address can be specified by the path with additional parameters, or by a descriptor.
+
+    :param client: The client to interact with
+    :param path: The path of the address to display. Mutually exclusive with ``desc`` or ``policy``
+    :param desc: The descriptor to display the address for. Mutually exclusive with ``path`` or ``policy``
+    :param policy: The descriptor template for the wallet policy to display the address for. Mutually exclusive with ``desc`` or ``path``
     :param addr_type: The address type to return. Only works with ``path``
+    :param name: The name of the wallet policy, if registered. Only works with ``policy``; if omitted, empty name is implied
+    :param keys: The list of keys information, as a JSON-encoded string. Only works with ``policy``
+    :param change: 0 if a normal receive address is desired, 1 for a change address. Only works with ``policy``
+    :param index: The address index of the required address, a number between 0 and 2147483647 (include). Only works with ``policy``
+    :param extra: A JSON-encoded string representing a dictionary with any additional field for the hardware wallet
     :return: A dictionary containing the address displayed.
         Returned as ``{"address": <base58 or bech32 address string>}``.
     :raises: BadArgumentError: if an argument is malformed, missing, or conflicts.
@@ -491,7 +566,21 @@ def displayaddress(
             elif isinstance(descriptor, TRDescriptor):
                 addr_type = AddressType.TAP
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
-    raise BadArgumentError("Missing both path and descriptor")
+    elif policy is not None:
+        if keys is None:
+            raise BadArgumentError("--keys parameter is compulsory when using --policy")
+
+        keys_info = json.loads(keys)
+        if not isinstance(keys_info, list) or any(not isinstance(k, str) for k in keys_info):
+            raise BadArgumentError("keys should be a json-encoded list of keys information")
+
+        # TODO: could do more validation of each key origin info
+
+        parsed_extra = json.loads(extra)
+        wp = WalletPolicy(name if name is not None else "", policy, keys_info, parsed_extra)
+        return {"address": client.display_wallet_policy_address(wp, change == 1, index, parsed_extra)}
+
+    raise BadArgumentError("Missing all of path, descriptor and policy")
 
 def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
     """

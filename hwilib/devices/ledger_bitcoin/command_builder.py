@@ -1,12 +1,18 @@
 import enum
 from typing import List, Tuple, Mapping, Union, Iterator, Optional
 
+from hashlib import sha256
+
 from ..._serialize import ser_compact_size as write_varint
 from .merkle import get_merkleized_map_commitment, MerkleTree, element_hash
-from .wallet import WalletPolicy
+from ...wallet_policy import WalletPolicy
 
 # p2 encodes the protocol version implemented
 CURRENT_PROTOCOL_VERSION = 1
+
+# version number in Ledger's serialization of wallet policies
+CURRENT_WALLET_POLICY_VERSION = 2
+
 
 def bip32_path_from_string(path: str) -> List[bytes]:
     splitted_path: List[str] = path.split("/")
@@ -40,6 +46,23 @@ def chunkify(data: bytes, chunk_len: int) -> Iterator[Tuple[bool, bytes]]:
     if remaining:
         yield True, data[offset:]
 
+
+def serialize_str(value: str) -> bytes:
+    return len(value).to_bytes(1, byteorder="big") + value.encode("latin-1")
+
+def serialize_wallet_policy(wallet_policy: WalletPolicy) -> bytes:
+    keys_info_hashes = map(lambda k: element_hash(k.encode()), wallet_policy.keys_info)
+    return b"".join([
+        CURRENT_WALLET_POLICY_VERSION.to_bytes(1, byteorder="big"),
+        serialize_str(wallet_policy.name),
+        write_varint(len(wallet_policy.descriptor_template.encode())),
+        sha256(wallet_policy.descriptor_template.encode()).digest(),
+        write_varint(len(wallet_policy.keys_info)),
+        MerkleTree(keys_info_hashes).root
+    ])
+
+def get_wallet_policy_id(wallet_policy: WalletPolicy) -> bytes:
+    return sha256(serialize_wallet_policy(wallet_policy)).digest()
 
 class DefaultInsType(enum.IntEnum):
     GET_VERSION = 0x01
@@ -112,7 +135,7 @@ class BitcoinCommandBuilder:
         )
 
     def register_wallet(self, wallet: WalletPolicy):
-        wallet_bytes = wallet.serialize()
+        wallet_bytes = serialize_wallet_policy(wallet)
 
         return self.serialize(
             cla=self.CLA_BITCOIN,
@@ -131,7 +154,7 @@ class BitcoinCommandBuilder:
         cdata: bytes = b"".join(
             [
                 b'\1' if display else b'\0',                            # 1 byte
-                wallet.id,                                              # 32 bytes
+                get_wallet_policy_id(wallet),                           # 32 bytes
                 wallet_hmac if wallet_hmac is not None else b'\0' * 32, # 32 bytes
                 b"\1" if change else b"\0",                             # 1 byte
                 address_index.to_bytes(4, byteorder="big"),             # 4 bytes
@@ -172,7 +195,7 @@ class BitcoinCommandBuilder:
             ]
         ).root
 
-        cdata += wallet.id
+        cdata += get_wallet_policy_id(wallet)
         cdata += wallet_hmac if wallet_hmac is not None else b'\0' * 32
 
         return self.serialize(

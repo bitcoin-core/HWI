@@ -39,11 +39,8 @@ from .ledger_bitcoin.client import (
     LegacyClient,
     TransportClient,
 )
+from .ledger_bitcoin.command_builder import get_wallet_policy_id
 from .ledger_bitcoin.exception import NotSupportedError
-from .ledger_bitcoin.wallet import (
-    MultisigWallet,
-    WalletPolicy,
-)
 from .ledger_bitcoin.btchip.btchipException import BTChipException
 
 import builtins
@@ -66,6 +63,7 @@ from .._script import (
     parse_multisig,
 )
 from ..psbt import PSBT
+from ..wallet_policy import WalletPolicy
 import logging
 import re
 
@@ -137,6 +135,41 @@ def ledger_exception(f: Callable[..., Any]) -> Any:
             else:
                 raise e
     return func
+
+class MultisigWallet(WalletPolicy):
+    """Helper class to represent common multisignature wallet policies."""
+
+    def __init__(self, name: str, address_type: AddressType, threshold: int, keys_info: List[str], sorted: bool = True) -> None:
+        n_keys = len(keys_info)
+
+        if not (1 <= threshold <= n_keys <= 16):
+            raise ValueError("Invalid threshold or number of keys")
+
+        multisig_op = "sortedmulti" if sorted else "multi"
+
+        if (address_type == AddressType.LEGACY):
+            policy_prefix = f"sh({multisig_op}("
+            policy_suffix = "))"
+        elif address_type == AddressType.WIT:
+            policy_prefix = f"wsh({multisig_op}("
+            policy_suffix = "))"
+        elif address_type == AddressType.SH_WIT:
+            policy_prefix = f"sh(wsh({multisig_op}("
+            policy_suffix = ")))"
+        else:
+            raise ValueError(f"Unexpected address type: {address_type}")
+
+        descriptor_template = "".join([
+            policy_prefix,
+            str(threshold) + ",",
+            ",".join("@" + str(k) + "/**" for k in range(n_keys)),
+            policy_suffix
+        ])
+
+        super().__init__(name, descriptor_template, keys_info)
+
+        self.threshold = threshold
+
 
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
 class LedgerClient(HardwareWalletClient):
@@ -289,7 +322,7 @@ class LedgerClient(HardwareWalletClient):
 
                 # Make and register the MultisigWallet
                 msw = MultisigWallet(f"{k} of {len(key_exprs)} Multisig", script_addrtype, k, key_exprs)
-                msw_id = msw.id
+                msw_id = get_wallet_policy_id(msw)
                 if msw_id not in wallets:
                     _, registered_hmac = self.client.register_wallet(msw)
                     wallets[msw_id] = (
@@ -304,7 +337,8 @@ class LedgerClient(HardwareWalletClient):
                         # TODO: Deal with non-default wallets
                         return
                     policy = self._get_singlesig_default_wallet_policy(script_addrtype, origin.path[2])
-                    wallets[policy.id] = (
+                    policy_id = get_wallet_policy_id(policy)
+                    wallets[policy_id] = (
                         signing_priority[script_addrtype],
                         script_addrtype,
                         self._get_singlesig_default_wallet_policy(script_addrtype, origin.path[2]),
@@ -537,6 +571,74 @@ class LedgerClient(HardwareWalletClient):
         :returns: True if Bitcoin App version is greater than or equal to 2.1.0, and not the "Legacy" release. False otherwise.
         """
         return isinstance(self.client, NewClient)
+
+    def can_register_wallet_policies(self) -> bool:
+        return True
+
+    @ledger_exception
+    def register_wallet_policy(self, wallet_policy: WalletPolicy, extra: Dict[str, Any]) -> bytes:
+        _, hmac = self.client.register_wallet(wallet_policy)
+        return hmac
+
+    @ledger_exception
+    def display_wallet_policy_address(self, wallet_policy: WalletPolicy, is_change: bool, address_index: int, extra: Dict[str, Any]) -> str:
+        # TODO: if non standard policy, should return an error if proof_of_registration is missing
+        if "proof_of_registration" not in extra:
+            hmac = None
+        else:
+            # TODO: error handling
+            hmac = bytes.fromhex(extra["proof_of_registration"])
+            assert len(hmac) == 32
+
+        return self.client.get_wallet_address(wallet_policy, hmac, int(is_change), address_index, True)
+
+    @ledger_exception
+    def sign_tx_with_wallet_policy(self, psbt: PSBT, wallet_policy: WalletPolicy, extra: Dict[str, Any]) -> PSBT:
+        # TODO: proof_of_registration not required for standard policies
+        if "proof_of_registration" not in extra:
+            raise BadArgumentError("Ledger Bitcoin app requires a proof_of_registration for non-standard wallet policies")
+
+        # TODO: proper error handling
+        wallet_hmac = bytes.fromhex(extra["proof_of_registration"])
+
+        assert len(wallet_hmac) == 32
+
+        # Make a deepcopy of this psbt. We will need to modify it to get signing to work,
+        # which will affect the caller's detection for whether signing occured.
+        psbt2 = copy.deepcopy(psbt)
+        if psbt.version != 2:
+            psbt2.convert_to_v2()
+
+        input_sigs = self.client.sign_psbt(psbt2, wallet_policy, wallet_hmac)
+
+        for idx, pubkey, sig in input_sigs:
+            psbt_in = psbt2.inputs[idx]
+
+            utxo = None
+            if psbt_in.witness_utxo:
+                utxo = psbt_in.witness_utxo
+            if psbt_in.non_witness_utxo:
+                assert psbt_in.prev_out is not None
+                utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
+            assert utxo is not None
+
+            is_wit, wit_ver, _ = utxo.is_witness()
+
+            if is_wit and wit_ver >= 1:
+                # TODO: Deal with script path signatures
+                # For now, assume key path signature
+                psbt_in.tap_key_sig = sig
+            else:
+                psbt_in.partial_sigs[pubkey] = sig
+
+        # Extract the sigs from psbt2 and put them into tx
+        for sig_in, psbt_in in zip(psbt2.inputs, psbt.inputs):
+            psbt_in.partial_sigs.update(sig_in.partial_sigs)
+            psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
+            if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
+                psbt_in.tap_key_sig = sig_in.tap_key_sig
+
+        return psbt
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
