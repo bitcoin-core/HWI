@@ -65,7 +65,7 @@ NOTE:
     <= b'4104280c846650d7771396a679a55b30c558501f0b5554160c1fbd1d7301c845dacc10c256af2c8d6a13ae4a83763fa747c0d4c09cfa60bfc16714e10b0a938a4a6a2231485451557a6535486571334872553755435174564652745a535839615352674a65d62f97789c088a0b0c3ed57754f75273c6696c0d7812c702ca4f2f72c8631c04'9000
     {"xpub": "xpub6CyidiQae2HF71YigFJqteLsRi9D1EvZJm1Lr4DWWxFVruf3vDSbfyxD9znqVkUTUzc4EdgxDRoHXn64gMbFXQGKXg5nPNfvyVcpuPNn92n"}
 
-2. With this xpub it is possible  extract the relevant UTXOs using the
+2. With this xpub it is possible to extract the relevant UTXOs using the
 ``scantxoutset`` RPC call in Bitcoin Core v0.17.0.
 
 ::

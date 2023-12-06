@@ -67,7 +67,7 @@ To use, first enumerate all devices and find the one that you want to use with
 ./hwi.py enumerate
 ```
 
-Once the device type and device path is known, issue commands to it like so:
+Once the device type and device path are known, issue commands to it like so:
 
 ```
 ./hwi.py -t <type> -d <path> <command> <command args>
