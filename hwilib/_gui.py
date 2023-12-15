@@ -325,7 +325,7 @@ class HWIQt(QMainWindow):
         super(HWIQt, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowTitle('HWI Qt')
+        self.setWindowTitle(f'HWI Qt - {chain}')
 
         self.devices = []
         self.client = None
