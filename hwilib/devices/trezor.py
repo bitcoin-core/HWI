@@ -316,8 +316,8 @@ class TrezorClient(HardwareWalletClient):
         # If this is a Trezor One or Keepkey, do Initialize
         if resp.model == '1' or resp.model == 'K1-14AM':
             self.client.init_device()
-        # For the T, we need to check if a passphrase needs to be entered
-        elif resp.model == 'T':
+        # For later models, we need to check if a passphrase needs to be entered
+        else:
             try:
                 self.client.ensure_unlocked()
             except TrezorFailure:
@@ -325,7 +325,7 @@ class TrezorClient(HardwareWalletClient):
 
     def _check_unlocked(self) -> None:
         self._prepare_device()
-        if self.client.features.model == 'T' and isinstance(self.client.ui, PassphraseUI):
+        if messages.Capability.PassphraseEntry in self.client.features.capabilities and isinstance(self.client.ui, PassphraseUI):
             self.client.ui.disallow_passphrase()
         if self.client.features.pin_protection and not self.client.features.unlocked:
             raise DeviceNotReadyError('{} is locked. Unlock by using \'promptpin\' and then \'sendpin\'.'.format(self.type))
@@ -846,7 +846,9 @@ class TrezorClient(HardwareWalletClient):
         self._prepare_device()
         if self.client.features.model == "T":
             return bool(self.client.version >= (2, 4, 3))
-        return bool(self.client.version >= (1, 10, 4))
+        elif self.client.features.model == "1":
+            return bool(self.client.version >= (1, 10, 4))
+        return True
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
