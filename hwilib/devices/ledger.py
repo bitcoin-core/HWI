@@ -39,6 +39,7 @@ from .ledger_bitcoin.client import (
     LegacyClient,
     TransportClient,
 )
+from .ledger_bitcoin.client_base import ApduException
 from .ledger_bitcoin.exception import NotSupportedError
 from .ledger_bitcoin.wallet import (
     MultisigWallet,
@@ -118,6 +119,18 @@ signing_priority = {
     AddressType.LEGACY: 3,
 }
 
+def handle_chip_exception(e, func_name: str) -> bool:
+    if e.sw in bad_args:
+        raise BadArgumentError('Bad argument')
+    elif e.sw == 0x6F00: # BTCHIP_SW_TECHNICAL_PROBLEM
+        raise DeviceFailureError(e.message)
+    elif e.sw == 0x6FAA: # BTCHIP_SW_HALTED
+        raise DeviceConnectionError('Device is asleep')
+    elif e.sw in cancels:
+        raise ActionCanceledError('{} canceled'.format(func_name))
+    else:
+        raise e
+
 def ledger_exception(f: Callable[..., Any]) -> Any:
     @wraps(f)
     def func(*args: Any, **kwargs: Any) -> Any:
@@ -126,16 +139,10 @@ def ledger_exception(f: Callable[..., Any]) -> Any:
         except ValueError as e:
             raise BadArgumentError(str(e))
         except BTChipException as e:
-            if e.sw in bad_args:
-                raise BadArgumentError('Bad argument')
-            elif e.sw == 0x6F00: # BTCHIP_SW_TECHNICAL_PROBLEM
-                raise DeviceFailureError(e.message)
-            elif e.sw == 0x6FAA: # BTCHIP_SW_HALTED
-                raise DeviceConnectionError('Device is asleep')
-            elif e.sw in cancels:
-                raise ActionCanceledError('{} canceled'.format(f.__name__))
-            else:
-                raise e
+            handle_chip_exception(e, f.__name__)
+        except ApduException as e:
+            e.message = e.data.decode("utf-8")
+            handle_chip_exception(e, f.__name__)
     return func
 
 # This class extends the HardwareWalletClient for Ledger Nano S and Nano X specific things
