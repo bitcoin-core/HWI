@@ -171,8 +171,8 @@ class ColdcardDevice:
             raise
 
     def ec_setup(self):
-        # Provides the ECSDA primatives in portable way.
-        # Needed to do D-H session key aggreement and then AES.
+        # Provides the ECSDA primitives in portable way.
+        # Needed to do D-H session key agreement and then AES.
         # - should be replaced in subclasses if you have other EC libraries
         # - curve is always secp256k1
         # - values are binary strings
