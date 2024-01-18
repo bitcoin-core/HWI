@@ -168,7 +168,7 @@ class HID(Comm):
         Returns
         -------
         Tuple[int, bytes]
-            A pair (sw, rdata) containing the status word and reponse data.
+            A pair (sw, rdata) containing the status word and response data.
 
         """
         self.send(data)
