@@ -17,11 +17,15 @@ Create the docker images::
 
     docker build --no-cache -t hwi-builder -f contrib/build.Dockerfile .
     docker build --no-cache -t hwi-wine-builder -f contrib/build-wine.Dockerfile .
+    docker buildx build --no-cache --platform linux/arm64 -t hwi-builder-arm64 -f contrib/build.Dockerfile .
 
 Build everything::
 
     docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh"
     docker run -it --name hwi-wine-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-wine-builder /bin/bash -c "contrib/build_wine.sh"
+    docker run --platform linux/arm64 -it --rm --name hwi-builder-arm64 -v $PWD:/opt/hwi --workdir /opt/hwi hwi-builder-arm64 /bin/bash -c "contrib/build_bin.sh --without-gui && contrib/build_dist.sh --without-gui" 
+
+i.e.
 
 Building macOS binary
 =====================
