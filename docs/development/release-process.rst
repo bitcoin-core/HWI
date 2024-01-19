@@ -17,6 +17,9 @@ Create the docker images::
 
     docker build --no-cache -t hwi-builder -f contrib/build.Dockerfile .
     docker build --no-cache -t hwi-wine-builder -f contrib/build-wine.Dockerfile .
+
+    # arm64
+    sudo apt-get install qemu-user-static
     docker buildx build --no-cache --platform linux/arm64 -t hwi-builder-arm64 -f contrib/build.Dockerfile .
 
 Build everything::
