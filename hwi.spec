@@ -13,7 +13,7 @@ def get_libusb_path():
         prefix = proc.communicate()[0].rstrip().decode()
         return os.path.join(prefix, "lib", "libusb-1.0.dylib")
     if platform.system() == "Linux":
-        for lib_dir in ["/lib/x86_64-linux-gnu", "/usr/lib64", "/lib64" "/usr/lib", "/lib"]:
+        for lib_dir in ["/lib/x86_64-linux-gnu", "/lib/aarch64-linux-gnu", "/usr/lib64", "/lib64" "/usr/lib", "/lib"]:
             libusb_path = os.path.join(lib_dir, "libusb-1.0.so.0")
             if os.path.exists(libusb_path):
                 return libusb_path
