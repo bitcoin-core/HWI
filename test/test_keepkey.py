@@ -87,6 +87,7 @@ class KeepkeyEmulator(DeviceEmulator):
         # Setup the emulator
         model = TrezorModel(
             name="K1-14M",
+            internal_name="keepkey_emu",
             minimum_version=(0, 0, 0),
             vendors=("keepkey.com"),
             usb_ids=(), # unused
