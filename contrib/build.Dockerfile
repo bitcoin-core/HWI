@@ -1,4 +1,4 @@
-FROM debian:oldoldstable-slim
+FROM debian:bookworm-slim
 
 SHELL ["/bin/bash", "-c"]
 
@@ -27,7 +27,8 @@ RUN apt-get install -y \
     libudev-dev \
     faketime \
     zip \
-    qt5-default
+    pyqt5-dev \
+    libglib2.0-0
 
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT="/root/.pyenv"
