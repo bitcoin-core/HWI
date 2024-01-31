@@ -56,7 +56,7 @@ target_dir="$target_tarfile.dir"
 mkdir $target_dir
 mv hwi $target_dir
 
-if [[ $gui_support == "--with-gui" && $arch == "x86_64" ]]; then
+if [[ $gui_support == "--with-gui" && $ARCH == "x86_64" ]]; then
     mv hwi-qt $target_dir
 fi
 
