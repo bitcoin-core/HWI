@@ -209,8 +209,8 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
     def test_setup_wipe(self):
         # Device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup'])
-        self.assertEquals(result['code'], -10)
-        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+        self.assertEqual(result['code'], -10)
+        self.assertEqual(result['error'], 'Device is already initialized. Use wipe first and try again')
 
         # Wipe
         result = self.do_command(self.dev_args + ['wipe'])
@@ -225,8 +225,8 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
 
         # Make sure device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup'])
-        self.assertEquals(result['code'], -10)
-        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+        self.assertEqual(result['code'], -10)
+        self.assertEqual(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_label(self):
         result = self.do_command(self.dev_args + ['wipe'])
@@ -372,7 +372,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:11044':
                 self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEquals(dev['fingerprint'], '95d8f670')
+                self.assertEqual(dev['fingerprint'], '95d8f670')
                 break
         else:
             self.fail("Did not enumerate device")
@@ -381,7 +381,7 @@ class TestKeepkeyManCommands(KeepkeyTestCase):
         for dev in result:
             if dev['type'] == 'keepkey' and dev['path'] == 'udp:127.0.0.1:11044':
                 self.assertFalse(dev['needs_passphrase_sent'])
-                self.assertEquals(dev['fingerprint'], '95d8f670')
+                self.assertEqual(dev['fingerprint'], '95d8f670')
                 break
         else:
             self.fail("Did not enumerate device")

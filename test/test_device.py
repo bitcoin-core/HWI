@@ -619,7 +619,7 @@ class TestDisplayAddress(DeviceTestCase):
 
     def test_display_address_bad_path(self):
         result = self.do_command(self.dev_args + ['displayaddress', '--path', 'f'])
-        self.assertEquals(result['code'], -7)
+        self.assertEqual(result['code'], -7)
 
     def test_display_address_descriptor(self):
         account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
@@ -743,4 +743,4 @@ class TestSignMessage(DeviceTestCase):
 
     def test_bad_path(self):
         result = self.do_command(self.dev_args + ['signmessage', "Message signing test", 'f'])
-        self.assertEquals(result['code'], -7)
+        self.assertEqual(result['code'], -7)
