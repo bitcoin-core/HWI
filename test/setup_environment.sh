@@ -14,6 +14,10 @@ while [[ $# -gt 0 ]]; do
         build_coldcard=1
         shift
         ;;
+        --coldcard-edge)
+        build_coldcard_edge=1
+        shift
+        ;;
         --bitbox01)
         build_bitbox01=1
         shift
@@ -42,6 +46,7 @@ while [[ $# -gt 0 ]]; do
         build_trezor_1=1
         build_trezor_t=1
         build_coldcard=1
+        build_coldcard_edge=1
         build_bitbox01=1
         build_ledger=1
         build_keepkey=1
@@ -115,47 +120,64 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     cd ..
 fi
 
-if [[ -n ${build_coldcard} ]]; then
+if [[ -n ${build_coldcard} || -n ${build_coldcard_edge} ]]; then
     # Clone coldcard firmware if it doesn't exist, or update it if it does
-    coldcard_setup_needed=false
-    if [ ! -d "firmware" ]; then
-        git clone --recursive https://github.com/Coldcard/firmware.git
-        cd firmware
-        coldcard_setup_needed=true
-    else
-        cd firmware
-        git reset --hard HEAD~3 # Undo git-am for checking and updating
-        git fetch
-
-        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-        UPSTREAM=${1:-'@{u}'}
-        LOCAL=$(git rev-parse @)
-        REMOTE=$(git rev-parse "$UPSTREAM")
-        BASE=$(git merge-base @ "$UPSTREAM")
-
-        if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
-        elif [ $LOCAL = $BASE ]; then
-            git pull
+    do_coldcard_firmware() {
+        coldcard_setup_needed=false
+        if [ ! -d $1 ]; then
+            git clone --branch $2 --single-branch --recursive https://github.com/Coldcard/firmware.git $1
+            cd $1
             coldcard_setup_needed=true
-        fi
-    fi
-    # Apply patch to make simulator work in linux environments
-    git am ../../data/coldcard-multisig.patch
+        else
+            cd $1
+            git reset --hard HEAD~3 # Undo git-am for checking and updating
+            git fetch origin $2
 
-    # Build the simulator. This is cached, but it is also fast
-    poetry run pip install -r requirements.txt
-    pip install -r requirements.txt
-    cd unix
-    if [ "$coldcard_setup_needed" == true ] ; then
-        pushd ../external/micropython/mpy-cross/
+            # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+            UPSTREAM=${1:-'@{u}'}
+            LOCAL=$(git rev-parse @)
+            REMOTE=$(git rev-parse "$UPSTREAM")
+            BASE=$(git merge-base @ "$UPSTREAM")
+
+            if [ $LOCAL = $REMOTE ]; then
+                echo "Up-to-date"
+            elif [ $LOCAL = $BASE ]; then
+                git pull origin $2
+                coldcard_setup_needed=true
+            fi
+        fi
+
+        git submodule update --init
+
+        # Apply patch to make simulator work in linux environments
+        git am ../../data/coldcard-multisig.patch
+
+        # Build the simulator. This is cached, but it is also fast
+        poetry run pip install -r requirements.txt
+        pip install -r requirements.txt
+        cd unix
+        if [ "$coldcard_setup_needed" == true ] ; then
+            pushd ../external/micropython/mpy-cross/
+            make
+            popd
+            make setup
+            make ngu-setup
+        fi
         make
-        popd
-        make setup
-        make ngu-setup
+        cd ../..
+    }
+
+    if [[ -n ${build_coldcard_edge} ]]; then
+      BRANCH=edge
+      DIR=firmware-edge
+      do_coldcard_firmware ${DIR} ${BRANCH}
     fi
-    make
-    cd ../..
+
+    if [[ -n ${build_coldcard} ]]; then
+      BRANCH=master
+      DIR=firmware
+      do_coldcard_firmware ${DIR} ${BRANCH}
+    fi
 fi
 
 if [[ -n ${build_bitbox01} ]]; then

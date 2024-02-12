@@ -24,7 +24,7 @@ It also tests usage with `bitcoind`.
 `setup_environment.sh` will build the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Digital Bitbox simulator, the Jade emulator, and `bitcoind`.
 if run in the `test/` directory, these will be built in `work/test/trezor-firmware`, `work/test/firmware`, `work/test/keepkey-firmware`, `work/test/mcu`, and `work/test/bitcoin` respectively.
 In order to build each simulator/emulator, you will need to use command line arguments.
-These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
+These are `--trezor-1`, `--trezor-t`, `--coldcard`, `--coldcard-edge`, `--keepkey`, `--bitbox01`, `--jade`, and `--bitcoind`.
 If an environment variable is not present or not set, then the simulator/emulator or bitcoind that it guards will not be built.
 
 `run_tests.py` runs the tests. If run from the `test/` directory, it will be able to find the Trezor emulator, Coldcard simulator, Keepkey emulator, Digital Bitbox simulator, Jade emulator, and bitcoind.
@@ -80,14 +80,7 @@ $ pipenv run script/cibuild
 In order to build the Coldcard simulator, the following packages will need to be installed:
 
 ```
-build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi
-```
-
-After cloning the Coldcard repo into this testing folder, the python packages can be installed with:
-
-```
-pip install -r ckcc_firmware/requirements.txt
-pip install -r ckcc_firmware/unix/requirements.txt
+build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi libffi-dev xterm swig libpcsclite-dev python-is-python3 autoconf libtool python3-venv
 ```
 
 ### Building
@@ -95,7 +88,10 @@ pip install -r ckcc_firmware/unix/requirements.txt
 Clone the repository:
 
 ```
-$ git clone https://github.com/coldcard/firmware
+git clone --recursive https://github.com/Coldcard/firmware.git
+cd firmware
+pip install -r requirements.txt
+pip install pysdl2-dll # Ubuntu needs this dependency
 ```
 
 Build the emulator in headless mode:
@@ -103,6 +99,7 @@ Build the emulator in headless mode:
 ```
 $ cd firmware/unix
 $ make setup
+$ make ngu-setup
 $ make
 ```
 
@@ -306,27 +303,6 @@ Build the emulator:
 ```
 $ cmake -Bbuild -H.
 $ make -C build/
-```
-
-## Coldcard emulator
-
-Clone the repository:
-
-```
-git clone --recursive https://github.com/Coldcard/firmware.git
-```
-
-### Dependencies
-
-In order to build the Coldcard emulator, the following packages will need to be installed:
-
-```
-build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi libffi-dev xterm swig libpcsclite-dev
-```
-You also have to install its python dependencies
-
-```
-pip install -r requirements.txt
 ```
 
 
