@@ -1,6 +1,22 @@
+# (c) Copyright 2021 by Coinkite Inc. This file is covered by license found in COPYING-CC.
+#
+
 import struct
 import binascii
 from collections import namedtuple
+from typing import Optional
+
+from ckcc.constants import AF_P2WSH, AF_P2WSH_P2SH, AF_P2SH
+from ckcc.constants import AF_P2WPKH, AF_P2TR, AF_CLASSIC, AF_P2WPKH_P2SH
+
+
+B2A = lambda x: binascii.b2a_hex(x).decode('ascii')
+
+
+def xfp2str(xfp):
+    # Standardized way to show an xpub's fingerprint... it's a 4-byte string
+    # and not really an integer. Used to show as '0x%08x' but that's wrong endian.
+    return binascii.b2a_hex(struct.pack('<I', xfp)).decode('ascii').upper()
 
 def dfu_parse(fd):
     # do just a little parsing of DFU headers, to find start/length of main binary
