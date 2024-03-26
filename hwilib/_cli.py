@@ -60,7 +60,7 @@ def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClien
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
-    return enumerate(password=args.password, expert=args.expert, chain=args.chain)
+    return enumerate(password=args.password, expert=args.expert, chain=args.chain, allow_emulators=args.allow_emulators)
 
 def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getmasterxpub(client, addrtype=args.addr_type, account=args.account)
@@ -145,6 +145,7 @@ def get_parser() -> HWIArgumentParser:
     parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
     parser.add_argument('--interactive', '-i', help='Use some commands interactively. Currently required for all device configuration commands', action='store_true')
     parser.add_argument('--expert', help='Do advanced things and get more detailed information returned from some commands. Use at your own risk.', action='store_true')
+    parser.add_argument("--no-emulators", help="Disable enumeration of device emulators", action="store_false", dest="allow_emulators")
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required

@@ -215,6 +215,10 @@ class TestDeviceConnect(DeviceTestCase):
                 found = True
         self.assertTrue(found)
 
+    def test_no_emus(self):
+        res = self.do_command(self.get_password_args() + ["--no-emulators", "enumerate"])
+        self.assertEqual(len(res), 0)
+
     def test_no_type(self):
         gmxp_res = self.do_command(["--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertIn('error', gmxp_res)
