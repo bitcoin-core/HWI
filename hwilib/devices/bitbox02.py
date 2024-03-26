@@ -173,7 +173,7 @@ def _xpubs_equal_ignoring_version(xpub1: bytes, xpub2: bytes) -> bool:
     return xpub1[4:] == xpub2[4:]
 
 
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
     """
     Enumerate all BitBox02 devices. Bootloaders excluded.
     """

@@ -851,11 +851,12 @@ class TrezorClient(HardwareWalletClient):
         return True
 
 
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
     results = []
     devs = hid.HidTransport.enumerate()
     devs.extend(webusb.WebUsbTransport.enumerate())
-    devs.extend(udp.UdpTransport.enumerate())
+    if allow_emulators:
+        devs.extend(udp.UdpTransport.enumerate())
     for dev in devs:
         d_data: Dict[str, Any] = {}
 

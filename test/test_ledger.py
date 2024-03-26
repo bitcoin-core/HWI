@@ -79,7 +79,7 @@ class LedgerEmulator(DeviceEmulator):
         # Wait for simulator to be up
         while True:
             try:
-                enum_res = process_commands(['enumerate'])
+                enum_res = process_commands(["--emulators", "enumerate"])
                 found = False
                 for dev in enum_res:
                     if dev['type'] == 'ledger' and 'error' not in dev:

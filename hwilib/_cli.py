@@ -60,7 +60,7 @@ def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClien
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
-    return enumerate(password=args.password, expert=args.expert, chain=args.chain)
+    return enumerate(password=args.password, expert=args.expert, chain=args.chain, allow_emulators=args.allow_emulators)
 
 def getmasterxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return getmasterxpub(client, addrtype=args.addr_type, account=args.account)
@@ -145,6 +145,7 @@ def get_parser() -> HWIArgumentParser:
     parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
     parser.add_argument('--interactive', '-i', help='Use some commands interactively. Currently required for all device configuration commands', action='store_true')
     parser.add_argument('--expert', help='Do advanced things and get more detailed information returned from some commands. Use at your own risk.', action='store_true')
+    parser.add_argument("--emulators", help="Enable enumeration and detection of device emulators", action="store_true", dest="allow_emulators")
 
     subparsers = parser.add_subparsers(description='Commands', dest='command')
     # work-around to make subparser required
@@ -277,9 +278,9 @@ def process_commands(cli_args: List[str]) -> Any:
 
     # Auto detect if we are using fingerprint or type to identify device
     if args.fingerprint or (args.device_type and not args.device_path):
-        client = find_device(args.password, args.device_type, args.fingerprint, args.expert, args.chain)
+        client = find_device(args.password, args.device_type, args.fingerprint, args.expert, args.chain, args.allow_emulators)
         if not client:
-            return {'error': 'Could not find device with specified fingerprint', 'code': DEVICE_CONN_ERROR}
+            return {'error': 'Could not find device with specified fingerprint or type', 'code': DEVICE_CONN_ERROR}
     elif args.device_type and args.device_path:
         with handle_errors(result=result, code=DEVICE_CONN_ERROR):
             client = get_client(device_type, device_path, password, args.expert, args.chain)

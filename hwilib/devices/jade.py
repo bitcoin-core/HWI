@@ -508,7 +508,7 @@ class JadeClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
     results = []
 
     def _get_device_entry(device_model: str, device_path: str) -> Dict[str, Any]:
@@ -537,16 +537,17 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
             results.append(_get_device_entry('jade', devinfo.device))
 
     # If we can connect to the simulator, add it too
-    try:
-        with JadeAPI.create_serial(SIMULATOR_PATH, timeout=1) as jade:
-            verinfo = jade.get_version_info()
+    if allow_emulators:
+        try:
+            with JadeAPI.create_serial(SIMULATOR_PATH, timeout=1) as jade:
+                verinfo = jade.get_version_info()
 
-        if verinfo is not None:
-            results.append(_get_device_entry('jade_simulator', SIMULATOR_PATH))
+            if verinfo is not None:
+                results.append(_get_device_entry('jade_simulator', SIMULATOR_PATH))
 
-    except Exception as e:
-        # If we get any sort of error do not add the simulator
-        logging.debug(f'Failed to connect to Jade simulator at {SIMULATOR_PATH}')
-        logging.debug(e)
+        except Exception as e:
+            # If we get any sort of error do not add the simulator
+            logging.debug(f'Failed to connect to Jade simulator at {SIMULATOR_PATH}')
+            logging.debug(e)
 
     return results
