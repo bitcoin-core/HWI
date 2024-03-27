@@ -215,6 +215,16 @@ class TestDeviceConnect(DeviceTestCase):
                 found = True
         self.assertTrue(found)
 
+    def test_no_emus(self):
+        res = self.do_command(self.get_password_args() + ["--no-emulators", "enumerate"])
+        self.assertEqual(len(res), 0)
+        res = self.do_command(self.get_password_args() + ["--no-emulators", "-f", self.emulator.fingerprint, "--chain", "test", "getmasterxpub", "--addr-type", "legacy"])
+        self.assertEqual(res['error'], 'Could not find device with specified fingerprint or type')
+        self.assertEqual(res['code'], -3)
+        res = self.do_command(self.get_password_args() + ["--no-emulators", "-t", self.detect_type, "--chain", "test", "getmasterxpub", "--addr-type", "legacy"])
+        self.assertEqual(res['error'], 'Could not find device with specified fingerprint or type')
+        self.assertEqual(res['code'], -3)
+
     def test_no_type(self):
         gmxp_res = self.do_command(["--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
         self.assertIn('error', gmxp_res)
@@ -232,7 +242,7 @@ class TestDeviceConnect(DeviceTestCase):
 
         # Nonexistent fingerprint
         gmxp_res = self.do_command(self.get_password_args() + ['-f', '0000ffff', "--chain", "test", 'getmasterxpub', "--addr-type", "legacy"])
-        self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint')
+        self.assertEqual(gmxp_res['error'], 'Could not find device with specified fingerprint or type')
         self.assertEqual(gmxp_res['code'], -3)
 
     def test_type_only_autodetect(self):
