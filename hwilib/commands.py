@@ -129,6 +129,7 @@ def find_device(
     fingerprint: Optional[str] = None,
     expert: bool = False,
     chain: Chain = Chain.MAIN,
+    allow_emulators: bool = True,
 ) -> Optional[HardwareWalletClient]:
     """
     Find a device from the device type or fingerprint and get a client to access it.
@@ -145,7 +146,7 @@ def find_device(
     :return: A client to interact with the found device
     """
 
-    devices = enumerate(password)
+    devices = enumerate(password, expert, chain, allow_emulators)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
             continue
