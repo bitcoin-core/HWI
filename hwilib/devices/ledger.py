@@ -119,7 +119,7 @@ signing_priority = {
     AddressType.LEGACY: 3,
 }
 
-def handle_chip_exception(e, func_name: str) -> bool:
+def handle_chip_exception(e: Union[BTChipException, ApduException], func_name: str) -> bool:
     if e.sw in bad_args:
         raise BadArgumentError('Bad argument')
     elif e.sw == 0x6F00: # BTCHIP_SW_TECHNICAL_PROBLEM

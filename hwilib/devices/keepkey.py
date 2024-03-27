@@ -149,6 +149,7 @@ class KeepkeyClient(TrezorClient):
         """
         model = TrezorModel(
             name="K1-14M",
+            internal_name="keepkey",
             minimum_version=(0, 0, 0),
             vendors=("keepkey.com"),
             usb_ids=(), # unused

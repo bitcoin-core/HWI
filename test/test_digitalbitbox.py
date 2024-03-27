@@ -110,8 +110,8 @@ class TestDBBManCommands(DeviceTestCase):
     def test_setup_wipe(self):
         # Device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
-        self.assertEquals(result['code'], -10)
-        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+        self.assertEqual(result['code'], -10)
+        self.assertEqual(result['error'], 'Device is already initialized. Use wipe first and try again')
 
         # Wipe
         result = self.do_command(self.dev_args + ['wipe'])
@@ -119,11 +119,11 @@ class TestDBBManCommands(DeviceTestCase):
 
         # Check arguments
         result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test'])
-        self.assertEquals(result['code'], -7)
-        self.assertEquals(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
+        self.assertEqual(result['code'], -7)
+        self.assertEqual(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
         result = self.do_command(self.dev_args + ['-i', 'setup', '--backup_passphrase', 'testpass'])
-        self.assertEquals(result['code'], -7)
-        self.assertEquals(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
+        self.assertEqual(result['code'], -7)
+        self.assertEqual(result['error'], 'The label and backup passphrase for a new Digital Bitbox wallet must be specified and cannot be empty')
 
         # Setup
         result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
@@ -137,17 +137,17 @@ class TestDBBManCommands(DeviceTestCase):
 
         # Make sure device is init, setup should fail
         result = self.do_command(self.dev_args + ['-i', 'setup', '--label', 'setup_test', '--backup_passphrase', 'testpass'])
-        self.assertEquals(result['code'], -10)
-        self.assertEquals(result['error'], 'Device is already initialized. Use wipe first and try again')
+        self.assertEqual(result['code'], -10)
+        self.assertEqual(result['error'], 'Device is already initialized. Use wipe first and try again')
 
     def test_backup(self):
         # Check arguments
         result = self.do_command(self.dev_args + ['backup', '--label', 'backup_test'])
-        self.assertEquals(result['code'], -7)
-        self.assertEquals(result['error'], 'The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
+        self.assertEqual(result['code'], -7)
+        self.assertEqual(result['error'], 'The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
         result = self.do_command(self.dev_args + ['backup', '--backup_passphrase', 'key'])
-        self.assertEquals(result['code'], -7)
-        self.assertEquals(result['error'], 'The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
+        self.assertEqual(result['code'], -7)
+        self.assertEqual(result['error'], 'The label and backup passphrase for a Digital Bitbox backup must be specified and cannot be empty')
 
         # Wipe
         result = self.do_command(self.dev_args + ['wipe'])
