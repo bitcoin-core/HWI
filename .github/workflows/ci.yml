@@ -272,6 +272,7 @@ jobs:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
     runs-on: ubuntu-latest
     needs: [ sim-builder, ledger-app-builder, bitcoind-builder ]
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
