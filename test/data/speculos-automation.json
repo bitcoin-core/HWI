@@ -26,6 +26,14 @@
             ]
         },
         {
+            "regexp": "^Message content.*",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ],
+                [ "setbool", "seen_msg_hash", true ]
+            ]
+        },
+        {
             "text": "message",
             "conditions": [
                 [ "seen_msg_hash", false ]

@@ -133,7 +133,7 @@ jobs:
               find dist -type f -exec sha256sum {} \;
             "
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
@@ -173,7 +173,7 @@ jobs:
           cd test; ./setup_environment.sh --${{ matrix.device.name }}; cd ..
           tar -czf ${{ matrix.device.archive }}.tar.gz ${{ matrix.device.paths }}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.device.name }}-sim
           path: ${{ matrix.device.archive }}.tar.gz
@@ -188,7 +188,7 @@ jobs:
           cd app-bitcoin-new
           make DEBUG=1
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ledger_app
           path: app-bitcoin-new/bin/app.elf
@@ -240,7 +240,7 @@ jobs:
       - run: |
           pip install poetry
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
@@ -248,7 +248,7 @@ jobs:
       - run: |
           ${{ matrix.script.install }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: bitcoind
 
@@ -272,6 +272,7 @@ jobs:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
     runs-on: ubuntu-latest
     needs: [ sim-builder, ledger-app-builder, bitcoind-builder ]
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
@@ -297,7 +298,7 @@ jobs:
           pip install poetry
           poetry install
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: bitcoind
 
