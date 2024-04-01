@@ -175,16 +175,16 @@ class TestTrezorGetxpub(TrezorTestCase):
                 load_device_by_mnemonic(client=self.client, mnemonic=vec['mnemonic'], pin='', passphrase_protection=False, label='test', language='english')
 
                 # Test getmasterxpub
-                gmxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getmasterxpub', "--addr-type", "legacy"])
+                gmxp_res = self.do_command(["-t", "trezor", "-d", "udp:127.0.0.1:21324", "--emulators", "getmasterxpub", "--addr-type", "legacy"])
                 self.assertEqual(gmxp_res['xpub'], vec['master_xpub'])
 
                 # Test the path derivs
                 for path_vec in vec['vectors']:
-                    gxp_res = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', 'getxpub', path_vec['path']])
+                    gxp_res = self.do_command(["-t", "trezor", "-d", "udp:127.0.0.1:21324", "--emulators", "getxpub", path_vec["path"]])
                     self.assertEqual(gxp_res['xpub'], path_vec['xpub'])
 
     def test_expert_getxpub(self):
-        result = self.do_command(['-t', 'trezor', '-d', 'udp:127.0.0.1:21324', '--expert', 'getxpub', 'm/44h/0h/0h/3'])
+        result = self.do_command(["-t", "trezor", "-d", "udp:127.0.0.1:21324", "--expert", "--emulators", "getxpub", "m/44h/0h/0h/3"])
         self.assertEqual(result['xpub'], 'xpub6FMafWAi3n3ET2rU5yQr16UhRD1Zx4dELmcEw3NaYeBaNnipcr2zjzYp1sNdwR3aTN37hxAqRWQ13AWUZr6L9jc617mU6EvgYXyBjXrEhgr')
         self.assertFalse(result['testnet'])
         self.assertFalse(result['private'])
@@ -200,7 +200,7 @@ class TestTrezorLabel(TrezorTestCase):
         self.dev_args = ['-t', 'trezor', '-d', 'udp:127.0.0.1:21324']
 
     def test_label(self):
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertEqual(dev['label'], 'test')
@@ -246,7 +246,7 @@ class TestTrezorManCommands(TrezorTestCase):
         result = t_client.setup_device(label='HWI Trezor')
         self.assertTrue(result)
 
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertEqual(dev['label'], 'HWI Trezor')
@@ -269,7 +269,7 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ['sendpin', '1234'])
         self.assertEqual(result['error'], 'This device does not need a PIN')
         self.assertEqual(result['code'], -11)
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
@@ -282,7 +282,7 @@ class TestTrezorManCommands(TrezorTestCase):
         load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='1234', passphrase_protection=True, label='test')
         self.client.lock(_refresh_features=False)
         self.client.end_session()
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertTrue(dev['needs_pin_sent'])
@@ -316,7 +316,7 @@ class TestTrezorManCommands(TrezorTestCase):
         result = self.do_command(self.dev_args + ["-p", "asdf", 'sendpin', pin])
         self.assertTrue(result['success'])
 
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_pin_sent'])
@@ -337,14 +337,14 @@ class TestTrezorManCommands(TrezorTestCase):
         self.do_command(self.dev_args + ['togglepassphrase'])
 
         # A passphrase will need to be sent
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertIn("warnings", dev)
                 break
         else:
             self.fail("Did not enumerate device")
-        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
+        result = self.do_command(self.dev_args + ['-p', 'pass', "--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
@@ -352,7 +352,7 @@ class TestTrezorManCommands(TrezorTestCase):
                 break
         else:
             self.fail("Did not enumerate device")
-        result = self.do_command(self.dev_args + ['-p', '\"\"', 'enumerate'])
+        result = self.do_command(self.dev_args + ['-p', '\"\"', "--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
@@ -363,7 +363,7 @@ class TestTrezorManCommands(TrezorTestCase):
 
         if self.emulator.model == 't':
             # Trezor T: A different passphrase would not change the fingerprint
-            result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
+            result = self.do_command(self.dev_args + ['-p', 'pass2', "--emulators", "enumerate"])
             for dev in result:
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
@@ -373,7 +373,7 @@ class TestTrezorManCommands(TrezorTestCase):
                 self.fail("Did not enumerate device")
         else:
             # Trezor 1: A different passphrase will change the fingerprint
-            result = self.do_command(self.dev_args + ['-p', 'pass2', 'enumerate'])
+            result = self.do_command(self.dev_args + ['-p', 'pass2', "--emulators", "enumerate"])
             for dev in result:
                 if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                     self.assertFalse(dev['needs_passphrase_sent'])
@@ -384,7 +384,7 @@ class TestTrezorManCommands(TrezorTestCase):
 
         # Clearing the session and starting a new one with a new passphrase should change the passphrase
         self.client.call(messages.Initialize())
-        result = self.do_command(self.dev_args + ['-p', 'pass3', 'enumerate'])
+        result = self.do_command(self.dev_args + ['-p', 'pass3', "--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
@@ -397,7 +397,7 @@ class TestTrezorManCommands(TrezorTestCase):
         self.do_command(self.dev_args + ['togglepassphrase'])
 
         # There's no passphrase
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])
@@ -406,7 +406,7 @@ class TestTrezorManCommands(TrezorTestCase):
         else:
             self.fail("Did not enumerate device")
         # Setting a passphrase won't change the fingerprint
-        result = self.do_command(self.dev_args + ['-p', 'pass', 'enumerate'])
+        result = self.do_command(self.dev_args + ['-p', 'pass', "--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'trezor' and dev['path'] == 'udp:127.0.0.1:21324':
                 self.assertFalse(dev['needs_passphrase_sent'])

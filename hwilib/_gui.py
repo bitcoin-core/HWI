@@ -321,7 +321,7 @@ except ImportError:
     pass
 
 class HWIQt(QMainWindow):
-    def __init__(self, passphrase=None, chain=Chain.MAIN):
+    def __init__(self, passphrase=None, chain=Chain.MAIN, allow_emulators: bool = False):
         super(HWIQt, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -343,6 +343,7 @@ class HWIQt(QMainWindow):
             'path': None,
             'account_used': True
         }
+        self.allow_emulators = allow_emulators
 
         self.ui.enumerate_refresh_button.clicked.connect(self.refresh_clicked)
         self.ui.setpass_button.clicked.connect(self.show_setpassphrasedialog)
@@ -372,7 +373,7 @@ class HWIQt(QMainWindow):
             self.client.close()
             self.client = None
 
-        self.devices = commands.enumerate(self.passphrase)
+        self.devices = commands.enumerate(password=self.passphrase, expert=False, chain=self.chain, allow_emulators=self.allow_emulators)
         self.ui.enumerate_combobox.currentIndexChanged.disconnect()
         self.ui.enumerate_combobox.clear()
         self.ui.enumerate_combobox.addItem('')
@@ -524,6 +525,7 @@ def process_gui_commands(cli_args):
     parser.add_argument('--chain', help='Select chain to work with', type=Chain.argparse, choices=list(Chain), default=Chain.MAIN)
     parser.add_argument('--debug', help='Print debug statements', action='store_true')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
+    parser.add_argument("--emulators", help="Enable enumeration and detection of device emulators", action="store_true", dest="allow_emulators")
 
     # Parse arguments again for anything entered over stdin
     args = parser.parse_args(cli_args)
@@ -536,7 +538,7 @@ def process_gui_commands(cli_args):
     # Qt setup
     app = QApplication()
 
-    window = HWIQt(args.password, args.chain)
+    window = HWIQt(args.password, args.chain, args.allow_emulators)
 
     window.refresh_clicked()
 

@@ -399,10 +399,11 @@ class ColdcardClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = True) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(COINKITE_VID, CKCC_PID)
-    devices.append({'path': CC_SIMULATOR_SOCK.encode()})
+    if allow_emulators:
+        devices.append({'path': CC_SIMULATOR_SOCK.encode()})
     for d in devices:
         d_data: Dict[str, Any] = {}
 

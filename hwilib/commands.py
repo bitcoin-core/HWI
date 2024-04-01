@@ -101,7 +101,7 @@ def get_client(device_type: str, device_path: str, password: Optional[str] = Non
     return client
 
 # Get a list of all available hardware wallets
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
     """
     Enumerate all of the devices that HWI can potentially access.
 
@@ -114,7 +114,7 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
     for module in all_devs:
         try:
             imported_dev = importlib.import_module('.devices.' + module, __package__)
-            result.extend(imported_dev.enumerate(password, expert, chain))
+            result.extend(imported_dev.enumerate(password, expert, chain, allow_emulators))
         except ImportError as e:
             # Warn for ImportErrors, but largely ignore them to allow users not install
             # all device dependencies if only one or some devices are wanted.
@@ -129,6 +129,7 @@ def find_device(
     fingerprint: Optional[str] = None,
     expert: bool = False,
     chain: Chain = Chain.MAIN,
+    allow_emulators: bool = False,
 ) -> Optional[HardwareWalletClient]:
     """
     Find a device from the device type or fingerprint and get a client to access it.
@@ -145,7 +146,7 @@ def find_device(
     :return: A client to interact with the found device
     """
 
-    devices = enumerate(password)
+    devices = enumerate(password, expert, chain, allow_emulators)
     for d in devices:
         if device_type is not None and d['type'] != device_type and d['model'] != device_type:
             continue

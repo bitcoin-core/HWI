@@ -679,17 +679,18 @@ class DigitalbitboxClient(HardwareWalletClient):
         return False
 
 
-def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> List[Dict[str, Any]]:
+def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
     results = []
     devices = hid.enumerate(DBB_VENDOR_ID, DBB_DEVICE_ID)
     # Try connecting to simulator
-    try:
-        dev = BitboxSimulator('127.0.0.1', 35345)
-        dev.send_recv(b'{"device" : "info"}')
-        devices.append({'path': b'udp:127.0.0.1:35345', 'interface_number': 0})
-        dev.close()
-    except Exception:
-        pass
+    if allow_emulators:
+        try:
+            dev = BitboxSimulator('127.0.0.1', 35345)
+            dev.send_recv(b'{"device" : "info"}')
+            devices.append({'path': b'udp:127.0.0.1:35345', 'interface_number': 0})
+            dev.close()
+        except Exception:
+            pass
     for d in devices:
         if ('interface_number' in d and d['interface_number'] == 0
                 or ('usage_page' in d and d['usage_page'] == 0xffff)):
