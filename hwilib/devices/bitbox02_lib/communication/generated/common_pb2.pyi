@@ -77,3 +77,23 @@ class Keypath(google.protobuf.message.Message):
         ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["keypath",b"keypath"]) -> None: ...
 global___Keypath = Keypath
+
+class KeyOriginInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    ROOT_FINGERPRINT_FIELD_NUMBER: builtins.int
+    KEYPATH_FIELD_NUMBER: builtins.int
+    XPUB_FIELD_NUMBER: builtins.int
+    root_fingerprint: builtins.bytes
+    @property
+    def keypath(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    @property
+    def xpub(self) -> global___XPub: ...
+    def __init__(self,
+        *,
+        root_fingerprint: builtins.bytes = ...,
+        keypath: typing.Optional[typing.Iterable[builtins.int]] = ...,
+        xpub: typing.Optional[global___XPub] = ...,
+        ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["xpub",b"xpub"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["keypath",b"keypath","root_fingerprint",b"root_fingerprint","xpub",b"xpub"]) -> None: ...
+global___KeyOriginInfo = KeyOriginInfo

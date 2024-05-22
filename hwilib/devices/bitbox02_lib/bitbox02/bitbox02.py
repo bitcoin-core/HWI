@@ -32,20 +32,25 @@ from ..communication import (
 
 from .secp256k1 import antiklepto_host_commit, antiklepto_verify
 
-from ..communication.generated import hww_pb2 as hww
-from ..communication.generated import eth_pb2 as eth
-from ..communication.generated import btc_pb2 as btc
-from ..communication.generated import cardano_pb2 as cardano
-from ..communication.generated import mnemonic_pb2 as mnemonic
-from ..communication.generated import bitbox02_system_pb2 as bitbox02_system
-from ..communication.generated import backup_commands_pb2 as backup
-from ..communication.generated import common_pb2 as common
-from ..communication.generated import keystore_pb2 as keystore
-from ..communication.generated import antiklepto_pb2 as antiklepto
+try:
+    from ..communication.generated import hww_pb2 as hww
+    from ..communication.generated import eth_pb2 as eth
+    from ..communication.generated import btc_pb2 as btc
+    from ..communication.generated import cardano_pb2 as cardano
+    from ..communication.generated import mnemonic_pb2 as mnemonic
+    from ..communication.generated import bitbox02_system_pb2 as bitbox02_system
+    from ..communication.generated import backup_commands_pb2 as backup
+    from ..communication.generated import common_pb2 as common
+    from ..communication.generated import keystore_pb2 as keystore
+    from ..communication.generated import antiklepto_pb2 as antiklepto
+    import google.protobuf.empty_pb2
 
-# pylint: disable=unused-import
-# We export it in __init__.py
-from ..communication.generated import system_pb2 as system
+    # pylint: disable=unused-import
+    # We export it in __init__.py
+    from ..communication.generated import system_pb2 as system
+except ModuleNotFoundError:
+    print("Run `make py` to generate the protobuf messages")
+    sys.exit()
 
 try:
     # Optional rlp dependency only needed to sign ethereum transactions.
@@ -674,6 +679,40 @@ class BitBox02(BitBoxCommonAPI):
         )
         return self._msg_query(request).electrum_encryption_key.key
 
+    def bip85_bip39(self) -> None:
+        """Invokes the BIP85-BIP39 workflow on the device"""
+        self._require_atleast(semver.VersionInfo(9, 18, 0))
+
+        # pylint: disable=no-member
+        request = hww.Request()
+        request.bip85.CopyFrom(
+            keystore.BIP85Request(
+                bip39=google.protobuf.empty_pb2.Empty(),
+            )
+        )
+        response = self._msg_query(request, expected_response="bip85").bip85
+        assert response.WhichOneof("app") == "bip39"
+
+    def bip85_ln(self) -> bytes:
+        """
+        Generates and returns a mnemonic for a hot Lightning wallet from the device using BIP-85.
+        """
+        self._require_atleast(semver.VersionInfo(9, 17, 0))
+
+        # Only account_number=0 is allowed for now.
+        account_number = 0
+
+        # pylint: disable=no-member
+        request = hww.Request()
+        request.bip85.CopyFrom(
+            keystore.BIP85Request(
+                ln=keystore.BIP85Request.AppLn(account_number=account_number),
+            )
+        )
+        response = self._msg_query(request, expected_response="bip85").bip85
+        assert response.WhichOneof("app") == "ln"
+        return response.ln
+
     def enable_mnemonic_passphrase(self) -> None:
         """
         Enable the bip39 passphrase.
@@ -753,6 +792,71 @@ class BitBox02(BitBoxCommonAPI):
         """
         transaction should be given as a full rlp encoded eth transaction.
         """
+        is_eip1559 = transaction.startswith(b"\x02")
+
+        def handle_antiklepto(request: eth.ETHRequest) -> bytes:
+            host_nonce = os.urandom(32)
+            if is_eip1559:
+                request.sign_eip1559.host_nonce_commitment.commitment = antiklepto_host_commit(
+                    host_nonce
+                )
+            else:
+                request.sign.host_nonce_commitment.commitment = antiklepto_host_commit(host_nonce)
+
+            signer_commitment = self._eth_msg_query(
+                request, expected_response="antiklepto_signer_commitment"
+            ).antiklepto_signer_commitment.commitment
+
+            request = eth.ETHRequest()
+            request.antiklepto_signature.CopyFrom(
+                antiklepto.AntiKleptoSignatureRequest(host_nonce=host_nonce)
+            )
+
+            signature = self._eth_msg_query(request, expected_response="sign").sign.signature
+            antiklepto_verify(host_nonce, signer_commitment, signature[:64])
+
+            if self.debug:
+                print("Antiklepto nonce verification PASSED")
+
+            return signature
+
+        if is_eip1559:
+            self._require_atleast(semver.VersionInfo(9, 16, 0))
+            (
+                decoded_chain_id,
+                nonce,
+                priority_fee,
+                max_fee,
+                gas_limit,
+                recipient,
+                value,
+                data,
+                _,
+                _,
+                _,
+            ) = rlp.decode(transaction[1:])
+            decoded_chain_id_int = int.from_bytes(decoded_chain_id, byteorder="big")
+            if decoded_chain_id_int != chain_id:
+                raise Exception(
+                    f"chainID argument ({chain_id}) does not match chainID encoded in transaction ({decoded_chain_id_int})"
+                )
+            request = eth.ETHRequest()
+            # pylint: disable=no-member
+            request.sign_eip1559.CopyFrom(
+                eth.ETHSignEIP1559Request(
+                    chain_id=chain_id,
+                    keypath=keypath,
+                    nonce=nonce,
+                    max_priority_fee_per_gas=priority_fee,
+                    max_fee_per_gas=max_fee,
+                    gas_limit=gas_limit,
+                    recipient=recipient,
+                    value=value,
+                    data=data,
+                )
+            )
+            return handle_antiklepto(request)
+
         nonce, gas_price, gas_limit, recipient, value, data, _, _, _ = rlp.decode(transaction)
         request = eth.ETHRequest()
         # pylint: disable=no-member
@@ -772,25 +876,7 @@ class BitBox02(BitBoxCommonAPI):
 
         supports_antiklepto = self.version >= semver.VersionInfo(9, 5, 0)
         if supports_antiklepto:
-            host_nonce = os.urandom(32)
-
-            request.sign.host_nonce_commitment.commitment = antiklepto_host_commit(host_nonce)
-            signer_commitment = self._eth_msg_query(
-                request, expected_response="antiklepto_signer_commitment"
-            ).antiklepto_signer_commitment.commitment
-
-            request = eth.ETHRequest()
-            request.antiklepto_signature.CopyFrom(
-                antiklepto.AntiKleptoSignatureRequest(host_nonce=host_nonce)
-            )
-
-            signature = self._eth_msg_query(request, expected_response="sign").sign.signature
-            antiklepto_verify(host_nonce, signer_commitment, signature[:64])
-
-            if self.debug:
-                print("Antiklepto nonce verification PASSED")
-
-            return signature
+            return handle_antiklepto(request)
 
         return self._eth_msg_query(request, expected_response="sign").sign.signature
 
@@ -945,7 +1031,10 @@ class BitBox02(BitBoxCommonAPI):
                 return value
             if typ.type == eth.ETHSignTypedMessageRequest.DataType.UINT:
                 if isinstance(value, str):
-                    value = int(value)
+                    if value[:2].lower() == "0x":
+                        value = int(value[2:], 16)
+                    else:
+                        value = int(value)
                 assert isinstance(value, int)
                 return value.to_bytes(typ.size, "big")
             if typ.type == eth.ETHSignTypedMessageRequest.DataType.INT:

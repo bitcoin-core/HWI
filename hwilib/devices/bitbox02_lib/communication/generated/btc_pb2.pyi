@@ -104,7 +104,7 @@ class BTCScriptConfig(google.protobuf.message.Message):
         threshold: builtins.int
         @property
         def xpubs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[common_pb2.XPub]:
-            """xpubs are acount-level xpubs. Addresses are going to be derived from it using: m/<change>/<receive>.
+            """xpubs are acount-level xpubs. Addresses are going to be derived from it using: `m/<change>/<receive>`.
             The number of xpubs defines the number of cosigners.
             """
             pass
@@ -123,19 +123,40 @@ class BTCScriptConfig(google.protobuf.message.Message):
             ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["our_xpub_index",b"our_xpub_index","script_type",b"script_type","threshold",b"threshold","xpubs",b"xpubs"]) -> None: ...
 
+    class Policy(google.protobuf.message.Message):
+        """A policy as specified by 'Wallet policies':
+        https://github.com/bitcoin/bips/pull/1389
+        """
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+        POLICY_FIELD_NUMBER: builtins.int
+        KEYS_FIELD_NUMBER: builtins.int
+        policy: typing.Text
+        @property
+        def keys(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[common_pb2.KeyOriginInfo]: ...
+        def __init__(self,
+            *,
+            policy: typing.Text = ...,
+            keys: typing.Optional[typing.Iterable[common_pb2.KeyOriginInfo]] = ...,
+            ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["keys",b"keys","policy",b"policy"]) -> None: ...
+
     SIMPLE_TYPE_FIELD_NUMBER: builtins.int
     MULTISIG_FIELD_NUMBER: builtins.int
+    POLICY_FIELD_NUMBER: builtins.int
     simple_type: global___BTCScriptConfig.SimpleType.ValueType
     @property
     def multisig(self) -> global___BTCScriptConfig.Multisig: ...
+    @property
+    def policy(self) -> global___BTCScriptConfig.Policy: ...
     def __init__(self,
         *,
         simple_type: global___BTCScriptConfig.SimpleType.ValueType = ...,
         multisig: typing.Optional[global___BTCScriptConfig.Multisig] = ...,
+        policy: typing.Optional[global___BTCScriptConfig.Policy] = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["config",b"config","multisig",b"multisig","simple_type",b"simple_type"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["config",b"config","multisig",b"multisig","simple_type",b"simple_type"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["config",b"config"]) -> typing.Optional[typing_extensions.Literal["simple_type","multisig"]]: ...
+    def HasField(self, field_name: typing_extensions.Literal["config",b"config","multisig",b"multisig","policy",b"policy","simple_type",b"simple_type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["config",b"config","multisig",b"multisig","policy",b"policy","simple_type",b"simple_type"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["config",b"config"]) -> typing.Optional[typing_extensions.Literal["simple_type","multisig","policy"]]: ...
 global___BTCScriptConfig = BTCScriptConfig
 
 class BTCPubRequest(google.protobuf.message.Message):
@@ -439,7 +460,9 @@ class BTCScriptConfigRegistration(google.protobuf.message.Message):
     @property
     def script_config(self) -> global___BTCScriptConfig: ...
     @property
-    def keypath(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    def keypath(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]:
+        """Unused for policy registrations."""
+        pass
     def __init__(self,
         *,
         coin: global___BTCCoin.ValueType = ...,
