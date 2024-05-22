@@ -38,6 +38,13 @@ runs:
         apt-get install -y libusb-1.0-0
         tar -xvf mcu.tar.gz
 
+    - if: inputs.device == 'bitbox02'
+      shell: bash
+      run: |
+        apt-get update
+        apt-get install -y libusb-1.0-0 docker.io
+        tar -xvf bitbox02.tar.gz
+
     - if: inputs.device == 'jade'
       shell: bash
       run: |

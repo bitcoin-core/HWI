@@ -59,6 +59,11 @@ RUN protoc --version
 # docker build -f ci/cirrus.Dockerfile -t hwi_test .
 # docker run -it --entrypoint /bin/bash hwi_test
 # cd test; poetry run ./run_tests.py --ledger --coldcard --interface=cli --device-only
+# For BitBox02:
+# docker build -f ci/cirrus.Dockerfile -t hwi_test .
+# ./ci/build_bitbox02.sh
+# docker run -it -v bitbox02_volume:/test/work/bitbox02-firmware --name hwi --entrypoint /bin/bash hwi_test
+# cd test; poetry run ./run_tests.py --bitbox02 --interface=cli --device-only
 ####################
 
 ####################
