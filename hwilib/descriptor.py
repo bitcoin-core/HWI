@@ -473,6 +473,8 @@ def _get_expr(s: str) -> Tuple[str, str]:
             level -= 1
         elif level == 0 and c in [")", "}", ","]:
             break
+    else:
+        return s, ""
     return s[0:i], s[i:]
 
 def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:

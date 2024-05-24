@@ -205,5 +205,15 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.depths, [1, 3, 3, 2])
         self.assertEqual(desc.to_string_no_checksum(), d)
 
+        d = "tr(a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd,pk(669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0))"
+        desc = parse_descriptor(d)
+        self.assertTrue(isinstance(desc, TRDescriptor))
+        self.assertEqual(len(desc.subdescriptors), 1)
+        self.assertEqual(desc.pubkeys[0].pubkey, "a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd")
+        self.assertEqual(desc.depths, [0])
+        self.assertEqual(desc.subdescriptors[0].pubkeys[0].pubkey, "669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0")
+        self.assertEqual(desc.to_string_no_checksum(), d)
+
+
 if __name__ == "__main__":
     unittest.main()
