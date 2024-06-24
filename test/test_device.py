@@ -41,7 +41,8 @@ class DeviceEmulator():
         assert self.path is not None
         assert self.fingerprint is not None
         assert self.master_xpub is not None
-        assert self.password is not None
+        # No need to check that self.password is not None, as it can be None if the device does not
+        # accept a password/passphrase from the host.
         assert self.supports_ms_display is not None
         assert self.supports_xpub_ms_display is not None
         assert self.supports_unsorted_ms is not None
