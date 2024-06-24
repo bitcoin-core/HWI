@@ -19,6 +19,7 @@ from typing import (
 import base64
 import builtins
 import sys
+import socket
 from functools import wraps
 
 from .._base58 import decode_check, encode_check
@@ -78,6 +79,8 @@ from .bitbox02_lib.communication.bitbox_api_protocol import (
     BitBox02Edition,
     BitBoxNoiseConfig,
 )
+
+SIMULATOR_PATH = "127.0.0.1:15423"
 
 class BitBox02Error(UnavailableActionError):
     def __init__(self, msg: str):
@@ -178,10 +181,13 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
     Enumerate all BitBox02 devices. Bootloaders excluded.
     """
     result = []
-    for device_info in devices.get_any_bitbox02s():
-        path = device_info["path"].decode()
-        client = Bitbox02Client(path)
-        client.set_noise_config(SilentNoiseConfig())
+    devs = [device_info["path"].decode() for device_info in devices.get_any_bitbox02s()]
+    if allow_emulators:
+        devs.append(SIMULATOR_PATH)
+    for path in devs:
+        client = Bitbox02Client(path=path)
+        if path != SIMULATOR_PATH:
+            client.set_noise_config(SilentNoiseConfig())
         d_data: Dict[str, object] = {}
         bb02 = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
@@ -252,9 +258,27 @@ def bitbox02_exception(f: T) -> T:
             raise exc
         except FirmwareVersionOutdatedException as exc:
             raise DeviceNotReadyError(str(exc))
+        except ValueError as e:
+            raise BadArgumentError(str(e))
 
     return cast(T, func)
 
+class BitBox02Simulator():
+    def __init__(self) -> None:
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ip, port = SIMULATOR_PATH.split(":")
+        self.client_socket.connect((ip, int(port)))
+
+    def write(self, data: bytes) -> None:
+        # Messages from client are always prefixed with HID report ID(0x00), which is not expected by the simulator.
+        self.client_socket.send(data[1:])
+
+    def read(self, size: int, timeout_ms: int) -> bytes:
+        res = self.client_socket.recv(64)
+        return res
+
+    def close(self) -> None:
+        self.client_socket.close()
 
 # This class extends the HardwareWalletClient for BitBox02 specific things
 class Bitbox02Client(HardwareWalletClient):
@@ -267,16 +291,21 @@ class Bitbox02Client(HardwareWalletClient):
                 "The BitBox02 does not accept a passphrase from the host. Please enable the passphrase option and enter the passphrase on the device during unlock."
             )
         super().__init__(path, password=password, expert=expert, chain=chain)
+        simulator = None
+        self.noise_config: BitBoxNoiseConfig = BitBoxNoiseConfig()
 
-        hid_device = hid.device()
-        hid_device.open_path(path.encode())
-        self.transport = u2fhid.U2FHid(hid_device)
+        if path != SIMULATOR_PATH:
+            hid_device = hid.device()
+            hid_device.open_path(path.encode())
+            self.transport = u2fhid.U2FHid(hid_device)
+            self.noise_config = CLINoiseConfig()
+        else:
+            simulator = BitBox02Simulator()
+            self.transport = u2fhid.U2FHid(simulator)
         self.device_path = path
 
         # use self.init() to access self.bb02.
         self.bb02: Optional[bitbox02.BitBox02] = None
-
-        self.noise_config: BitBoxNoiseConfig = CLINoiseConfig()
 
     def set_noise_config(self, noise_config: BitBoxNoiseConfig) -> None:
         self.noise_config = noise_config
@@ -285,38 +314,32 @@ class Bitbox02Client(HardwareWalletClient):
         if self.bb02 is not None:
             return self.bb02
 
-        for device_info in devices.get_any_bitbox02s():
-            if device_info["path"].decode() != self.device_path:
-                continue
-
-            bb02 = bitbox02.BitBox02(
-                transport=self.transport,
-                device_info=device_info,
-                noise_config=self.noise_config,
-            )
-            try:
-                bb02.check_min_version()
-            except FirmwareVersionOutdatedException as exc:
-                sys.stderr.write("WARNING: {}\n".format(exc))
-                raise
-            self.bb02 = bb02
-            is_initialized = bb02.device_info()["initialized"]
-            if expect_initialized is not None:
-                if expect_initialized:
-                    if not is_initialized:
-                        raise HWWError(
-                            "The BitBox02 must be initialized first.",
-                            DEVICE_NOT_INITIALIZED,
-                        )
-                elif is_initialized:
-                    raise UnavailableActionError(
-                        "The BitBox02 must be wiped before setup."
-                    )
-
-            return bb02
-        raise Exception(
-            "Could not find the hid device info for path {}".format(self.device_path)
+        bb02 = bitbox02.BitBox02(
+            transport=self.transport,
+            # Passing None as device_info means the device will be queried for the relevant device info.
+            device_info=None,
+            noise_config=self.noise_config,
         )
+        try:
+            bb02.check_min_version()
+        except FirmwareVersionOutdatedException as exc:
+            sys.stderr.write("WARNING: {}\n".format(exc))
+            raise
+        self.bb02 = bb02
+        is_initialized = bb02.device_info()["initialized"]
+        if expect_initialized is not None:
+            if expect_initialized:
+                if not is_initialized:
+                    raise HWWError(
+                        "The BitBox02 must be initialized first.",
+                        DEVICE_NOT_INITIALIZED,
+                    )
+            elif is_initialized:
+                raise UnavailableActionError(
+                    "The BitBox02 must be wiped before setup."
+                )
+
+        return bb02
 
     def close(self) -> None:
         self.transport.close()
@@ -883,9 +906,13 @@ class Bitbox02Client(HardwareWalletClient):
 
         if label:
             bb02.set_device_name(label)
-        if not bb02.set_password():
-            return False
-        return bb02.create_backup()
+        if self.device_path != SIMULATOR_PATH:
+            if not bb02.set_password():
+                return False
+            return bb02.create_backup()
+        else:
+            bb02.restore_from_mnemonic()
+            return True
 
     @bitbox02_exception
     def wipe_device(self) -> bool:

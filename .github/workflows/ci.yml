@@ -153,6 +153,7 @@ jobs:
           - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
           - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
           - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
+          - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build/bin/simulator' }
 
     steps:
       - uses: actions/checkout@v4
@@ -218,6 +219,7 @@ jobs:
           - 'ledger'
           - 'ledger-legacy'
           - 'keepkey'
+          - 'bitbox02'
         script:
           - name: 'Wheel'
             install: 'pip install dist/*.whl'
@@ -287,6 +289,7 @@ jobs:
           - 'ledger'
           - 'ledger-legacy'
           - 'keepkey'
+          - 'bitbox02'
         interface: [ 'library', 'cli', 'stdin' ]
 
     container: python:${{ matrix.python-version }}

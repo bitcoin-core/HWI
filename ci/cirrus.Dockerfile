@@ -78,6 +78,7 @@ RUN protoc --version
 #RUN cd test; ./setup_environment.sh --ledger
 #RUN cd test; ./setup_environment.sh --keepkey
 #RUN cd test; ./setup_environment.sh --jade
+#RUN cd test; ./setup_environment.sh --bitbox02
 #RUN cd test; ./setup_environment.sh --bitcoind
 #
 ## Once everything has been built, put rest of files in place

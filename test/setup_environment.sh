@@ -34,6 +34,10 @@ while [[ $# -gt 0 ]]; do
         build_jade=1
         shift
         ;;
+        --bitbox02)
+        build_bitbox02=1
+        shift
+        ;;
         --bitcoind)
         build_bitcoind=1
         shift
@@ -46,6 +50,7 @@ while [[ $# -gt 0 ]]; do
         build_ledger=1
         build_keepkey=1
         build_jade=1
+        build_bitbox02=1
         build_bitcoind=1
         shift
         ;;
@@ -412,6 +417,35 @@ if [[ -n ${build_jade} ]]; then
     cp jade/main/qemu/qemu_efuse.bin simulator/
 
     cd ..
+fi
+
+if [[ -n ${build_bitbox02} ]]; then
+    # Clone digital bitbox02 firmware if it doesn't exist, or update it if it does
+    if [ ! -d "bitbox02-firmware" ]; then
+        git clone --recursive https://github.com/BitBoxSwiss/bitbox02-firmware.git
+        cd bitbox02-firmware
+    else
+        cd bitbox02-firmware
+        git fetch
+
+        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
+        UPSTREAM=${1:-'@{u}'}
+        LOCAL=$(git rev-parse @)
+        REMOTE=$(git rev-parse "$UPSTREAM")
+        BASE=$(git merge-base @ "$UPSTREAM")
+
+        if [ $LOCAL = $REMOTE ]; then
+            echo "Up-to-date"
+        elif [ $LOCAL = $BASE ]; then
+            git pull
+        fi
+    fi
+
+    # Build the simulator. This is cached, but it is also fast
+    docker pull shiftcrypto/firmware_v2:latest
+    # The safe.directory config is so that git commands work. even though the repo folder mounted in
+    # Docker is owned by root, which can be different from the owner on the host.
+    docker run -i --rm --volume ./:/bb02 shiftcrypto/firmware_v2 bash -c "git config --global --add safe.directory /bb02 && cd /bb02 && make -j simulator"
 fi
 
 if [[ -n ${build_bitcoind} ]]; then
