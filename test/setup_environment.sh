@@ -145,6 +145,7 @@ if [[ -n ${build_onekey_1} || -n ${build_onekey_t} ]]; then
         git checkout bixin_dev
         git checkout .
         git pull origin bixin_dev
+        poetry lock --no-update
         poetry install
         poetry run pip install protobuf==3.20.0
         export EMULATOR=1 DEBUG_LINK=1 TREZOR_TRANSPORT_V1=1 
@@ -165,6 +166,7 @@ if [[ -n ${build_onekey_1} || -n ${build_onekey_t} ]]; then
         git checkout .
         git pull origin touch
         git submodule update --init --recursive vendor/lvgl_mp
+        poetry lock --no-update
         poetry install
         cd core
         poetry run make build_unix

@@ -203,7 +203,7 @@ class TestOnekeyLabel(OnekeyTestCase):
         self.dev_args = ['-t', 'onekey', '-d', "udp:127.0.0.1:54935"]
 
     def test_label(self):
-        result = self.do_command(self.dev_args + ['enumerate'])
+        result = self.do_command(self.dev_args + ["--emulators", "enumerate"])
         for dev in result:
             if dev['type'] == 'onekey' and dev['path'] == "udp:127.0.0.1:54935":
                 self.assertEqual(dev['label'], 'test')

@@ -283,11 +283,12 @@ class OnekeyClient(TrezorClient):
         self.client.ensure_model = MethodType(ensure_model, self.client)
 
 def enumerate(
-    password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN
+    password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False
 ) -> List[Dict[str, Any]]:
     results = []
     devs = webusb.WebUsbTransport.enumerate(usb_ids=USB_IDS)
-    devs.extend(udp.UdpTransport.enumerate(path=ONEKEY_EMULATOR_PATH))
+    if allow_emulators:
+        devs.extend(udp.UdpTransport.enumerate(path=ONEKEY_EMULATOR_PATH))
     for dev in devs:
         d_data: Dict[str, Any] = {}
 
