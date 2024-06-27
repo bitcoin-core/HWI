@@ -44,6 +44,7 @@ jobs:
           hwilib/devices/__init__.py
           hwilib/devices/keepkey.py
           hwilib/devices/ledger.py
+          hwilib/devices/onekey.py
           hwilib/devices/trezor.py
           hwilib/errors.py
           hwilib/_script.py
@@ -153,7 +154,9 @@ jobs:
           - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
           - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
           - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
-
+          - { name: 'onekey-1', archive: 'onekey-firmware',  paths: 'test/work/onekey-firmware' }
+          - { name: 'onekey-t', archive: 'onekey-firmware',  paths: 'test/work/onekey-firmware' }
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -218,6 +221,8 @@ jobs:
           - 'ledger'
           - 'ledger-legacy'
           - 'keepkey'
+          - 'onekey-1'
+          - 'onekey-t'
         script:
           - name: 'Wheel'
             install: 'pip install dist/*.whl'
@@ -232,8 +237,11 @@ jobs:
     env:
       DEVICE: '--${{ matrix.device }}'
 
-    container: python:${{ matrix.python-version }}
-
+    container:
+      image: python:${{ matrix.python-version }}
+      volumes:
+          - ${{ github.workspace }}:${{ github.workspace }}
+      options: --workdir ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
 
@@ -287,10 +295,15 @@ jobs:
           - 'ledger'
           - 'ledger-legacy'
           - 'keepkey'
+          - 'onekey-1'
+          - 'onekey-t'
         interface: [ 'library', 'cli', 'stdin' ]
 
-    container: python:${{ matrix.python-version }}
-
+    container:
+      image: python:${{ matrix.python-version }}
+      volumes:
+          - ${{ github.workspace }}:${{ github.workspace }}
+      options: --workdir ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
 
