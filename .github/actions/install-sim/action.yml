@@ -18,7 +18,7 @@ runs:
         apt-get install -y libsdl2-image-2.0-0 libusb-1.0-0
         tar -xvf trezor-firmware.tar.gz
 
-    - if: inputs.device == 'coldcard'
+    - if: startsWith(inputs.device, 'coldcard')
       shell: bash
       run: |
         apt-get update
@@ -26,10 +26,17 @@ runs:
         git config --global user.email "ci@ci.com"
         git config --global user.name "ci"
         pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
-        tar -xvf coldcard-mpy.tar.gz
-        pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
-        poetry run pip install -r test/work/firmware/requirements.txt
-        pip install -r test/work/firmware/requirements.txt
+        if [[ inputs.device == "coldcard-edge"]]; then
+            archive="coldcard-edge-mpy.tar.gz
+            dir="firmware-edge"
+        else
+            archive="coldcard-mpy.tar.gz"
+            dir="firmware"
+        fi
+        tar -xvf ${archive}
+        pushd test/work/${dir}; git am ../../data/coldcard-multisig.patch; popd
+        poetry run pip install -r test/work/${dir}/requirements.txt
+        pip install -r test/work/${dir}/requirements.txt
 
     - if: inputs.device == 'bitbox01'
       shell: bash

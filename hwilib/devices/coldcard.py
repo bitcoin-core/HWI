@@ -39,6 +39,7 @@ from .ckcc.constants import (
     AF_P2WSH,
     AF_P2SH,
     AF_P2WSH_P2SH,
+    AF_P2TR,
 )
 from .._base58 import (
     get_xpub_fingerprint,
@@ -244,7 +245,10 @@ class ColdcardClient(HardwareWalletClient):
         elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
+            if not self.can_sign_taproot():
+                raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
+
+            addr_fmt = AF_P2TR
         else:
             raise BadArgumentError("Unknown address type")
 
@@ -392,11 +396,18 @@ class ColdcardClient(HardwareWalletClient):
 
     def can_sign_taproot(self) -> bool:
         """
-        The Coldard does not support Taproot yet.
+        Only COLDCARD edge support taproot.
+        Edge release has X suffix in version string.
 
-        :returns: False, always
+        :returns: Whether Taproot is supported
         """
-        return False
+        if self.device.is_simulator:
+            cmd = "import version; RV.write(str(int(getattr(version, 'is_edge', 0))))"
+            rv = self.device.send_recv(b'EXEC' + cmd.encode('utf-8'), timeout=60000, encrypt=False)
+            return rv == b"1"
+        else:
+            _, ver, _, _, _ = self.device.send_recv(CCProtocolPacker.version()).split("\n")
+            return "X" == ver[-1]
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = True) -> List[Dict[str, Any]]:
@@ -423,6 +434,10 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
             try:
                 client = ColdcardClient(path)
                 d_data['fingerprint'] = client.get_master_fingerprint().hex()
+                if client.can_sign_taproot():
+                    d_data['label'] = 'edge'
+                    d_data['model'] = 'edge_' + d_data['model']
+
             except RuntimeError as e:
                 # Skip the simulator if it's not there
                 if str(e) == 'Cannot connect to simulator. Is it running?':
