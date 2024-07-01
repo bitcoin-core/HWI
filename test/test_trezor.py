@@ -28,7 +28,7 @@ from test_device import (
 )
 
 from hwilib._cli import process_commands
-from hwilib.devices.trezor import TrezorClient
+from hwilib.devices.trezor import TrezorClient, _use_external_script_type
 
 from types import MethodType
 
@@ -63,6 +63,7 @@ class TrezorEmulator(DeviceEmulator):
         self.strict_bip48 = True
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
+        self.client = None
 
     def start(self):
         super().start()
@@ -85,12 +86,12 @@ class TrezorEmulator(DeviceEmulator):
 
         # Setup the emulator
         wirelink = UdpTransport.enumerate()[0]
-        client = TrezorClientDebugLink(wirelink)
-        client.init_device()
-        device.wipe(client)
-        load_device_by_mnemonic(client=client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
+        self.client = TrezorClientDebugLink(wirelink)
+        self.client.init_device()
+        device.wipe(self.client)
+        load_device_by_mnemonic(client=self.client, mnemonic='alcohol woman abuse must during monitor noble actual mixed trade anger aisle', pin='', passphrase_protection=False, label='test') # From Trezor device tests
         atexit.register(self.stop)
-        return client
+        return self.client
 
     def stop(self):
         super().stop()
@@ -415,6 +416,16 @@ class TestTrezorManCommands(TrezorTestCase):
         else:
             self.fail("Did not enumerate device")
 
+class TestSignTxTrezorExternal(TestSignTx):
+    def setUp(self):
+        super().setUp()
+        if _use_external_script_type(self.emulator.client):
+            device.apply_settings(self.emulator.client, safety_checks=messages.SafetyCheckLevel.PromptTemporarily)
+
+    def tearDown(self):
+        device.apply_settings(self.emulator.client, safety_checks=messages.SafetyCheckLevel.Strict)
+        return super().tearDown()
+
 def trezor_test_suite(emulator, bitcoind, interface, model):
     assert model in TREZOR_MODELS
     # Redirect stderr to /dev/null as it's super spammy
@@ -429,6 +440,7 @@ def trezor_test_suite(emulator, bitcoind, interface, model):
         (["legacy", "segwit"], ["legacy", "segwit"], False, True),
         (["legacy", "segwit", "tap"], ["legacy", "segwit"], False, True),
     ]
+    signtx_cases_external = [(_addr, _multi, True, _opret) for _addr, _multi, _ext, _opret in signtx_cases]
 
     # Generic Device tests
     suite = unittest.TestSuite()
@@ -436,6 +448,7 @@ def trezor_test_suite(emulator, bitcoind, interface, model):
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
+    suite.addTest(DeviceTestCase.parameterize(TestSignTxTrezorExternal, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases_external))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     if model != 't':
