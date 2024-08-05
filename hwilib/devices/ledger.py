@@ -76,7 +76,9 @@ LEDGER_VENDOR_ID = 0x2c97
 LEDGER_MODEL_IDS = {
     0x10: "ledger_nano_s",
     0x40: "ledger_nano_x",
-    0x50: "ledger_nano_s_plus"
+    0x50: "ledger_nano_s_plus",
+    0x60: "ledger_stax",
+    0x70: "ledger_flex"
 }
 LEDGER_LEGACY_PRODUCT_IDS = {
     0x0001: "ledger_nano_s",
