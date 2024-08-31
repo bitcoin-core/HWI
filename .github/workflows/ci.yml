@@ -149,6 +149,7 @@ jobs:
           - { name: 'trezor-1', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
           - { name: 'trezor-t', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
           - { name: 'coldcard', archive: 'coldcard-mpy',     paths: 'test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port' }
+          - { name: 'coldcard-edge', archive: 'coldcard-edge-mpy',     paths: 'test/work/firmware-edge/external/micropython/ports/unix/coldcard-mpy test/work/firmware-edge/unix/coldcard-mpy test/work/firmware-edge/unix/l-mpy test/work/firmware-edge/unix/l-port' }
           - { name: 'bitbox01', archive: 'mcu',              paths: 'test/work/mcu' }
           - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
           - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
@@ -214,6 +215,7 @@ jobs:
           - 'trezor-1'
           - 'trezor-t'
           - 'coldcard'
+          - 'coldcard-edge'
           - 'bitbox01'
           - 'jade'
           - 'ledger'
@@ -284,6 +286,7 @@ jobs:
           - 'trezor-1'
           - 'trezor-t'
           - 'coldcard'
+          - 'coldcard-edge'
           - 'bitbox01'
           - 'jade'
           - 'ledger'

@@ -66,6 +66,8 @@ class ColdcardSimulator(DeviceEmulator):
                 for dev in enum_res:
                     if dev["type"] == "coldcard" and "error" not in dev:
                         found = True
+                        if dev["label"] == "edge":
+                            self.supports_taproot = True
                         break
                 if found:
                     break
@@ -136,20 +138,38 @@ class TestColdcardGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], '806b26507824f73bc331494afe122f428ef30dde80b2c1ce025d2d03aff411e7')
         self.assertEqual(result['pubkey'], '0368000bdff5e0b71421c37b8514de8acd4d98ba9908d183d9da56d02ca4fcfd08')
 
-def coldcard_test_suite(simulator, bitcoind, interface):
+def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
     dev_emulator = ColdcardSimulator(simulator)
 
     signtx_cases = [
         (["legacy"], ["legacy"], True, False),
+        (["legacy"], ["legacy"], False, True),
+        (["legacy"], ["legacy"], True, True),
+        (["legacy"], ["legacy"], False, False),
         (["segwit"], ["segwit"], True, False),
-        (["legacy", "segwit"], ["legacy", "segwit"], True, False),
+        (["segwit"], ["segwit"], False, True),
+        (["segwit"], ["segwit"], True, True),
+        (["segwit"], ["segwit"], False, False),
     ]
+    if is_edge:
+        signtx_cases += [
+            (["tap"], [], False, True),
+            (["tap"], [], True, False),
+            (["tap"], [], True, True),
+            (["tap"], [], False, False),
+        ]
+    else:
+        signtx_cases += [
+            (["legacy", "segwit"], ["legacy", "segwit"], True, False),
+            (["legacy", "segwit"], ["legacy", "segwit"], False, True),
+            (["legacy", "segwit"], ["legacy", "segwit"], True, True),
+            (["legacy", "segwit"], ["legacy", "segwit"], False, False),
+        ]
 
     # Generic device tests
     suite = unittest.TestSuite()
     suite.addTest(DeviceTestCase.parameterize(TestColdcardManCommands, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestColdcardGetXpub, bitcoind, emulator=dev_emulator, interface=interface))
-    suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="coldcard"))
     suite.addTest(DeviceTestCase.parameterize(TestDeviceConnect, bitcoind, emulator=dev_emulator, interface=interface, detect_type="coldcard"))
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
@@ -165,9 +185,10 @@ if __name__ == '__main__':
     parser.add_argument('simulator', help='Path to the Coldcard simulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
+    parser.add_argument('--edge', help='Is this EDGE release', action='store_true')
     args = parser.parse_args()
 
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not coldcard_test_suite(args.simulator, bitcoind, args.interface))
+    sys.exit(not coldcard_test_suite(args.simulator, bitcoind, args.interface, is_edge=args.edge))
