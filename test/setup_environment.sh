@@ -444,11 +444,10 @@ if [[ -n ${build_bitcoind} ]]; then
 
     # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.
     pushd depends
-    make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1
+    make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1 NO_USDT=1
     popd
 
     # Do the build
-    ./autogen.sh
-    CONFIG_SITE=$PWD/depends/x86_64-pc-linux-gnu/share/config.site ./configure --with-incompatible-bdb --with-miniupnpc=no --without-gui --disable-zmq --disable-tests --disable-bench --with-libs=no --with-utils=no
-    make src/bitcoind
+    cmake -B build --toolchain depends/x86_64-pc-linux-gnu/toolchain.cmake -DBUILD_TESTS=OFF -DBUILD_BENCH=OFF
+    cmake --build build --target bitcoind
 fi
