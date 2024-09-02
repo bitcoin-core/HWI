@@ -160,8 +160,7 @@ class KeepkeyClient(TrezorClient):
         if path.startswith("udp"):
             model.default_mapping.register(KeepkeyDebugLinkState)
 
-        super(KeepkeyClient, self).__init__(path, password, expert, chain, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH, model)
-        self.type = 'Keepkey'
+        super(KeepkeyClient, self).__init__(path, password, expert, chain, KEEPKEY_HID_IDS, KEEPKEY_WEBUSB_IDS, KEEPKEY_SIMULATOR_PATH, model, device_type="Keepkey")
 
     def can_sign_taproot(self) -> bool:
         """

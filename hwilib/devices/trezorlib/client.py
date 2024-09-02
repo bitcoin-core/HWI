@@ -17,7 +17,7 @@
 import logging
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from mnemonic import Mnemonic
 
@@ -259,25 +259,31 @@ class TrezorClient:
                 raise exceptions.TrezorFailure(resp)
             else:
                 return resp
+    
+    def retrieval_version(self) -> Tuple[int, int, int]:
 
-    def _refresh_features(self, features: messages.Features) -> None:
-        """Update internal fields based on passed-in Features message."""
-
+        version = (
+            self.features.major_version,
+            self.features.minor_version,
+            self.features.patch_version, 
+        )
+        return version
+        
+    def ensure_model(self, features):
         if not self.model:
             # Trezor Model One bootloader 1.8.0 or older does not send model name
             self.model = models.by_name(features.model or "1")
             if self.model is None:
                 raise RuntimeError("Unsupported Trezor model")
+            
+    def _refresh_features(self, features: messages.Features) -> None:
+        """Update internal fields based on passed-in Features message."""
 
+        self.ensure_model(features)
         if features.vendor not in self.model.vendors:
             raise RuntimeError("Unsupported device")
-
         self.features = features
-        self.version = (
-            self.features.major_version,
-            self.features.minor_version,
-            self.features.patch_version,
-        )
+        self.version = self.retrieval_version()
         self.check_firmware_version(warn_only=True)
         if self.features.session_id is not None:
             self.session_id = self.features.session_id
