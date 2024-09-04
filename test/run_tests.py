@@ -53,7 +53,7 @@ dbb_group.add_argument('--bitbox01', dest='bitbox01', help='Run Digital Bitbox t
 
 parser.add_argument('--trezor-1-path', dest='trezor_1_path', help='Path to Trezor 1 emulator', default='work/trezor-firmware/legacy/firmware/trezor.elf')
 parser.add_argument('--trezor-t-path', dest='trezor_t_path', help='Path to Trezor T emulator', default='work/trezor-firmware/core/emu.sh')
-parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldcar simulator', default='work/firmware/unix/headless.py')
+parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldcard simulator', default='work/firmware/unix/simulator.py')
 parser.add_argument('--keepkey-path', dest='keepkey_path', help='Path to Keepkey emulator', default='work/keepkey-firmware/bin/kkemu')
 parser.add_argument('--bitbox01-path', dest='bitbox01_path', help='Path to Digital Bitbox simulator', default='work/mcu/build/bin/simulator')
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
