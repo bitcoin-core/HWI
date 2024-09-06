@@ -444,10 +444,10 @@ if [[ -n ${build_bitcoind} ]]; then
 
     # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.
     pushd depends
-    make NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1 NO_USDT=1
+    make -j $(nproc) NO_QT=1 NO_QR=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1 NO_USDT=1
     popd
 
     # Do the build
     cmake -B build --toolchain depends/x86_64-pc-linux-gnu/toolchain.cmake -DBUILD_TESTS=OFF -DBUILD_BENCH=OFF
-    cmake --build build --target bitcoind
+    cmake --build build -j $(nproc) --target bitcoind
 fi
