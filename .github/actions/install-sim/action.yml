@@ -22,7 +22,7 @@ runs:
       shell: bash
       run: |
         apt-get update
-        apt-get install -y libpcsclite-dev libusb-1.0-0 swig
+        apt-get install -y libpcsclite-dev libusb-1.0-0 swig libsdl2-dev
         git config --global user.email "ci@ci.com"
         git config --global user.name "ci"
         pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
