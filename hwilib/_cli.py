@@ -160,7 +160,7 @@ def get_parser() -> HWIArgumentParser:
     getmasterxpub_parser.set_defaults(func=getmasterxpub_handler)
 
     signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
-    signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign')
+    signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign or special charater "-" to read the PSBT from standard input')
     signtx_parser.set_defaults(func=signtx_handler)
 
     getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')
