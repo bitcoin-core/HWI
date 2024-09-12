@@ -28,8 +28,6 @@ Build everything::
     docker run -it --name hwi-wine-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-wine-builder /bin/bash -c "contrib/build_wine.sh"
     docker run --platform linux/arm64 -it --rm --name hwi-builder-arm64 -v $PWD:/opt/hwi --workdir /opt/hwi hwi-builder-arm64 /bin/bash -c "contrib/build_bin.sh --without-gui && contrib/build_dist.sh --without-gui" 
 
-i.e.
-
 Building macOS binary
 =====================
 
@@ -37,14 +35,14 @@ Note that the macOS build is non-deterministic.
 
 First install `pyenv <https://github.com/pyenv/pyenv>`_ using whichever method you prefer.
 
-Then a deterministic build of Python 3.9.17 needs to be installed. This can be done with the patch in ``contrib/reproducible-python.diff``. First ``cd`` into HWI's source tree. Then use::
+Then a deterministic build of Python 3.9.19 needs to be installed. This can be done with the patch in ``contrib/reproducible-python.diff``. First ``cd`` into HWI's source tree. Then use::
 
-    cat contrib/reproducible-python.diff | PYTHON_CONFIGURE_OPTS="--enable-framework" BUILD_DATE="Jan  1 2019" BUILD_TIME="00:00:00" pyenv install -kp 3.9.17
+    cat contrib/reproducible-python.diff | PYTHON_CONFIGURE_OPTS="--enable-framework" BUILD_DATE="Jan  1 2019" BUILD_TIME="00:00:00" pyenv install -kp 3.9.19
 
-Make sure that python 3.9.17 is active::
+Make sure that python 3.9.19 is active::
 
     $ python --version
-    Python 3.9.17
+    Python 3.9.19
 
 Now install `Poetry <https://github.com/sdispater/poetry>`_ with ``pip install poetry``
 
