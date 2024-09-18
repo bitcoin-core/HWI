@@ -2,6 +2,7 @@ import serial
 import logging
 
 from serial.tools import list_ports
+from .jade_error import JadeError
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,9 @@ logger = logging.getLogger(__name__)
 #
 class JadeSerialImpl:
     # Used when searching for devices that might be a Jade/compatible hw
-    JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4), (0x0403, 0x6001), (0x1a86, 0x7523)]
+    JADE_DEVICE_IDS = [
+            (0x10c4, 0xea60), (0x1a86, 0x55d4), (0x0403, 0x6001),
+            (0x1a86, 0x7523), (0x303a, 0x4001), (0x303a, 0x1001)]
 
     @classmethod
     def _get_first_compatible_device(cls):
@@ -51,7 +54,10 @@ class JadeSerialImpl:
         assert self.ser is not None
 
         if not self.ser.is_open:
-            self.ser.open()
+            try:
+                self.ser.open()
+            except serial.serialutil.SerialException:
+                raise JadeError(1, "Unable to open port", self.device)
 
         # Ensure RTS and DTR are not set (as this can cause the hw to reboot)
         self.ser.setRTS(False)
