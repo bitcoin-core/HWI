@@ -58,6 +58,8 @@ from .hwwclient import HardwareWalletClient
 from .psbt import PSBT
 
 from itertools import count
+from select import select
+from sys import stdin
 from typing import (
     Any,
     Dict,
@@ -183,6 +185,74 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
+def get_psbt_from_pipe() -> str:
+    """Read b64-encoded PSBT from stdin pipe if available.
+
+    Return string read from pipe if input is availble and is non-binary
+    data.
+    Raises an exception otherwise (e.g. no data, bad data, error).
+    """
+    stdin_ready = select(  # select.select
+        [
+            stdin,  # sys.stdin
+        ],
+        [],
+        [],
+        0.0,
+    )[  # noqa
+        0
+    ]  # noqa
+    if not stdin_ready:
+        logging.debug(
+            "stdin is not ready for reading. "
+            "A pipe could be used, but pipe could be empty "
+            "or stdin is a keyboard."
+        )
+    else:
+        logging.debug(
+            "stdin is ready. Something "
+            "is definitely piped into program from stdin. "
+            "Reading input from stdin pipe."
+        )
+    if ((not stdin_ready) and (not stdin.isatty())) or stdin_ready:
+        if not stdin.isatty():  # sys.stdin
+            logging.debug(
+                "Pipe was definitely used, but pipe might be empty. "
+                "Trying to read from pipe in any case."
+            )
+        ret = ""
+        try:
+            for line in stdin:  # sys.stdin
+                ret += line
+            logging.debug(f"Reading data from stdin pipe. Read text '{ret}'.")
+            # be tolerant, cleanup string
+            ret = ret.replace("\n", "").strip()
+            logging.debug(f"Cleaned up text is '{ret}'.")
+            return ret
+        except EOFError:  # EOF when reading a line
+            logging.debug(
+                "Reading from stdin resulted in EOF. This can happen "
+                "when a pipe was used, but the pipe is empty. "
+                "No input will be generated."
+            )
+            raise BadArgumentError(
+                "Stdin input pipe is empty. Pipe PSBT into command."
+            )
+        except UnicodeDecodeError:
+            logging.info(
+                "Reading from stdin resulted in UnicodeDecodeError. This "
+                "can happen if you try to pipe binary data for a "
+                "base64-encoded PSBT. For a base64-encoded PSBT only pipe "
+                "text via stdin, not binary data. Input will be rejected."
+            )
+            raise BadArgumentError(
+                "Stdin input pipe must not contain binary data. "
+                "Send a base64-encoded PSBT into the pipe instead."
+            )
+    raise BadArgumentError(
+        "Stdin input pipe is not ready. Pipe PSBT into command."
+    )
+
 def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
@@ -192,6 +262,9 @@ def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str
     :return: A dictionary containing the processed PSBT serialized in Base64.
         Returned as ``{"psbt": <base64 psbt string>}``.
     """
+    if psbt == "-":
+        # special char "-" to indicate stdin pipe, read everything in pipe as one PSBT
+        psbt = get_psbt_from_pipe()
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
