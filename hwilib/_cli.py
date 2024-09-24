@@ -26,6 +26,7 @@ from .common import (
 )
 from .errors import (
     handle_errors,
+    BAD_ARGUMENT,
     DEVICE_CONN_ERROR,
     HELP_TEXT,
     MISSING_ARGUMENTS,
@@ -88,7 +89,11 @@ def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) 
     return signmessage(client, message=args.message, path=args.path)
 
 def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[bool, str]]:
-    return signtx(client, psbt=args.psbt)
+    result = signtx(client, psbt=args.psbt)
+    if args.clipout and result.get("signed"): # --clipout and signed==true
+        import pyperclip
+        pyperclip.copy(result.get("psbt"))
+    return result
 
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
@@ -143,6 +148,8 @@ def get_parser() -> HWIArgumentParser:
     parser.add_argument('--fingerprint', '-f', help='Specify the device to connect to using the first 4 bytes of the hash160 of the master public key. It will connect to the first device that matches this fingerprint.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     parser.add_argument('--stdin', help='Enter commands and arguments via stdin', action='store_true')
+    parser.add_argument('--clipin', help='Enter commands and arguments via clipboard', action='store_true')
+    parser.add_argument('--clipout', help='For selected commands this will place the output also onto the clipboard. Currently supported commands: signtx (succesfuly signed PSBT is placed onto clipboard)', action='store_true')
     parser.add_argument('--interactive', '-i', help='Use some commands interactively. Currently required for all device configuration commands', action='store_true')
     parser.add_argument('--expert', help='Do advanced things and get more detailed information returned from some commands. Use at your own risk.', action='store_true')
     parser.add_argument("--emulators", help="Enable enumeration and detection of device emulators", action="store_true", dest="allow_emulators")
@@ -235,6 +242,9 @@ def get_parser() -> HWIArgumentParser:
 def process_commands(cli_args: List[str]) -> Any:
     parser = get_parser()
 
+    if any(arg == '--stdin' for arg in cli_args) and any(arg == '--clipin' for arg in cli_args):
+        return {"error": "Use either --stdin or -clipin but not both", "code": BAD_ARGUMENT}
+
     if any(arg == '--stdin' for arg in cli_args):
         while True:
             try:
@@ -248,6 +258,13 @@ def process_commands(cli_args: List[str]) -> Any:
             except EOFError:
                 # If we see EOF, stop taking input
                 break
+    elif any(arg == '--clipin' for arg in cli_args):
+        import pyperclip
+        lines = pyperclip.paste().splitlines()
+        for line in lines:
+            # Split the line and append it to the cli args
+            import shlex
+            cli_args.extend(shlex.split(line))
 
     # Parse arguments again for anything entered over stdin
     args = parser.parse_args(cli_args)

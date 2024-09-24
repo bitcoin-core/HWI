@@ -35,6 +35,7 @@ install_requires = \
  'protobuf>=4.23.3,<5.0.0',
  'pyaes>=1.6,<2.0',
  'pyserial>=3.5,<4.0',
+ 'pyperclip>=1.9.0,<2.0.0',
  'semver>=3.0.1,<4.0.0',
  'typing-extensions>=4.4,<5.0']
 
