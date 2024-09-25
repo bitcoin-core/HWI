@@ -4,6 +4,7 @@ isort:skip_file
 """
 import builtins
 import google.protobuf.descriptor
+import google.protobuf.empty_pb2
 import google.protobuf.internal.containers
 import google.protobuf.message
 import typing
@@ -33,3 +34,48 @@ class ElectrumEncryptionKeyResponse(google.protobuf.message.Message):
         ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["key",b"key"]) -> None: ...
 global___ElectrumEncryptionKeyResponse = ElectrumEncryptionKeyResponse
+
+class BIP85Request(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    class AppLn(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+        ACCOUNT_NUMBER_FIELD_NUMBER: builtins.int
+        account_number: builtins.int
+        def __init__(self,
+            *,
+            account_number: builtins.int = ...,
+            ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["account_number",b"account_number"]) -> None: ...
+
+    BIP39_FIELD_NUMBER: builtins.int
+    LN_FIELD_NUMBER: builtins.int
+    @property
+    def bip39(self) -> google.protobuf.empty_pb2.Empty: ...
+    @property
+    def ln(self) -> global___BIP85Request.AppLn: ...
+    def __init__(self,
+        *,
+        bip39: typing.Optional[google.protobuf.empty_pb2.Empty] = ...,
+        ln: typing.Optional[global___BIP85Request.AppLn] = ...,
+        ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["app",b"app","bip39",b"bip39","ln",b"ln"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["app",b"app","bip39",b"bip39","ln",b"ln"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["app",b"app"]) -> typing.Optional[typing_extensions.Literal["bip39","ln"]]: ...
+global___BIP85Request = BIP85Request
+
+class BIP85Response(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    BIP39_FIELD_NUMBER: builtins.int
+    LN_FIELD_NUMBER: builtins.int
+    @property
+    def bip39(self) -> google.protobuf.empty_pb2.Empty: ...
+    ln: builtins.bytes
+    def __init__(self,
+        *,
+        bip39: typing.Optional[google.protobuf.empty_pb2.Empty] = ...,
+        ln: builtins.bytes = ...,
+        ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["app",b"app","bip39",b"bip39","ln",b"ln"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["app",b"app","bip39",b"bip39","ln",b"ln"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["app",b"app"]) -> typing.Optional[typing_extensions.Literal["bip39","ln"]]: ...
+global___BIP85Response = BIP85Response
