@@ -21,7 +21,8 @@ from test_device import (
     TestSignMessage,
     TestSignTx,
 )
-from hwilib.devices.jadepy.jade import JadeAPI
+
+from jadepy import JadeAPI
 
 USE_SIMULATOR = True
 JADE_PATH = 'tcp:127.0.0.1:30121' if USE_SIMULATOR else None # None -> should search and find plugged unit
@@ -31,9 +32,9 @@ LOGGING = None  # logging.INFO
 
 # Enable jade logging
 if LOGGING:
-    logger = logging.getLogger("hwilib.devices.jadepy.jade")
+    logger = logging.getLogger("jadepy.jade")
     logger.setLevel(LOGGING)
-    device_logger = logging.getLogger("hwilib.devices.jadepy.jade-device")
+    device_logger = logging.getLogger("jadepy.jade-device")
     device_logger.setLevel(LOGGING)
 
 class JadeEmulator(DeviceEmulator):

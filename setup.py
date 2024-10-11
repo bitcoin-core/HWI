@@ -26,15 +26,14 @@ package_data = \
 modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
-['cbor2>=5.4.6,<6.0.0',
- 'ecdsa>=0,<1',
+['ecdsa>=0,<1',
  'hidapi>=0.14.0',
+ 'jade-client>=1.0.32,<2.0.0',
  'libusb1>=1.7,<4',
  'mnemonic>=0,<1',
  'noiseprotocol>=0.3.1,<0.4.0',
  'protobuf>=4.23.3,<5.0.0',
  'pyaes>=1.6,<2.0',
- 'pyserial>=3.5,<4.0',
  'semver>=3.0.1,<4.0.0',
  'typing-extensions>=4.4,<5.0']
 

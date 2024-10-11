@@ -3,9 +3,12 @@ Blockstream Jade Devices
 ************************
 """
 
-from .jadepy import jade
-from .jadepy.jade import JadeAPI, JadeError
-
+from jadepy import (
+    jade,
+    JadeAPI,
+    JadeError
+)
+from jadepy.jade_serial import JadeSerialImpl
 from serial.tools import list_ports
 
 from functools import wraps
@@ -57,8 +60,6 @@ import os
 
 # The test emulator port
 SIMULATOR_PATH = 'tcp:127.0.0.1:30121'
-
-JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4), (0x0403, 0x6001), (0x1a86, 0x7523)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
 
 py_enumerate = enumerate # To use the enumerate built-in, since the name is overridden below
@@ -533,7 +534,7 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
     # Scan com ports looking for the relevant vid and pid, and use 'path' to
     # hold the path to the serial port device, eg. /dev/ttyUSB0
     for devinfo in list_ports.comports():
-        if (devinfo.vid, devinfo.pid) in JADE_DEVICE_IDS:
+        if (devinfo.vid, devinfo.pid) in JadeSerialImpl.JADE_DEVICE_IDS:
             results.append(_get_device_entry('jade', devinfo.device))
 
     # If we can connect to the simulator, add it too
