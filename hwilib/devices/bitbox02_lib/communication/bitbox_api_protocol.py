@@ -33,8 +33,12 @@ from .devices import parse_device_version, DeviceInfo
 from .communication import TransportLayer
 from .devices import BITBOX02MULTI, BITBOX02BTC
 
-from .generated import hww_pb2 as hww
-from .generated import system_pb2 as system
+try:
+    from .generated import hww_pb2 as hww
+    from .generated import system_pb2 as system
+except ModuleNotFoundError:
+    print("Run `make py` to generate the protobuf messages")
+    sys.exit()
 
 
 HWW_CMD = 0x80 + 0x40 + 0x01
@@ -522,24 +526,34 @@ class BitBoxCommonAPI:
 
     # pylint: disable=too-many-public-methods,too-many-arguments
     def __init__(
-        self, transport: TransportLayer, device_info: DeviceInfo, noise_config: BitBoxNoiseConfig
+        self,
+        transport: TransportLayer,
+        device_info: Optional[DeviceInfo],
+        noise_config: BitBoxNoiseConfig,
     ):
         """
         Can raise LibraryVersionOutdatedException. check_min_version() should be called following
         the instantiation.
+        If device_info is None, it is infered using the OP_INFO API call, available since
+        firmware version v5.0.0.
         """
         self.debug = False
-        serial_number = device_info["serial_number"]
 
-        if device_info["product_string"] == BITBOX02MULTI:
-            self.edition = BitBox02Edition.MULTI
-        elif device_info["product_string"] == BITBOX02BTC:
-            self.edition = BitBox02Edition.BTCONLY
+        if device_info is not None:
+            version = device_info["serial_number"]
+            if device_info["product_string"] == BITBOX02MULTI:
+                edition = BitBox02Edition.MULTI
+            elif device_info["product_string"] == BITBOX02BTC:
+                edition = BitBox02Edition.BTCONLY
+        else:
+            version, _, edition, _ = self.get_info(transport)
 
-        self.version = parse_device_version(serial_number)
-        if self.version is None:
+        self.edition = edition
+        try:
+            self.version = parse_device_version(version)
+        except:
             transport.close()
-            raise ValueError(f"Could not parse version from {serial_number}")
+            raise
 
         # Delete the prelease part, as it messes with the comparison (e.g. 3.0.0-pre < 3.0.0 is
         # True, but the 3.0.0-pre has already the same API breaking changes like 3.0.0...).

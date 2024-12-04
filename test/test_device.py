@@ -35,6 +35,7 @@ class DeviceEmulator():
         self.strict_bip48 = None
         self.include_xpubs = None
         self.supports_device_multiple_multisig = None
+        self.supports_legacy = None
 
     def start(self):
         assert self.type is not None
@@ -49,6 +50,7 @@ class DeviceEmulator():
         assert self.strict_bip48 is not None
         assert self.include_xpubs is not None
         assert self.supports_device_multiple_multisig is not None
+        assert self.supports_legacy is not None
 
     def stop(self):
         pass
@@ -584,21 +586,21 @@ class TestSignTx(DeviceTestCase):
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
         # make a huge transaction
-        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "legacy", "0", "100"])
+        keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "sh_wit", "0", "100"])
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         outputs = []
         num_inputs = 60
         for i in range(0, num_inputs):
-            outputs.append({self.wrpc.getnewaddress('', 'legacy'): 0.001})
-        outputs.append({self.wrpc.getnewaddress("", "legacy"): 10})
+            outputs.append({self.wrpc.getnewaddress('', "p2sh-segwit"): 0.001})
+        outputs.append({self.wrpc.getnewaddress("", "p2sh-segwit"): 10})
         psbt = self.wpk_rpc.walletcreatefundedpsbt([], outputs, 0, {}, True)['psbt']
         psbt = self.wpk_rpc.walletprocesspsbt(psbt)['psbt']
         tx = self.wpk_rpc.finalizepsbt(psbt)['hex']
         self.wpk_rpc.sendrawtransaction(tx)
         self.wpk_rpc.generatetoaddress(10, self.wpk_rpc.getnewaddress())
         inputs = self.wrpc.listunspent()
-        psbt = self.wrpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', 'legacy'): 0.001 * num_inputs}])['psbt']
+        psbt = self.wrpc.walletcreatefundedpsbt(inputs, [{self.wpk_rpc.getnewaddress('', "p2sh-segwit"): 0.001 * num_inputs}])['psbt']
         # For cli, this should throw an exception
         try:
             result = self.do_command(self.dev_args + ['signtx', psbt])
@@ -614,9 +616,14 @@ class TestSignTx(DeviceTestCase):
 class TestDisplayAddress(DeviceTestCase):
     def test_display_address_path(self):
         result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "legacy", '--path', 'm/44h/1h/0h/0/0'])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
+        if self.emulator.supports_legacy:
+            self.assertNotIn('error', result)
+            self.assertNotIn('code', result)
+            self.assertIn('address', result)
+        else:
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['code'], -9)
 
         result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "sh_wit", '--path', 'm/49h/1h/0h/0/0'])
         self.assertNotIn('error', result)
@@ -657,9 +664,14 @@ class TestDisplayAddress(DeviceTestCase):
 
         # Legacy address
         result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'pkh([' + self.emulator.fingerprint + '/44h/1h/0h]' + legacy_account_xpub + '/0/0)'])
-        self.assertNotIn('error', result)
-        self.assertNotIn('code', result)
-        self.assertIn('address', result)
+        if self.emulator.supports_legacy:
+            self.assertNotIn('error', result)
+            self.assertNotIn('code', result)
+            self.assertIn('address', result)
+        else:
+            self.assertIn('error', result)
+            self.assertIn('code', result)
+            self.assertEqual(result['code'], -9)
 
         # Should check xpub
         result = self.do_command(self.dev_args + ['displayaddress', '--desc', 'wpkh([' + self.emulator.fingerprint + '/84h/1h/0h]' + "not_and_xpub" + '/0/0)'])

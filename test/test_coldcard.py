@@ -44,6 +44,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.strict_bip48 = False
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
+        self.supports_legacy = True
 
     def start(self):
         super().start()

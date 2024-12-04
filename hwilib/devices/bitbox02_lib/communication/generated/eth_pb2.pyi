@@ -85,6 +85,7 @@ class ETHPubRequest(google.protobuf.message.Message):
 global___ETHPubRequest = ETHPubRequest
 
 class ETHSignRequest(google.protobuf.message.Message):
+    """TX payload for "legacy" (EIP-155) transactions: https://eips.ethereum.org/EIPS/eip-155"""
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     COIN_FIELD_NUMBER: builtins.int
     KEYPATH_FIELD_NUMBER: builtins.int
@@ -138,6 +139,60 @@ class ETHSignRequest(google.protobuf.message.Message):
     def HasField(self, field_name: typing_extensions.Literal["host_nonce_commitment",b"host_nonce_commitment"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["chain_id",b"chain_id","coin",b"coin","data",b"data","gas_limit",b"gas_limit","gas_price",b"gas_price","host_nonce_commitment",b"host_nonce_commitment","keypath",b"keypath","nonce",b"nonce","recipient",b"recipient","value",b"value"]) -> None: ...
 global___ETHSignRequest = ETHSignRequest
+
+class ETHSignEIP1559Request(google.protobuf.message.Message):
+    """TX payload for an EIP-1559 (type 2) transaction: https://eips.ethereum.org/EIPS/eip-1559"""
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    CHAIN_ID_FIELD_NUMBER: builtins.int
+    KEYPATH_FIELD_NUMBER: builtins.int
+    NONCE_FIELD_NUMBER: builtins.int
+    MAX_PRIORITY_FEE_PER_GAS_FIELD_NUMBER: builtins.int
+    MAX_FEE_PER_GAS_FIELD_NUMBER: builtins.int
+    GAS_LIMIT_FIELD_NUMBER: builtins.int
+    RECIPIENT_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    DATA_FIELD_NUMBER: builtins.int
+    HOST_NONCE_COMMITMENT_FIELD_NUMBER: builtins.int
+    chain_id: builtins.int
+    @property
+    def keypath(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    nonce: builtins.bytes
+    """smallest big endian serialization, max. 16 bytes"""
+
+    max_priority_fee_per_gas: builtins.bytes
+    """smallest big endian serialization, max. 16 bytes"""
+
+    max_fee_per_gas: builtins.bytes
+    """smallest big endian serialization, max. 16 bytes"""
+
+    gas_limit: builtins.bytes
+    """smallest big endian serialization, max. 16 bytes"""
+
+    recipient: builtins.bytes
+    """20 byte recipient"""
+
+    value: builtins.bytes
+    """smallest big endian serialization, max. 32 bytes"""
+
+    data: builtins.bytes
+    @property
+    def host_nonce_commitment(self) -> antiklepto_pb2.AntiKleptoHostNonceCommitment: ...
+    def __init__(self,
+        *,
+        chain_id: builtins.int = ...,
+        keypath: typing.Optional[typing.Iterable[builtins.int]] = ...,
+        nonce: builtins.bytes = ...,
+        max_priority_fee_per_gas: builtins.bytes = ...,
+        max_fee_per_gas: builtins.bytes = ...,
+        gas_limit: builtins.bytes = ...,
+        recipient: builtins.bytes = ...,
+        value: builtins.bytes = ...,
+        data: builtins.bytes = ...,
+        host_nonce_commitment: typing.Optional[antiklepto_pb2.AntiKleptoHostNonceCommitment] = ...,
+        ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["host_nonce_commitment",b"host_nonce_commitment"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["chain_id",b"chain_id","data",b"data","gas_limit",b"gas_limit","host_nonce_commitment",b"host_nonce_commitment","keypath",b"keypath","max_fee_per_gas",b"max_fee_per_gas","max_priority_fee_per_gas",b"max_priority_fee_per_gas","nonce",b"nonce","recipient",b"recipient","value",b"value"]) -> None: ...
+global___ETHSignEIP1559Request = ETHSignEIP1559Request
 
 class ETHSignMessageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -339,6 +394,7 @@ class ETHRequest(google.protobuf.message.Message):
     ANTIKLEPTO_SIGNATURE_FIELD_NUMBER: builtins.int
     SIGN_TYPED_MSG_FIELD_NUMBER: builtins.int
     TYPED_MSG_VALUE_FIELD_NUMBER: builtins.int
+    SIGN_EIP1559_FIELD_NUMBER: builtins.int
     @property
     def pub(self) -> global___ETHPubRequest: ...
     @property
@@ -351,6 +407,8 @@ class ETHRequest(google.protobuf.message.Message):
     def sign_typed_msg(self) -> global___ETHSignTypedMessageRequest: ...
     @property
     def typed_msg_value(self) -> global___ETHTypedMessageValueRequest: ...
+    @property
+    def sign_eip1559(self) -> global___ETHSignEIP1559Request: ...
     def __init__(self,
         *,
         pub: typing.Optional[global___ETHPubRequest] = ...,
@@ -359,10 +417,11 @@ class ETHRequest(google.protobuf.message.Message):
         antiklepto_signature: typing.Optional[antiklepto_pb2.AntiKleptoSignatureRequest] = ...,
         sign_typed_msg: typing.Optional[global___ETHSignTypedMessageRequest] = ...,
         typed_msg_value: typing.Optional[global___ETHTypedMessageValueRequest] = ...,
+        sign_eip1559: typing.Optional[global___ETHSignEIP1559Request] = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["antiklepto_signature",b"antiklepto_signature","pub",b"pub","request",b"request","sign",b"sign","sign_msg",b"sign_msg","sign_typed_msg",b"sign_typed_msg","typed_msg_value",b"typed_msg_value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["antiklepto_signature",b"antiklepto_signature","pub",b"pub","request",b"request","sign",b"sign","sign_msg",b"sign_msg","sign_typed_msg",b"sign_typed_msg","typed_msg_value",b"typed_msg_value"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["request",b"request"]) -> typing.Optional[typing_extensions.Literal["pub","sign","sign_msg","antiklepto_signature","sign_typed_msg","typed_msg_value"]]: ...
+    def HasField(self, field_name: typing_extensions.Literal["antiklepto_signature",b"antiklepto_signature","pub",b"pub","request",b"request","sign",b"sign","sign_eip1559",b"sign_eip1559","sign_msg",b"sign_msg","sign_typed_msg",b"sign_typed_msg","typed_msg_value",b"typed_msg_value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["antiklepto_signature",b"antiklepto_signature","pub",b"pub","request",b"request","sign",b"sign","sign_eip1559",b"sign_eip1559","sign_msg",b"sign_msg","sign_typed_msg",b"sign_typed_msg","typed_msg_value",b"typed_msg_value"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["request",b"request"]) -> typing.Optional[typing_extensions.Literal["pub","sign","sign_msg","antiklepto_signature","sign_typed_msg","typed_msg_value","sign_eip1559"]]: ...
 global___ETHRequest = ETHRequest
 
 class ETHResponse(google.protobuf.message.Message):
