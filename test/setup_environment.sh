@@ -331,11 +331,10 @@ if [[ -n ${build_jade} ]]; then
     # Clone the upstream if the directory does not exist
     # Then build the emulator
     if [ ! -d "qemu" ]; then
-        git clone --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --recursive https://github.com/espressif/qemu.git ./qemu
+        git clone --quiet --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --shallow-submodules https://github.com/espressif/qemu.git ./qemu
         cd qemu
 
         git checkout ${ESP_QEMU_COMMIT}
-        git submodule update --recursive --init
         ./configure \
             --target-list=xtensa-softmmu \
             --enable-gcrypt \
@@ -374,7 +373,7 @@ if [[ -n ${build_jade} ]]; then
     # Clone the upstream if the directory does not exist
     # Then build and install the tools
     if [ ! -d "esp-idf" ]; then
-        git clone --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive https://github.com/espressif/esp-idf.git ./esp-idf
+        git clone --quiet --depth=1 --branch ${ESP_IDF_BRANCH} --single-branch --recursive --shallow-submodules https://github.com/espressif/esp-idf.git ./esp-idf
         cd esp-idf
 
         git checkout ${ESP_IDF_COMMIT}
