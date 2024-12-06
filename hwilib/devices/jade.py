@@ -5,6 +5,7 @@ Blockstream Jade Devices
 
 from .jadepy import jade
 from .jadepy.jade import JadeAPI, JadeError
+from .jadepy.jade_serial import JadeSerialImpl
 
 from serial.tools import list_ports
 
@@ -51,6 +52,7 @@ from .._script import (
     parse_multisig
 )
 
+import base64
 import logging
 import semver
 import os
@@ -58,7 +60,6 @@ import os
 # The test emulator port
 SIMULATOR_PATH = 'tcp:127.0.0.1:30121'
 
-JADE_DEVICE_IDS = [(0x10c4, 0xea60), (0x1a86, 0x55d4), (0x0403, 0x6001), (0x1a86, 0x7523)]
 HAS_NETWORKING = hasattr(jade, '_http_request')
 
 py_enumerate = enumerate # To use the enumerate built-in, since the name is overridden below
@@ -90,6 +91,7 @@ def jade_exception(f: Callable[..., Any]) -> Any:
 # This class extends the HardwareWalletClient for Blockstream Jade specific things
 class JadeClient(HardwareWalletClient):
     MIN_SUPPORTED_FW_VERSION = semver.VersionInfo(0, 1, 32)
+    PSBT_SUPPORTED_FW_VERSION = semver.VersionInfo(0, 1, 47)
 
     NETWORKS = {Chain.MAIN: 'mainnet',
                 Chain.TEST: 'testnet',
@@ -131,12 +133,12 @@ class JadeClient(HardwareWalletClient):
         self.jade.connect()
 
         verinfo = self.jade.get_version_info()
+        self.fw_version = semver.parse_version_info(verinfo['JADE_VERSION'])
         uninitialized = verinfo['JADE_STATE'] not in ['READY', 'TEMP']
 
         # Check minimum supported firmware version (ignore candidate/build parts)
-        fw_version = semver.parse_version_info(verinfo['JADE_VERSION'])
-        if self.MIN_SUPPORTED_FW_VERSION > fw_version.finalize_version():
-            raise DeviceNotReadyError(f'Jade fw version: {fw_version} - minimum required version: {self.MIN_SUPPORTED_FW_VERSION}. '
+        if self.MIN_SUPPORTED_FW_VERSION > self.fw_version.finalize_version():
+            raise DeviceNotReadyError(f'Jade fw version: {self.fw_version} - minimum required version: {self.MIN_SUPPORTED_FW_VERSION}. '
                                       'Please update using a Blockstream Green companion app')
         if path == SIMULATOR_PATH:
             if uninitialized:
@@ -165,10 +167,10 @@ class JadeClient(HardwareWalletClient):
         ext_key = ExtendedKey.deserialize(xpub)
         return ext_key
 
-    # Walk the PSBT looking for inputs we can sign.  Push any signatures into the
-    # 'partial_sigs' map in the input, and return the updated PSBT.
+    # Old firmware does not have native PSBT handling - walk the PSBT looking for inputs we can sign.
+    # Push any signatures into the 'partial_sigs' map in the input, and return the updated PSBT.
     @jade_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def legacy_sign_tx(self, tx: PSBT) -> PSBT:
         """
         Sign a transaction with the Blockstream Jade.
         """
@@ -366,6 +368,29 @@ class JadeClient(HardwareWalletClient):
         # Return the updated psbt
         return tx
 
+    # Sign tx PSBT - newer Jade firmware supports native PSBT signing, but old firmwares require
+    # mapping to the legacy 'sign_tx' structures.
+    @jade_exception
+    def sign_tx(self, tx: PSBT) -> PSBT:
+        """
+        Sign a transaction with the Blockstream Jade.
+        """
+        # Old firmware does not have native PSBT handling - use legacy method
+        if self.PSBT_SUPPORTED_FW_VERSION > self.fw_version.finalize_version():
+            return self.legacy_sign_tx(tx)
+
+        # Firmware 0.1.47 (March 2023) and later support native PSBT signing
+        psbt_b64 = tx.serialize()
+        psbt_bytes = base64.b64decode(psbt_b64.strip())
+
+        # NOTE: sign_psbt() does not use AE signatures, so sticks with default (rfc6979)
+        psbt_bytes = self.jade.sign_psbt(self._network(), psbt_bytes)
+        psbt_b64 = base64.b64encode(psbt_bytes).decode()
+
+        psbt_signed = PSBT()
+        psbt_signed.deserialize(psbt_b64)
+        return psbt_signed
+
     # Sign message, confirmed on device
     @jade_exception
     def sign_message(self, message: Union[str, bytes], bip32_path: str) -> str:
@@ -533,7 +558,7 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
     # Scan com ports looking for the relevant vid and pid, and use 'path' to
     # hold the path to the serial port device, eg. /dev/ttyUSB0
     for devinfo in list_ports.comports():
-        if (devinfo.vid, devinfo.pid) in JADE_DEVICE_IDS:
+        if (devinfo.vid, devinfo.pid) in JadeSerialImpl.JADE_DEVICE_IDS:
             results.append(_get_device_entry('jade', devinfo.device))
 
     # If we can connect to the simulator, add it too
