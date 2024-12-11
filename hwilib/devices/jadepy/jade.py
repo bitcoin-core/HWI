@@ -7,6 +7,7 @@ import collections
 import collections.abc
 import traceback
 import random
+import socket
 import sys
 
 # JadeError
@@ -65,7 +66,7 @@ try:
         The default implementation used in JadeAPI._jadeRpc() below.
         NOTE: Only available if the 'requests' dependency is available.
 
-        Callers can supply their own implmentation of this call where it is required.
+        Callers can supply their own implementation of this call where it is required.
 
         Parameters
         ----------
@@ -111,6 +112,32 @@ try:
 except ImportError as e:
     logger.info(e)
     logger.info('Default _http_requests() function will not be available')
+
+
+def generate_dump():
+    while True:
+        try:
+            with socket.create_connection(("localhost", 4444)) as s:
+                output = b""
+                while b"Open On-Chip Debugger" not in output:
+                    data = s.recv(1024)
+                    if not data:
+                        continue
+                    output += data
+
+                s.sendall(b"esp gcov dump\n")
+
+                output = b""
+                while b"Targets disconnected." not in output:
+                    data = s.recv(1024)
+                    if not data:
+                        continue
+                    output += data
+                s.sendall(b"resume\n")
+                time.sleep(1)
+            return
+        except ConnectionRefusedError:
+            pass
 
 
 class JadeAPI:
@@ -421,7 +448,8 @@ class JadeAPI:
         """
         return self._jadeRpc('logout')
 
-    def ota_update(self, fwcmp, fwlen, chunksize, fwhash=None, patchlen=None, cb=None):
+    def ota_update(self, fwcmp, fwlen, chunksize, fwhash=None, patchlen=None, cb=None,
+                   extended_replies=False, gcov_dump=False):
         """
         RPC call to attempt to update the unit's firmware.
 
@@ -451,9 +479,15 @@ class JadeAPI:
         cb : function, optional
             Callback function accepting two integers - the amount of compressed firmware sent thus
             far, and the total length of the compressed firmware to send.
+            If 'extended_replies' was set, this callback is also passed the extended data included
+            in the replies, if not this is None.
             If passed, this function is invoked each time a fw chunk is successfully uploaded and
             ack'd by the hw, to notify of upload progress.
             Defaults to None, and nothing is called to report upload progress.
+        extended_replies: bool, optional
+            If set Jade may return addtional progress data with each data chunk uploaded, which is
+            then passed to any progress callback as above.  If not no additional data is returned
+            or passed.
 
         Returns
         -------
@@ -472,7 +506,8 @@ class JadeAPI:
         ota_method = 'ota'
         params = {'fwsize': fwlen,
                   'cmpsize': cmplen,
-                  'cmphash': cmphash}
+                  'cmphash': cmphash,
+                  'extended_replies': extended_replies}
 
         if fwhash is not None:
             params['fwhash'] = fwhash
@@ -491,11 +526,16 @@ class JadeAPI:
             length = min(remaining, chunksize)
             chunk = bytes(fwcmp[written:written + length])
             result = self._jadeRpc('ota_data', chunk)
-            assert result is True
             written += length
 
+            have_extended_reply = isinstance(result, dict)
+            assert result is True or (extended_replies and have_extended_reply)
+
             if (cb):
-                cb(written, cmplen)
+                cb(written, cmplen, result if have_extended_reply else None)
+
+        if gcov_dump:
+            self.run_remote_gcov_dump()
 
         # All binary data uploaded
         return self._jadeRpc('ota_complete')
@@ -512,6 +552,22 @@ class JadeAPI:
             ie. excluding any messaging overhead
         """
         return self._jadeRpc('debug_selfcheck', long_timeout=True)
+
+    def run_remote_gcov_dump(self):
+        """
+        RPC call to run in-built gcov-dump.
+        NOTE: Only available in a DEBUG build of the firmware.
+
+        Returns
+        -------
+        bool
+            Always True.
+        """
+        result = self._jadeRpc('debug_gcov_dump', long_timeout=True)
+        time.sleep(0.5)
+        generate_dump()
+        time.sleep(2)
+        return result
 
     def capture_image_data(self, check_qr=False):
         """
@@ -625,7 +681,7 @@ class JadeAPI:
             The number of words the entropy is required to produce.
 
         index : int
-            The index to use in the bip32 path to calcuate the entropy.
+            The index to use in the bip32 path to calculate the entropy.
 
         pubkey: 33-bytes
             The host ephemeral pubkey to use to generate a shared ecdh secret to use as an AES key
@@ -645,6 +701,38 @@ class JadeAPI:
                   'index': index,
                   'pubkey': pubkey}
         return self._jadeRpc('get_bip85_bip39_entropy', params)
+
+    def get_bip85_rsa_entropy(self, key_bits, index, pubkey):
+        """
+        RPC call to fetch encrypted bip85-rsa entropy.
+        NOTE: Only available in a DEBUG build of the firmware.
+
+        Parameters
+        ----------
+        key_bits: int
+            The size of the RSA key.
+
+        index : int
+            The index to use in the bip32 path to calculate the entropy.
+
+        pubkey: 33-bytes
+            The host ephemeral pubkey to use to generate a shared ecdh secret to use as an AES key
+            to encrypt the returned entropy.
+
+        Returns
+        -------
+        dict
+            pubkey - 33-bytes, Jade's ephemeral pubkey used to generate a shared ecdh secret used as
+            an AES key to encrypt the returned entropy
+            encrypted - bytes, the requested bip85 rsa entropy, AES encrypted with the first key
+            derived from the ecdh shared secret, prefixed with the iv
+            hmac - 32-bytes, the hmac of the encrypted buffer, using the second key derived from the
+            ecdh shared secret
+        """
+        params = {'key_bits': key_bits,
+                  'index': index,
+                  'pubkey': pubkey}
+        return self._jadeRpc('get_bip85_rsa_entropy', params)
 
     def set_pinserver(self, urlA=None, urlB=None, pubkey=None, cert=None):
         """
@@ -684,12 +772,12 @@ class JadeAPI:
 
     def reset_pinserver(self, reset_details, reset_certificate):
         """
-        RPC call to reset any formerly overidden pinserver details to their defauts.
+        RPC call to reset any formerly overridden pinserver details to their defaults.
 
         Parameters
         ----------
         reset_details : bool, optional
-            If set, any overidden urls and pubkey are reset to their defaults.
+            If set, any overridden urls and pubkey are reset to their defaults.
 
         reset_certificate : bool, optional
             If set, any additional certificate is reset (to None).
@@ -815,6 +903,55 @@ class JadeAPI:
         """
         return self._jadeRpc('get_registered_multisigs')
 
+    def get_registered_multisig(self, multisig_name, as_file=False):
+        """
+        RPC call to fetch details of a named multisig wallet registered to this signer.
+        NOTE: the multisig wallet must have been registered with firmware v1.0.23 or later
+        for the full signer details to be persisted and available.
+
+        Parameters
+        ----------
+        multisig_name : string
+            Name of multsig registration record to return.
+
+        as_file : string, optional
+            If true the flat file format is returned, otherwise structured json is returned.
+            Defaults to false.
+
+        Returns
+        -------
+        dict
+            Description of registered multisig wallet identified by registration name.
+            Contains keys:
+                is_file is true:
+                    multisig_file - str, the multisig file as produced by several wallet apps.
+                    eg:
+                        Name: MainWallet
+                        Policy: 2 of 3
+                        Format: P2WSH
+                        Derivation: m/48'/0'/0'/2'
+
+                        B237FE9D: xpub6E8C7BX4c7qfTsX7urnXggcAyFuhDmYLQhwRwZGLD9maUGWPinuc9k96ej...
+                        249192D2: xpub6EbXynW6xjYR3crcztum6KzSWqDJoAJQoovwamwVnLaCSHA6syXKPnJo6U...
+                        67F90FFC: xpub6EHuWWrYd8bp5FS1XAZsMPkmCqLSjpULmygWqAqWRCCjSWQwz6ntq5KnuQ...
+
+                is_file is false:
+                    multisig_name - str, name of multisig registration
+                    variant - str, script type, eg. 'sh(wsh(multi(k)))'
+                    sorted - boolean, whether bip67 key sorting is applied
+                    threshold - int, number of signers required,N
+                    master_blinding_key - 32-bytes, any liquid master blinding key for this wallet
+                    signers - dict containing keys:
+                        fingerprint - 4 bytes, origin fingerprint
+                        derivation - [int], bip32 path from origin to signer xpub provided
+                        xpub - str, base58 xpub of signer
+                        path - [int], any fixed path to always apply after the xpub - usually empty.
+
+        """
+        params = {'multisig_name': multisig_name,
+                  'as_file': as_file}
+        return self._jadeRpc('get_registered_multisig', params)
+
     def register_multisig(self, network, multisig_name, variant, sorted_keys, threshold, signers,
                           master_blinding_key=None):
         """
@@ -892,6 +1029,42 @@ class JadeAPI:
         params = {'multisig_file': multisig_file}
         return self._jadeRpc('register_multisig', params)
 
+    def get_registered_descriptors(self):
+        """
+        RPC call to fetch brief summaries of any descriptor wallets registered to this signer.
+
+        Returns
+        -------
+        dict
+            Brief description of registered descriptor, keyed by registration name.
+            Each entry contains keys:
+                descriptor_len - int, length of descriptor output script
+                num_datavalues - int, total number of substitution placeholders passed with script
+                master_blinding_key - 32-bytes, any liquid master blinding key for this wallet
+        """
+        return self._jadeRpc('get_registered_descriptors')
+
+    def get_registered_descriptor(self, descriptor_name):
+        """
+        RPC call to fetch details of a named descriptor wallet registered to this signer.
+
+        Parameters
+        ----------
+        descriptor_name : string
+            Name of descriptor registration record to return.
+
+        Returns
+        -------
+        dict
+            Description of registered descriptor wallet identified by registration name.
+            Contains keys:
+                descriptor_name - str, name of descritpor registration
+                descriptor - str, descriptor output script, may contain substitution placeholders
+                datavalues - dict containing placeholders for substitution into script
+        """
+        params = {'descriptor_name': descriptor_name}
+        return self._jadeRpc('get_registered_descriptor', params)
+
     def register_descriptor(self, network, descriptor_name, descriptor_script, datavalues=None):
         """
         RPC call to register a new descriptor wallet, which must contain the hw signer.
@@ -900,7 +1073,7 @@ class JadeAPI:
         Parameters
         ----------
         network : string
-            Network to which the multisig should apply - eg. 'mainnet', 'liquid', 'testnet', etc.
+            Network to which the descriptor should apply - eg. 'mainnet', 'liquid', 'testnet', etc.
 
         descriptor_name : string
             Name to use to identify this descriptor wallet registration record.
@@ -1067,6 +1240,70 @@ class JadeAPI:
         params = {'message_file': message_file}
         return self._jadeRpc('sign_message', params)
 
+    def get_bip85_pubkey(self, key_type, key_bits, index):
+        """
+        RPC call to fetch a bip85-derived pubkey.
+
+        Parameters
+        ----------
+        key_type : string
+            The type of key to be derived.
+            At this time only 'RSA' is supported.
+
+        key_bits : int
+            The number of bits in the desired key.  Must be valid for the key type.
+            At this time must be 1024, 2048, 3096 or 4092
+
+        index : int
+            The index to use in the bip32 path to calculate the entropy to generate the key.
+
+        Returns
+        -------
+        string
+            PEM file of the public key derived.
+        """
+        params = {'key_type': key_type,
+                  'key_bits': key_bits,
+                  'index': index}
+        return self._jadeRpc('get_bip85_pubkey', params)
+
+    def sign_bip85_digests(self, key_type, key_bits, index, digests):
+        """
+        RPC call to sign digests with a bip85-derived key.
+
+        Parameters
+        ----------
+        key_type : string
+            The type of key to be derived.
+            At this time only 'RSA' is supported.
+
+        key_bits : int
+            The number of bits in the desired key.  Must be valid for the key type.
+            At this time must be 1024, 2048, 3096 or 4092
+
+        index : int
+            The index to use in the bip32 path to calculate the entropy to generate the key.
+
+        digests : [bytes]
+            An array of digests to sign.  The maximum number of digests that can be signed in a
+            single call depends upon the key (and hence signature) size.
+            key_bits    max digests
+             1024        8
+             2048        8
+             3072        6
+             4096        4
+
+        Returns
+        -------
+        [bytes]
+            Array of signatures, same size as input digests array
+        """
+        params = {'key_type': key_type,
+                  'key_bits': key_bits,
+                  'index': index,
+                  'digests': digests}
+        return self._jadeRpc('sign_bip85_digests', params)
+
     def get_identity_pubkey(self, identity, curve, key_type, index=0):
         """
         RPC call to fetch a pubkey for the given identity (slip13/slip17).
@@ -1162,18 +1399,57 @@ class JadeAPI:
         params = {'identity': identity, 'curve': curve, 'index': index, 'challenge': challenge}
         return self._jadeRpc('sign_identity', params)
 
-    def get_master_blinding_key(self):
+    def sign_attestation(self, challenge):
+        """
+        RPC call to sign passed challenge with embedded hw RSA-4096 key, such that the caller
+        can check the authenticity of the hardware unit.  eg. whether it is a genuine
+        Blockstream production Jade unit.
+        Caller must have the public key of the external verifying authority they wish to validate
+        against (eg. Blockstream's Jade verification public key).
+        NOTE: only supported by ESP32S3-based hardware units.
+
+        Parameters
+        ----------
+        challenge : bytes
+            Challenge bytes to sign
+
+        Returns
+        -------
+        dict
+            Contains keys:
+            signature - 512-bytes, hardware RSA signature of the SHA256 hash of the passed
+                        challenge bytes.
+            pubkey_pem - str, PEM export of RSA pubkey of the hardware unit, to verify the returned
+            RSA signature.
+            ext_signature - bytes, RSA signature of the verifying authority over the returned
+            pubkey_pem data.
+            (Caller can verify this signature with the public key of the verifying authority.)
+        """
+        params = {'challenge': challenge}
+        return self._jadeRpc('sign_attestation', params)
+
+    def get_master_blinding_key(self, only_if_silent=False):
         """
         RPC call to fetch the master (SLIP-077) blinding key for the hw signer.
+        May block temporarily to request the user's permission to export.  Passing 'only_if_silent'
+        causes the call to return the 'denied' error if it would normally ask the user.
         NOTE: the master blinding key of any registered multisig wallets can be obtained from
         the result of `get_registered_multisigs()`.
+
+        Parameters
+        ----------
+        only_if_silent : boolean, optional
+            If True Jade will return the denied error if it would normally ask the user's permission
+            to export the master blinding key.  Passing False (or letting default) may block while
+            asking the user to confirm the export on Jade.
 
         Returns
         -------
         32-bytes
             SLIP-077 master blinding key
         """
-        return self._jadeRpc('get_master_blinding_key')
+        params = {'only_if_silent': only_if_silent}
+        return self._jadeRpc('get_master_blinding_key', params)
 
     def get_blinding_key(self, script, multisig_name=None):
         """
@@ -1432,7 +1708,7 @@ class JadeAPI:
                 is_witness, bool - whether this is a segwit input
                 script, bytes- the redeem script
                 path, [int] - the bip32 path to sign with
-                value_commitment, 33-bytes - The value commitment of ths input
+                value_commitment, 33-bytes - The value commitment of the input
 
                 This is optional if signing this input:
                 sighash, int - The sighash to use, defaults to 0x01 (SIGHASH_ALL)
@@ -1699,7 +1975,7 @@ class JadeInterface:
         Returns
         -------
         JadeInterface
-            Inerface object configured to use given serial parameters.
+            Interface object configured to use given serial parameters.
             NOTE: the instance has not yet tried to contact the hw
             - caller must call 'connect()' before trying to use the Jade.
         """
@@ -1741,7 +2017,7 @@ class JadeInterface:
         Returns
         -------
         JadeInterface
-            Inerface object configured to use given BLE parameters.
+            Interface object configured to use given BLE parameters.
             NOTE: the instance has not yet tried to contact the hw
             - caller must call 'connect()' before trying to use the Jade.
 
@@ -1995,7 +2271,7 @@ class JadeInterface:
     def make_rpc_call(self, request, long_timeout=False):
         """
         Method to send a request over the underlying interface, and await a response.
-        The request is minimally validated before it is sent, and the response is simialrly
+        The request is minimally validated before it is sent, and the response is similarly
         validated before being returned.
         Any read-timeout is respected unless 'long_timeout' is passed, in which case the call
         blocks indefinitely awaiting a response.
