@@ -154,6 +154,8 @@ jobs:
           - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
           - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
           - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build/bin/simulator' }
+          - { name: 'onekey-1', archive: 'onekey-firmware',  paths: 'test/work/onekey-firmware' }
+          - { name: 'onekey-t', archive: 'onekey-firmware',  paths: 'test/work/onekey-firmware' }
 
     steps:
       - uses: actions/checkout@v4
@@ -221,6 +223,8 @@ jobs:
           - 'ledger-legacy'
           - 'keepkey'
           - 'bitbox02'
+          - 'onekey-1'
+          - 'onekey-t'
         script:
           - name: 'Wheel'
             install: 'pip install dist/*.whl'
@@ -235,7 +239,11 @@ jobs:
     env:
       DEVICE: '--${{ matrix.device }}'
 
-    container: python:${{ matrix.python-version }}
+    container:
+      image: python:${{ matrix.python-version }}
+      volumes:
+          - ${{ github.workspace }}:${{ github.workspace }}
+      options: --workdir ${{ github.workspace }}
 
     steps:
       - uses: actions/checkout@v4
@@ -292,9 +300,15 @@ jobs:
           - 'ledger-legacy'
           - 'keepkey'
           - 'bitbox02'
+          - 'onekey-1'
+          - 'onekey-t'
         interface: [ 'library', 'cli', 'stdin' ]
 
-    container: python:${{ matrix.python-version }}
+    container:
+      image: python:${{ matrix.python-version }}
+      volumes:
+          - ${{ github.workspace }}:${{ github.workspace }}
+      options: --workdir ${{ github.workspace }}
 
     steps:
       - uses: actions/checkout@v4
