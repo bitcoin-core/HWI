@@ -63,7 +63,7 @@ class CCProtocolPacker:
 
     @staticmethod
     def start_backup():
-        # prompts user with password for encrytped backup
+        # prompts user with password for encrypted backup
         return b'back'
 
     @staticmethod
