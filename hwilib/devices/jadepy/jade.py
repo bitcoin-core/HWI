@@ -485,7 +485,7 @@ class JadeAPI:
             ack'd by the hw, to notify of upload progress.
             Defaults to None, and nothing is called to report upload progress.
         extended_replies: bool, optional
-            If set Jade may return addtional progress data with each data chunk uploaded, which is
+            If set Jade may return additional progress data with each data chunk uploaded, which is
             then passed to any progress callback as above.  If not no additional data is returned
             or passed.
 

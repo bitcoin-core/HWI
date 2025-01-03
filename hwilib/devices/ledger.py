@@ -217,7 +217,7 @@ class LedgerClient(HardwareWalletClient):
             return legacy_sign_tx()
 
         # Make a deepcopy of this psbt. We will need to modify it to get signing to work,
-        # which will affect the caller's detection for whether signing occured.
+        # which will affect the caller's detection for whether signing occurred.
         psbt2 = copy.deepcopy(tx)
         if tx.version != 2:
             psbt2.convert_to_v2()
