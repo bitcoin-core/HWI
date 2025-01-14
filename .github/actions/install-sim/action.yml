@@ -22,7 +22,7 @@ runs:
       shell: bash
       run: |
         apt-get update
-        apt-get install -y libpcsclite-dev libusb-1.0-0 swig
+        apt-get install -y libpcsclite-dev libusb-1.0-0 swig libsdl2-dev
         git config --global user.email "ci@ci.com"
         git config --global user.name "ci"
         pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
@@ -30,6 +30,7 @@ runs:
         pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
         poetry run pip install -r test/work/firmware/requirements.txt
         pip install -r test/work/firmware/requirements.txt
+        pip install pysdl2-dll
 
     - if: inputs.device == 'bitbox01'
       shell: bash
