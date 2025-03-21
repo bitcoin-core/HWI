@@ -305,53 +305,10 @@ if [[ -n ${build_jade} ]]; then
         git submodule update --recursive --init
     fi
 
-    # Deduce the relevant versions of esp-idf and qemu to use
+    # Deduce the relevant version of esp-idf to use
     ESP_IDF_BRANCH=$(grep "ARG ESP_IDF_BRANCH=" Dockerfile | cut -d\= -f2)
     ESP_IDF_COMMIT=$(grep "ARG ESP_IDF_COMMIT=" Dockerfile | cut -d\= -f2)
-    ESP_QEMU_BRANCH=$(grep "ARG ESP_QEMU_BRANCH=" Dockerfile | cut -d\= -f2)
-    ESP_QEMU_COMMIT=$(grep "ARG ESP_QEMU_COMMIT=" Dockerfile | cut -d\= -f2)
     cd ..
-
-    # Build the qemu emulator if required
-
-    # If the directory exists, see if it is at the expected commit
-    # If not, remove the entire directory (it will be re-cloned below)
-    if [ -d "qemu" ]; then
-        cd qemu
-        LOCAL=$(git rev-parse @)
-        if [ $LOCAL = $ESP_QEMU_COMMIT ]; then
-            echo "esp-qemu up-to-date"
-            cd ..
-        else
-            cd ..
-            rm -fr qemu
-        fi
-    fi
-
-    # Clone the upstream if the directory does not exist
-    # Then build the emulator
-    if [ ! -d "qemu" ]; then
-        git clone --quiet --depth 1 --branch ${ESP_QEMU_BRANCH} --single-branch --shallow-submodules https://github.com/espressif/qemu.git ./qemu
-        cd qemu
-
-        git checkout ${ESP_QEMU_COMMIT}
-        ./configure \
-            --target-list=xtensa-softmmu \
-            --enable-gcrypt \
-            --disable-sanitizers \
-            --disable-strip \
-            --disable-user \
-            --disable-capstone \
-            --disable-vnc \
-            --disable-sdl \
-            --disable-gtk \
-            --enable-slirp \
-            --extra-cflags=-Wno-array-parameter
-        ninja -C build
-        cd ..
-    fi
-
-    # Build the esp-idf toolchain if required
 
     # We will install the esp-idf tools in a given location (otherwise defaults to user home dir)
     export IDF_TOOLS_PATH="$(pwd)/esp-idf-tools"
@@ -394,6 +351,13 @@ if [[ -n ${build_jade} ]]; then
     # Export the tools
     . ./esp-idf/export.sh
 
+    # Install the emulator
+    idf_tools.py install qemu-xtensa
+    QEMU_EXE=$(find ${IDF_TOOLS_PATH} -type f -name qemu-system-xtensa)
+    QEMU_BIOS_DIR=$(dirname "${QEMU_EXE}")/../share/qemu
+    echo "Installed qemu emulator: ${QEMU_EXE}"
+    echo "Installed qemu bios files: ${QEMU_BIOS_DIR}"
+
     # Build Blockstream Jade firmware configured for the emulator
     cd jade
     rm -fr sdkconfig
@@ -412,8 +376,8 @@ if [[ -n ${build_jade} ]]; then
     # Extract the minimal artifacts required to run the emulator
     rm -fr simulator
     mkdir simulator
-    cp qemu/build/qemu-system-xtensa simulator/
-    cp -R qemu/pc-bios simulator/
+    cp ${QEMU_EXE} simulator/
+    cp -R ${QEMU_BIOS_DIR} simulator/pc-bios
     cp jade/main/qemu/flash_image.bin simulator/
     cp jade/main/qemu/qemu_efuse.bin simulator/
 
