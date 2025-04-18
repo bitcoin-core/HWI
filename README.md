@@ -28,6 +28,12 @@ For macOS:
 brew install libusb
 ```
 
+For Windows:
+```
+# Install Visual Studio Build Tools with Windows 10 SDK and C++ CMake tools
+# Install OpenSSL development libraries
+```
+
 ## Install
 
 ```
@@ -76,6 +82,26 @@ Once the device type and device path are known, issue commands to it like so:
 All output will be in JSON form and sent to `stdout`.
 Additional information or prompts will be sent to `stderr` and will not necessarily be in JSON.
 This additional information is for debugging purposes.
+
+### PKCS11 Token Support
+
+HWI supports PKCS11 tokens (HSMs) with secp256k1 curve support. To use a PKCS11 token:
+
+1. Set the required environment variables:
+```bash
+# Windows
+$env:PKCS11_LIB_PATH = "C:\path\to\your\pkcs11\library.dll"
+$env:PKCS11_TOKEN_LABEL = "YourTokenLabel"
+
+# Unix-like
+export PKCS11_LIB_PATH=/path/to/your/pkcs11/library.so
+export PKCS11_TOKEN_LABEL=YourTokenLabel
+```
+
+2. Use the token with HWI:
+```bash
+hwi --device-type pkcs11 --path /path/to/library.so getmasterxpub
+```
 
 To see a complete list of available commands and global parameters, run
 `./hwi.py --help`.  To see options specific to a particular command,
