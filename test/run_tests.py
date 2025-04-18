@@ -18,6 +18,7 @@ from test_keepkey import keepkey_test_suite
 from test_jade import jade_test_suite
 from test_bitbox02 import bitbox02_test_suite
 from test_udevrules import TestUdevRulesInstaller
+from test_pkcs11 import TestPKCS11Client
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
 trezor_group = parser.add_mutually_exclusive_group()
@@ -71,6 +72,9 @@ parser.add_argument('--interface', help='Which interface to send commands over',
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
+parser.add_argument('--no-pkcs11', dest='pkcs11', help='Do not run PKCS11 tests', action='store_false')
+parser.add_argument('--pkcs11', dest='pkcs11', help='Run PKCS11 tests', action='store_true')
+
 parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None, bitbox02=None)
 
 args = parser.parse_args()
@@ -84,6 +88,7 @@ if not args.device_only:
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBIP32))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPKCS11Client))
     if sys.platform.startswith("linux"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
     success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
