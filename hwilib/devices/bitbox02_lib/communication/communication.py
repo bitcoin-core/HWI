@@ -26,31 +26,25 @@ class TransportLayer(Protocol):
     transmitting byte strings.
     """
 
-    # pylint: disable=unused-argument,no-self-use
+    # pylint: disable=unused-argument
     def write(self, data: bytes, endpoint: int, cid: int) -> None:
         """Sends a frame of data to the specified endpoint"""
 
-    def read(self, endpoint: int, cid: int) -> bytes:
-        ...
+    def read(self, endpoint: int, cid: int) -> bytes: ...
 
     def query(self, data: bytes, endpoint: int, cid: int) -> bytes:
         self.write(data, endpoint, cid)
         return self.read(endpoint, cid)
 
-    def generate_cid(self) -> int:
-        ...
+    def generate_cid(self) -> int: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class PhysicalLayer(Protocol):
-    # pylint: disable=unused-argument,no-self-use
-    def write(self, data: bytes) -> None:
-        ...
+    # pylint: disable=unused-argument
+    def write(self, data: bytes) -> None: ...
 
-    def read(self, size: int, timeout_ms: int) -> bytes:
-        ...
+    def read(self, size: int, timeout_ms: int) -> bytes: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
