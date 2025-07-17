@@ -11,16 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Interact with a BitBox02 bootloader. """
+"""Interact with a BitBox02 bootloader."""
 
 import struct
 import typing
 import io
 import math
 import hashlib
+import enum
+from typing import TypedDict
 
 from ..communication import TransportLayer
-from ..communication.devices import DeviceInfo
+
+from ..communication.devices import (
+    DeviceInfo,
+    parse_device_version,
+    BB02MULTI_BOOTLOADER,
+    BB02BTC_BOOTLOADER,
+    BITBOX02PLUS_MULTI_BOOTLOADER,
+    BITBOX02PLUS_BTC_BOOTLOADER,
+)
 
 BOOTLOADER_CMD = 0x80 + 0x40 + 0x03
 NUM_ROOT_KEYS = 3
@@ -32,9 +42,10 @@ CHUNK_SIZE = 4096
 assert MAX_FIRMWARE_SIZE % CHUNK_SIZE == 0
 FIRMWARE_CHUNKS = MAX_FIRMWARE_SIZE // CHUNK_SIZE
 
-SIGDATA_MAGIC_STANDARD = struct.pack(">I", 0x653F362B)
-SIGDATA_MAGIC_BTCONLY = struct.pack(">I", 0x11233B0B)
-SIGDATA_MAGIC_BITBOXBASE_STANDARD = struct.pack(">I", 0xAB6BD345)
+SIGDATA_MAGIC_BITBOX02_MULTI = struct.pack(">I", 0x653F362B)
+SIGDATA_MAGIC_BITBOX02_BTCONLY = struct.pack(">I", 0x11233B0B)
+SIGDATA_MAGIC_BITBOX02PLUS_MULTI = struct.pack(">I", 0x5B648CEB)
+SIGDATA_MAGIC_BITBOX02PLUS_BTCONLY = struct.pack(">I", 0x48714774)
 
 MAGIC_LEN = 4
 
@@ -42,6 +53,19 @@ VERSION_LEN = 4
 SIGNING_PUBKEYS_DATA_LEN = VERSION_LEN + NUM_SIGNING_KEYS * 64 + NUM_ROOT_KEYS * 64
 FIRMWARE_DATA_LEN = VERSION_LEN + NUM_SIGNING_KEYS * 64
 SIGDATA_LEN = SIGNING_PUBKEYS_DATA_LEN + FIRMWARE_DATA_LEN
+
+
+class SecureChipModel(enum.Enum):
+    """Secure chip model variants for the BitBox02 platform."""
+
+    ATECC = "ATECC"
+    OPTIGA = "Optiga"
+
+
+class Hardware(TypedDict):
+    """Hardware configuration containing secure chip model information."""
+
+    secure_chip_model: SecureChipModel
 
 
 def parse_signed_firmware(firmware: bytes) -> typing.Tuple[bytes, bytes, bytes]:
@@ -53,9 +77,10 @@ def parse_signed_firmware(firmware: bytes) -> typing.Tuple[bytes, bytes, bytes]:
         raise ValueError("firmware too small")
     magic, firmware = firmware[:MAGIC_LEN], firmware[MAGIC_LEN:]
     if magic not in (
-        SIGDATA_MAGIC_STANDARD,
-        SIGDATA_MAGIC_BTCONLY,
-        SIGDATA_MAGIC_BITBOXBASE_STANDARD,
+        SIGDATA_MAGIC_BITBOX02_MULTI,
+        SIGDATA_MAGIC_BITBOX02_BTCONLY,
+        SIGDATA_MAGIC_BITBOX02PLUS_MULTI,
+        SIGDATA_MAGIC_BITBOX02PLUS_BTCONLY,
     ):
         raise ValueError("invalid magic")
 
@@ -71,10 +96,15 @@ class Bootloader:
     def __init__(self, transport: TransportLayer, device_info: DeviceInfo):
         self._transport = transport
         self.expected_magic = {
-            "bb02-bootloader": SIGDATA_MAGIC_STANDARD,
-            "bb02btc-bootloader": SIGDATA_MAGIC_BTCONLY,
-            "bitboxbase-bootloader": SIGDATA_MAGIC_BITBOXBASE_STANDARD,
+            BB02MULTI_BOOTLOADER: SIGDATA_MAGIC_BITBOX02_MULTI,
+            BB02BTC_BOOTLOADER: SIGDATA_MAGIC_BITBOX02_BTCONLY,
+            BITBOX02PLUS_MULTI_BOOTLOADER: SIGDATA_MAGIC_BITBOX02PLUS_MULTI,
+            BITBOX02PLUS_BTC_BOOTLOADER: SIGDATA_MAGIC_BITBOX02PLUS_BTCONLY,
         }.get(device_info["product_string"])
+        self.version = parse_device_version(device_info["serial_number"])
+        # Delete the prelease part, as it messes with the comparison (e.g. 3.0.0-pre < 3.0.0 is
+        # True, but the 3.0.0-pre has already the same API breaking changes like 3.0.0...).
+        self.version = self.version.replace(prerelease=None)
         assert self.expected_magic
 
     def _query(self, msg: bytes) -> bytes:
@@ -94,6 +124,25 @@ class Bootloader:
         firmware_v, signing_pubkeys_v = struct.unpack("<II", response[:8])
         return firmware_v, signing_pubkeys_v
 
+    def hardware(self) -> Hardware:
+        """
+        Returns (hardware variant).
+        """
+        secure_chip: SecureChipModel = SecureChipModel.ATECC
+
+        # Previous bootloader versions do not support the call and have ATECC SC.
+        if self.version >= "1.1.0":
+            response = self._query(b"W")
+            response_code = response[:1]
+
+            if response_code == b"\x00":
+                secure_chip = SecureChipModel.ATECC
+            elif response_code == b"\x01":
+                secure_chip = SecureChipModel.OPTIGA
+            else:
+                raise ValueError(f"Unrecognized securechip model: {response_code!r}")
+        return {"secure_chip_model": secure_chip}
+
     def get_hashes(
         self, display_firmware_hash: bool = False, display_signing_keydata_hash: bool = False
     ) -> typing.Tuple[bytes, bytes]:
@@ -111,7 +160,7 @@ class Bootloader:
         """
         Returns whether the bootloader will automatically show the firmware hash on boot.
         """
-        return bool(self._query(b"H\xFF")[0])
+        return bool(self._query(b"H\xff")[0])
 
     def set_show_firmware_hash(self, enable: bool) -> None:
         """
@@ -184,7 +233,7 @@ class Bootloader:
         # We check by comparing the device reported firmware hash.
         # If erased, the firmware is all '\xFF'.
         firmware_v, _ = self.versions()
-        empty_firmware = struct.pack("<I", firmware_v) + b"\xFF" * MAX_FIRMWARE_SIZE
+        empty_firmware = struct.pack("<I", firmware_v) + b"\xff" * MAX_FIRMWARE_SIZE
         empty_firmware_hash = hashlib.sha256(hashlib.sha256(empty_firmware).digest()).digest()
         reported_firmware_hash, _ = self.get_hashes()
         return empty_firmware_hash == reported_firmware_hash
