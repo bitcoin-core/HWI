@@ -43,9 +43,10 @@ try:
     from ..communication.generated import common_pb2 as common
     from ..communication.generated import keystore_pb2 as keystore
     from ..communication.generated import antiklepto_pb2 as antiklepto
+    from ..communication.generated import bluetooth_pb2 as bluetooth
     import google.protobuf.empty_pb2
 
-    # pylint: disable=unused-import
+    # pylint: disable=unused-import,ungrouped-imports
     # We export it in __init__.py
     from ..communication.generated import system_pb2 as system
 except ModuleNotFoundError:
@@ -116,18 +117,31 @@ class BTCInputType(TypedDict):
 
 class BTCOutputInternal:
     # TODO: Use NamedTuple, but not playing well with protobuf types.
+    """
+    Internal transaction output (output belongs to BitBox).
+    """
 
-    def __init__(self, keypath: Sequence[int], value: int, script_config_index: int):
+    def __init__(
+        self,
+        keypath: Sequence[int],
+        value: int,
+        script_config_index: int,
+        output_script_config_index: Optional[int] = None,
+    ):
         """
         keypath: keypath to the change output.
         """
         self.keypath = keypath
         self.value = value
         self.script_config_index = script_config_index
+        self.output_script_config_index = output_script_config_index
 
 
 class BTCOutputExternal:
     # TODO: Use NamedTuple, but not playing well with protobuf types.
+    """
+    External transaction output.
+    """
 
     def __init__(self, output_type: "btc.BTCOutputType.V", output_payload: bytes, value: int):
         self.type = output_type
@@ -161,6 +175,14 @@ class BitBox02(BitBoxCommonAPI):
         }
         if self.version >= semver.VersionInfo(9, 6, 0):
             result["securechip_model"] = response.device_info.securechip_model
+        if response.device_info.bluetooth is not None:
+            result["bluetooth"] = {
+                "firmware_hash": response.device_info.bluetooth.firmware_hash,
+                "firmware_version": response.device_info.bluetooth.firmware_version,
+                "enabled": response.device_info.bluetooth.enabled,
+            }
+        else:
+            result["bluetooth"] = None
 
         return result
 
@@ -390,13 +412,14 @@ class BitBox02(BitBoxCommonAPI):
         version: int = 1,
         locktime: int = 0,
         format_unit: "btc.BTCSignInitRequest.FormatUnit.V" = btc.BTCSignInitRequest.FormatUnit.DEFAULT,
+        output_script_configs: Optional[Sequence[btc.BTCScriptConfigWithKeypath]] = None,
     ) -> Sequence[Tuple[int, bytes]]:
         """
         coin: the first element of all provided keypaths must match the coin:
         - BTC: 0 + HARDENED
         - Testnets: 1 + HARDENED
         - LTC: 2 + HARDENED
-        script_configs: types of all inputs and change outputs. The first element of all provided
+        script_configs: types of all inputs and outputs belonging to the same account (change or non-change). The first element of all provided
         keypaths must match this type:
         - SCRIPT_P2PKH: 44 + HARDENED
         - SCRIPT_P2WPKH_P2SH: 49 + HARDENED
@@ -407,6 +430,8 @@ class BitBox02(BitBoxCommonAPI):
         outputs: transaction outputs. Can be an external output
         (BTCOutputExternal) or an internal output for change (BTCOutputInternal).
         version, locktime: reserved for future use.
+        format_unit: defines in which unit amounts will be displayed
+        output_script_configs: script types for outputs belonging to the same keystore
         Returns: list of (input index, signature) tuples.
         Raises Bitbox02Exception with ERR_USER_ABORT on user abort.
         """
@@ -417,6 +442,10 @@ class BitBox02(BitBoxCommonAPI):
 
         if any(map(is_taproot, script_configs)):
             self._require_atleast(semver.VersionInfo(9, 10, 0))
+
+        if output_script_configs:
+            # Attaching output info supported since v9.22.0.
+            self._require_atleast(semver.VersionInfo(9, 22, 0))
 
         supports_antiklepto = self.version >= semver.VersionInfo(9, 4, 0)
 
@@ -433,6 +462,7 @@ class BitBox02(BitBoxCommonAPI):
                 num_outputs=len(outputs),
                 locktime=locktime,
                 format_unit=format_unit,
+                output_script_configs=output_script_configs,
             )
         )
         next_response = self._msg_query(request, expected_response="btc_sign_next").btc_sign_next
@@ -552,12 +582,16 @@ class BitBox02(BitBoxCommonAPI):
 
                 request = hww.Request()
                 if isinstance(tx_output, BTCOutputInternal):
+                    if tx_output.output_script_config_index is not None:
+                        # Attaching output info supported since v9.22.0.
+                        self._require_atleast(semver.VersionInfo(9, 22, 0))
                     request.btc_sign_output.CopyFrom(
                         btc.BTCSignOutputRequest(
                             ours=True,
                             value=tx_output.value,
                             keypath=tx_output.keypath,
                             script_config_index=tx_output.script_config_index,
+                            output_script_config_index=tx_output.output_script_config_index,
                         )
                     )
                 elif isinstance(tx_output, BTCOutputExternal):
@@ -588,6 +622,8 @@ class BitBox02(BitBoxCommonAPI):
         # pylint: disable=no-member
 
         self._require_atleast(semver.VersionInfo(9, 2, 0))
+        if coin in (btc.TBTC, btc.RBTC):
+            self._require_atleast(semver.VersionInfo(9, 23, 0))
 
         request = btc.BTCRequest()
         request.sign_message.CopyFrom(
@@ -644,16 +680,6 @@ class BitBox02(BitBoxCommonAPI):
         request.insert_remove_sdcard.CopyFrom(
             bitbox02_system.InsertRemoveSDCardRequest(
                 action=bitbox02_system.InsertRemoveSDCardRequest.INSERT_CARD
-            )
-        )
-        self._msg_query(request, expected_response="success")
-
-    def remove_sdcard(self) -> None:
-        # pylint: disable=no-member
-        request = hww.Request()
-        request.insert_remove_sdcard.CopyFrom(
-            bitbox02_system.InsertRemoveSDCardRequest(
-                action=bitbox02_system.InsertRemoveSDCardRequest.REMOVE_CARD
             )
         )
         self._msg_query(request, expected_response="success")
@@ -788,10 +814,18 @@ class BitBox02(BitBoxCommonAPI):
         )
         return self._eth_msg_query(request, expected_response="pub").pub.pub
 
-    def eth_sign(self, transaction: bytes, keypath: Sequence[int], chain_id: int = 1) -> bytes:
+    def eth_sign(
+        self,
+        transaction: bytes,
+        keypath: Sequence[int],
+        address_case: eth.ETHAddressCase.ValueType = eth.ETH_ADDRESS_CASE_MIXED,
+        chain_id: int = 1,
+    ) -> bytes:
         """
         transaction should be given as a full rlp encoded eth transaction.
         """
+        # pylint: disable=no-member
+
         is_eip1559 = transaction.startswith(b"\x02")
 
         def handle_antiklepto(request: eth.ETHRequest) -> bytes:
@@ -853,6 +887,7 @@ class BitBox02(BitBoxCommonAPI):
                     recipient=recipient,
                     value=value,
                     data=data,
+                    address_case=address_case,
                 )
             )
             return handle_antiklepto(request)
@@ -871,6 +906,7 @@ class BitBox02(BitBoxCommonAPI):
                 recipient=recipient,
                 value=value,
                 data=data,
+                address_case=address_case,
             )
         )
 
@@ -1176,7 +1212,69 @@ class BitBox02(BitBoxCommonAPI):
     def cardano_sign_transaction(
         self, transaction: cardano.CardanoSignTransactionRequest
     ) -> cardano.CardanoSignTransactionResponse:
+        if transaction.tag_cbor_sets:
+            self._require_atleast(semver.VersionInfo(9, 22, 0))
         request = cardano.CardanoRequest(sign_transaction=transaction)
         return self._cardano_msg_query(
             request, expected_response="sign_transaction"
         ).sign_transaction
+
+    def _bluetooth_msg_query(
+        self, bluetooth_request: bluetooth.BluetoothRequest, expected_response: Optional[str] = None
+    ) -> bluetooth.BluetoothResponse:
+        """
+        Same as _msg_query, but one nesting deeper for bluetooth messages.
+        """
+        # pylint: disable=no-member
+        request = hww.Request()
+        request.bluetooth.CopyFrom(bluetooth_request)
+        bluetooth_response = self._msg_query(request, expected_response="bluetooth").bluetooth
+        if (
+            expected_response is not None
+            and bluetooth_response.WhichOneof("response") != expected_response
+        ):
+            raise Exception(
+                "Unexpected response: {}, expected: {}".format(
+                    bluetooth_response.WhichOneof("response"), expected_response
+                )
+            )
+        return bluetooth_response
+
+    def bluetooth_upgrade(self, firmware: bytes) -> None:
+        """
+        Install the given Bluetooth firmware.
+        """
+        # pylint: disable=no-member
+        request = bluetooth.BluetoothRequest()
+        request.upgrade_init.CopyFrom(
+            bluetooth.BluetoothUpgradeInitRequest(firmware_length=len(firmware))
+        )
+
+        response = self._bluetooth_msg_query(request)
+        while True:
+            response_type = response.WhichOneof("response")
+            if response_type == "request_chunk":
+                chunk_response = response.request_chunk
+                request = bluetooth.BluetoothRequest()
+                request.chunk.CopyFrom(
+                    bluetooth.BluetoothChunkRequest(
+                        data=firmware[
+                            chunk_response.offset : chunk_response.offset + chunk_response.length
+                        ]
+                    ),
+                )
+                response = self._bluetooth_msg_query(request)
+            elif response_type == "success":
+                break
+            else:
+                raise Exception(f"Unexpected response: f{response_type}")
+
+    def bluetooth_toggle_enabled(self) -> None:
+        """
+        Enable/disable Bluetooth in non-volatile storage
+        """
+        # pylint: disable=no-member
+        request = bluetooth.BluetoothRequest()
+        request.toggle_enabled.CopyFrom(bluetooth.BluetoothToggleEnabledRequest())
+
+        self._bluetooth_msg_query(request, expected_response="success")
