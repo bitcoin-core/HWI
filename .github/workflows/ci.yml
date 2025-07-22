@@ -208,7 +208,6 @@ jobs:
   test-dist:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.script.name }}
     runs-on: ubuntu-latest
-    if: ${{ always() }}
     needs: [ dist-builder, sim-builder, ledger-app-builder, bitcoind-builder ]
 
     strategy:
@@ -278,7 +277,6 @@ jobs:
   test-all:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
     runs-on: ubuntu-latest
-    if: ${{ always() }}
     needs: [ sim-builder, ledger-app-builder, bitcoind-builder ]
     timeout-minutes: 45
 
