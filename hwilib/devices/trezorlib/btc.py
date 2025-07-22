@@ -19,7 +19,6 @@ from copy import copy
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, AnyStr, Dict, List, Optional, Sequence, Tuple
 
-# TypedDict is not available in typing for python < 3.8
 from typing_extensions import TypedDict
 
 from . import exceptions, messages
