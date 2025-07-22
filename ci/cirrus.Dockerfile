@@ -1,6 +1,6 @@
 # Cache break (modify this line to break cirrus' dockerfile build cache) 1
 
-FROM python:3.8
+FROM python:3.9
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -10,7 +10,7 @@ RUN apt-get install -y \
     bsdmainutils \
     build-essential \
     ccache \
-    clang \    
+    clang \
     cmake \
     curl \
     cython3 \

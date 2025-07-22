@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.13"
+python = "^3.9,<3.13"
 hidapi = ">=0.14.0"
 ecdsa = "~0"
 pyaes = "^1.6"
@@ -34,7 +34,7 @@ protobuf = "^4.23.3"
 [tool.poetry.extras]
 qt = ["pyside2"]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.3"
 autopep8 = "~1"
 flake8 = ">=3"
