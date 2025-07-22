@@ -96,6 +96,10 @@ class Bitcoind():
         cookie_path = os.path.join(self.datadir, "regtest", ".cookie")
         while not os.path.exists(cookie_path):
             time.sleep(0.5)
+            # Prevent CI from lingering until timeout:
+            if self.bitcoind_proc.poll() is not None:
+                raise f"bitcoind failed with exit code #{self.bitcoind_proc.poll()}"
+
         # Read .cookie file to get user and pass
         with open(cookie_path) as f:
             self.userpass = f.readline().lstrip().rstrip()
