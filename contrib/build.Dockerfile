@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 SHELL ["/bin/bash", "-c"]
 
