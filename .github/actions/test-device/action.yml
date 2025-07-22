@@ -1,0 +1,31 @@
+name: Test device
+description: Run tests for one device type.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        pip install poetry
+        poetry install
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: bitcoind
+
+    - shell: bash
+      run: |
+        tar -xvf bitcoind.tar.gz
+
+    - uses: ./.github/actions/install-sim
+      with:
+        device: ${{ matrix.device }}
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=${{ matrix.interface }} --device-only; cd ..
+
+    - if: failure()
+      shell: bash
+      run: |
+        tail -v -n +1 test/*.std*
