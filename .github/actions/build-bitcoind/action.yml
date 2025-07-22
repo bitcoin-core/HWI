@@ -23,7 +23,7 @@ runs:
         ccache --zero-stats
         cd test; ./setup_environment.sh --bitcoind; cd ..
         ccache --show-stats --verbose
-        tar -czf bitcoind.tar.gz test/work/bitcoin/build/src/bitcoind
+        tar -czf bitcoind.tar.gz test/work/bitcoin/build/bin/bitcoind
 
     - uses: actions/cache/save@v4
       if: github.event_name != 'pull_request' && steps.ccache-cache.outputs.cache-hit != 'true'

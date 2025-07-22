@@ -66,7 +66,7 @@ parser.add_argument('--jade-path', dest='jade_path', help='Path to Jade qemu emu
 parser.add_argument('--bitbox02-path', dest='bitbox02_path', help='Path to BitBox02 simulator', default='work/bitbox02-firmware/build-build/bin/simulator')
 
 parser.add_argument('--all', help='Run tests on all existing simulators', default=False, action='store_true')
-parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/build/src/bitcoind')
+parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/build/bin/bitcoind')
 parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist', 'stdin'], default='library')
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
