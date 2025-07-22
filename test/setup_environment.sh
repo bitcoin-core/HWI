@@ -235,7 +235,7 @@ if [[ -n ${build_keepkey} ]]; then
     # Build the simulator. This is cached, but it is also fast
     if [ "$keepkey_setup_needed" == true ] ; then
         git clean -ffdx
-        git clone https://github.com/nanopb/nanopb.git -b nanopb-0.3.9.4
+        git clone https://github.com/nanopb/nanopb.git -b nanopb-0.4.9.1
     fi
     cd nanopb/generator/proto
     make
