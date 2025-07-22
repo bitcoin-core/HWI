@@ -1,0 +1,67 @@
+name: Test dist
+description: Run dist tests for one device type.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        pip install poetry
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+    - name: Install (Wheel)
+      if: matrix.script == 'Wheel'
+      shell: bash
+      run: |
+        pip install dist/*.whl
+
+    - name: Install (Sdist)
+      if: matrix.script == 'Sdist'
+      shell: bash
+      run: |
+        pip install $(find dist -name "*.tar.gz" -a -not -name "*linux*")
+
+    - name: Install (Bindist)
+      if: matrix.script == 'Bindist'
+      shell: bash
+      run: |
+        poetry install; cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: bitcoind
+
+    - shell: bash
+      run: |
+        tar -xvf bitcoind.tar.gz
+
+    - uses: ./.github/actions/install-sim
+      with:
+        device: ${{ matrix.device }}
+
+    - name: Run tests (Wheel)
+      if: matrix.script == 'Wheel'
+      shell: bash
+      run: |
+        cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+
+    - name: Run tests (Sdist)
+      if: matrix.script == 'Sdist'
+      shell: bash
+      run: |
+        cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+
+    - name: Run tests (Bindist)
+      if: matrix.script == 'Bindist'
+      shell: bash
+      run: |
+        cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
+
+    - if: failure()
+      shell: bash
+      run: |
+        tail -v -n +1 test/*.std*
+

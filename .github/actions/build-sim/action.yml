@@ -1,0 +1,28 @@
+name: Build sim
+description: Build device simulator(s)
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build
+        pip install poetry
+        wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
+        sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
+        protoc --version
+
+    - name: Build simulator
+      shell: bash
+      run: |
+        git config --global user.email "ci@ci.com"
+        git config --global user.name "ci"
+        cd test; ./setup_environment.sh --${{ matrix.device.name }}; cd ..
+        tar -czf ${{ matrix.device.archive }}.tar.gz ${{ matrix.device.paths }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.device.name }}-sim
+        path: ${{ matrix.device.archive }}.tar.gz
+
