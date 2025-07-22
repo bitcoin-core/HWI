@@ -142,8 +142,8 @@ jobs:
           name: dist
           path: dist/
 
-  sim-builder:
-    name: Sim builder
+  sim-builder-trezor:
+    name: Trezor sim builder
     runs-on: ubuntu-latest
 
     strategy:
@@ -152,36 +152,82 @@ jobs:
         device:
           - { name: 'trezor-1', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
           - { name: 'trezor-t', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+
+  sim-builder-coldcard:
+    name: Coldcard sim builder
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
           - { name: 'coldcard', archive: 'coldcard-mpy',     paths: 'test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port' }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+
+  sim-builder-bitbox:
+    name: Bitbox sim builder
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
           - { name: 'bitbox01', archive: 'mcu',              paths: 'test/work/mcu' }
-          - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
-          - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
-          - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
           - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build/bin/simulator' }
 
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build
-          pip install poetry
-          wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
-          sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
-          protoc --version
+  sim-builder-jade:
+    name: Jade sim builder
+    runs-on: ubuntu-latest
 
-      - name: Build simulator
-        run: |
-          git config --global user.email "ci@ci.com"
-          git config --global user.name "ci"
-          cd test; ./setup_environment.sh --${{ matrix.device.name }}; cd ..
-          tar -czf ${{ matrix.device.archive }}.tar.gz ${{ matrix.device.paths }}
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.device.name }}-sim
-          path: ${{ matrix.device.archive }}.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+
+  sim-builder-ledger:
+    name: Ledger sim builder
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+
+  sim-builder-keepkey:
+    name: Keepkey sim builder
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+
 
   ledger-app-builder:
     name: Ledger App builder
@@ -210,7 +256,16 @@ jobs:
   test-dist:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.script.name }}
     runs-on: ubuntu-latest
-    needs: [ dist-builder, sim-builder, ledger-app-builder, bitcoind-builder ]
+    needs:
+      - dist-builder
+      - sim-builder-trezor
+      - sim-builder-coldcard
+      - sim-builder-bitbox
+      - sim-builder-jade
+      - sim-builder-ledger
+      - sim-builder-keepkey
+      - ledger-app-builder
+      - bitcoind-builder
 
     strategy:
       fail-fast: false
@@ -275,11 +330,10 @@ jobs:
         run: |
           tail -v -n +1 test/*.std*
 
-
-  test-all:
+  test-trezor:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
     runs-on: ubuntu-latest
-    needs: [ sim-builder, ledger-app-builder, bitcoind-builder ]
+    needs: [ sim-builder-trezor, bitcoind-builder ]
     timeout-minutes: 45
 
     strategy:
@@ -289,39 +343,113 @@ jobs:
         device:
           - 'trezor-1'
           - 'trezor-t'
-          - 'coldcard'
-          - 'bitbox01'
-          - 'jade'
-          - 'ledger'
-          - 'ledger-legacy'
-          - 'keepkey'
-          - 'bitbox02'
         interface: [ 'library', 'cli', 'stdin' ]
 
     container: python:${{ matrix.python-version }}
 
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/test-device
 
-      - run: |
-          pip install poetry
-          poetry install
+  test-ledger:
+    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
+    runs-on: ubuntu-latest
+    needs: [ sim-builder-ledger, ledger-app-builder, bitcoind-builder ]
+    timeout-minutes: 45
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: bitcoind
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        device:
+          - 'ledger'
+          - 'ledger-legacy'
+        interface: [ 'library', 'cli', 'stdin' ]
 
-      - run: |
-          tar -xvf bitcoind.tar.gz
+    container: python:${{ matrix.python-version }}
 
-      - uses: ./.github/actions/install-sim
-        with:
-          device: ${{ matrix.device }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/test-device
 
-      - name: Run tests
-        run: |
-          cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=${{ matrix.interface }} --device-only; cd ..
+  test-coldcard:
+      name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
+      runs-on: ubuntu-latest
+      needs: [ sim-builder-coldcard, bitcoind-builder ]
+      timeout-minutes: 45
 
-      - if: failure()
-        run: |
-          tail -v -n +1 test/*.std*
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+          device:
+            - 'coldcard'
+          interface: [ 'library', 'cli', 'stdin' ]
+
+      container: python:${{ matrix.python-version }}
+
+      steps:
+        - uses: actions/checkout@v4
+        - uses: ./.github/actions/test-device
+
+  test-bitbox:
+      name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
+      runs-on: ubuntu-latest
+      needs: [ sim-builder-bitbox, bitcoind-builder ]
+      timeout-minutes: 45
+
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+          device:
+            - 'bitbox01'
+            - 'bitbox02'
+          interface: [ 'library', 'cli', 'stdin' ]
+
+      container: python:${{ matrix.python-version }}
+
+      steps:
+        - uses: actions/checkout@v4
+        - uses: ./.github/actions/test-device
+
+  test-jade:
+      name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
+      runs-on: ubuntu-latest
+      needs: [ sim-builder-jade, bitcoind-builder ]
+      timeout-minutes: 45
+
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+          device:
+            - 'jade'
+          interface: [ 'library', 'cli', 'stdin' ]
+
+      container: python:${{ matrix.python-version }}
+
+      steps:
+        - uses: actions/checkout@v4
+        - uses: ./.github/actions/test-device
+
+  test-keepkey:
+      name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
+      runs-on: ubuntu-latest
+      needs: [ sim-builder-keepkey, bitcoind-builder ]
+      timeout-minutes: 45
+
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+          device:
+            - 'keepkey'
+          interface: [ 'library', 'cli', 'stdin' ]
+
+      container: python:${{ matrix.python-version }}
+
+      steps:
+        - uses: actions/checkout@v4
+        - uses: ./.github/actions/test-device
+
