@@ -27,7 +27,7 @@ RUN apt-get install -y \
     libudev-dev \
     faketime \
     zip \
-    pyqt5-dev \
+    python3-pyqt6 \
     libglib2.0-0
 
 RUN curl https://pyenv.run | bash
