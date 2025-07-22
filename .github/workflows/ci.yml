@@ -200,7 +200,9 @@ jobs:
 
   bitcoind-builder:
     name: bitcoind builder
-    runs-on: ubuntu-latest
+    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep binaries
+    # compatible with Debian Bookworm (glibc 2.36) Python containers.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-bitcoind
