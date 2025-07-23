@@ -144,7 +144,10 @@ jobs:
 
   sim-builder-trezor:
     name: Trezor sim builder
-    runs-on: ubuntu-latest
+    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
+    # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
+    # Trezor T binaries don't need this.
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
