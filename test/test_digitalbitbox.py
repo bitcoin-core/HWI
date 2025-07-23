@@ -58,6 +58,10 @@ class BitBox01Emulator(DeviceEmulator):
         )
         # Wait for simulator to be up
         while True:
+            # Prevent CI from lingering until timeout:
+            if self.simulator_proc.poll() is not None:
+                raise RuntimeError(f"BitBox simulator failed with exit code {self.simulator_proc.poll()}")
+
             try:
                 self.dev = BitboxSimulator('127.0.0.1', 35345)
                 reply = send_plain(b'{"password":"0000"}', self.dev)

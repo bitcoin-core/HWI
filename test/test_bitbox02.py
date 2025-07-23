@@ -51,6 +51,10 @@ class BitBox02Emulator(DeviceEmulator):
         )
         time.sleep(1)
 
+        # Prevent CI from lingering until timeout:
+        if self.simulator_proc.poll() is not None:
+            raise RuntimeError(f"BitBox02 simulator failed with exit code {self.simulator_proc.poll()}")
+
         self.setup_client = Bitbox02Client(self.path)
         self.setup_bb02 = self.setup_client.restore_device()
         self.setup_client.close()
