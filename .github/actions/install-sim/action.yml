@@ -60,8 +60,8 @@ runs:
         apt-get update
         apt-get install -y libusb-1.0-0 qemu-user-static
         tar -xvf speculos.tar.gz
-        poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
-        pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+        poetry run pip install construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+        pip install construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
 
     - if: inputs.device == 'ledger'
       uses: actions/download-artifact@v4
