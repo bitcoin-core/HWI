@@ -53,7 +53,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.coldcard_proc = subprocess.Popen(
             [
                 "python3",
-                os.path.basename(self.simulator), "--ms"
+                os.path.basename(self.simulator), "--ms", "--headless"
             ],
             cwd=os.path.dirname(self.simulator),
             stdout=self.coldcard_log,
