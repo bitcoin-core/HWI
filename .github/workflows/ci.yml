@@ -159,7 +159,7 @@ jobs:
 
   sim-builder-coldcard:
     name: Coldcard sim builder
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -468,7 +468,7 @@ jobs:
 
   test-coldcard:
       name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-22.04
       needs: [ sim-builder-coldcard, bitcoind-builder ]
       timeout-minutes: 45
 
