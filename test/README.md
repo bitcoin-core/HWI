@@ -293,7 +293,7 @@ cmake gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gdb-multiarch qemu-user-stat
 The python packages can be installed with
 
 ```
-pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests
+pip install construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests
 ```
 
 ### Building

@@ -249,7 +249,7 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    speculos_packages="construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract"
+    speculos_packages="construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract"
     poetry run pip install ${speculos_packages}
     pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
