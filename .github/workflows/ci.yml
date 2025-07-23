@@ -232,8 +232,8 @@ jobs:
       - uses: ./.github/actions/build-sim
 
 
-  ledger-app-builder:
-    name: Ledger App builder
+  ledger-s-app-builder:
+    name: Ledger Nano S Bitcoin App builder
     runs-on: ubuntu-latest
     container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
     steps:
@@ -244,7 +244,23 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ledger_app
+          name: ledger_app_nano_s
+          path: app-bitcoin-new/bin/app.elf
+
+
+  ledger-x-app-builder:
+    name: Ledger Nano X Bitcoin App builder
+    runs-on: ubuntu-latest
+    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    steps:
+      - run: |
+          git clone https://github.com/LedgerHQ/app-bitcoin-new.git
+          cd app-bitcoin-new
+          make DEBUG=1 BOLOS_SDK=$NANOX_SDK
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ledger_app_nano_x
           path: app-bitcoin-new/bin/app.elf
 
   bitcoind-builder:
@@ -451,7 +467,7 @@ jobs:
   test-ledger:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
     runs-on: ubuntu-latest
-    needs: [ sim-builder-ledger, ledger-app-builder, bitcoind-builder ]
+    needs: [ sim-builder-ledger, ledger-s-app-builder, ledger-x-app-builder, bitcoind-builder ]
     timeout-minutes: 45
 
     strategy:
