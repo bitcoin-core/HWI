@@ -1,34 +1,3 @@
-From c2e4c24c226555903705aae0386aefe0e15bf873 Mon Sep 17 00:00:00 2001
-From: Andrew Chow <achow101-github@achow101.com>
-Date: Tue, 27 Nov 2018 17:32:44 -0500
-Subject: [PATCH 1/3] Use linux unix socket address format
-
----
- unix/variant/pyb.py | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/unix/variant/pyb.py b/unix/variant/pyb.py
-index d22bb1b..fe8e7ca 100644
---- a/unix/variant/pyb.py
-+++ b/unix/variant/pyb.py
-@@ -36,10 +36,10 @@ class USB_HID:
-         import usocket as socket
-         self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-         # If on linux, try commenting the following line
--        addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
-+        # addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
-         # If on linux, try uncommenting the following two lines
--        #import struct
--        #addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
-+        import struct
-+        addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
-         while 1:
-             try:
-                 self.pipe.bind(addr)
--- 
-2.38.1
-
-
 From fd51e85693e0d66129133b1f195134aead1cf7d0 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 17 Dec 2019 17:56:05 -0500
@@ -53,9 +22,9 @@ index 2706fb4..f9b533d 100644
 +            ['mstest2', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 26, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
 +            ]
      sim_defaults['fee_limit'] = -1
- 
+
  if '--xfp' in sys.argv:
--- 
+--
 2.38.1
 
 
@@ -78,14 +47,14 @@ index 6f26644..6e190b5 100644
          for xfp, deriv, xpub in self.xpubs:
 -            self.xfp_paths[xfp] = str_to_keypath(xfp, deriv)
 +            self.xfp_paths.setdefault(xfp, list()).append(str_to_keypath(xfp, deriv))
- 
+
 -        assert len(self.xfp_paths) == self.N, 'dup XFP'         # not supported
 +        assert len(self.xpubs) == self.N, 'Number of pubkeys does not match N'
- 
+
      @classmethod
      def render_addr_fmt(cls, addr_fmt):
 @@ -245,7 +245,11 @@ class MultisigWallet:
- 
+
      def get_xfp_paths(self):
          # return list of lists [xfp, *deriv]
 -        return list(self.xfp_paths.values())
@@ -94,11 +63,11 @@ index 6f26644..6e190b5 100644
 +            for xfp_path in paths_list:
 +                ret.append(xfp_path)
 +        return ret
- 
+
      @classmethod
      def find_match(cls, M, N, xfp_paths, addr_fmt=None):
 @@ -280,24 +284,30 @@ class MultisigWallet:
-         # the same prefix path per-each xfp, as indicated 
+         # the same prefix path per-each xfp, as indicated
          # xfp_paths (unordered)?
          # - could also check non-prefix part is all non-hardened
 -        if len(xfp_paths) != len(self.xfp_paths):
@@ -138,8 +107,8 @@ index 6f26644..6e190b5 100644
 +            else:
 +                # No match was found
                  return False
- 
+
          return True
--- 
+--
 2.38.1
 
