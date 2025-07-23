@@ -79,6 +79,10 @@ class LedgerEmulator(DeviceEmulator):
         )
         # Wait for simulator to be up
         while True:
+            # Prevent CI from lingering until timeout:
+            if self.emulator_proc.poll() is not None:
+                raise RuntimeError(f"Ledger simulator failed with exit code {self.emulator_proc.poll()}")
+
             try:
                 enum_res = process_commands(["--emulators", "enumerate"])
                 found = False
