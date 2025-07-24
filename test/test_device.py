@@ -137,7 +137,7 @@ class Bitcoind():
         return c
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, bitcoind, emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, bitcoind, emulator: DeviceEmulator = None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.bitcoind = bitcoind
         self.rpc = bitcoind.rpc
@@ -582,6 +582,9 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
+        if self.emulator.type == "coldcard":
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Coldcard sign test temporarily disabled")
 
         for addrtypes, multisig_types, external, op_return in self.signtx_cases:
             with self.subTest(addrtypes=addrtypes, multisig_types=multisig_types, external=external, op_return=op_return):
