@@ -21,7 +21,7 @@ else
 fi
 
 # We also need to change the timestamps of all of the base library files
-lib_dir=$(pyenv prefix)/lib/python3.9
+lib_dir=$(pyenv prefix)/lib/python3.10
 TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" '{}' \;
 
 # Make the standalone binary
