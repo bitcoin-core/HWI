@@ -3,12 +3,17 @@ Common Classes and Utilities
 ****************************
 """
 
+from dataclasses import dataclass
+
 import hashlib
 
 from enum import Enum
 
-from typing import Union
-
+from typing import (
+    List,
+    Optional,
+    Union,
+)
 
 class Chain(Enum):
     """
@@ -56,6 +61,15 @@ class AddressType(Enum):
         except KeyError:
             return s
 
+@dataclass
+class BIP388Policy:
+    """
+    Serialization agnostic BIP388 policy.
+    """
+    name: str
+    descriptor_template: str
+    keys_info: List[str]
+    hmac: Optional[str] = None
 
 def sha256(s: bytes) -> bytes:
     """
