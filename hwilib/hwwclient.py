@@ -82,7 +82,11 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        bip388_policy: Optional[BIP388Policy]
+    ) -> PSBT:
         """
         Sign a partially signed bitcoin transaction (PSBT).
 
