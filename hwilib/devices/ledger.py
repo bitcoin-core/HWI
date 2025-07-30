@@ -32,6 +32,7 @@ from ..errors import (
 from ..common import (
     AddressType,
     Chain,
+    BIP388Policy,
 )
 from .ledger_bitcoin.client import (
     createClient,
@@ -185,7 +186,11 @@ class LedgerClient(HardwareWalletClient):
         return ExtendedKey.deserialize(xpub_str)
 
     @ledger_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        bip388_policy: Optional[BIP388Policy]
+    ) -> PSBT:
         """
         Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
@@ -198,6 +203,8 @@ class LedgerClient(HardwareWalletClient):
         For application versions 2.1.x and above:
 
         - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported for single signature addresses.
+
+        BIP388: for basic descriptors this is optional, but if provided name must be empty
         """
         master_fp = self.get_master_fingerprint()
 
@@ -263,6 +270,25 @@ class LedgerClient(HardwareWalletClient):
                         script_addrtype = AddressType.TAP
                     else:
                         continue
+
+            if bip388_policy is not None:
+                policy = WalletPolicy(
+                    name=bip388_policy.name,
+                    descriptor_template=bip388_policy.descriptor_template,
+                    keys_info=bip388_policy.keys_info
+                )
+                if policy.id not in wallets:
+                    if bip388_policy.hmac is None:
+                        raise BadArgumentError("Missing --hmac")
+                    wallets[policy.id] = (
+                        signing_priority[script_addrtype],
+                        script_addrtype,
+                        policy,
+                        bytes.fromhex(bip388_policy.hmac),
+                    )
+                continue
+
+            # No BIP388 policy provided, construct on the fly
 
             # Check if P2WSH
             if is_p2wsh(scriptcode):

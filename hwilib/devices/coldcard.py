@@ -51,6 +51,7 @@ from ..psbt import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from functools import wraps
@@ -116,7 +117,11 @@ class ColdcardClient(HardwareWalletClient):
         return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        __: Optional[BIP388Policy],
+    ) -> PSBT:
         """
         Sign a transaction with the Coldcard.
 

@@ -29,6 +29,7 @@ from typing import (
 
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
     hash256,
 )
@@ -387,7 +388,11 @@ class DigitalbitboxClient(HardwareWalletClient):
         return xpub
 
     @digitalbitbox_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        __: Optional[BIP388Policy],
+    ) -> PSBT:
 
         # Create a transaction with all scriptsigs blanked out
         blank_tx = psbt.get_unsigned_tx()

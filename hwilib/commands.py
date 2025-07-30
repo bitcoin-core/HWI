@@ -52,6 +52,7 @@ from .descriptor import (
 from .devices import __all__ as all_devs
 from .common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from .hwwclient import HardwareWalletClient
@@ -183,7 +184,11 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
-def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
+def signtx(
+    client: HardwareWalletClient,
+    psbt: str,
+    bip388_policy: Optional[BIP388Policy]
+) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
 
@@ -195,7 +200,7 @@ def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    result = client.sign_tx(tx).serialize()
+    result = client.sign_tx(tx, bip388_policy).serialize()
     return {"psbt": result, "signed": result != psbt}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:

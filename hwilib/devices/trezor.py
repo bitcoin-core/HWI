@@ -77,6 +77,7 @@ from .._serialize import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
     hash256,
 )
@@ -355,7 +356,11 @@ class TrezorClient(HardwareWalletClient):
         return xpub
 
     @trezor_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        __: Optional[BIP388Policy],
+    ) -> PSBT:
         """
         Sign a transaction with the Trezor. There are some limitations to what transactions can be signed.
 

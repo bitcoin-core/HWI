@@ -57,6 +57,7 @@ from ..key import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 
@@ -563,7 +564,11 @@ class Bitbox02Client(HardwareWalletClient):
         return address
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        __: Optional[BIP388Policy],
+    ) -> PSBT:
         """
         Sign a transaction with the BitBox02.
 
