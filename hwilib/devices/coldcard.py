@@ -154,7 +154,7 @@ class ColdcardClient(HardwareWalletClient):
         return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(self, psbt: PSBT) -> PSBT:
         """
         Sign a transaction with the Coldcard.
 
@@ -171,7 +171,7 @@ class ColdcardClient(HardwareWalletClient):
         # For multisigs, we may need to do multiple passes if we appear in an input multiple times
         passes = 1
         if not self.is_edge:
-            for psbt_in in tx.inputs:
+            for psbt_in in psbt.inputs:
                 our_keys = 0
                 for key in psbt_in.hd_keypaths.keys():
                     keypath = psbt_in.hd_keypaths[key]
@@ -180,12 +180,12 @@ class ColdcardClient(HardwareWalletClient):
                 if our_keys > passes:
                     passes = our_keys
 
-        if tx.version == 2 and not self._supports_psbt_v2():
-            tx.convert_to_v0()
+        if psbt.version == 2 and not self._supports_psbt_v2():
+            psbt.convert_to_v0()
 
         for _ in range(passes):
             # Get psbt in hex and then make binary
-            fd = io.BytesIO(base64.b64decode(tx.serialize()))
+            fd = io.BytesIO(base64.b64decode(psbt.serialize()))
 
             # learn size (portable way)
             sz = fd.seek(0, 2)
@@ -231,10 +231,10 @@ class ColdcardClient(HardwareWalletClient):
 
             result = self.device.download_file(result_len, result_sha, file_number=1)
 
-            tx = PSBT()
-            tx.deserialize(base64.b64encode(result).decode())
+            psbt = PSBT()
+            psbt.deserialize(base64.b64encode(result).decode())
 
-        return tx
+        return psbt
 
     @coldcard_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
