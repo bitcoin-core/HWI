@@ -10,7 +10,7 @@ import struct
 import re
 import base64
 
-from .client import Client, TransportClient
+from .client import Client, PartialSignature, SignPsbtYieldedObject, TransportClient
 
 from typing import List, Tuple, Optional, Union
 
@@ -137,7 +137,7 @@ class LegacyClient(Client):
         return output['address'][12:-2] # HACK: A bug in getWalletPublicKey results in the address being returned as the string "bytearray(b'<address>')". This extracts the actual address to work around this.
 
     # NOTE: This is different from the new API, but we need it for multisig support.
-    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, bytes, bytes]]:
+    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, SignPsbtYieldedObject]]:
         if wallet_hmac is not None or wallet.n_keys != 1:
             raise NotImplementedError("Policy wallets are only supported from version 2.0.0. Please update your Ledger hardware wallet")
 
@@ -259,7 +259,7 @@ class LegacyClient(Client):
 
             all_signature_attempts[i_num] = signature_attempts
 
-        result: List[int, bytes, bytes] = []
+        result: List[int, SignPsbtYieldedObject] = []
 
         # Sign any segwit inputs
         if has_segwit:
@@ -276,7 +276,7 @@ class LegacyClient(Client):
                 for signature_attempt in all_signature_attempts[i]:
                     self.app.startUntrustedTransaction(False, 0, [segwit_inputs[i]], script_codes[i], c_tx.nVersion)
 
-                    result.append((i, signature_attempt[1], self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)))
+                    result.append((i, PartialSignature(pubkey=signature_attempt[1], signature=self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01))))
 
         elif has_legacy:
             first_input = True
@@ -287,7 +287,7 @@ class LegacyClient(Client):
                     self.app.startUntrustedTransaction(first_input, i, legacy_inputs, script_codes[i], c_tx.nVersion)
                     self.app.finalizeInput(b"DUMMY", -1, -1, change_path, tx_bytes)
 
-                    result.append((i, signature_attempt[1], self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01)))
+                    result.append((i, PartialSignature(pubkey=signature_attempt[1], signature=self.app.untrustedHashSign(signature_attempt[0], "", c_tx.nLockTime, 0x01))))
 
                     first_input = False
 
