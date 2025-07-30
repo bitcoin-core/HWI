@@ -5,8 +5,9 @@ from io import BytesIO, BufferedReader
 from .command_builder import BitcoinCommandBuilder, BitcoinInsType
 from ...common import Chain
 from .client_command import ClientCommandInterpreter
-from .client_base import Client, TransportClient
+from .client_base import Client, PartialSignature, SignPsbtYieldedObject, TransportClient
 from .client_legacy import LegacyClient
+from .errors import UnknownDeviceError
 from .exception import DeviceException, NotSupportedError
 from .merkle import get_merkleized_map_commitment
 from .wallet import WalletPolicy, WalletType
@@ -31,6 +32,37 @@ def parse_stream_to_map(f: BufferedReader) -> Mapping[bytes, bytes]:
         result[key] = value
     return result
 
+def _make_partial_signature(pubkey_augm: bytes, signature: bytes) -> PartialSignature:
+    if len(pubkey_augm) == 64:
+        # tapscript spend: pubkey_augm is the concatenation of:
+        # - a 32-byte x-only pubkey
+        # - the 32-byte tapleaf_hash
+        return PartialSignature(signature=signature, pubkey=pubkey_augm[0:32], tapleaf_hash=pubkey_augm[32:])
+
+    else:
+        # either legacy, segwit or taproot keypath spend
+        # pubkey must be 32 (taproot x-only pubkey) or 33 bytes (compressed pubkey)
+
+        if len(pubkey_augm) not in [32, 33]:
+            raise UnknownDeviceError(f"Invalid pubkey length returned: {len(pubkey_augm)}")
+
+        return PartialSignature(signature=signature, pubkey=pubkey_augm)
+
+def _decode_signpsbt_yielded_value(res: bytes) -> Tuple[int, SignPsbtYieldedObject]:
+    res_buffer = BytesIO(res)
+    input_index_or_tag = read_varint(res_buffer)
+
+    # values follow an encoding without an explicit tag, where the
+    # first element is the input index. All the signature types are implemented
+    # by the PartialSignature type (not to be confused with the musig Partial Signature).
+    input_index = input_index_or_tag
+
+    pubkey_augm_len = read_uint(res_buffer, 8)
+    pubkey_augm = res_buffer.read(pubkey_augm_len)
+
+    signature = res_buffer.read()
+
+    return((input_index, _make_partial_signature(pubkey_augm, signature)))
 
 def read_uint(buf: BytesIO,
               bit_len: int,
@@ -156,7 +188,7 @@ class NewClient(Client):
 
         return response.decode()
 
-    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, bytes, bytes]]:
+    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, SignPsbtYieldedObject]]:
         """Signs a PSBT using a registered wallet (or a standard wallet that does not need registration).
 
         Signature requires explicit approval from the user.
@@ -240,17 +272,10 @@ class NewClient(Client):
         if any(len(x) <= 1 for x in results):
             raise RuntimeError("Invalid response")
 
-        results_list: List[Tuple[int, bytes, bytes]] = []
+        results_list: List[Tuple[int, SignPsbtYieldedObject]] = []
         for res in results:
-            res_buffer = BytesIO(res)
-            input_index = read_varint(res_buffer)
-
-            pubkey_len = read_uint(res_buffer, 8)
-            pubkey = res_buffer.read(pubkey_len)
-
-            signature = res_buffer.read()
-
-            results_list.append((input_index, pubkey, signature))
+            input_index, obj = _decode_signpsbt_yielded_value(res)
+            results_list.append((input_index, obj))
 
         return results_list
 

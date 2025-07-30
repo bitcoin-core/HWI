@@ -215,9 +215,9 @@ class LedgerClient(HardwareWalletClient):
             wallet = WalletPolicy("", "wpkh(@0/**)", [""])
             legacy_input_sigs = client.sign_psbt(psbt, wallet, None)
 
-            for idx, pubkey, sig in legacy_input_sigs:
+            for idx, partial_sig in legacy_input_sigs:
                 psbt_in = psbt.inputs[idx]
-                psbt_in.partial_sigs[pubkey] = sig
+                psbt_in.partial_sigs[partial_sig.pubkey] = partial_sig.signature
             return psbt
 
         if isinstance(self.client, LegacyClient):
@@ -374,7 +374,7 @@ class LedgerClient(HardwareWalletClient):
 
             input_sigs = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
 
-            for idx, pubkey, sig in input_sigs:
+            for idx, yielded in input_sigs:
                 psbt_in = psbt2.inputs[idx]
 
                 utxo = None
@@ -390,9 +390,9 @@ class LedgerClient(HardwareWalletClient):
                 if is_wit and wit_ver >= 1:
                     # TODO: Deal with script path signatures
                     # For now, assume key path signature
-                    psbt_in.tap_key_sig = sig
+                    psbt_in.tap_key_sig = yielded.signature
                 else:
-                    psbt_in.partial_sigs[pubkey] = sig
+                    psbt_in.partial_sigs[yielded.pubkey] = yielded.signature
 
         # Extract the sigs from psbt2 and put them into tx
         for sig_in, psbt_in in zip(psbt2.inputs, psbt.inputs):
