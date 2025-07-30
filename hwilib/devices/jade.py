@@ -370,16 +370,16 @@ class JadeClient(HardwareWalletClient):
     # Sign tx PSBT - newer Jade firmware supports native PSBT signing, but old firmwares require
     # mapping to the legacy 'sign_tx' structures.
     @jade_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(self, psbt: PSBT) -> PSBT:
         """
         Sign a transaction with the Blockstream Jade.
         """
         # Old firmware does not have native PSBT handling - use legacy method
         if self.PSBT_SUPPORTED_FW_VERSION > self.fw_version.finalize_version():
-            return self.legacy_sign_tx(tx)
+            return self.legacy_sign_tx(psbt)
 
         # Firmware 0.1.47 (March 2023) and later support native PSBT signing
-        psbt_b64 = tx.serialize()
+        psbt_b64 = psbt.serialize()
         psbt_bytes = base64.b64decode(psbt_b64.strip())
 
         # NOTE: sign_psbt() does not use AE signatures, so sticks with default (rfc6979)
