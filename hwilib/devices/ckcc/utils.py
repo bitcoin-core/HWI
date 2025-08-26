@@ -1,6 +1,6 @@
-import struct
-import binascii
+import binascii, hashlib, struct, hmac
 from collections import namedtuple
+
 
 def dfu_parse(fd):
     # do just a little parsing of DFU headers, to find start/length of main binary
@@ -93,14 +93,10 @@ def calc_local_pincode(psbt_sha, next_local_code):
     # - next_local_code comes from the hsm_status response
     # - psbt_sha is sha256() over the binary PSBT you will be submitting
     #
-    from binascii import a2b_base64
-    from hashlib import sha256
-    import struct, hmac
-
-    key = a2b_base64(next_local_code)
+    key = binascii.a2b_base64(next_local_code)
     assert len(key) >= 15
     assert len(psbt_sha) == 32
-    digest = hmac.new(key, psbt_sha, sha256).digest()
+    digest = hmac.new(key, psbt_sha, hashlib.sha256).digest()
 
     num = struct.unpack('>I', digest[-4:])[0] & 0x7fffffff
 
