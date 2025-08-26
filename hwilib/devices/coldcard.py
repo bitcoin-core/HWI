@@ -100,6 +100,23 @@ class ColdcardClient(HardwareWalletClient):
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
 
+        self._is_edge = None
+
+    @property
+    def is_edge(self):
+        """
+        Cached property, no need to ask device more than once
+        :return: bool
+        """
+        if self._is_edge is None:
+            try:
+                self._is_edge = self.device.is_edge()
+            except:
+                # silent fail, normal firmware is implied
+                pass
+
+        return self._is_edge
+
     @coldcard_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self.device.check_mitm()
@@ -132,14 +149,15 @@ class ColdcardClient(HardwareWalletClient):
 
         # For multisigs, we may need to do multiple passes if we appear in an input multiple times
         passes = 1
-        for psbt_in in tx.inputs:
-            our_keys = 0
-            for key in psbt_in.hd_keypaths.keys():
-                keypath = psbt_in.hd_keypaths[key]
-                if keypath.fingerprint == master_fp and key not in psbt_in.partial_sigs:
-                    our_keys += 1
-            if our_keys > passes:
-                passes = our_keys
+        if not self.is_edge:
+            for psbt_in in tx.inputs:
+                our_keys = 0
+                for key in psbt_in.hd_keypaths.keys():
+                    keypath = psbt_in.hd_keypaths[key]
+                    if keypath.fingerprint == master_fp and key not in psbt_in.partial_sigs:
+                        our_keys += 1
+                if our_keys > passes:
+                    passes = our_keys
 
         for _ in range(passes):
             # Get psbt in hex and then make binary
@@ -392,11 +410,10 @@ class ColdcardClient(HardwareWalletClient):
 
     def can_sign_taproot(self) -> bool:
         """
-        The Coldard does not support Taproot yet.
-
-        :returns: False, always
+        Only COLDCARD EDGE support taproot.
+        :returns: Whether Taproot is supported
         """
-        return False
+        return self.is_edge
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = True) -> List[Dict[str, Any]]:
@@ -422,6 +439,8 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
         with handle_errors(common_err_msgs["enumerate"], d_data):
             try:
                 client = ColdcardClient(path)
+                if client.is_edge:
+                    d_data['model'] = d_data['model'] + '_edge'
                 d_data['fingerprint'] = client.get_master_fingerprint().hex()
             except RuntimeError as e:
                 # Skip the simulator if it's not there
