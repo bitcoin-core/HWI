@@ -118,11 +118,14 @@ jobs:
       # Trezor T binaries don't need this.
       runs-on: ubuntu-22.04
 
+  coldcard-firmware-seed:
+    uses: ./.github/workflows/coldcard-firmware-seed.yml
+
+  # Use the coldcard-specialized builder (downloads the seeded artifact)
   sim-builder-coldcard:
-    needs: prepare-sim-matrices
-    uses: ./.github/workflows/sim-builder.yml
+    needs: [prepare-sim-matrices, coldcard-firmware-seed]
+    uses: ./.github/workflows/sim-builder-coldcard.yml
     with:
-      sim: coldcard
       include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
       runs-on: ubuntu-22.04
 

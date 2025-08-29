@@ -1,0 +1,30 @@
+name: Coldcard Simulator Builder
+on:
+  workflow_call:
+    inputs:
+      include:
+        required: true
+        type: string
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-22.04
+
+jobs:
+  build-simulator:
+    name: coldcard sim builder
+    runs-on: ${{ inputs.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.include) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download seeded Coldcard firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: coldcard-firmware-src
+          path: test/work/firmware
+
+      - uses: ./.github/actions/build-sim
