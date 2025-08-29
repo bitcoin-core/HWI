@@ -273,196 +273,59 @@ jobs:
       - uses: ./.github/actions/build-bitcoind
 
   test-trezor:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-latest
-    needs: [ sim-builder-trezor, bitcoind-builder, dist-builder ]
-    timeout-minutes: 45
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-trezor, bitcoind-builder, dist-builder]
+    with:
+      device: trezor
+      runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'trezor-1'
-          - 'trezor-t'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
+  test-ledger-s:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-ledger, ledger-s-app-builder, bitcoind-builder, dist-builder]
+    with:
+      device: ledger-legacy
+      runs-on: ubuntu-latest
 
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
-
-  test-ledger:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-latest
-    needs: [ sim-builder-ledger, ledger-s-app-builder, ledger-x-app-builder, bitcoind-builder ]
-    timeout-minutes: 45
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'ledger'
-          - 'ledger-legacy'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
-
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
+  test-ledger-x:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-ledger, ledger-x-app-builder, bitcoind-builder, dist-builder]
+    with:
+      device: ledger
+      runs-on: ubuntu-latest
 
   test-coldcard:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-22.04
-    needs: [ sim-builder-coldcard, bitcoind-builder ]
-    timeout-minutes: 45
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-coldcard, bitcoind-builder, dist-builder]
+    with:
+      device: coldcard
+      runs-on: ubuntu-22.04
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'coldcard'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
+  test-bitbox01:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
+    with:
+      device: bitbox01
+      runs-on: ubuntu-latest
 
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
-
-  test-bitbox:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-latest
-    needs: [ sim-builder-bitbox, bitcoind-builder ]
-    timeout-minutes: 45
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'bitbox01'
-          - 'bitbox02'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
-
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      # Tempoary fix for bitbox02:
-      - name: Install libcmocka runtime
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libcmocka0
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
+  test-bitbox02:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
+    with:
+      device: bitbox02
+      runs-on: ubuntu-latest
+      apt-packages: libcmocka0
 
   test-jade:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-latest
-    needs: [ sim-builder-jade, bitcoind-builder ]
-    timeout-minutes: 45
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'jade'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
-
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-jade, bitcoind-builder, dist-builder]
+    with:
+      device: jade
+      runs-on: ubuntu-latest
 
   test-keepkey:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
-    runs-on: ubuntu-latest
-    needs: [ sim-builder-keepkey, bitcoind-builder ]
-    timeout-minutes: 45
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'keepkey'
-        test:
-          - {interface: 'library'}
-          - {interface: 'cli'}
-          - {interface: 'stdin'}
-          - {script: 'Wheel'}
-          - {script: 'Sdist'}
-          - {script: 'Bindist'}
-
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: run test
-        if: ${{ matrix.test.interface }}
-        uses: ./.github/actions/test-device
-      - name: run dist test
-        if: ${{ matrix.test.script }}
-        uses: ./.github/actions/test-dist
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-keepkey, bitcoind-builder, dist-builder]
+    with:
+      device: keepkey
+      runs-on: ubuntu-latest
 
