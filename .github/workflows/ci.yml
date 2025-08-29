@@ -183,7 +183,7 @@ jobs:
       matrix:
         device:
           - { name: 'bitbox01', archive: 'mcu',              paths: 'test/work/mcu' }
-          - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build/bin/simulator' }
+          - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build-noasan/bin/simulator' }
 
     steps:
       - uses: actions/checkout@v4
