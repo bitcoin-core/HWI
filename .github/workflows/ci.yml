@@ -523,6 +523,11 @@ jobs:
       container: python:${{ matrix.python-version }}
 
       steps:
+        # Tempoary fix for bitbox02:
+        - name: Install libcmocka runtime
+          run: |
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libcmocka-dev
         - uses: actions/checkout@v4
         - uses: ./.github/actions/test-device
 
