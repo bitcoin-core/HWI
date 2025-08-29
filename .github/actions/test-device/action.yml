@@ -23,7 +23,7 @@ runs:
     - name: Run tests
       shell: bash
       run: |
-        cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=${{ matrix.interface }} --device-only; cd ..
+        cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=${{ matrix.test.interface }} --device-only; cd ..
 
     - if: failure()
       shell: bash
