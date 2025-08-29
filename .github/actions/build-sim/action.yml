@@ -1,5 +1,15 @@
 name: Build sim
 description: Build device simulator(s)
+inputs:
+  name:
+    description: Device name from matrix (e.g. trezor-1, coldcard, jade)
+    required: true
+  archive:
+    description: Archive base name (e.g. trezor-firmware)
+    required: true
+  paths:
+    description: Space-separated paths to include in the archive
+    required: true
 runs:
   using: composite
   steps:
@@ -16,13 +26,17 @@ runs:
     - name: Build simulator
       shell: bash
       run: |
-        git config --global user.email "ci@ci.com"
-        git config --global user.name "ci"
-        cd test; ./setup_environment.sh --${{ matrix.device.name }}; cd ..
-        tar -czf ${{ matrix.device.archive }}.tar.gz ${{ matrix.device.paths }}
+        set -euxo pipefail
+        git config --global user.email 'ci@ci.com'
+        git config --global user.name 'ci'
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        cd test
+        ./setup_environment.sh --"${{ inputs.name }}"
+        cd ..
+        tar -czf "${{ inputs.archive }}.tar.gz" ${{ inputs.paths }}
 
     - uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.device.name }}-sim
-        path: ${{ matrix.device.archive }}.tar.gz
+        name: ${{ inputs.name }}-sim
+        path: ${{ inputs.archive }}.tar.gz
 

@@ -19,45 +19,6 @@ env:
   LANGUAGE: 'C.UTF-8'
 
 jobs:
-  type-check:
-    name: Type check
-    runs-on: ubuntu-latest
-    container: python:3.12
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: |
-          pip install poetry
-          poetry install
-
-      - name: Run check
-        run: >
-          poetry run
-          mypy
-          hwi.py
-          hwilib/_base58.py
-          hwilib/_bech32.py
-          hwilib/_cli.py
-          hwilib/commands.py
-          hwilib/common.py
-          hwilib/descriptor.py
-          hwilib/devices/bitbox02.py
-          hwilib/devices/coldcard.py
-          hwilib/devices/digitalbitbox.py
-          hwilib/devices/jade.py
-          hwilib/devices/__init__.py
-          hwilib/devices/keepkey.py
-          hwilib/devices/ledger.py
-          hwilib/devices/trezor.py
-          hwilib/errors.py
-          hwilib/_script.py
-          hwilib/_serialize.py
-          hwilib/tx.py
-          hwilib/hwwclient.py
-          hwilib/__init__.py
-          hwilib/key.py
-          hwilib/udevinstaller.py
-
   non-device-tests:
     name: Non-device tests
     runs-on: ubuntu-latest
@@ -142,126 +103,80 @@ jobs:
           name: dist
           path: dist/
 
+  prepare-sim-matrices:
+    name: Prepare sim matrices
+    uses: ./.github/workflows/prepare-sim-matrices.yml
+
   sim-builder-trezor:
     name: Trezor sim builder
-    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
-    # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
-    # Trezor T binaries don't need this.
-    runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'trezor-1', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
-          - { name: 'trezor-t', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: trezor
+      include: ${{ needs.prepare-sim-matrices.outputs.trezor }}
+      # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
+      # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
+      # Trezor T binaries don't need this.
+      runs-on: ubuntu-22.04
 
   sim-builder-coldcard:
     name: Coldcard sim builder
-    runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'coldcard', archive: 'coldcard-mpy',     paths: 'test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: coldcard
+      include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
+      runs-on: ubuntu-22.04
 
   sim-builder-bitbox:
     name: Bitbox sim builder
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'bitbox01', archive: 'mcu',              paths: 'test/work/mcu' }
-          - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build-noasan/bin/simulator' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: bitbox
+      include: ${{ needs.prepare-sim-matrices.outputs.bitbox }}
+      runs-on: ubuntu-latest
 
   sim-builder-jade:
     name: Jade sim builder
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: jade
+      include: ${{ needs.prepare-sim-matrices.outputs.jade }}
+      runs-on: ubuntu-latest
 
   sim-builder-ledger:
     name: Ledger sim builder
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: ledger
+      include: ${{ needs.prepare-sim-matrices.outputs.ledger }}
+      runs-on: ubuntu-latest
 
   sim-builder-keepkey:
     name: Keepkey sim builder
-    runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-sim
-
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: keepkey
+      include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
+      runs-on: ubuntu-22.04
 
   ledger-s-app-builder:
     name: Ledger Nano S Bitcoin App builder
-    runs-on: ubuntu-latest
-    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-    steps:
-      - run: |
-          git clone https://github.com/LedgerHQ/app-bitcoin-new.git
-          cd app-bitcoin-new
-          make DEBUG=1
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ledger_app_nano_s
-          path: app-bitcoin-new/bin/app.elf
-
+    uses: ./.github/workflows/ledger-app-builder.yml
+    with:
+      app: nano_s
+      runs-on: ubuntu-latest
 
   ledger-x-app-builder:
     name: Ledger Nano X Bitcoin App builder
-    runs-on: ubuntu-latest
-    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-    steps:
-      - run: |
-          git clone https://github.com/LedgerHQ/app-bitcoin-new.git
-          cd app-bitcoin-new
-          make DEBUG=1 BOLOS_SDK=$NANOX_SDK
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ledger_app_nano_x
-          path: app-bitcoin-new/bin/app.elf
+    uses: ./.github/workflows/ledger-app-builder.yml
+    with:
+      app: nano_x
+      runs-on: ubuntu-latest
 
   bitcoind-builder:
     name: bitcoind builder
@@ -272,11 +187,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-bitcoind
 
-  test-trezor:
+  test-trezor-1:
     uses: ./.github/workflows/device-test.yml
     needs: [sim-builder-trezor, bitcoind-builder, dist-builder]
     with:
-      device: trezor
+      device: trezor-1
+      runs-on: ubuntu-latest
+
+  test-trezor-t:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-trezor, bitcoind-builder, dist-builder]
+    with:
+      device: trezor-t
       runs-on: ubuntu-latest
 
   test-ledger-s:

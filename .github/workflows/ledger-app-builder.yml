@@ -1,0 +1,26 @@
+name: Ledger App Builder
+on:
+  workflow_call:
+    inputs:
+      app:
+        required: true        # 'nano_s' or 'nano_x'
+        type: string
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  build:
+    name: Build ${{ inputs.app }}
+    runs-on: ${{ inputs.runs-on }}
+    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    steps:
+      - run: |
+          git clone https://github.com/LedgerHQ/app-bitcoin-new.git
+          cd app-bitcoin-new
+          make DEBUG=1 ${{ inputs.app == 'nano_x' && 'BOLOS_SDK=$NANOX_SDK' || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app == 'nano_x' && 'ledger_app_nano_x' || 'ledger_app_nano_s' }}
+          path: app-bitcoin-new/bin/app.elf

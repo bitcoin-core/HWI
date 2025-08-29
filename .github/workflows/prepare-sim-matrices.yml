@@ -1,0 +1,50 @@
+name: Prepare Sim Matrices
+on:
+  workflow_call:
+    outputs:
+      trezor:
+        description: JSON include array for trezor
+        value: ${{ jobs.prepare.outputs.trezor }}
+      coldcard:
+        description: JSON include array for coldcard
+        value: ${{ jobs.prepare.outputs.coldcard }}
+      bitbox:
+        description: JSON include array for bitbox
+        value: ${{ jobs.prepare.outputs.bitbox }}
+      jade:
+        description: JSON include array for jade
+        value: ${{ jobs.prepare.outputs.jade }}
+      ledger:
+        description: JSON include array for ledger
+        value: ${{ jobs.prepare.outputs.ledger }}
+      keepkey:
+        description: JSON include array for keepkey
+        value: ${{ jobs.prepare.outputs.keepkey }}
+
+jobs:
+  prepare:
+    name: Prepare sim matrices
+    runs-on: ubuntu-latest
+    outputs:
+      trezor: ${{ steps.gen.outputs.trezor }}
+      coldcard: ${{ steps.gen.outputs.coldcard }}
+      bitbox: ${{ steps.gen.outputs.bitbox }}
+      jade: ${{ steps.gen.outputs.jade }}
+      ledger: ${{ steps.gen.outputs.ledger }}
+      keepkey: ${{ steps.gen.outputs.keepkey }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gen
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y jq
+          map_file=".github/sim-build-map.json"
+          for sim in trezor coldcard bitbox jade ledger keepkey; do
+            include=$(jq -c --arg s "$sim" '.[$s]' "$map_file")
+            if [[ -z "$include" || "$include" == "null" ]]; then
+              echo "Missing entry for $sim in $map_file" >&2
+              exit 1
+            fi
+            echo "$sim=$include" >> "$GITHUB_OUTPUT"
+          done

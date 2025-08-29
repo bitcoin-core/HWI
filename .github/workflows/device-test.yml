@@ -19,7 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
-        device: ${{ inputs.device }}
+        device:
+          - ${{ inputs.device }}
         test:
           - {interface: 'library'}
           - {interface: 'cli'}
