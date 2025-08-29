@@ -22,7 +22,7 @@ jobs:
   type-check:
     name: Type check
     runs-on: ubuntu-latest
-    container: python:latest
+    container: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +61,7 @@ jobs:
   non-device-tests:
     name: Non-device tests
     runs-on: ubuntu-latest
-    container: python:latest
+    container: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -76,7 +76,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
-    container: python:latest
+    container: python:3.12
     steps:
       - uses: actions/checkout@v4
 
