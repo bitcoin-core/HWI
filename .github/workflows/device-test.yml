@@ -1,0 +1,38 @@
+name: Device Test Template
+on:
+  workflow_call:
+    inputs:
+      device:
+        required: true
+        type: string
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  test-device:
+    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        device: ${{ inputs.device }}
+        test:
+          - {interface: 'library'}
+          - {interface: 'cli'}
+          - {interface: 'stdin'}
+          - {script: 'Wheel'}
+          - {script: 'Sdist'}
+          - {script: 'Bindist'}
+    container: python:${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: run test
+        if: ${{ matrix.test.interface }}
+        uses: ./.github/actions/test-device
+      - name: run dist test
+        if: ${{ matrix.test.script }}
+        uses: ./.github/actions/test-dist
