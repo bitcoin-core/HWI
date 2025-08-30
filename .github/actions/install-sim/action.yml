@@ -18,6 +18,14 @@ runs:
         apt-get install -y libsdl2-image-2.0-0 libusb-1.0-0
         tar -xvf trezor-firmware.tar.gz
 
+    # Coldcard: download seeded firmware (seed job must run earlier)
+    - name: Download seeded Coldcard firmware
+      if: inputs.device == 'coldcard'
+      uses: actions/download-artifact@v4
+      with:
+        name: coldcard-firmware-src
+        path: test/work/firmware
+
     - if: inputs.device == 'coldcard'
       shell: bash
       run: |
@@ -25,7 +33,10 @@ runs:
         apt-get install -y libpcsclite-dev libusb-1.0-0 swig
         git config --global user.email "ci@ci.com"
         git config --global user.name "ci"
-        pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
+        pushd test/work
+        if [ ! -d "firmware" ]; then
+          git clone --recursive https://github.com/Coldcard/firmware.git
+        popd
         tar -xvf coldcard-mpy.tar.gz
         pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
         poetry run pip install -r test/work/firmware/requirements.txt

@@ -24,6 +24,9 @@ runs:
         protoc --version
 
     - name: Build simulator
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+        fetch-depth: 0
       shell: bash
       run: |
         set -euxo pipefail

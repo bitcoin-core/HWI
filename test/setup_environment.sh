@@ -133,30 +133,22 @@ if [[ -n ${build_coldcard} ]]; then
         coldcard_setup_needed=true
     else
         cd firmware
-        git reset --hard HEAD~3 # Undo git-am for checking and updating
-        git fetch
+        # Ensure repo matches upstream (handles seeded artifact without local commits)
+        git fetch origin
+        git reset --hard origin/master
+        coldcard_setup_needed=true
 
-        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-        UPSTREAM=${1:-'@{u}'}
-        LOCAL=$(git rev-parse @)
-        REMOTE=$(git rev-parse "$UPSTREAM")
-        BASE=$(git merge-base @ "$UPSTREAM")
-
-        if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
-        elif [ $LOCAL = $BASE ]; then
-            git pull
-            coldcard_setup_needed=true
-        fi
+        # No additional pull needed; hard-reset above already synced to upstream
     fi
-    # Apply patch to make simulator work in linux environments
-    git am ../../data/coldcard-multisig.patch
 
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
+        # Apply patch to make simulator work in linux environments
+        git am ../../../data/coldcard-multisig.patch
+
         pushd ../external/micropython/mpy-cross/
         make
         popd

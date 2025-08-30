@@ -12,6 +12,9 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      ref:                # Ref from caller so we check out the PR commit
+        required: false
+        type: string
 
 jobs:
   build-simulator:
@@ -23,8 +26,22 @@ jobs:
         include: ${{ fromJSON(inputs.include) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      # Coldcard: download seeded firmware (seed job must run earlier)
+      - name: Download seeded Coldcard firmware
+        if: ${{ inputs.sim == 'coldcard' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: coldcard-firmware-src
+          path: test/work/firmware
+
       - uses: ./.github/actions/build-sim
         with:
           name: ${{ matrix.name }}
           archive: ${{ matrix.archive }}
           paths: ${{ matrix.paths }}
+          ref: ${{ inputs.ref || github.sha }}
+

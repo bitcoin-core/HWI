@@ -118,15 +118,23 @@ jobs:
       # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
       # Trezor T binaries don't need this.
       runs-on: ubuntu-22.04
+      ref: ${{ github.sha }}
 
+  coldcard-firmware-seed:
+    uses: ./.github/workflows/coldcard-firmware-seed.yml
+    with:
+      ref: ${{ github.sha }}
+
+  # Use the generic sim-builder with a Coldcard seed dependency
   sim-builder-coldcard:
     name: Coldcard sim builder
-    needs: prepare-sim-matrices
+    needs: [prepare-sim-matrices, coldcard-firmware-seed]
     uses: ./.github/workflows/sim-builder.yml
     with:
       sim: coldcard
       include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
       runs-on: ubuntu-22.04
+      ref: ${{ github.sha }}
 
   sim-builder-bitbox:
     name: Bitbox sim builder
@@ -136,6 +144,7 @@ jobs:
       sim: bitbox
       include: ${{ needs.prepare-sim-matrices.outputs.bitbox }}
       runs-on: ubuntu-latest
+      ref: ${{ github.sha }}
 
   sim-builder-jade:
     name: Jade sim builder
@@ -145,6 +154,7 @@ jobs:
       sim: jade
       include: ${{ needs.prepare-sim-matrices.outputs.jade }}
       runs-on: ubuntu-latest
+      ref: ${{ github.sha }}
 
   sim-builder-ledger:
     name: Ledger sim builder
@@ -154,6 +164,7 @@ jobs:
       sim: ledger
       include: ${{ needs.prepare-sim-matrices.outputs.ledger }}
       runs-on: ubuntu-latest
+      ref: ${{ github.sha }}
 
   sim-builder-keepkey:
     name: Keepkey sim builder
@@ -163,6 +174,7 @@ jobs:
       sim: keepkey
       include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
       runs-on: ubuntu-22.04
+      ref: ${{ github.sha }}
 
   ledger-s-app-builder:
     name: Ledger Nano S Bitcoin App builder

@@ -1,0 +1,30 @@
+name: Coldcard Firmware Seed
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+
+jobs:
+  seed:
+    name: Seed Coldcard firmware (once per run)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Clone Coldcard firmware (with submodules)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test/work
+          git clone --recursive https://github.com/Coldcard/firmware.git test/work/firmware
+
+      - name: Upload seeded repo as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coldcard-firmware-src
+          path: test/work/firmware
