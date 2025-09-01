@@ -23,13 +23,9 @@ On Windows, you'll need:
 2. OpenSSL development headers
    - Download from: https://slproweb.com/products/Win32OpenSSL.html
    - Choose the "Win64 OpenSSL" version
-   - During installation, select "Copy OpenSSL DLLs to Windows system directory"
-
-3. The PKCS#11 library for your HSM (usually a .dll file)
-   - Place the .dll file in a system path (e.g., C:\Windows\System32)
-   - Or specify its path using the PKCS11_LIB_PATH environment variable
-
-Installation Steps for Windows:
+   - Ensure the OpenSSL bin directory is on PATH (avoid copying DLLs into Windows system directories)3. The PKCS#11 library for your HSM (usually a .dll file)
+   - Prefer specifying its absolute path via PKCS11_LIB_PATH or placing it alongside the application.
+   - Avoid copying into C:\Windows\System32 to reduce DLL hijack and servicing risk.Installation Steps for Windows:
 
 1. Install the prerequisites in the order listed above
 
@@ -50,10 +46,11 @@ The following environment variables can be used to configure the PKCS#11 device:
 - ``PKCS11_TOKEN_LABEL``: Label of the token to use (default: "Bitcoin")
 
 Usage
------
+- ``PKCS11_LIB_PATH``: Path to the PKCS#11 library (required)
+- ``PKCS11_TOKEN_LABEL``: Label of the token to use (default: "Bitcoin")
+- ``PKCS11_PIN``: User PIN for token login (optional; prefer interactive prompt over env for security)
 
-1. Set up your environment variables:
-
+CLI flags, when provided, should take precedence over environment variables.
    .. code-block:: powershell
       # On Windows (PowerShell):
       $env:PKCS11_LIB_PATH = "C:\path\to\your\pkcs11\library.dll"

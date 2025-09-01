@@ -18,7 +18,12 @@ from test_keepkey import keepkey_test_suite
 from test_jade import jade_test_suite
 from test_bitbox02 import bitbox02_test_suite
 from test_udevrules import TestUdevRulesInstaller
-from test_pkcs11 import TestPKCS11Client
+try:
+    from test_pkcs11 import TestPKCS11Client
+    HAS_PKCS11_TESTS = True
+except ImportError:
+    TestPKCS11Client = None
+    HAS_PKCS11_TESTS = False
 
 parser = argparse.ArgumentParser(description='Setup the testing environment and run automated tests')
 trezor_group = parser.add_mutually_exclusive_group()
@@ -81,7 +86,11 @@ args = parser.parse_args()
 success = True
 suite = unittest.TestSuite()
 if not args.device_only:
-    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDescriptor))
+    if args.pkcs11:
+        if HAS_PKCS11_TESTS:
+            suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPKCS11Client))
+        else:
+            print("Skipping PKCS11 tests: test_pkcs11 or dependencies not available.", file=sys.stderr)
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestSegwitAddress))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))

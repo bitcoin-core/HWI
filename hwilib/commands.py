@@ -593,22 +593,37 @@ def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
         return {"success": UDevInstaller.install(source, location)}
     raise NotImplementedError("udev rules are not needed on your platform")
 
+from .key import ExtendedKey
+from .errors import HWWError
+
 class PKCS11Client(HardwareWalletClient):
-    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+    def __init__(
+        self,
+        path: str,
+        password: Optional[str] = None,
+        expert: bool = False,
+        chain: Chain = Chain.MAIN,
+        token_label: str = "Bitcoin",
+        master_key_label: str = "MASTER_KEY"
+    ) -> None:
         super(PKCS11Client, self).__init__(path, password, expert, chain)
 
-        # Initialize PKCS11 library and token
-        self.lib = pkcs11.lib(path)  # path should point to the PKCS11 library
-        self.token = self.lib.get_token(token_label='YOUR_TOKEN_LABEL')
-        self.session = self.token.open(user_pin=password)
+        try:
+            # Initialize PKCS11 library and token
+            self.lib = pkcs11.lib(path)
+            self.token = self.lib.get_token(token_label=token_label)
+            self.session = self.token.open(user_pin=password)
 
-        # Find the master key
-        self.master_key = self.session.get_key(
-            object_class=ObjectClass.PRIVATE_KEY,
-            key_type=KeyType.EC,
-            label='MASTER_KEY'
-        )
-
+            # Find the master key
+            self.master_key = self.session.get_key(
+                object_class=ObjectClass.PRIVATE_KEY,
+                key_type=KeyType.EC,
+                label=master_key_label
+            )
+        except Exception as e:
+            if hasattr(self, 'session'):
+                self.session.close()
+            raise HWWError(f"Failed to initialize PKCS11 client: {e}")
     def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
         # Implement BIP32 path derivation and get public key
         # You'll need to implement BIP32 path derivation logic

@@ -53,18 +53,22 @@ class TestPKCS11Client(unittest.TestCase):
     def test_get_pubkey_at_path(self, mock_pkcs11):
         """Test getting public key at BIP32 path."""
         mock_pkcs11.lib.return_value = self.mock_lib
+        # Provide pkcs11.Attribute constants used by the client
+        mock_pkcs11.Attribute = MagicMock(EC_POINT='EC_POINT', EC_PARAMS='EC_PARAMS')
 
         # Mock key attributes
         self.mock_session.get_key.return_value = MagicMock(
-            get_attribute=lambda x: b'test_pubkey' if x == 'EC_POINT' else b'test_chaincode'
+            get_attribute=lambda attr: {
+                'EC_POINT': b'\x02' + b'\x11' * 32,      # compressed secp256k1 pubkey
+                'EC_PARAMS': b'\x06\x05\x2b\x81\x04\x00\x0a',  # secp256k1 OID
+            }.get(attr)
         )
 
         client = PKCS11Client(self.path, self.password, self.expert, self.chain)
         result = client.get_pubkey_at_path("m/44'/0'/0'/0/0")
 
         self.assertIsInstance(result, ExtendedKey)
-        self.assertEqual(result.key_data, b'test_pubkey')
-
+        self.assertEqual(result.key, b'\x02' + b'\x11' * 32)
     @patch('hwilib.devices.pkcs11.pkcs11')
     def test_sign_tx(self, mock_pkcs11):
         """Test transaction signing."""
