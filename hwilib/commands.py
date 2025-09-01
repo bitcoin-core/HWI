@@ -66,6 +66,8 @@ from typing import (
     Union,
 )
 
+import pkcs11
+from pkcs11 import Mechanism, ObjectClass, KeyType
 
 py_enumerate = enumerate
 
@@ -590,3 +592,52 @@ def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
         from .udevinstaller import UDevInstaller
         return {"success": UDevInstaller.install(source, location)}
     raise NotImplementedError("udev rules are not needed on your platform")
+
+class PKCS11Client(HardwareWalletClient):
+    def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
+        super(PKCS11Client, self).__init__(path, password, expert, chain)
+
+        # Initialize PKCS11 library and token
+        self.lib = pkcs11.lib(path)  # path should point to the PKCS11 library
+        self.token = self.lib.get_token(token_label='YOUR_TOKEN_LABEL')
+        self.session = self.token.open(user_pin=password)
+
+        # Find the master key
+        self.master_key = self.session.get_key(
+            object_class=ObjectClass.PRIVATE_KEY,
+            key_type=KeyType.EC,
+            label='MASTER_KEY'
+        )
+
+    def get_pubkey_at_path(self, bip32_path: str) -> ExtendedKey:
+        # Implement BIP32 path derivation and get public key
+        # You'll need to implement BIP32 path derivation logic
+        # and use the PKCS11 token to get the public key
+        pass
+
+    def sign_tx(self, psbt: PSBT) -> PSBT:
+        # Implement PSBT signing using the PKCS11 token
+        # You'll need to:
+        # 1. Parse the PSBT
+        # 2. For each input that needs signing:
+        #    - Get the appropriate key from the token
+        #    - Sign the transaction
+        # 3. Return the signed PSBT
+        pass
+
+    def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
+        # Implement message signing using the PKCS11 token
+        # You'll need to:
+        # 1. Get the key at the specified path
+        # 2. Sign the message
+        # 3. Return the signature
+        pass
+
+    def get_master_fingerprint(self) -> bytes:
+        # Get the master key's fingerprint
+        # This is typically the first 4 bytes of the hash160 of the master public key
+        pass
+
+    def close(self) -> None:
+        # Close the PKCS11 session
+        self.session.close()
