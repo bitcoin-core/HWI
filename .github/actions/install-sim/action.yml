@@ -30,6 +30,8 @@ runs:
         pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
         poetry run pip install -r test/work/firmware/requirements.txt
         pip install -r test/work/firmware/requirements.txt
+        poetry run pip install pysdl2-dll
+        pip install pysdl2-dll
 
     - if: inputs.device == 'bitbox01'
       shell: bash
@@ -58,13 +60,14 @@ runs:
         apt-get update
         apt-get install -y libusb-1.0-0 qemu-user-static
         tar -xvf speculos.tar.gz
-        poetry run pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
-        pip install construct flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract
+        poetry run pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
+        pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
 
     - if: inputs.device == 'ledger'
       uses: actions/download-artifact@v4
       with:
-        name: ledger_app
+        name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_nano_s' || 'ledger_app_nano_x' }}
+
 
     - if: inputs.device == 'ledger'
       shell: bash

@@ -1,0 +1,30 @@
+name: Simulator Builder
+on:
+  workflow_call:
+    inputs:
+      sim:
+        required: true
+        type: string
+      include:
+        required: true           # Precomputed JSON array for matrix.include
+        type: string
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  build-simulator:
+    name: "Sim builder: ${{ matrix.name }}"
+    runs-on: ${{ inputs.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.include) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-sim
+        with:
+          name: ${{ matrix.name }}
+          archive: ${{ matrix.archive }}
+          paths: ${{ matrix.paths }}

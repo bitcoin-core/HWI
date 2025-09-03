@@ -1,0 +1,22 @@
+{
+  "trezor": [
+    { "name": "trezor-1", "archive": "trezor-firmware", "paths": "test/work/trezor-firmware" },
+    { "name": "trezor-t", "archive": "trezor-firmware", "paths": "test/work/trezor-firmware" }
+  ],
+  "coldcard": [
+    { "name": "coldcard", "archive": "coldcard-mpy", "paths": "test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port" }
+  ],
+  "bitbox": [
+    { "name": "bitbox01", "archive": "mcu", "paths": "test/work/mcu" },
+    { "name": "bitbox02", "archive": "bitbox02", "paths": "test/work/bitbox02-firmware/build-build-noasan/bin/simulator" }
+  ],
+  "jade": [
+    { "name": "jade", "archive": "jade", "paths": "test/work/jade/simulator" }
+  ],
+  "ledger": [
+    { "name": "ledger", "archive": "speculos", "paths": "test/work/speculos" }
+  ],
+  "keepkey": [
+    { "name": "keepkey", "archive": "keepkey-firmware", "paths": "test/work/keepkey-firmware/bin" }
+  ]
+}

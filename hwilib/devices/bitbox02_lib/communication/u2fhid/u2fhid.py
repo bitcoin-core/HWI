@@ -101,7 +101,7 @@ class U2FHid(TransportLayer):
                     b"\0"
                     + struct.pack(">IBH", cid, endpoint, data_len)
                     + buf
-                    + b"\xEE" * (USB_REPORT_SIZE - 7 - len(buf))
+                    + b"\xee" * (USB_REPORT_SIZE - 7 - len(buf))
                 )
             else:
                 # CONT frame
@@ -110,7 +110,7 @@ class U2FHid(TransportLayer):
                     b"\0"
                     + struct.pack(">IB", cid, seq)
                     + buf
-                    + b"\xEE" * (USB_REPORT_SIZE - 5 - len(buf))
+                    + b"\xee" * (USB_REPORT_SIZE - 5 - len(buf))
                 )
                 seq += 1
             idx += len(buf)

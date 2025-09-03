@@ -1,9 +1,13 @@
 name: CI
 on:
+  # See: https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request.
   pull_request:
+  # See: https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#push.
   push:
-    branches: ['**']
-    tags-ignore: ['**']
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
 
 concurrency:
   group: ${{ github.event_name != 'pull_request' && github.run_id || github.ref }}
@@ -15,49 +19,10 @@ env:
   LANGUAGE: 'C.UTF-8'
 
 jobs:
-  type-check:
-    name: Type check
-    runs-on: ubuntu-latest
-    container: python:latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: |
-          pip install poetry
-          poetry install
-
-      - name: Run check
-        run: >
-          poetry run
-          mypy
-          hwi.py
-          hwilib/_base58.py
-          hwilib/_bech32.py
-          hwilib/_cli.py
-          hwilib/commands.py
-          hwilib/common.py
-          hwilib/descriptor.py
-          hwilib/devices/bitbox02.py
-          hwilib/devices/coldcard.py
-          hwilib/devices/digitalbitbox.py
-          hwilib/devices/jade.py
-          hwilib/devices/__init__.py
-          hwilib/devices/keepkey.py
-          hwilib/devices/ledger.py
-          hwilib/devices/trezor.py
-          hwilib/errors.py
-          hwilib/_script.py
-          hwilib/_serialize.py
-          hwilib/tx.py
-          hwilib/hwwclient.py
-          hwilib/__init__.py
-          hwilib/key.py
-          hwilib/udevinstaller.py
-
   non-device-tests:
     name: Non-device tests
     runs-on: ubuntu-latest
-    container: python:latest
+    container: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -72,7 +37,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
-    container: python:latest
+    container: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -91,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         with:
           context: .
           file: contrib/build-wine.Dockerfile
@@ -115,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         with:
           context: .
           file: contrib/build.Dockerfile
@@ -138,186 +103,150 @@ jobs:
           name: dist
           path: dist/
 
-  sim-builder:
-    name: Sim builder
-    runs-on: ubuntu-latest
+  prepare-sim-matrices:
+    name: Prepare sim matrices
+    uses: ./.github/workflows/prepare-sim-matrices.yml
 
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - { name: 'trezor-1', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
-          - { name: 'trezor-t', archive: 'trezor-firmware',  paths: 'test/work/trezor-firmware' }
-          - { name: 'coldcard', archive: 'coldcard-mpy',     paths: 'test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port' }
-          - { name: 'bitbox01', archive: 'mcu',              paths: 'test/work/mcu' }
-          - { name: 'jade',     archive: 'jade',             paths: 'test/work/jade/simulator' }
-          - { name: 'ledger',   archive: 'speculos',         paths: 'test/work/speculos' }
-          - { name: 'keepkey',  archive: 'keepkey-firmware', paths: 'test/work/keepkey-firmware/bin' }
-          - { name: 'bitbox02', archive: 'bitbox02',         paths: 'test/work/bitbox02-firmware/build-build/bin/simulator' }
+  sim-builder-trezor:
+    name: Trezor sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: trezor
+      include: ${{ needs.prepare-sim-matrices.outputs.trezor }}
+      # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
+      # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
+      # Trezor T binaries don't need this.
+      runs-on: ubuntu-22.04
 
-    steps:
-      - uses: actions/checkout@v4
+  sim-builder-coldcard:
+    name: Coldcard sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: coldcard
+      include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
+      runs-on: ubuntu-22.04
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build
-          pip install poetry
-          wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
-          sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
-          protoc --version
+  sim-builder-bitbox:
+    name: Bitbox sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: bitbox
+      include: ${{ needs.prepare-sim-matrices.outputs.bitbox }}
+      runs-on: ubuntu-latest
 
-      - name: Build simulator
-        run: |
-          git config --global user.email "ci@ci.com"
-          git config --global user.name "ci"
-          cd test; ./setup_environment.sh --${{ matrix.device.name }}; cd ..
-          tar -czf ${{ matrix.device.archive }}.tar.gz ${{ matrix.device.paths }}
+  sim-builder-jade:
+    name: Jade sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: jade
+      include: ${{ needs.prepare-sim-matrices.outputs.jade }}
+      runs-on: ubuntu-latest
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.device.name }}-sim
-          path: ${{ matrix.device.archive }}.tar.gz
+  sim-builder-ledger:
+    name: Ledger sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: ledger
+      include: ${{ needs.prepare-sim-matrices.outputs.ledger }}
+      runs-on: ubuntu-latest
 
-  ledger-app-builder:
-    name: Ledger App builder
-    runs-on: ubuntu-latest
-    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-    steps:
-      - run: |
-          git clone https://github.com/LedgerHQ/app-bitcoin-new.git
-          cd app-bitcoin-new
-          make DEBUG=1
+  sim-builder-keepkey:
+    name: Keepkey sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: keepkey
+      include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
+      runs-on: ubuntu-22.04
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ledger_app
-          path: app-bitcoin-new/bin/app.elf
+  ledger-s-app-builder:
+    name: Ledger Nano S Bitcoin App builder
+    uses: ./.github/workflows/ledger-app-builder.yml
+    with:
+      app: nano_s
+      runs-on: ubuntu-latest
+
+  ledger-x-app-builder:
+    name: Ledger Nano X Bitcoin App builder
+    uses: ./.github/workflows/ledger-app-builder.yml
+    with:
+      app: nano_x
+      runs-on: ubuntu-latest
 
   bitcoind-builder:
     name: bitcoind builder
-    runs-on: ubuntu-latest
+    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep binaries
+    # compatible with Debian Bookworm (glibc 2.36) Python containers.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-bitcoind
 
-  test-dist:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.script.name }}
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    needs: [ dist-builder, sim-builder, ledger-app-builder, bitcoind-builder ]
+  test-trezor-1:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-trezor, bitcoind-builder, dist-builder]
+    with:
+      device: trezor-1
+      runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'trezor-1'
-          - 'trezor-t'
-          - 'coldcard'
-          - 'bitbox01'
-          - 'jade'
-          - 'ledger'
-          - 'ledger-legacy'
-          - 'keepkey'
-          - 'bitbox02'
-        script:
-          - name: 'Wheel'
-            install: 'pip install dist/*.whl'
-            test: 'cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..'
-          - name: 'Sdist'
-            install: 'pip install $(find dist -name "*.tar.gz" -a -not -name "*linux*")'
-            test: 'cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..'
-          - name: 'Bindist'
-            install: 'poetry install; cd dist; tar -xvf hwi*linux*.tar.gz; cd ..'
-            test: 'cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..'
+  test-trezor-t:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-trezor, bitcoind-builder, dist-builder]
+    with:
+      device: trezor-t
+      runs-on: ubuntu-latest
 
-    env:
-      DEVICE: '--${{ matrix.device }}'
+  test-ledger-s:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-ledger, ledger-s-app-builder, bitcoind-builder, dist-builder]
+    with:
+      device: ledger-legacy
+      runs-on: ubuntu-latest
 
-    container: python:${{ matrix.python-version }}
+  test-ledger-x:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-ledger, ledger-x-app-builder, bitcoind-builder, dist-builder]
+    with:
+      device: ledger
+      runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+  test-coldcard:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-coldcard, bitcoind-builder, dist-builder]
+    with:
+      device: coldcard
+      runs-on: ubuntu-22.04
 
-      - run: |
-          pip install poetry
+  test-bitbox01:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
+    with:
+      device: bitbox01
+      runs-on: ubuntu-latest
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
+  test-bitbox02:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
+    with:
+      device: bitbox02
+      runs-on: ubuntu-latest
 
-      - run: |
-          ${{ matrix.script.install }}
+  test-jade:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-jade, bitcoind-builder, dist-builder]
+    with:
+      device: jade
+      runs-on: ubuntu-latest
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: bitcoind
+  test-keepkey:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-keepkey, bitcoind-builder, dist-builder]
+    with:
+      device: keepkey
+      runs-on: ubuntu-latest
 
-      - run: |
-          tar -xvf bitcoind.tar.gz
-
-      - uses: ./.github/actions/install-sim
-        with:
-          device: ${{ matrix.device }}
-
-      - name: Run tests
-        run: |
-          ${{ matrix.script.test }}
-
-      - if: failure()
-        run: |
-          tail -v -n +1 test/*.std*
-
-
-  test-all:
-    name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.interface }}
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    needs: [ sim-builder, ledger-app-builder, bitcoind-builder ]
-    timeout-minutes: 45
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
-        device:
-          - 'trezor-1'
-          - 'trezor-t'
-          - 'coldcard'
-          - 'bitbox01'
-          - 'jade'
-          - 'ledger'
-          - 'ledger-legacy'
-          - 'keepkey'
-          - 'bitbox02'
-        interface: [ 'library', 'cli', 'stdin' ]
-
-    container: python:${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: |
-          pip install poetry
-          poetry install
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: bitcoind
-
-      - run: |
-          tar -xvf bitcoind.tar.gz
-
-      - uses: ./.github/actions/install-sim
-        with:
-          device: ${{ matrix.device }}
-
-      - name: Run tests
-        run: |
-          cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=${{ matrix.interface }} --device-only; cd ..
-
-      - if: failure()
-        run: |
-          tail -v -n +1 test/*.std*

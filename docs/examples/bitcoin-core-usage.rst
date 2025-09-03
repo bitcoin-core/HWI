@@ -32,7 +32,7 @@ Clone Bitcoin Core and build it. Clone HWI.
     $ cd bitcoin
     $ cmake -B build
     $ cmake --build build
-    $ build/src/bitcoind -daemon -addresstype=bech32 -changetype=bech32
+    $ build/bin/bitcoind -daemon -addresstype=bech32 -changetype=bech32
     $ cd ..
     $ git clone https://github.com/bitcoin-core/HWI.git
     $ cd HWI

@@ -82,6 +82,10 @@ class JadeEmulator(DeviceEmulator):
 
             # Wait for emulator to be up
             while True:
+                # Prevent CI from lingering until timeout:
+                if self.emulator_proc.poll() is not None:
+                    raise RuntimeError(f"Jade simulator failed with exit code {self.emulator_proc.poll()}")
+
                 time.sleep(1)
                 try:
                     # Try to connect and set the test seed

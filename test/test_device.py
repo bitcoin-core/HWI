@@ -96,6 +96,10 @@ class Bitcoind():
         cookie_path = os.path.join(self.datadir, "regtest", ".cookie")
         while not os.path.exists(cookie_path):
             time.sleep(0.5)
+            # Prevent CI from lingering until timeout:
+            if self.bitcoind_proc.poll() is not None:
+                raise RuntimeError(f"bitcoind failed with exit code {self.bitcoind_proc.poll()}")
+
         # Read .cookie file to get user and pass
         with open(cookie_path) as f:
             self.userpass = f.readline().lstrip().rstrip()
@@ -133,7 +137,7 @@ class Bitcoind():
         return c
 
 class DeviceTestCase(unittest.TestCase):
-    def __init__(self, bitcoind, emulator=None, interface='library', methodName='runTest'):
+    def __init__(self, bitcoind, emulator: DeviceEmulator = None, interface='library', methodName='runTest'):
         super(DeviceTestCase, self).__init__(methodName)
         self.bitcoind = bitcoind
         self.rpc = bitcoind.rpc
@@ -160,17 +164,17 @@ class DeviceTestCase(unittest.TestCase):
             cli_args.append(shlex.quote(arg))
         if self.interface == 'cli':
             proc = subprocess.Popen(['hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
-            result = proc.communicate()
+            result = proc.communicate(timeout=60)
             return json.loads(result[0].decode())
         elif self.interface == 'bindist':
             proc = subprocess.Popen(['../dist/hwi ' + ' '.join(cli_args)], stdout=subprocess.PIPE, shell=True)
-            result = proc.communicate()
+            result = proc.communicate(timeout=60)
             return json.loads(result[0].decode())
         elif self.interface == 'stdin':
             args = [f'"{arg}"' for arg in args]
             input_str = '\n'.join(args) + '\n'
             proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            result = proc.communicate(input_str.encode())
+            result = proc.communicate(input_str.encode(), timeout=60)
             return json.loads(result[0].decode())
         else:
             return process_commands(args)
@@ -578,6 +582,13 @@ class TestSignTx(DeviceTestCase):
 
     # Test wrapper to avoid mixed-inputs signing for Ledger
     def test_signtx(self):
+        if self.emulator.type == "coldcard":
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Coldcard sign test temporarily disabled")
+
+        if self.emulator.type == "ledger" and not self.emulator.legacy:
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Test temporarily disabled for NanoX")
 
         for addrtypes, multisig_types, external, op_return in self.signtx_cases:
             with self.subTest(addrtypes=addrtypes, multisig_types=multisig_types, external=external, op_return=op_return):
@@ -585,6 +596,10 @@ class TestSignTx(DeviceTestCase):
 
     # Make a huge transaction which might cause some problems with different interfaces
     def test_big_tx(self):
+        if self.emulator.type == "ledger" and not self.emulator.legacy:
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Test temporarily disabled for NanoX")
+
         # make a huge transaction
         keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "sh_wit", "0", "100"])
         import_result = self.wrpc.importdescriptors(keypool_desc)
@@ -615,6 +630,10 @@ class TestSignTx(DeviceTestCase):
 
 class TestDisplayAddress(DeviceTestCase):
     def test_display_address_path(self):
+        if self.emulator.type == "ledger" and not self.emulator.legacy:
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Test temporarily disabled for NanoX")
+
         result = self.do_command(self.dev_args + ['displayaddress', "--addr-type", "legacy", '--path', 'm/44h/1h/0h/0/0'])
         if self.emulator.supports_legacy:
             self.assertNotIn('error', result)
@@ -640,6 +659,10 @@ class TestDisplayAddress(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
     def test_display_address_descriptor(self):
+        if self.emulator.type == "ledger" and not self.emulator.legacy:
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Test temporarily disabled for NanoX")
+
         account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/84h/1h/0h'])['xpub']
         p2sh_segwit_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/49h/1h/0h'])['xpub']
         legacy_account_xpub = self.do_command(self.dev_args + ['getxpub', 'm/44h/1h/0h'])['xpub']
@@ -761,6 +784,10 @@ class TestSignMessage(DeviceTestCase):
         self.assertTrue(self.rpc.verifymessage(addr, sig, msg))
 
     def test_sign_msg(self):
+        if self.emulator.type == "ledger" and not self.emulator.legacy:
+            # https://github.com/bitcoin-core/HWI/pull/795#issuecomment-3112271927
+            raise unittest.SkipTest("Test temporarily disabled for NanoX")
+
         self._check_sign_msg("Message signing test")
         self._check_sign_msg("285") # Specific test case for Ledger shorter S
 

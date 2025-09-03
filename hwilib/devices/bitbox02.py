@@ -194,10 +194,10 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
         bb02 = None
         with handle_errors(common_err_msgs["enumerate"], d_data):
             bb02 = client.init(expect_initialized=None)
-        version, platform, edition, unlocked = bitbox02.BitBox02.get_info(
+        version, platform, edition, unlocked, _ = bitbox02.BitBox02.get_info(
             client.transport
         )
-        if platform != Platform.BITBOX02:
+        if platform not in (Platform.BITBOX02, Platform.BITBOX02PLUS):
             client.close()
             continue
         if edition not in (BitBox02Edition.MULTI, BitBox02Edition.BTCONLY):
@@ -211,9 +211,15 @@ def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain
                 "type": "bitbox02",
                 "path": path,
                 "model": {
-                    BitBox02Edition.MULTI: "bitbox02_multi",
-                    BitBox02Edition.BTCONLY: "bitbox02_btconly",
-                }[edition],
+                    Platform.BITBOX02: {
+                        BitBox02Edition.MULTI: "bitbox02_multi",
+                        BitBox02Edition.BTCONLY: "bitbox02_btconly",
+                    },
+                    Platform.BITBOX02PLUS: {
+                        BitBox02Edition.MULTI: "bitbox02_nova_multi",
+                        BitBox02Edition.BTCONLY: "bitbox02_nova_btconly",
+                    },
+                }[platform][edition],
                 "needs_pin_sent": False,
                 "needs_passphrase_sent": False,
             }

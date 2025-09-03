@@ -1,34 +1,3 @@
-From c2e4c24c226555903705aae0386aefe0e15bf873 Mon Sep 17 00:00:00 2001
-From: Andrew Chow <achow101-github@achow101.com>
-Date: Tue, 27 Nov 2018 17:32:44 -0500
-Subject: [PATCH 1/3] Use linux unix socket address format
-
----
- unix/variant/pyb.py | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/unix/variant/pyb.py b/unix/variant/pyb.py
-index d22bb1b..fe8e7ca 100644
---- a/unix/variant/pyb.py
-+++ b/unix/variant/pyb.py
-@@ -36,10 +36,10 @@ class USB_HID:
-         import usocket as socket
-         self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-         # If on linux, try commenting the following line
--        addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
-+        # addr = bytes([len(self.fn)+2, socket.AF_UNIX] + list(self.fn))
-         # If on linux, try uncommenting the following two lines
--        #import struct
--        #addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
-+        import struct
-+        addr = struct.pack('H108s', socket.AF_UNIX, self.fn)
-         while 1:
-             try:
-                 self.pipe.bind(addr)
--- 
-2.38.1
-
-
 From fd51e85693e0d66129133b1f195134aead1cf7d0 Mon Sep 17 00:00:00 2001
 From: Andrew Chow <achow101-github@achow101.com>
 Date: Tue, 17 Dec 2019 17:56:05 -0500
@@ -58,21 +27,21 @@ index 2706fb4..f9b533d 100644
 -- 
 2.38.1
 
+From 8b4323c1e393d79d46248dd822ca9aaaeb2b2bc3 Mon Sep 17 00:00:00 2001
+From: Sjors Provoost <sjors@sprovoost.nl>
+Date: Wed, 23 Jul 2025 10:16:22 +0200
+Subject: [PATCH] Allow multisigs to share master fingerprint
 
-From 04aecb1005d997783e63bd6cd830c4a98f099cb8 Mon Sep 17 00:00:00 2001
-From: Andrew Chow <achow101-github@achow101.com>
-Date: Wed, 27 Jan 2021 21:50:22 -0500
-Subject: [PATCH 3/3] Allow multisigs to share master fingerprint
-
+Co-Authored-By: Ava Chow <github@achow101.com>
 ---
- shared/multisig.py | 40 +++++++++++++++++++++++++---------------
- 1 file changed, 25 insertions(+), 15 deletions(-)
+ shared/multisig.py | 37 ++++++++++++++++++++++++-------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
 
 diff --git a/shared/multisig.py b/shared/multisig.py
-index 6f26644..6e190b5 100644
+index 446998a2..cabb2003 100644
 --- a/shared/multisig.py
 +++ b/shared/multisig.py
-@@ -144,9 +144,9 @@ class MultisigWallet:
+@@ -144,9 +144,9 @@ class MultisigWallet(WalletABC):
          # calc useful cache value: numeric xfp+subpath, with lookup
          self.xfp_paths = {}
          for xfp, deriv, xpub in self.xpubs:
@@ -84,7 +53,7 @@ index 6f26644..6e190b5 100644
  
      @classmethod
      def render_addr_fmt(cls, addr_fmt):
-@@ -245,7 +245,11 @@ class MultisigWallet:
+@@ -270,7 +270,11 @@ class MultisigWallet(WalletABC):
  
      def get_xfp_paths(self):
          # return list of lists [xfp, *deriv]
@@ -97,7 +66,7 @@ index 6f26644..6e190b5 100644
  
      @classmethod
      def find_match(cls, M, N, xfp_paths, addr_fmt=None):
-@@ -280,24 +284,30 @@ class MultisigWallet:
+@@ -305,24 +309,31 @@ class MultisigWallet(WalletABC):
          # the same prefix path per-each xfp, as indicated 
          # xfp_paths (unordered)?
          # - could also check non-prefix part is all non-hardened
@@ -110,22 +79,16 @@ index 6f26644..6e190b5 100644
              if x[0] not in self.xfp_paths:
                  return False
 -            prefix = self.xfp_paths[x[0]]
--
--            if len(x) < len(prefix):
--                # PSBT specs a path shorter than wallet's xpub
--                #print('path len: %d vs %d' % (len(prefix), len(x)))
--                return False
--
--            comm = len(prefix)
--            if tuple(prefix[:comm]) != tuple(x[:comm]):
--                # xfp => maps to wrong path
--                #print('path mismatch:\n%r\n%r\ncomm=%d' % (prefix[:comm], x[:comm], comm))
 +            for prefix in self.xfp_paths[x[0]]:
 +                if len(x) < len(prefix):
 +                    # PSBT specs a path shorter than wallet's xpub
 +                    #print('path len: %d vs %d' % (len(prefix), len(x)))
 +                    return False
-+
+ 
+-            if len(x) < len(prefix):
+-                # PSBT specs a path shorter than wallet's xpub
+-                #print('path len: %d vs %d' % (len(prefix), len(x)))
+-                return False
 +                comm = len(prefix)
 +                if tuple(prefix[:comm]) != tuple(x[:comm]):
 +                    # xfp => maps to wrong path
@@ -137,9 +100,14 @@ index 6f26644..6e190b5 100644
 +                    break
 +            else:
 +                # No match was found
+ 
+-            comm = len(prefix)
+-            if tuple(prefix[:comm]) != tuple(x[:comm]):
+-                # xfp => maps to wrong path
+-                #print('path mismatch:\n%r\n%r\ncomm=%d' % (prefix[:comm], x[:comm], comm))
                  return False
  
          return True
 -- 
-2.38.1
+2.39.5 (Apple Git-154)
 
