@@ -77,6 +77,7 @@ from .._serialize import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
     hash256,
 )
@@ -355,7 +356,11 @@ class TrezorClient(HardwareWalletClient):
         return xpub
 
     @trezor_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        __: Optional[BIP388Policy],
+    ) -> PSBT:
         """
         Sign a transaction with the Trezor. There are some limitations to what transactions can be signed.
 
@@ -378,7 +383,7 @@ class TrezorClient(HardwareWalletClient):
             # Prepare inputs
             inputs = []
             to_ignore = [] # Note down which inputs whose signatures we're going to ignore
-            for input_num, psbt_in in builtins.enumerate(tx.inputs):
+            for input_num, psbt_in in builtins.enumerate(psbt.inputs):
                 assert psbt_in.prev_txid is not None
                 assert psbt_in.prev_out is not None
                 assert psbt_in.sequence is not None
@@ -443,7 +448,7 @@ class TrezorClient(HardwareWalletClient):
                     to_ignore.append(input_num)
 
                 # Check for multisig
-                is_ms, multisig = parse_multisig(scriptcode, tx.xpub, psbt_in)
+                is_ms, multisig = parse_multisig(scriptcode, psbt.xpub, psbt_in)
                 if is_ms:
                     # Add to txinputtype
                     txinputtype.multisig = multisig
@@ -529,7 +534,7 @@ class TrezorClient(HardwareWalletClient):
 
             # prepare outputs
             outputs = []
-            for psbt_out in tx.outputs:
+            for psbt_out in psbt.outputs:
                 out = psbt_out.get_txout()
                 txoutput = messages.TxOutputType(amount=out.nValue)
                 txoutput.script_type = messages.OutputScriptType.PAYTOADDRESS
@@ -578,7 +583,7 @@ class TrezorClient(HardwareWalletClient):
                 if psbt_out.witness_script or psbt_out.redeem_script:
                     is_ms, multisig = parse_multisig(
                         psbt_out.witness_script or psbt_out.redeem_script,
-                        tx.xpub, psbt_out)
+                        psbt.xpub, psbt_out)
                     if is_ms:
                         txoutput.multisig = multisig
                         if not wit:
@@ -589,7 +594,7 @@ class TrezorClient(HardwareWalletClient):
 
             # Prepare prev txs
             prevtxs = {}
-            for psbt_in in tx.inputs:
+            for psbt_in in psbt.inputs:
                 if psbt_in.non_witness_utxo:
                     prev = psbt_in.non_witness_utxo
 
@@ -618,20 +623,20 @@ class TrezorClient(HardwareWalletClient):
                     prevtxs[ser_uint256(psbt_in.non_witness_utxo.sha256)[::-1]] = t
 
             # Sign the transaction
-            assert tx.tx_version is not None
+            assert psbt.tx_version is not None
             signed_tx = btc.sign_tx(
                 client=self.client,
                 coin_name=self.coin_name,
                 inputs=inputs,
                 outputs=outputs,
                 prev_txes=prevtxs,
-                version=tx.tx_version,
-                lock_time=tx.compute_lock_time(),
+                version=psbt.tx_version,
+                lock_time=psbt.compute_lock_time(),
                 serialize=False,
             )
 
             # Each input has one signature
-            for input_num, (psbt_in, sig) in py_enumerate(list(zip(tx.inputs, signed_tx[0]))):
+            for input_num, (psbt_in, sig) in py_enumerate(list(zip(psbt.inputs, signed_tx[0]))):
                 if input_num in to_ignore:
                     continue
                 for pubkey in psbt_in.hd_keypaths.keys():
@@ -646,7 +651,7 @@ class TrezorClient(HardwareWalletClient):
 
             p += 1
 
-        return tx
+        return psbt
 
     @trezor_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:

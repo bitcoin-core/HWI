@@ -17,7 +17,11 @@ from .key import (
     get_bip44_chain,
 )
 from .psbt import PSBT
-from .common import AddressType, Chain
+from .common import (
+    AddressType,
+    Chain,
+    BIP388Policy,
+)
 
 
 class HardwareWalletClient(object):
@@ -78,7 +82,11 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        bip388_policy: Optional[BIP388Policy]
+    ) -> PSBT:
         """
         Sign a partially signed bitcoin transaction (PSBT).
 
