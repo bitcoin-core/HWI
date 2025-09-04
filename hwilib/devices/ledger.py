@@ -31,6 +31,7 @@ from ..errors import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from .ledger_bitcoin.client import (
@@ -478,6 +479,24 @@ class LedgerClient(HardwareWalletClient):
         address_index = int(multisig.pubkeys[0].deriv_path.split("/")[2])
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
+
+    @ledger_exception
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> str:
+        if isinstance(self.client, LegacyClient):
+            raise BadArgumentError("Registering a BIP388 policy not supported by this version of the Bitcoin App")
+
+        wallet_policy = WalletPolicy(
+            name=bip388_policy.name,
+            descriptor_template=bip388_policy.descriptor_template,
+            keys_info=bip388_policy.keys_info
+        )
+
+        _, registered_hmac = self.client.register_wallet(wallet_policy)
+
+        return registered_hmac.hex()
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """

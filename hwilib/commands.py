@@ -52,6 +52,7 @@ from .descriptor import (
 from .devices import __all__ as all_devs
 from .common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from .hwwclient import HardwareWalletClient
@@ -493,6 +494,23 @@ def displayaddress(
                 addr_type = AddressType.TAP
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
     raise BadArgumentError("Missing both path and descriptor")
+
+def register(
+    client: HardwareWalletClient,
+    bip388_policy: BIP388Policy,
+) -> Dict[str, str]:
+    """
+    Register a BIP388 policy on the device for client.
+
+    :param name: Name for the policy
+    :param desc: Descriptor template
+    :return: A dictionary containing policy HMAC.
+        Returned as ``{"hmac": <hex string>}``.
+    :raises: BadArgumentError: if an argument is malformed, missing, or conflicts.
+    """
+    assert bip388_policy.hmac is None
+
+    return {"hmac": client.register_bip388_policy(bip388_policy)}
 
 def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
     """
