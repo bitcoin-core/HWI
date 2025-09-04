@@ -3,7 +3,8 @@
 
 set -ex
 
-PYTHON_VERSION=3.9.13
+# There's no core.msi for newer patch versions
+PYTHON_VERSION=3.10.11
 
 PYTHON_FOLDER="python3"
 PYHOME="c:/$PYTHON_FOLDER"
