@@ -4,8 +4,8 @@ from io import BytesIO, BufferedReader
 
 from .command_builder import BitcoinCommandBuilder, BitcoinInsType
 from ...common import Chain
-from .client_command import ClientCommandInterpreter
-from .client_base import Client, PartialSignature, SignPsbtYieldedObject, TransportClient
+from .client_command import ClientCommandInterpreter, CCMD_YIELD_MUSIG_PARTIALSIGNATURE_TAG, CCMD_YIELD_MUSIG_PUBNONCE_TAG
+from .client_base import Client, MusigPartialSignature, MusigPubNonce, PartialSignature, SignPsbtYieldedObject, TransportClient
 from .client_legacy import LegacyClient
 from .errors import UnknownDeviceError
 from .exception import DeviceException, NotSupportedError
@@ -51,18 +51,55 @@ def _make_partial_signature(pubkey_augm: bytes, signature: bytes) -> PartialSign
 def _decode_signpsbt_yielded_value(res: bytes) -> Tuple[int, SignPsbtYieldedObject]:
     res_buffer = BytesIO(res)
     input_index_or_tag = read_varint(res_buffer)
+    if input_index_or_tag == CCMD_YIELD_MUSIG_PUBNONCE_TAG:
+        input_index = read_varint(res_buffer)
+        pubnonce = res_buffer.read(66)
+        participant_pk = res_buffer.read(33)
+        aggregate_pubkey = res_buffer.read(33)
+        tapleaf_hash = res_buffer.read()
+        if len(tapleaf_hash) == 0:
+            tapleaf_hash = None
 
-    # values follow an encoding without an explicit tag, where the
-    # first element is the input index. All the signature types are implemented
-    # by the PartialSignature type (not to be confused with the musig Partial Signature).
-    input_index = input_index_or_tag
+        return (
+            input_index,
+            MusigPubNonce(
+                participant_pubkey=participant_pk,
+                aggregate_pubkey=aggregate_pubkey,
+                tapleaf_hash=tapleaf_hash,
+                pubnonce=pubnonce
+            )
+        )
+    elif input_index_or_tag == CCMD_YIELD_MUSIG_PARTIALSIGNATURE_TAG:
+        input_index = read_varint(res_buffer)
+        partial_signature = res_buffer.read(32)
+        participant_pk = res_buffer.read(33)
+        aggregate_pubkey = res_buffer.read(33)
+        tapleaf_hash = res_buffer.read()
+        if len(tapleaf_hash) == 0:
+            tapleaf_hash = None
 
-    pubkey_augm_len = read_uint(res_buffer, 8)
-    pubkey_augm = res_buffer.read(pubkey_augm_len)
+        return (
+            input_index,
+            MusigPartialSignature(
+                participant_pubkey=participant_pk,
+                aggregate_pubkey=aggregate_pubkey,
+                tapleaf_hash=tapleaf_hash,
+                partial_signature=partial_signature
+            )
+        )
+    else:
+        # other values follow an encoding without an explicit tag, where the
+        # first element is the input index. All the signature types are implemented
+        # by the PartialSignature type (not to be confused with the musig Partial Signature).
+        input_index = input_index_or_tag
 
-    signature = res_buffer.read()
+        pubkey_augm_len = read_uint(res_buffer, 8)
+        pubkey_augm = res_buffer.read(pubkey_augm_len)
 
-    return((input_index, _make_partial_signature(pubkey_augm, signature)))
+        signature = res_buffer.read()
+
+        return((input_index, _make_partial_signature(pubkey_augm, signature)))
+
 
 def read_uint(buf: BytesIO,
               bit_len: int,

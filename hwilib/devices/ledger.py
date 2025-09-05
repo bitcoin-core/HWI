@@ -40,7 +40,7 @@ from .ledger_bitcoin.client import (
     LegacyClient,
     TransportClient,
 )
-from .ledger_bitcoin.client_base import ApduException
+from .ledger_bitcoin.client_base import ApduException, MusigPubNonce, MusigPartialSignature
 from .ledger_bitcoin.exception import NotSupportedError
 from .ledger_bitcoin.wallet import (
     MultisigWallet,
@@ -372,31 +372,54 @@ class LedgerClient(HardwareWalletClient):
                     if not is_wit:
                         psbt_in.witness_utxo = None
 
-            input_sigs = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
+            res = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
 
-            for idx, yielded in input_sigs:
+            for idx, yielded in res:
                 psbt_in = psbt2.inputs[idx]
 
-                utxo = None
-                if psbt_in.witness_utxo:
-                    utxo = psbt_in.witness_utxo
-                if psbt_in.non_witness_utxo:
-                    assert psbt_in.prev_out is not None
-                    utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
-                assert utxo is not None
+                if isinstance(yielded, MusigPubNonce):
+                    psbt_key = (
+                        yielded.participant_pubkey,
+                        yielded.aggregate_pubkey,
+                        yielded.tapleaf_hash
+                    )
 
-                is_wit, wit_ver, _ = utxo.is_witness()
+                    assert len(yielded.aggregate_pubkey) == 33
 
-                if is_wit and wit_ver >= 1:
-                    # TODO: Deal with script path signatures
-                    # For now, assume key path signature
-                    psbt_in.tap_key_sig = yielded.signature
+                    psbt_in.musig2_pub_nonces[psbt_key] = yielded.pubnonce
+                elif isinstance(yielded, MusigPartialSignature):
+                    psbt_key = (
+                        yielded.participant_pubkey,
+                        yielded.aggregate_pubkey,
+                        yielded.tapleaf_hash
+                    )
+
+                    psbt_in.musig2_partial_sigs[psbt_key] = yielded.partial_signature
                 else:
-                    psbt_in.partial_sigs[yielded.pubkey] = yielded.signature
+                    utxo = None
+                    if psbt_in.witness_utxo:
+                        utxo = psbt_in.witness_utxo
+                    if psbt_in.non_witness_utxo:
+                        assert psbt_in.prev_out is not None
+                        utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
+                    assert utxo is not None
+
+                    is_wit, wit_ver, _ = utxo.is_witness()
+
+                    if is_wit and wit_ver >= 1:
+                        if yielded.tapleaf_hash is None:
+                            psbt_in.tap_key_sig = yielded.signature
+                        else:
+                            psbt_in.tap_script_sigs[(yielded.pubkey, yielded.tapleaf_hash)] = yielded.signature
+
+                    else:
+                        psbt_in.partial_sigs[yielded.pubkey] = yielded.signature
 
         # Extract the sigs from psbt2 and put them into tx
         for sig_in, psbt_in in zip(psbt2.inputs, psbt.inputs):
             psbt_in.partial_sigs.update(sig_in.partial_sigs)
+            psbt_in.musig2_pub_nonces.update(sig_in.musig2_pub_nonces)
+            psbt_in.musig2_partial_sigs.update(sig_in.musig2_partial_sigs)
             psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
             if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
                 psbt_in.tap_key_sig = sig_in.tap_key_sig

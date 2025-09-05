@@ -65,7 +65,42 @@ class PartialSignature:
     tapleaf_hash: Optional[bytes] = None
 
 
-SignPsbtYieldedObject = Union[PartialSignature]
+@dataclass(frozen=True)
+class MusigPubNonce:
+    """Represents a pubnonce returned by sign_psbt during the first round of a Musig2 signing session.
+
+    It always contains
+    - the participant_pubkey, a 33-byte compressed pubkey;
+    - aggregate_pubkey, the 33-byte compressed pubkey key that is the aggregate of all the participant
+      pubkeys, with the necessary tweaks; its x-only version is the key present in the Script;
+    - the 66-byte pubnonce.
+
+    The tapleaf_hash is also filled if signing for a tapscript; `None` otherwise.
+    """
+    participant_pubkey: bytes
+    aggregate_pubkey: bytes
+    tapleaf_hash: Optional[bytes]
+    pubnonce: bytes
+
+
+@dataclass(frozen=True)
+class MusigPartialSignature:
+    """Represents a partial signature returned by sign_psbt during the second round of a Musig2 signing session.
+
+    It always contains
+    - the participant_pubkey, a 33-byte compressed pubkey;
+    - aggregate_pubkey, the 33-byte compressed pubkey key that is the aggregate of all the participant
+      pubkeys, with the necessary tweaks; its x-only version is the key present in the Script;
+    - the partial_signature, the 32-byte partial signature for this participant.
+
+    The tapleaf_hash is also filled if signing for a tapscript; `None` otherwise
+    """
+    participant_pubkey: bytes
+    aggregate_pubkey: bytes
+    tapleaf_hash: Optional[bytes]
+    partial_signature: bytes
+
+SignPsbtYieldedObject = Union[PartialSignature, MusigPubNonce, MusigPartialSignature]
 
 class Client:
     def __init__(self, transport_client: TransportClient, chain: Chain = Chain.MAIN) -> None:
