@@ -362,9 +362,11 @@ class LedgerClient(HardwareWalletClient):
                 is_wit, wit_ver, _ = utxo.is_witness()
 
                 if is_wit and wit_ver >= 1:
-                    # TODO: Deal with script path signatures
-                    # For now, assume key path signature
-                    psbt_in.tap_key_sig = yielded.signature
+                    if yielded.tapleaf_hash is None:
+                        psbt_in.tap_key_sig = yielded.signature
+                    else:
+                        psbt_in.tap_script_sigs[(yielded.pubkey, yielded.tapleaf_hash)] = yielded.signature
+
                 else:
                     psbt_in.partial_sigs[yielded.pubkey] = yielded.signature
 
