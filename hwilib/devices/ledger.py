@@ -31,6 +31,7 @@ from ..errors import (
 )
 from ..common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from .ledger_bitcoin.client import (
@@ -39,7 +40,7 @@ from .ledger_bitcoin.client import (
     LegacyClient,
     TransportClient,
 )
-from .ledger_bitcoin.client_base import ApduException
+from .ledger_bitcoin.client_base import ApduException, MusigPubNonce, MusigPartialSignature
 from .ledger_bitcoin.exception import NotSupportedError
 from .ledger_bitcoin.wallet import (
     MultisigWallet,
@@ -185,7 +186,11 @@ class LedgerClient(HardwareWalletClient):
         return ExtendedKey.deserialize(xpub_str)
 
     @ledger_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        bip388_policy: Optional[BIP388Policy]
+    ) -> PSBT:
         """
         Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
@@ -198,6 +203,8 @@ class LedgerClient(HardwareWalletClient):
         For application versions 2.1.x and above:
 
         - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported for single signature addresses.
+
+        BIP388: for basic descriptors this is optional, but if provided name must be empty
         """
         master_fp = self.get_master_fingerprint()
 
@@ -206,20 +213,20 @@ class LedgerClient(HardwareWalletClient):
             if not isinstance(client, LegacyClient):
                 client = LegacyClient(self.transport_client, self.chain)
             wallet = WalletPolicy("", "wpkh(@0/**)", [""])
-            legacy_input_sigs = client.sign_psbt(tx, wallet, None)
+            legacy_input_sigs = client.sign_psbt(psbt, wallet, None)
 
-            for idx, pubkey, sig in legacy_input_sigs:
-                psbt_in = tx.inputs[idx]
-                psbt_in.partial_sigs[pubkey] = sig
-            return tx
+            for idx, partial_sig in legacy_input_sigs:
+                psbt_in = psbt.inputs[idx]
+                psbt_in.partial_sigs[partial_sig.pubkey] = partial_sig.signature
+            return psbt
 
         if isinstance(self.client, LegacyClient):
             return legacy_sign_tx()
 
         # Make a deepcopy of this psbt. We will need to modify it to get signing to work,
         # which will affect the caller's detection for whether signing occured.
-        psbt2 = copy.deepcopy(tx)
-        if tx.version != 2:
+        psbt2 = copy.deepcopy(psbt)
+        if psbt.version != 2:
             psbt2.convert_to_v2()
 
         # Figure out which wallets are signing
@@ -263,6 +270,25 @@ class LedgerClient(HardwareWalletClient):
                         script_addrtype = AddressType.TAP
                     else:
                         continue
+
+            if bip388_policy is not None:
+                policy = WalletPolicy(
+                    name=bip388_policy.name,
+                    descriptor_template=bip388_policy.descriptor_template,
+                    keys_info=bip388_policy.keys_info
+                )
+                if policy.id not in wallets:
+                    if bip388_policy.hmac is None:
+                        raise BadArgumentError("Missing --hmac")
+                    wallets[policy.id] = (
+                        signing_priority[script_addrtype],
+                        script_addrtype,
+                        policy,
+                        bytes.fromhex(bip388_policy.hmac),
+                    )
+                continue
+
+            # No BIP388 policy provided, construct on the fly
 
             # Check if P2WSH
             if is_p2wsh(scriptcode):
@@ -346,36 +372,59 @@ class LedgerClient(HardwareWalletClient):
                     if not is_wit:
                         psbt_in.witness_utxo = None
 
-            input_sigs = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
+            res = self.client.sign_psbt(psbt2, wallet, wallet_hmac)
 
-            for idx, pubkey, sig in input_sigs:
+            for idx, yielded in res:
                 psbt_in = psbt2.inputs[idx]
 
-                utxo = None
-                if psbt_in.witness_utxo:
-                    utxo = psbt_in.witness_utxo
-                if psbt_in.non_witness_utxo:
-                    assert psbt_in.prev_out is not None
-                    utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
-                assert utxo is not None
+                if isinstance(yielded, MusigPubNonce):
+                    psbt_key = (
+                        yielded.participant_pubkey,
+                        yielded.aggregate_pubkey,
+                        yielded.tapleaf_hash
+                    )
 
-                is_wit, wit_ver, _ = utxo.is_witness()
+                    assert len(yielded.aggregate_pubkey) == 33
 
-                if is_wit and wit_ver >= 1:
-                    # TODO: Deal with script path signatures
-                    # For now, assume key path signature
-                    psbt_in.tap_key_sig = sig
+                    psbt_in.musig2_pub_nonces[psbt_key] = yielded.pubnonce
+                elif isinstance(yielded, MusigPartialSignature):
+                    psbt_key = (
+                        yielded.participant_pubkey,
+                        yielded.aggregate_pubkey,
+                        yielded.tapleaf_hash
+                    )
+
+                    psbt_in.musig2_partial_sigs[psbt_key] = yielded.partial_signature
                 else:
-                    psbt_in.partial_sigs[pubkey] = sig
+                    utxo = None
+                    if psbt_in.witness_utxo:
+                        utxo = psbt_in.witness_utxo
+                    if psbt_in.non_witness_utxo:
+                        assert psbt_in.prev_out is not None
+                        utxo = psbt_in.non_witness_utxo.vout[psbt_in.prev_out]
+                    assert utxo is not None
+
+                    is_wit, wit_ver, _ = utxo.is_witness()
+
+                    if is_wit and wit_ver >= 1:
+                        if yielded.tapleaf_hash is None:
+                            psbt_in.tap_key_sig = yielded.signature
+                        else:
+                            psbt_in.tap_script_sigs[(yielded.pubkey, yielded.tapleaf_hash)] = yielded.signature
+
+                    else:
+                        psbt_in.partial_sigs[yielded.pubkey] = yielded.signature
 
         # Extract the sigs from psbt2 and put them into tx
-        for sig_in, psbt_in in zip(psbt2.inputs, tx.inputs):
+        for sig_in, psbt_in in zip(psbt2.inputs, psbt.inputs):
             psbt_in.partial_sigs.update(sig_in.partial_sigs)
+            psbt_in.musig2_pub_nonces.update(sig_in.musig2_pub_nonces)
+            psbt_in.musig2_partial_sigs.update(sig_in.musig2_partial_sigs)
             psbt_in.tap_script_sigs.update(sig_in.tap_script_sigs)
             if len(sig_in.tap_key_sig) != 0 and len(psbt_in.tap_key_sig) == 0:
                 psbt_in.tap_key_sig = sig_in.tap_key_sig
 
-        return tx
+        return psbt
 
     @ledger_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
@@ -478,6 +527,24 @@ class LedgerClient(HardwareWalletClient):
         address_index = int(multisig.pubkeys[0].deriv_path.split("/")[2])
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
+
+    @ledger_exception
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> str:
+        if isinstance(self.client, LegacyClient):
+            raise BadArgumentError("Registering a BIP388 policy not supported by this version of the Bitcoin App")
+
+        wallet_policy = WalletPolicy(
+            name=bip388_policy.name,
+            descriptor_template=bip388_policy.descriptor_template,
+            keys_info=bip388_policy.keys_info
+        )
+
+        _, registered_hmac = self.client.register_wallet(wallet_policy)
+
+        return registered_hmac.hex()
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """

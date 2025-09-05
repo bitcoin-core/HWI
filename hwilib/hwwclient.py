@@ -17,7 +17,11 @@ from .key import (
     get_bip44_chain,
 )
 from .psbt import PSBT
-from .common import AddressType, Chain
+from .common import (
+    AddressType,
+    BIP388Policy,
+    Chain,
+)
 
 
 class HardwareWalletClient(object):
@@ -78,7 +82,11 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        bip388_policy: Optional[BIP388Policy]
+    ) -> PSBT:
         """
         Sign a partially signed bitcoin transaction (PSBT).
 
@@ -134,6 +142,17 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> str:
+        """
+        Register a BIP388 policy.
+
+        :return: The policy HMAC
+        """
+        raise NotImplementedError("This device does not support BIP388 policies or it's not yet implemented")
 
     def wipe_device(self) -> bool:
         """

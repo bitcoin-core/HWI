@@ -12,6 +12,7 @@ from .commands import (
     getdescriptors,
     prompt_pin,
     toggle_passphrase,
+    register,
     restore_device,
     send_pin,
     setup_device,
@@ -22,6 +23,7 @@ from .commands import (
 )
 from .common import (
     AddressType,
+    BIP388Policy,
     Chain,
 )
 from .errors import (
@@ -59,6 +61,10 @@ def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient
 def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
 
+def register_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+    policy = BIP388Policy(name=args.name, descriptor_template=args.desc, keys_info=args.key)
+    return register(client, bip388_policy=policy)
+
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password, expert=args.expert, chain=args.chain, allow_emulators=args.allow_emulators)
 
@@ -88,7 +94,13 @@ def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) 
     return signmessage(client, message=args.message, path=args.path)
 
 def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[bool, str]]:
-    return signtx(client, psbt=args.psbt)
+    policy = BIP388Policy(
+        name=args.policy_name,
+        descriptor_template=args.policy_desc,
+        keys_info=args.key,
+        hmac=args.hmac
+    )
+    return signtx(client, psbt=args.psbt, bip388_policy=policy)
 
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
@@ -161,6 +173,11 @@ def get_parser() -> HWIArgumentParser:
 
     signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
     signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign')
+    signtx_policy_group = signtx_parser.add_argument_group("BIP388 policy")
+    signtx_policy_group.add_argument('--policy-name', help='Registered policy name')
+    signtx_policy_group.add_argument('--policy-desc', help='Registered policy descriptor template')
+    signtx_policy_group.add_argument('--key', help='Registered policy key information', action='append')
+    signtx_policy_group.add_argument('--hmac', help='Registered policy hmac, obtained via register command')
     signtx_parser.set_defaults(func=signtx_handler)
 
     getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')
@@ -196,6 +213,12 @@ def get_parser() -> HWIArgumentParser:
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
     displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT) # type: ignore
     displayaddr_parser.set_defaults(func=displayaddress_handler)
+
+    register_parser = subparsers.add_parser('register', help='Register a BIP388 wallet policy')
+    register_parser.add_argument('--name', help='Name for the policy')
+    register_parser.add_argument('--desc', help='Descriptor template, e.g. tr(musig(@0,@1)')
+    register_parser.add_argument('--key', help='Key information, e.g. [00000000/84h/0h/0h]xpub...', action='append')
+    register_parser.set_defaults(func=register_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')
     setupdev_parser.add_argument('--label', '-l', help='The name to give to the device', default='')
