@@ -2,3 +2,6 @@ sphinxcontrib-autoprogram>=0.1.5
 sphinx>=3.2.1
 sphinx_rtd_theme>=1.0.0
 python-pkcs11>=0.7.0
+cbor2>=5.4.6,<6.0.0
+pyserial>=3.5
+semver>=2.13.0,<3.0.0
