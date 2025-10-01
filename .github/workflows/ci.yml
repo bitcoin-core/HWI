@@ -161,18 +161,16 @@ jobs:
       include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
       runs-on: ubuntu-latest
 
-  ledger-s-app-builder:
-    name: Ledger Nano S Bitcoin App builder
-    uses: ./.github/workflows/ledger-app-builder.yml
+  ledger-legacy-app-builder:
+    name: Ledger Bitcoin Legacy App builder
+    uses: ./.github/workflows/ledger-legacy-app-builder.yml
     with:
-      app: nano_s
       runs-on: ubuntu-latest
 
-  ledger-x-app-builder:
-    name: Ledger Nano X Bitcoin App builder
+  ledger-app-builder:
+    name: Ledger Bitcoin App builder
     uses: ./.github/workflows/ledger-app-builder.yml
     with:
-      app: nano_x
       runs-on: ubuntu-latest
 
   bitcoind-builder:
@@ -196,16 +194,16 @@ jobs:
       device: trezor-t
       runs-on: ubuntu-latest
 
-  test-ledger-s:
+  test-ledger-legacy:
     uses: ./.github/workflows/device-test.yml
-    needs: [sim-builder-ledger, ledger-s-app-builder, bitcoind-builder, dist-builder]
+    needs: [sim-builder-ledger, ledger-legacy-app-builder, bitcoind-builder, dist-builder]
     with:
       device: ledger-legacy
       runs-on: ubuntu-latest
 
-  test-ledger-x:
+  test-ledger:
     uses: ./.github/workflows/device-test.yml
-    needs: [sim-builder-ledger, ledger-x-app-builder, bitcoind-builder, dist-builder]
+    needs: [sim-builder-ledger, ledger-app-builder, bitcoind-builder, dist-builder]
     with:
       device: ledger
       runs-on: ubuntu-latest

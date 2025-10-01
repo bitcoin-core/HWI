@@ -63,16 +63,21 @@ runs:
         poetry run pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
         pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
 
-    - if: inputs.device == 'ledger'
+    - if: startsWith(inputs.device, 'ledger')
       uses: actions/download-artifact@v4
       with:
-        name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_nano_s' || 'ledger_app_nano_x' }}
+        name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_legacy' || 'ledger_app' }}
 
 
     - if: inputs.device == 'ledger'
       shell: bash
       run: |
         mv app.elf test/work/speculos/apps/btc-test.elf
+
+    - if: inputs.device == 'ledger-legacy'
+      shell: bash
+      run: |
+        mv app.elf test/work/speculos/apps/btc-test-legacy.elf
 
     - if: inputs.device == 'keepkey'
       shell: bash
