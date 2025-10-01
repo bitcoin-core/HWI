@@ -112,9 +112,9 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
+        git am ../../data/trezor-t-build.patch
         uv sync
         cd core
-        export CC=gcc-12
         uv run make build_unix
         # Delete any emulator.img file
         find . -name "trezor.flash" -exec rm {} \;
