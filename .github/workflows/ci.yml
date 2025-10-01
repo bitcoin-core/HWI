@@ -114,10 +114,7 @@ jobs:
     with:
       sim: trezor
       include: ${{ needs.prepare-sim-matrices.outputs.trezor }}
-      # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
-      # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
-      # Trezor T binaries don't need this.
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   sim-builder-coldcard:
     name: Coldcard sim builder
@@ -126,7 +123,7 @@ jobs:
     with:
       sim: coldcard
       include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   sim-builder-bitbox:
     name: Bitbox sim builder
@@ -162,7 +159,7 @@ jobs:
     with:
       sim: keepkey
       include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   ledger-s-app-builder:
     name: Ledger Nano S Bitcoin App builder
@@ -180,9 +177,7 @@ jobs:
 
   bitcoind-builder:
     name: bitcoind builder
-    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep binaries
-    # compatible with Debian Bookworm (glibc 2.36) Python containers.
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-bitcoind
@@ -220,7 +215,7 @@ jobs:
     needs: [sim-builder-coldcard, bitcoind-builder, dist-builder]
     with:
       device: coldcard
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   test-bitbox01:
     uses: ./.github/workflows/device-test.yml
