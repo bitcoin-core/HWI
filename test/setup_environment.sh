@@ -92,13 +92,12 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     if [[ -n ${build_trezor_1} ]]; then
         # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
-        poetry install
+        uv sync
         cd legacy
         export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
         export CC=gcc-12
-        poetry run pip install protobuf==3.20.0
-        poetry run script/setup
-        poetry run script/cibuild
+        uv run script/setup
+        uv run script/cibuild
         # Delete any emulator.img file
         find . -name "emulator.img" -exec rm {} \;
         cd ..
@@ -113,10 +112,10 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
-        poetry install
+        uv sync
         cd core
         export CC=gcc-12
-        poetry run make build_unix
+        uv run make build_unix
         # Delete any emulator.img file
         find . -name "trezor.flash" -exec rm {} \;
         cd ..
