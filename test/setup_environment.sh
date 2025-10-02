@@ -156,6 +156,9 @@ if [[ -n ${build_coldcard} ]]; then
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
+        pushd ../external/micropython
+        git apply ../../ubuntu24_mpy.patch
+        popd
         pushd ../external/micropython/mpy-cross/
         make
         popd
