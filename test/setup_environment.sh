@@ -236,7 +236,9 @@ if [[ -n ${build_keepkey} ]]; then
         git clean -ffdx
         git clone https://github.com/nanopb/nanopb.git -b nanopb-0.3.9.4
     fi
-    cd nanopb/generator/proto
+    cd nanopb
+    git am ../../../data/nanopb-deprecated-mode.patch
+    cd generator/proto
     make
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
