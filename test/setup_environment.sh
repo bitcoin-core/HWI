@@ -67,7 +67,7 @@ cd work
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
     if [ ! -d "trezor-firmware" ]; then
-        git clone --recursive https://github.com/trezor/trezor-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules https://github.com/trezor/trezor-firmware.git
         cd trezor-firmware
     else
         cd trezor-firmware
@@ -127,7 +127,7 @@ if [[ -n ${build_coldcard} ]]; then
     # Clone coldcard firmware if it doesn't exist, or update it if it does
     coldcard_setup_needed=false
     if [ ! -d "firmware" ]; then
-        git clone --recursive https://github.com/Coldcard/firmware.git
+        git clone --recursive --depth 1 --shallow-submodules https://github.com/Coldcard/firmware.git
         cd firmware
         coldcard_setup_needed=true
     else
@@ -201,7 +201,7 @@ if [[ -n ${build_keepkey} ]]; then
     # Clone keepkey firmware if it doesn't exist, or update it if it does
     keepkey_setup_needed=false
     if [ ! -d "keepkey-firmware" ]; then
-        git clone --recursive https://github.com/keepkey/keepkey-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules https://github.com/keepkey/keepkey-firmware.git
         cd keepkey-firmware
         keepkey_setup_needed=true
     else
@@ -253,7 +253,7 @@ if [[ -n ${build_ledger} ]]; then
     pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
-        git clone --recursive https://github.com/LedgerHQ/speculos.git
+        git clone --recursive --depth 1 --shallow-submodules https://github.com/LedgerHQ/speculos.git
         cd speculos
     else
         cd speculos
