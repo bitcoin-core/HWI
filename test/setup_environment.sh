@@ -250,15 +250,11 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    speculos_packages="construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract"
-    poetry run pip install ${speculos_packages}
-    pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
         git clone --recursive --depth 1 --shallow-submodules https://github.com/LedgerHQ/speculos.git
-        cd speculos
     else
-        cd speculos
+        pushd speculos
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -272,12 +268,19 @@ if [[ -n ${build_ledger} ]]; then
         elif [ $LOCAL = $BASE ]; then
             git pull
         fi
+        popd
     fi
+
+    poetry run pip install -e ./speculos
+    pip install -e ./speculos
+
+    cd speculos
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
     cmake -Bbuild -S .
     make -C build/
+
     cd ..
 fi
 
