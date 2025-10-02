@@ -30,6 +30,9 @@ runs:
         git config --global user.email 'ci@ci.com'
         git config --global user.name 'ci'
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        # Rewrite lwip URLs to github mirror to avoid stalling issue
+        git config --global --add url."https://github.com/lwip-tcpip/lwip.git".insteadOf "https://git.savannah.gnu.org/r/lwip.git"
+        git config --global --add url."https://github.com/lwip-tcpip/lwip.git".insteadOf "https://git.savannah.nongnu.org/git/lwip.git"
         cd test
         ./setup_environment.sh --"${{ inputs.name }}"
         cd ..
