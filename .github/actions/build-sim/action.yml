@@ -17,7 +17,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build
+        sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build libltdl-dev
         pip install poetry uv
         wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
         sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
