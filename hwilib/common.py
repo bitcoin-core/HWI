@@ -14,11 +14,12 @@ class Chain(Enum):
     """
     The blockchain network to use
     """
-    MAIN = 0 #: Bitcoin Main network
-    TEST = 1 #: Bitcoin Test network
-    REGTEST = 2 #: Bitcoin Core Regression Test network
-    SIGNET = 3 #: Bitcoin Signet
-    TESTNET4 = 4 #: Bitcoin Test network
+    # [DASHIFIED] removed SIGNET, TESTNET4 and changed comments
+    MAIN = 0 #: Dash Main network
+    TEST = 1 #: Dash Test network
+    REGTEST = 2 #: Dash Core Regression Test network
+#    SIGNET = 3 #: Bitcoin Signet
+#    TESTNET4 = 4 #: Bitcoin Test network
 
     def __str__(self) -> str:
         return str(self.name).lower()
@@ -38,10 +39,11 @@ class AddressType(Enum):
     """
     The type of address to use
     """
+    # [DASHIFIED] removed WIT, SH_WIT and TAP addresses
     LEGACY = 1 #: Legacy address type. P2PKH for single sig, P2SH for scripts.
-    WIT = 2 #: Native segwit v0 address type. P2WPKH for single sig, P2WSH for scripts.
-    SH_WIT = 3 #: Nested segwit v0 address type. P2SH-P2WPKH for single sig, P2SH-P2WSH for scripts.
-    TAP = 4 #: Segwit v1 Taproot address type. P2TR always.
+#    WIT = 2 #: Native segwit v0 address type. P2WPKH for single sig, P2WSH for scripts.
+#    SH_WIT = 3 #: Nested segwit v0 address type. P2SH-P2WPKH for single sig, P2SH-P2WSH for scripts.
+#    TAP = 4 #: Segwit v1 Taproot address type. P2TR always.
 
     def __str__(self) -> str:
         return str(self.name).lower()

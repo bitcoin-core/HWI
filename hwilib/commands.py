@@ -173,7 +173,8 @@ def find_device(
             pass # Ignore things we wouldn't get fingerprints for
     return None
 
-def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressType.WIT, account: int = 0) -> Dict[str, str]:
+# [DASHIFIED] default address type is changed to legacy
+def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressType.LEGACY, account: int = 0) -> Dict[str, str]:
     """
     Get the master extended public key from a client
 
@@ -238,7 +239,8 @@ def getkeypool_inner(
     internal: bool = False,
     keypool: bool = True,
     account: int = 0,
-    addr_type: AddressType = AddressType.WIT
+    # [DASHIFIED] default address type is changed to legacy
+    addr_type: AddressType = AddressType.LEGACY
 ) -> List[Dict[str, Any]]:
     """
     :meta private:
@@ -276,7 +278,8 @@ def getdescriptor(
     master_fpr: bytes,
     path: Optional[str] = None,
     internal: bool = False,
-    addr_type: AddressType = AddressType.WIT,
+    # [DASHIFIED] default address type is changed to legacy
+    addr_type: AddressType = AddressType.LEGACY,
     account: int = 0,
     start: Optional[int] = None,
     end: Optional[int] = None
@@ -334,12 +337,12 @@ def getdescriptor(
         p &= ~HARDENED_FLAG
         path_suffix += "/{}{}".format(p, "h" if hardened else "")
     path_suffix += "/*"
-
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
     pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix)
+    # [DASHIFIED] default address type is changed to legacy
     if addr_type is AddressType.LEGACY:
         return PKHDescriptor(pubkey)
     elif addr_type is AddressType.SH_WIT:
@@ -361,7 +364,8 @@ def getkeypool(
     internal: bool = False,
     keypool: bool = True,
     account: int = 0,
-    addr_type: AddressType = AddressType.WIT,
+    # [DASHIFIED] default address type is changed to legacy
+    addr_type: AddressType = AddressType.LEGACY,
     addr_all: bool = False
 ) -> List[Dict[str, Any]]:
     """
@@ -416,7 +420,6 @@ def getdescriptors(
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
     master_fpr = client.get_master_fingerprint()
-
     result = {}
 
     for internal in [False, True]:
@@ -441,7 +444,8 @@ def displayaddress(
     client: HardwareWalletClient,
     path: Optional[str] = None,
     desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.WIT
+    # [DASHIFIED] default address type is changed to legacy
+    addr_type: AddressType = AddressType.LEGACY
 ) -> Dict[str, str]:
     """
     Display an address on the device for client.
@@ -459,6 +463,7 @@ def displayaddress(
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
         descriptor = parse_descriptor(desc)
+        # [DASHIFIED] default address type is changed to legacy
         addr_type = AddressType.LEGACY
         is_sh = isinstance(descriptor, SHDescriptor)
         is_wsh = isinstance(descriptor, WSHDescriptor)

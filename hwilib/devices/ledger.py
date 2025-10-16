@@ -112,13 +112,14 @@ cancels = [
 ]
 
 # The priority of address types we want for signing.
+# [DASHIFIED] re-ordered address types priorities. We have legacy only
 # We want to do Taproot first, then segwit, then legacy
 # Higher number is lower priority so that sort does not require reversing.
 signing_priority = {
-    AddressType.TAP: 0,
-    AddressType.WIT: 1,
-    AddressType.SH_WIT: 2,
-    AddressType.LEGACY: 3,
+    AddressType.LEGACY: 0,
+#    AddressType.TAP: 0,
+#    AddressType.WIT: 1,
+#    AddressType.SH_WIT: 2,
 }
 
 def handle_chip_exception(e: Union[BTChipException, ApduException], func_name: str) -> bool:

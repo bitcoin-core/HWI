@@ -1,9 +1,9 @@
-# Bitcoin Hardware Wallet Interface
+# Dash Hardware Wallet Interface
 
 [![Build Status](https://api.cirrus-ci.com/github/bitcoin-core/HWI.svg)](https://cirrus-ci.com/github/bitcoin-core/HWI)
 [![Documentation Status](https://readthedocs.org/projects/hwi/badge/?version=latest)](https://hwi.readthedocs.io/en/latest/?badge=latest)
 
-The Bitcoin Hardware Wallet Interface is a Python library and command line tool for interacting with hardware wallets.
+The Dash Hardware Wallet Interface is a Python library and command line tool for interacting with hardware wallets.
 It provides a standard way for software to work with hardware wallets without needing to implement device specific drivers.
 Python software can use the provided library (`hwilib`). Software in other languages can execute the `hwi` tool.
 
@@ -31,7 +31,7 @@ brew install libusb
 ## Install
 
 ```
-git clone https://github.com/bitcoin-core/HWI.git
+git clone https://github.com/dashpay/HWI.git
 cd HWI
 poetry install # or 'pip3 install .' or 'python3 setup.py install'
 ```
@@ -93,10 +93,11 @@ Documentation for HWI can be found on [readthedocs.io](https://hwi.readthedocs.i
 
 For documentation on devices supported and how they are supported, please check the [device support page](https://hwi.readthedocs.io/en/latest/devices/index.html#support-matrix)
 
-### Using with Bitcoin Core
+### Using with Dash Core
 
 See [Using Bitcoin Core with Hardware Wallets](https://hwi.readthedocs.io/en/latest/examples/bitcoin-core-usage.html).
 
 ## License
 
+This project is a fork of Bitcoin HWI: https://github.com/bitcoin-core/hwi
 This project is available under the MIT License, Copyright Andrew Chow.

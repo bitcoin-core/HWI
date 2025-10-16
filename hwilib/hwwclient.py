@@ -37,14 +37,16 @@ class HardwareWalletClient(object):
         """
         self.path = path
         self.password = password
-        self.message_magic = b"\x18Bitcoin Signed Message:\n"
+        # [DASHIFIED] prefix for message signing
+        self.message_magic = b"\x19DarkCoin Signed Message:\n"
         self.chain = chain
         self.fingerprint: Optional[str] = None
         # {bip32_path: <xpub string>}
         self.xpub_cache: Dict[str, str] = {}
         self.expert = expert
 
-    def get_master_xpub(self, addrtype: AddressType = AddressType.WIT, account: int = 0) -> ExtendedKey:
+    # [DASHIFIED] default address type is changed to legacy
+    def get_master_xpub(self, addrtype: AddressType = AddressType.LEGACY, account: int = 0) -> ExtendedKey:
         """
         Retrieves a BIP 44 master public key
 

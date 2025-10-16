@@ -369,14 +369,15 @@ def get_bip44_purpose(addrtype: AddressType) -> int:
 
     :param addrtype: The address type
     """
+    # [DASHIFIED] commented out unused types of addresses
     if addrtype == AddressType.LEGACY:
         return 44
-    elif addrtype == AddressType.SH_WIT:
-        return 49
-    elif addrtype == AddressType.WIT:
-        return 84
-    elif addrtype == AddressType.TAP:
-        return 86
+#    elif addrtype == AddressType.SH_WIT:
+#        return 49
+#    elif addrtype == AddressType.WIT:
+#        return 84
+#    elif addrtype == AddressType.TAP:
+#        return 86
     else:
         raise ValueError("Unknown address type")
 
@@ -385,26 +386,28 @@ def get_bip44_chain(chain: Chain) -> int:
     """
     Determine the BIP 44 coin type based on the Bitcoin chain type.
 
-    For the Bitcoin mainnet chain, this returns 0. For the other chains, this returns 1.
+    For the Dash mainnet chain, this returns 5. For the other chains, this returns 1.
 
     :param chain: The chain
     """
+    # [DASHIFIED] changed type of chain to 5 (from 0 [bitcoin])
     if chain == Chain.MAIN:
-        return 0
+        return 5
     else:
         return 1
 
 def get_addrtype_from_bip44_purpose(index: int) -> Optional[AddressType]:
     purpose = index & ~HARDENED_FLAG
 
+    # [DASHIFIED] commented out unused types of addresses
     if purpose == 44:
         return AddressType.LEGACY
-    elif purpose == 49:
-        return AddressType.SH_WIT
-    elif purpose == 84:
-        return AddressType.WIT
-    elif purpose == 86:
-        return AddressType.TAP
+#    elif purpose == 49:
+#        return AddressType.SH_WIT
+#    elif purpose == 84:
+#        return AddressType.WIT
+#    elif purpose == 86:
+#        return AddressType.TAP
     else:
         return None
 
