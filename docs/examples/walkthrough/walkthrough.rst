@@ -178,7 +178,7 @@ Send funds with Bitcoin Core and Trezor using HWI
 
 * HWI: close HWI GUI
 * CORE: close Core wallet
-* you are done! Pad yourself on the shoulder ;)
+* you are done! Pat yourself on the shoulder ;)
 
 Versions Used
 =============
