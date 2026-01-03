@@ -1,0 +1,483 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 3.1.1)"
+        required: true
+        type: string
+      create_release:
+        description: "Create GitHub release"
+        required: true
+        type: boolean
+        default: true
+
+env:
+  LC_ALL: C.UTF-8
+  LANG: C.UTF-8
+  LANGUAGE: C.UTF-8
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Validate version consistency before building
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag or input
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            # Extract version from tag (semver format, no 'v' prefix)
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Verify version in pyproject.toml
+        run: |
+          PYPROJECT_VERSION=$(grep -Po '(?<=^version = ")[^"]*' pyproject.toml)
+          echo "pyproject.toml version: $PYPROJECT_VERSION"
+          echo "Expected version: ${{ steps.get_version.outputs.version }}"
+          if [ "$PYPROJECT_VERSION" != "${{ steps.get_version.outputs.version }}" ]; then
+            echo "::warning::Version mismatch: pyproject.toml has $PYPROJECT_VERSION but releasing ${{ steps.get_version.outputs.version }}"
+          fi
+
+      - name: Verify version in hwilib/__init__.py
+        run: |
+          INIT_VERSION=$(grep -Po '(?<=__version__ = ")[^"]*' hwilib/__init__.py)
+          echo "hwilib/__init__.py version: $INIT_VERSION"
+          echo "Expected version: ${{ steps.get_version.outputs.version }}"
+          if [ "$INIT_VERSION" != "${{ steps.get_version.outputs.version }}" ]; then
+            echo "::warning::Version mismatch: hwilib/__init__.py has $INIT_VERSION but releasing ${{ steps.get_version.outputs.version }}"
+          fi
+
+  # Build Linux x86_64 binaries and Python distributions
+  build-linux:
+    name: Build Linux x86_64
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build --no-cache -t hwi-builder -f contrib/build.Dockerfile .
+
+      - name: Build binaries and distributions
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/opt/hwi \
+            --workdir /opt/hwi \
+            hwi-builder \
+            /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh"
+
+      - name: List build artifacts
+        run: |
+          echo "=== dist/ contents ==="
+          ls -la dist/
+          echo ""
+          echo "=== Artifact details ==="
+          find dist/ -type f -exec sha256sum {} \;
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64-artifacts
+          path: |
+            dist/hwi-*-linux-*.tar.gz
+          retention-days: 5
+
+      - name: Upload Python distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist-artifacts
+          path: |
+            dist/*.whl
+            dist/hwi-*.tar.gz
+            !dist/hwi-*-linux-*.tar.gz
+            !dist/hwi-*-windows-*.zip
+          retention-days: 5
+
+  # Build Linux ARM64 binaries (without GUI)
+  build-linux-arm64:
+    name: Build Linux ARM64
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ARM64 Docker image
+        run: |
+          docker buildx build \
+            --no-cache \
+            --platform linux/arm64 \
+            --load \
+            -t hwi-builder-arm64 \
+            -f contrib/build.Dockerfile .
+
+      - name: Build ARM64 binaries
+        run: |
+          docker run --rm \
+            --platform linux/arm64 \
+            -v ${{ github.workspace }}:/opt/hwi \
+            --workdir /opt/hwi \
+            hwi-builder-arm64 \
+            /bin/bash -c "contrib/build_bin.sh --without-gui"
+
+      - name: List build artifacts
+        run: |
+          echo "=== dist/ contents ==="
+          ls -la dist/
+          echo ""
+          echo "=== Artifact details ==="
+          find dist/ -type f -name "*arm*" -exec sha256sum {} \;
+
+      - name: Upload ARM64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-artifacts
+          path: |
+            dist/hwi-*-linux-*.tar.gz
+          retention-days: 5
+
+  # Build macOS x86_64 binaries (Intel)
+  build-macos-intel:
+    name: Build macOS x86_64
+    needs: validate
+    runs-on: macos-15-intel
+    env:
+      PYTHON_VERSION: "3.9.19"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install pyenv
+          # Install libusb only if not already present
+          brew list libusb &>/dev/null || brew install libusb
+
+      - name: Setup pyenv and install Python
+        run: |
+          echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+          echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+          echo 'eval "$(pyenv init --path)"' >> ~/.bash_profile
+          echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bash_profile
+          source ~/.bash_profile
+
+          # Install Python with the reproducible patch
+          cat contrib/reproducible-python.diff | \
+            PYTHON_CONFIGURE_OPTS="--enable-framework" \
+            BUILD_DATE="Jan  1 2019" \
+            BUILD_TIME="00:00:00" \
+            pyenv install -kp ${{ env.PYTHON_VERSION }}
+
+          pyenv global ${{ env.PYTHON_VERSION }}
+
+      - name: Build macOS binaries
+        run: |
+          source ~/.bash_profile
+          eval "$(pyenv init --path)"
+          eval "$(pyenv virtualenv-init -)"
+          contrib/build_bin.sh --with-gui
+
+      - name: List build artifacts
+        run: |
+          echo "=== dist/ contents ==="
+          ls -la dist/
+          echo ""
+          echo "=== Artifact details ==="
+          find dist/ -type f -name "*mac*" -exec shasum -a 256 {} \;
+
+      - name: Upload macOS Intel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x86_64-artifacts
+          path: |
+            dist/hwi-*-mac-*.tar.gz
+          retention-days: 5
+
+  # Build macOS ARM64 binaries (Apple Silicon)
+  build-macos-arm:
+    name: Build macOS ARM64
+    needs: validate
+    runs-on: macos-15
+    env:
+      PYTHON_VERSION: "3.9.19"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install pyenv
+          # libusb is pre-installed on macos-15 ARM runners
+          brew list libusb &>/dev/null || brew install libusb
+
+      - name: Setup pyenv and install Python
+        run: |
+          echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
+          echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
+          echo 'eval "$(pyenv init --path)"' >> ~/.zshrc
+          echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.zshrc
+          source ~/.zshrc
+
+          # Install Python with the reproducible patch
+          cat contrib/reproducible-python.diff | \
+            PYTHON_CONFIGURE_OPTS="--enable-framework" \
+            BUILD_DATE="Jan  1 2019" \
+            BUILD_TIME="00:00:00" \
+            pyenv install -kp ${{ env.PYTHON_VERSION }}
+
+          pyenv global ${{ env.PYTHON_VERSION }}
+
+      - name: Build macOS binaries
+        run: |
+          source ~/.zshrc
+          eval "$(pyenv init --path)"
+          eval "$(pyenv virtualenv-init -)"
+          # ARM64 builds without GUI (Qt not supported)
+          contrib/build_bin.sh --without-gui
+
+      - name: List build artifacts
+        run: |
+          echo "=== dist/ contents ==="
+          ls -la dist/
+          echo ""
+          echo "=== Artifact details ==="
+          find dist/ -type f -name "*mac*" -exec shasum -a 256 {} \;
+
+      - name: Upload macOS ARM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-artifacts
+          path: |
+            dist/hwi-*-mac-*.tar.gz
+          retention-days: 5
+
+  # Build Windows binaries using Wine
+  build-windows:
+    name: Build Windows x86_64
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Wine Docker image
+        run: |
+          docker build --no-cache -t hwi-wine-builder -f contrib/build-wine.Dockerfile .
+
+      - name: Build Windows binaries
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/opt/hwi \
+            --workdir /opt/hwi \
+            hwi-wine-builder \
+            /bin/bash -c "contrib/build_wine.sh"
+
+      - name: List build artifacts
+        run: |
+          echo "=== dist/ contents ==="
+          ls -la dist/
+          echo ""
+          echo "=== Artifact details ==="
+          find dist/ -type f -name "*windows*" -exec sha256sum {} \;
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64-artifacts
+          path: |
+            dist/hwi-*-windows-*.zip
+          retention-days: 5
+
+  # Generate checksums, attest artifacts, and create release
+  release:
+    name: Create Release
+    needs:
+      [
+        validate,
+        build-linux,
+        build-linux-arm64,
+        build-macos-intel,
+        build-macos-arm,
+        build-windows,
+      ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.whl" \) -exec cp {} release/ \;
+          echo "=== Release artifacts ==="
+          ls -la release/
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          echo "=== SHA256SUMS.txt ==="
+          cat SHA256SUMS.txt
+
+      - name: Attest Linux x86_64 binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-*-linux-x86_64.tar.gz
+
+      - name: Attest Linux ARM64 binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-*-linux-aarch64.tar.gz
+
+      - name: Attest macOS Intel binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-*-mac-x86_64.tar.gz
+
+      - name: Attest macOS ARM binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-*-mac-arm64.tar.gz
+
+      - name: Attest Windows binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-*-windows-x86_64.zip
+
+      - name: Attest Python wheel
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/*.whl
+
+      - name: Attest Python sdist
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/hwi-${{ needs.validate.outputs.version }}.tar.gz
+
+      - name: Attest SHA256SUMS
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/SHA256SUMS.txt
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          UPSTREAM_COMMIT=$(git rev-parse HEAD)
+
+          cat << EOF > release_notes.md
+          ## HWI $VERSION
+
+          Hardware Wallet Interface - command line tool and Python library for interacting with hardware wallets.
+
+          ### Build Information
+          - **Version:** $VERSION
+          - **Commit:** \`$UPSTREAM_COMMIT\`
+          - **Build date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ### Artifacts
+
+          | Platform | Architecture | GUI | File |
+          |----------|--------------|-----|------|
+          | Linux | x86_64 | ✅ | \`hwi-$VERSION-linux-x86_64.tar.gz\` |
+          | Linux | aarch64 | ❌ | \`hwi-$VERSION-linux-aarch64.tar.gz\` |
+          | macOS | x86_64 (Intel) | ✅ | \`hwi-$VERSION-mac-x86_64.tar.gz\` |
+          | macOS | arm64 (Apple Silicon) | ❌ | \`hwi-$VERSION-mac-arm64.tar.gz\` |
+          | Windows | x86_64 | ✅ | \`hwi-$VERSION-windows-x86_64.zip\` |
+          | Python | any | ✅ | \`hwi-$VERSION-py3-none-any.whl\` |
+
+          ### Verification
+
+          This release uses [immutable releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases#immutable-releases) and [artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) to provide cryptographic proof of build provenance.
+
+          **Download artifacts first**, either from the GitHub release page or via CLI:
+          \`\`\`bash
+          # Download a specific asset
+          gh release download $VERSION --repo bitcoin-core/HWI --pattern 'hwi-*-linux-x86_64.tar.gz'
+
+          # Or download all assets
+          gh release download $VERSION --repo bitcoin-core/HWI
+          \`\`\`
+
+          **Verify Immutable Release Assets:**
+          \`\`\`bash
+          # Verify a specific asset was published via immutable release
+          gh release verify-asset hwi-$VERSION-linux-x86_64.tar.gz --repo bitcoin-core/HWI
+
+          # Or verify all downloaded assets
+          for f in hwi-$VERSION* SHA256SUMS.txt; do gh release verify-asset "\$f" --repo bitcoin-core/HWI; done
+          \`\`\`
+
+          **Verify Artifact Attestations:**
+          \`\`\`bash
+          # Verify build provenance attestation for a specific artifact
+          gh attestation verify hwi-$VERSION-linux-x86_64.tar.gz --repo bitcoin-core/HWI
+
+          # Or verify all downloaded assets
+          for f in hwi-$VERSION* SHA256SUMS.txt; do gh attestation verify "\$f" --repo bitcoin-core/HWI; done
+
+          # Successful verification confirms:
+          # - The artifact was built by GitHub Actions in this repository
+          # - The specific workflow file and commit that produced it
+          # - The artifact has not been modified since the build
+          \`\`\`
+
+          **SHA256 Checksums:**
+          \`\`\`bash
+          # Download SHA256SUMS.txt and verify file integrity
+          sha256sum -c SHA256SUMS.txt
+          \`\`\`
+          EOF
+
+          echo "Generated release notes"
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' || inputs.create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: HWI ${{ needs.validate.outputs.version }}
+          body_path: release_notes.md
+          fail_on_unmatched_files: true
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release artifacts (for workflow_dispatch without release)
+        if: github.event_name == 'workflow_dispatch' && !inputs.create_release
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-release-artifacts
+          path: release/
+          retention-days: 30
