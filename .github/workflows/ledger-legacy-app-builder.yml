@@ -11,10 +11,12 @@ jobs:
   build:
     name: Build Bitcoin Legacy App
     runs-on: ${{ inputs.runs-on }}
-    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    # Pin to 4.23.0 for SDK v25.9.0 compatibility with Speculos v0.25.10
+    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:4.23.0
     steps:
       - run: |
-          git clone https://github.com/LedgerHQ/app-bitcoin.git -b legacy-1.6.6
+          # Pin to legacy-1.6.6 HEAD commit for reproducibility
+          git clone --depth 1 https://github.com/LedgerHQ/app-bitcoin.git -b legacy-1.6.6
           cd app-bitcoin
           make DEBUG=1 BOLOS_SDK=$NANOSP_SDK
       - uses: actions/upload-artifact@v4
