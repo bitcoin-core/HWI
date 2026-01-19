@@ -280,6 +280,7 @@ class TestGetKeypool(DeviceTestCase):
         for arg in getkeypool_args:
             with self.subTest(addrtype=arg[0]):
                 desc = self.do_command(self.dev_args + ["getkeypool", "--addr-type", arg[0], "0", "20"])
+                self.assertIsInstance(desc, list, f"getkeypool returned error: {desc}")
                 import_result = self.wrpc.importdescriptors(desc)
                 self.assertTrue(import_result[0]["success"])
                 for _ in range(0, 21):
@@ -294,6 +295,7 @@ class TestGetKeypool(DeviceTestCase):
         self.assertEqual(all_keypool_desc, descs)
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', "--addr-type", "sh_wit", '--account', '3', '0', '20'])
+        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -302,6 +304,7 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('p2sh-segwit'))
             self.assertTrue(addr_info['hdkeypath'].startswith("m/49h/1h/3h/1/"))
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--account', '3', '0', '20'])
+        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -311,6 +314,7 @@ class TestGetKeypool(DeviceTestCase):
             self.assertTrue(addr_info['hdkeypath'].startswith("m/84h/1h/3h/1/"))
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
+        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         for _ in range(0, 21):
@@ -481,6 +485,7 @@ class TestSignTx(DeviceTestCase):
     def _test_signtx(self, input_types, multisig_types, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--all', '30', '50'])
+        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         sh_wpkh_addr = self.wrpc.getnewaddress('', 'p2sh-segwit')
@@ -602,6 +607,7 @@ class TestSignTx(DeviceTestCase):
 
         # make a huge transaction
         keypool_desc = self.do_command(self.dev_args + ["getkeypool", "--account", "10", "--addr-type", "sh_wit", "0", "100"])
+        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
         import_result = self.wrpc.importdescriptors(keypool_desc)
         self.assertTrue(import_result[0]['success'])
         outputs = []
