@@ -80,9 +80,13 @@ class JadeEmulator(DeviceEmulator):
             )
             time.sleep(5)
 
-            # Wait for emulator to be up
+            # Wait for emulator to be up (max 5 minutes)
+            MAX_STARTUP_TIME = 300
+            start_time = time.time()
             while True:
                 # Prevent CI from lingering until timeout:
+                if time.time() - start_time > MAX_STARTUP_TIME:
+                    raise RuntimeError("Jade simulator startup timed out after 5 minutes")
                 if self.emulator_proc.poll() is not None:
                     raise RuntimeError(f"Jade simulator failed with exit code {self.emulator_proc.poll()}")
 
