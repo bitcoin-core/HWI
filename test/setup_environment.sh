@@ -64,10 +64,17 @@ set -ex
 mkdir -p work
 cd work
 
+# Pinned firmware versions
+TREZOR_VERSION="core/v2.9.6"
+BITBOX01_VERSION="v7.1.0"
+BITBOX02_VERSION="firmware/v9.24.0"
+KEEPKEY_VERSION="v7.10.0"
+SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
+
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
     if [ ! -d "trezor-firmware" ]; then
-        git clone --recursive --depth 1 --shallow-submodules https://github.com/trezor/trezor-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules --branch ${TREZOR_VERSION} https://github.com/trezor/trezor-firmware.git
         cd trezor-firmware
     else
         cd trezor-firmware
@@ -172,7 +179,7 @@ fi
 if [[ -n ${build_bitbox01} ]]; then
     # Clone digital bitbox firmware if it doesn't exist, or update it if it does
     if [ ! -d "mcu" ]; then
-        git clone --recursive https://github.com/digitalbitbox/mcu.git
+        git clone --recursive --branch ${BITBOX01_VERSION} https://github.com/digitalbitbox/mcu.git
         cd mcu
     else
         cd mcu
@@ -204,7 +211,7 @@ if [[ -n ${build_keepkey} ]]; then
     # Clone keepkey firmware if it doesn't exist, or update it if it does
     keepkey_setup_needed=false
     if [ ! -d "keepkey-firmware" ]; then
-        git clone --recursive --depth 1 --shallow-submodules https://github.com/keepkey/keepkey-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules --branch ${KEEPKEY_VERSION} https://github.com/keepkey/keepkey-firmware.git
         cd keepkey-firmware
         keepkey_setup_needed=true
     else
@@ -255,7 +262,7 @@ fi
 if [[ -n ${build_ledger} ]]; then
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
-        git clone --recursive --depth 1 --shallow-submodules https://github.com/LedgerHQ/speculos.git
+        git clone --recursive --depth 1 --shallow-submodules --branch ${SPECULOS_VERSION} https://github.com/LedgerHQ/speculos.git
     else
         pushd speculos
         git fetch
@@ -395,7 +402,7 @@ fi
 if [[ -n ${build_bitbox02} ]]; then
     # Clone digital bitbox02 firmware if it doesn't exist, or update it if it does
     if [ ! -d "bitbox02-firmware" ]; then
-        git clone --recursive https://github.com/BitBoxSwiss/bitbox02-firmware.git
+        git clone --recursive --branch ${BITBOX02_VERSION} https://github.com/BitBoxSwiss/bitbox02-firmware.git
         cd bitbox02-firmware
     else
         cd bitbox02-firmware
