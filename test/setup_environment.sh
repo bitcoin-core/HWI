@@ -71,6 +71,9 @@ BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
 SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
 
+# Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
+COLDCARD_VERSION="2025-09-30T1238-v5.4.4"
+
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
     if [ ! -d "trezor-firmware" ]; then
@@ -134,7 +137,8 @@ if [[ -n ${build_coldcard} ]]; then
     # Clone coldcard firmware if it doesn't exist, or update it if it does
     coldcard_setup_needed=false
     if [ ! -d "firmware" ]; then
-        git clone --recursive --depth 1 --shallow-submodules https://github.com/Coldcard/firmware.git
+        # Note: cannot use --shallow-submodules because lwip submodule on git.savannah.gnu.org doesn't support it
+        git clone --recursive --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git
         cd firmware
         coldcard_setup_needed=true
     else
@@ -164,6 +168,7 @@ if [[ -n ${build_coldcard} ]]; then
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
         pushd ../external/micropython
+        # Apply Ubuntu 24.04 compiler warning fixes (included in ColdCard firmware v5.4.4+)
         git apply ../../ubuntu24_mpy.patch
         popd
         pushd ../external/micropython/mpy-cross/
