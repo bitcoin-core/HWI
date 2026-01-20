@@ -70,6 +70,7 @@ BITBOX01_VERSION="v7.1.0"
 BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
 SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
+JADE_VERSION="1.0.36"
 
 # Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
 COLDCARD_VERSION="2025-09-30T1238-v5.4.4"
@@ -305,7 +306,7 @@ if [[ -n ${build_jade} ]]; then
 
     # Clone Blockstream Jade firmware if it doesn't exist, or update it if it does
     if [ ! -d "jade" ]; then
-        git clone --recursive --branch master https://github.com/Blockstream/Jade.git ./jade
+        git clone --recursive --branch ${JADE_VERSION} https://github.com/Blockstream/Jade.git ./jade
         cd jade
     else
         cd jade
