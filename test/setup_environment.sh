@@ -69,7 +69,7 @@ TREZOR_VERSION="core/v2.9.6"
 BITBOX01_VERSION="v7.1.0"
 BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
-SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
+SPECULOS_VERSION="v0.25.10"  # v0.25.11+ requires Python >=3.10
 JADE_VERSION="1.0.36"
 
 # Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml

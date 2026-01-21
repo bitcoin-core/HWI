@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.13"
+python = "^3.10,<3.13"
 hidapi = ">=0.14.0"
 ecdsa = "~0"
 pyaes = "^1.6"
