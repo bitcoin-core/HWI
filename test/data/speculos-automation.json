@@ -2,8 +2,25 @@
     "version": 1,
     "rules": [
         {
+            "regexp": "^(Security risk|High fees warning).*",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
             "text": "Confirm",
             "x": 43, "y": 37,
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "text": "Confirm",
+            "x": 41, "y": 34,
             "actions": [
                 [ "button", 1, true ],
                 [ "button", 2, true ],
@@ -28,7 +45,7 @@
             ]
         },
         {
-            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Spend from|Wallet name|Wallet policy|Descriptor template|Verify Bitcoin|Output|Warning).*",
+            "regexp": "^(Address|Review|Amount|External amounts|You spend|You receive|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Our key|Their key|Unspendable key|Spend from|Spending policy|Primary spending path|Spending path|Transaction output|Wallet name|Wallet policy|Descriptor template|Verify [Bb]itcoin|Output|Warning).*",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]

@@ -47,12 +47,14 @@ class LedgerEmulator(DeviceEmulator):
         self.include_xpubs = True
         self.supports_device_multiple_multisig = True
         self.supports_legacy = True
+        # Bitcoin app 2.5.0 enforces standard Ledger paths for xpub derivation.
+        self.supports_arbitrary_keypool_paths = legacy
 
     def start(self):
         super().start()
         automation_path = os.path.abspath("data/speculos-automation.json")
         app_path = f"./apps/btc-test{'-legacy' if self.legacy else ''}.elf"
-        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.6" if self.legacy else "Bitcoin Test:2.4.1"
+        os.environ["SPECULOS_APPNAME"] = "Bitcoin Test:1.6.6" if self.legacy else "Bitcoin Test:2.5.0"
 
         self.emulator_stderr = open('ledger-emulator.stderr', 'a')
         # Start the emulator
