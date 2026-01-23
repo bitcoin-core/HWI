@@ -25,6 +25,8 @@ from test_device import (
 class BitBox02Emulator(DeviceEmulator):
     # Maximum time to wait for simulator startup (5 minutes)
     MAX_STARTUP_TIME = 300
+    # Maximum time to wait for simulator shutdown
+    MAX_SHUTDOWN_TIME = 30
 
     def __init__(self, simulator):
         self.simulator = simulator
@@ -86,7 +88,11 @@ class BitBox02Emulator(DeviceEmulator):
     def stop(self):
         super().stop()
         self.simulator_proc.terminate()
-        self.simulator_proc.wait()
+        try:
+            self.simulator_proc.wait(timeout=self.MAX_SHUTDOWN_TIME)
+        except subprocess.TimeoutExpired:
+            self.simulator_proc.kill()
+            self.simulator_proc.wait(timeout=5)
         self.log.close()
         atexit.unregister(self.stop)
 
