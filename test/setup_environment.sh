@@ -64,10 +64,21 @@ set -ex
 mkdir -p work
 cd work
 
+# Pinned firmware versions
+TREZOR_VERSION="core/v2.9.6"
+BITBOX01_VERSION="v7.1.0"
+BITBOX02_VERSION="firmware/v9.24.0"
+KEEPKEY_VERSION="v7.10.0"
+SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
+JADE_VERSION="1.0.36"
+
+# Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
+COLDCARD_VERSION="2025-09-30T1238-v5.4.4"
+
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
     if [ ! -d "trezor-firmware" ]; then
-        git clone --recursive https://github.com/trezor/trezor-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules --branch ${TREZOR_VERSION} https://github.com/trezor/trezor-firmware.git
         cd trezor-firmware
     else
         cd trezor-firmware
@@ -92,13 +103,12 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     if [[ -n ${build_trezor_1} ]]; then
         # Build trezor one emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
-        poetry install
+        uv sync
         cd legacy
         export EMULATOR=1 TREZOR_TRANSPORT_V1=1 DEBUG_LINK=1 HEADLESS=1
         export CC=gcc-12
-        poetry run pip install protobuf==3.20.0
-        poetry run script/setup
-        poetry run script/cibuild
+        uv run script/setup
+        uv run script/cibuild
         # Delete any emulator.img file
         find . -name "emulator.img" -exec rm {} \;
         cd ..
@@ -113,10 +123,10 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
-        poetry install
+        git am ../../data/trezor-t-build.patch
+        uv sync
         cd core
-        export CC=gcc-12
-        poetry run make build_unix
+        uv run make build_unix
         # Delete any emulator.img file
         find . -name "trezor.flash" -exec rm {} \;
         cd ..
@@ -128,7 +138,8 @@ if [[ -n ${build_coldcard} ]]; then
     # Clone coldcard firmware if it doesn't exist, or update it if it does
     coldcard_setup_needed=false
     if [ ! -d "firmware" ]; then
-        git clone --recursive https://github.com/Coldcard/firmware.git
+        # Note: cannot use --shallow-submodules because lwip submodule on git.savannah.gnu.org doesn't support it
+        git clone --recursive --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git
         cd firmware
         coldcard_setup_needed=true
     else
@@ -157,6 +168,10 @@ if [[ -n ${build_coldcard} ]]; then
     pip install -r requirements.txt
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
+        pushd ../external/micropython
+        # Apply Ubuntu 24.04 compiler warning fixes (included in ColdCard firmware v5.4.4+)
+        git apply ../../ubuntu24_mpy.patch
+        popd
         pushd ../external/micropython/mpy-cross/
         make
         popd
@@ -170,7 +185,7 @@ fi
 if [[ -n ${build_bitbox01} ]]; then
     # Clone digital bitbox firmware if it doesn't exist, or update it if it does
     if [ ! -d "mcu" ]; then
-        git clone --recursive https://github.com/digitalbitbox/mcu.git
+        git clone --recursive --branch ${BITBOX01_VERSION} https://github.com/digitalbitbox/mcu.git
         cd mcu
     else
         cd mcu
@@ -202,7 +217,7 @@ if [[ -n ${build_keepkey} ]]; then
     # Clone keepkey firmware if it doesn't exist, or update it if it does
     keepkey_setup_needed=false
     if [ ! -d "keepkey-firmware" ]; then
-        git clone --recursive https://github.com/keepkey/keepkey-firmware.git
+        git clone --recursive --depth 1 --shallow-submodules --branch ${KEEPKEY_VERSION} https://github.com/keepkey/keepkey-firmware.git
         cd keepkey-firmware
         keepkey_setup_needed=true
     else
@@ -237,7 +252,9 @@ if [[ -n ${build_keepkey} ]]; then
         git clean -ffdx
         git clone https://github.com/nanopb/nanopb.git -b nanopb-0.3.9.4
     fi
-    cd nanopb/generator/proto
+    cd nanopb
+    git am ../../../data/nanopb-deprecated-mode.patch
+    cd generator/proto
     make
     cd ../../../
     export PATH=$PATH:`pwd`/nanopb/generator
@@ -249,15 +266,11 @@ if [[ -n ${build_keepkey} ]]; then
 fi
 
 if [[ -n ${build_ledger} ]]; then
-    speculos_packages="construct flask-cors flask-restful jsonschema mnemonic pyelftools pillow requests pytesseract"
-    poetry run pip install ${speculos_packages}
-    pip install ${speculos_packages}
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
-        git clone --recursive https://github.com/LedgerHQ/speculos.git
-        cd speculos
+        git clone --recursive --depth 1 --shallow-submodules --branch ${SPECULOS_VERSION} https://github.com/LedgerHQ/speculos.git
     else
-        cd speculos
+        pushd speculos
         git fetch
 
         # Determine if we need to pull. From https://stackoverflow.com/a/3278427
@@ -271,12 +284,19 @@ if [[ -n ${build_ledger} ]]; then
         elif [ $LOCAL = $BASE ]; then
             git pull
         fi
+        popd
     fi
+
+    poetry run pip install -e ./speculos
+    pip install -e ./speculos
+
+    cd speculos
 
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
     cmake -Bbuild -S .
     make -C build/
+
     cd ..
 fi
 
@@ -286,7 +306,7 @@ if [[ -n ${build_jade} ]]; then
 
     # Clone Blockstream Jade firmware if it doesn't exist, or update it if it does
     if [ ! -d "jade" ]; then
-        git clone --recursive --branch master https://github.com/Blockstream/Jade.git ./jade
+        git clone --recursive --branch ${JADE_VERSION} https://github.com/Blockstream/Jade.git ./jade
         cd jade
     else
         cd jade
@@ -388,7 +408,7 @@ fi
 if [[ -n ${build_bitbox02} ]]; then
     # Clone digital bitbox02 firmware if it doesn't exist, or update it if it does
     if [ ! -d "bitbox02-firmware" ]; then
-        git clone --recursive https://github.com/BitBoxSwiss/bitbox02-firmware.git
+        git clone --recursive --branch ${BITBOX02_VERSION} https://github.com/BitBoxSwiss/bitbox02-firmware.git
         cd bitbox02-firmware
     else
         cd bitbox02-firmware

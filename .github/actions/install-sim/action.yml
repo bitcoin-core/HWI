@@ -20,12 +20,16 @@ runs:
 
     - if: inputs.device == 'coldcard'
       shell: bash
+      env:
+        # Keep in sync with test/setup_environment.sh
+        COLDCARD_VERSION: "2025-09-30T1238-v5.4.4"
       run: |
         apt-get update
         apt-get install -y libpcsclite-dev libusb-1.0-0 swig
         git config --global user.email "ci@ci.com"
         git config --global user.name "ci"
-        pushd test/work; git clone --recursive https://github.com/Coldcard/firmware.git; popd
+        # Note: cannot use --shallow-submodules because lwip submodule on git.savannah.gnu.org doesn't support it
+        pushd test/work; git clone --recursive --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git; popd
         tar -xvf coldcard-mpy.tar.gz
         pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
         poetry run pip install -r test/work/firmware/requirements.txt
@@ -60,19 +64,24 @@ runs:
         apt-get update
         apt-get install -y libusb-1.0-0 qemu-user-static
         tar -xvf speculos.tar.gz
-        poetry run pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
-        pip install construct flask-cors flask-restful jsonschema ledgered mnemonic pyelftools pillow requests pytesseract
+        poetry run pip install -e test/work/speculos
+        pip install -e test/work/speculos
 
-    - if: inputs.device == 'ledger'
+    - if: startsWith(inputs.device, 'ledger')
       uses: actions/download-artifact@v4
       with:
-        name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_nano_s' || 'ledger_app_nano_x' }}
+        name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_legacy' || 'ledger_app' }}
 
 
     - if: inputs.device == 'ledger'
       shell: bash
       run: |
         mv app.elf test/work/speculos/apps/btc-test.elf
+
+    - if: inputs.device == 'ledger-legacy'
+      shell: bash
+      run: |
+        mv app.elf test/work/speculos/apps/btc-test-legacy.elf
 
     - if: inputs.device == 'keepkey'
       shell: bash

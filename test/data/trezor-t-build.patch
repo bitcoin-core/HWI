@@ -1,0 +1,24 @@
+From 09276b3ab9be5e37cf70ca4adf7e0c1ebf27e9d3 Mon Sep 17 00:00:00 2001
+From: Ava Chow <github@achow101.com>
+Date: Wed, 1 Oct 2025 15:50:09 -0700
+Subject: [PATCH] Remove rust panic_immediate_abort
+
+---
+ core/site_scons/tools.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/core/site_scons/tools.py b/core/site_scons/tools.py
+index 95461bcbd..5ec681d30 100644
+--- a/core/site_scons/tools.py
++++ b/core/site_scons/tools.py
+@@ -169,7 +169,6 @@ def add_rust_lib(*, env, build, profile, features, all_paths, build_dir):
+             "--no-default-features",
+             "--features " + ",".join(lib_features),
+             "-Z build-std=core",
+-            "-Z build-std-features=panic_immediate_abort",
+         ]
+         build_cmd = f"cargo build {profile} " + " ".join(cargo_opts)
+ 
+-- 
+2.51.0
+

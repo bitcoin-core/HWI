@@ -1,0 +1,25 @@
+From 4f69dc003f6f1092cbcdb0152fdee0e303583c8b Mon Sep 17 00:00:00 2001
+From: Ava Chow <github@achow101.com>
+Date: Thu, 2 Oct 2025 12:42:50 -0700
+Subject: [PATCH] Remove deprecated file mode
+
+---
+ generator/nanopb_generator.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/generator/nanopb_generator.py b/generator/nanopb_generator.py
+index 12af67e..7107198 100755
+--- a/generator/nanopb_generator.py
++++ b/generator/nanopb_generator.py
+@@ -1625,7 +1625,7 @@ def parse_file(filename, fdesc, options):
+             optfilename = os.path.join(p, optfilename)
+             if options.verbose:
+                 sys.stderr.write('Reading options from ' + optfilename + '\n')
+-            Globals.separate_options = read_options_file(open(optfilename, "rU"))
++            Globals.separate_options = read_options_file(open(optfilename, "r"))
+             break
+     else:
+         # If we are given a full filename and it does not exist, give an error.
+-- 
+2.51.0
+

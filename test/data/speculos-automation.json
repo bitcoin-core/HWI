@@ -2,14 +2,47 @@
     "version": 1,
     "rules": [
         {
-            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if you're|The change path|Change path|external inputs|Register wallet|Register account|Policy map|Key|Path|Public key|Spend from|Account name|Wallet name|Wallet policy|Descriptor template).*",
+            "text": "Confirm",
+            "x": 43, "y": 37,
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "text": "Confirm account ",
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^. of . Multisig$",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
             ]
         },
         {
-            "regexp": "^(Accept|Approve|Continue).*",
+            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Spend from|Wallet name|Wallet policy|Descriptor template|Verify Bitcoin|To|Output|Warning).*",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^(Message)$",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^(Accept|Approve|Continue|Sign message|Sign transaction|Register account).*",
             "actions": [
                 [ "button", 1, true ],
                 [ "button", 2, true ],

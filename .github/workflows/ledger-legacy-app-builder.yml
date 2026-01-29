@@ -1,4 +1,4 @@
-name: Ledger Nano X App Builder
+name: Ledger App Builder
 on:
   workflow_call:
     inputs:
@@ -9,17 +9,17 @@ on:
 
 jobs:
   build:
-    name: Build Bitcoin App
+    name: Build Bitcoin Legacy App
     runs-on: ${{ inputs.runs-on }}
     # Pin to 4.23.0 for SDK v25.9.0 compatibility with Speculos v0.25.10
     container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:4.23.0
     steps:
       - run: |
-          # Pin to v2.4.1 - last version that worked with HWI CI (PR #795 merged Sept 2025)
-          git clone --branch 2.4.1 --depth 1 https://github.com/LedgerHQ/app-bitcoin-new.git
-          cd app-bitcoin-new
-          make DEBUG=1 BOLOS_SDK=$NANOX_SDK
+          # Pin to legacy-1.6.6 HEAD commit for reproducibility
+          git clone --depth 1 https://github.com/LedgerHQ/app-bitcoin.git -b legacy-1.6.6
+          cd app-bitcoin
+          make DEBUG=1 BOLOS_SDK=$NANOSP_SDK
       - uses: actions/upload-artifact@v4
         with:
-          name: ledger_app
-          path: app-bitcoin-new/bin/app.elf
+          name: ledger_app_legacy
+          path: app-bitcoin/bin/app.elf

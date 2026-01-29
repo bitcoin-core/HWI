@@ -1,14 +1,14 @@
-From fd51e85693e0d66129133b1f195134aead1cf7d0 Mon Sep 17 00:00:00 2001
-From: Andrew Chow <achow101-github@achow101.com>
-Date: Tue, 17 Dec 2019 17:56:05 -0500
-Subject: [PATCH 2/3] Change default simulator multisig
+From 038e4b4f5e8128f3910745324332770b0973408c Mon Sep 17 00:00:00 2001
+From: Ava Chow <github@achow101.com>
+Date: Wed, 1 Oct 2025 13:30:01 -0700
+Subject: [PATCH 1/2] Change default simulator multisig
 
 ---
  unix/variant/sim_settings.py | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/unix/variant/sim_settings.py b/unix/variant/sim_settings.py
-index 2706fb4..f9b533d 100644
+index 01392d8f..527d0d9b 100644
 --- a/unix/variant/sim_settings.py
 +++ b/unix/variant/sim_settings.py
 @@ -71,7 +71,11 @@ if '--ms' in sys.argv:
@@ -18,27 +18,28 @@ index 2706fb4..f9b533d 100644
 -        sim_defaults['multisig'] = [['MeMyself', [2, 4], [[3503269483, 'tpubD9429UXFGCTKJ9NdiNK4rC5ygqSUkginycYHccqSg5gkmyQ7PZRHNjk99M6a6Y3NY8ctEUUJvCu6iCCui8Ju3xrHRu3Ez1CKB4ZFoRZDdP9'], [2389277556, 'tpubD97nVL37v5tWyMf9ofh5rznwhh1593WMRg6FT4o6MRJkKWANtwAMHYLrcJFsFmPfYbY1TE1LLQ4KBb84LBPt1ubvFwoosvMkcWJtMwvXgSc'], [3190206587, 'tpubD9ArfXowvGHnuECKdGXVKDMfZVGdephVWg8fWGWStH3VKHzT4ph3A4ZcgXWqFu1F5xGTfxncmrnf3sLC86dup2a8Kx7z3xQ3AgeNTQeFxPa'], [1130956047, 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n']], {'ch': 'XTN', 'pp': "45'"}]]
 +        sim_defaults['multisig'] = [
 +            ['mstest', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrR9x68P5Jm8WjhCE4atyGiPviFA9ve5iMnYbkTjof2HjzejcQcD7getPusDLPsWJLN2UttzK3pyVgBkRs52MiRZM7ZJ8TrEq'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 8, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
-+            ['mstest1', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 14, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
-+            ['mstest2', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 26, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
++            ['mstest1', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrR9x68P5Jm8WjhCE4atyGiPviFA9ve5iMnYbkTjof2HjzejcQcD7getPusDLPsWJLN2UttzK3pyVgBkRs52MiRZM7ZJ8TrEq'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 14, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
++            ['mstest2', [2, 3], [[1130956047, 0, 'tpubDF2rnouQaaYrR9x68P5Jm8WjhCE4atyGiPviFA9ve5iMnYbkTjof2HjzejcQcD7getPusDLPsWJLN2UttzK3pyVgBkRs52MiRZM7ZJ8TrEq'], [1130956047, 1, 'tpubDETRnZNJAqXiVeiL8UMDzCTBAoh3JvZkgXLdb1K2xzpJLepuJ6ka8jnVyRSkVh8Nbbo8u8dobZCsNENmRKipLzHNsS5mccjKSpXgSgavTQe'], [1130956047, 2, 'tpubDF3hdPQ5oDhtYjjaC596pboPii7UZmjqZcBPBRAbb6Bgn9hKoFxb8zWsBfdiCnTq3htUs2Yi2reeG3kMqHzZGZykJQAB5aKrJ8UfiXjmaLD']], {'ft': 26, 'ch': 'XTN', "d": ["48'/1'/0'/0'", "48'/1'/1'/0'", "48'/1'/2'/0'"]}],
 +            ]
      sim_defaults['fee_limit'] = -1
  
  if '--xfp' in sys.argv:
 -- 
-2.38.1
+2.51.0
 
-From 8b4323c1e393d79d46248dd822ca9aaaeb2b2bc3 Mon Sep 17 00:00:00 2001
+
+From 3f7b6dfcf72788a4a0784eb871462c289e8a747b Mon Sep 17 00:00:00 2001
 From: Sjors Provoost <sjors@sprovoost.nl>
 Date: Wed, 23 Jul 2025 10:16:22 +0200
-Subject: [PATCH] Allow multisigs to share master fingerprint
+Subject: [PATCH 2/2] Allow multisigs to share master fingerprint
 
 Co-Authored-By: Ava Chow <github@achow101.com>
 ---
- shared/multisig.py | 37 ++++++++++++++++++++++++-------------
- 1 file changed, 24 insertions(+), 13 deletions(-)
+ shared/multisig.py | 39 ++++++++++++++++++++++++---------------
+ 1 file changed, 24 insertions(+), 15 deletions(-)
 
 diff --git a/shared/multisig.py b/shared/multisig.py
-index 446998a2..cabb2003 100644
+index 1e692d41..6294e9a3 100644
 --- a/shared/multisig.py
 +++ b/shared/multisig.py
 @@ -144,9 +144,9 @@ class MultisigWallet(WalletABC):
@@ -53,7 +54,7 @@ index 446998a2..cabb2003 100644
  
      @classmethod
      def render_addr_fmt(cls, addr_fmt):
-@@ -270,7 +270,11 @@ class MultisigWallet(WalletABC):
+@@ -275,7 +275,11 @@ class MultisigWallet(WalletABC):
  
      def get_xfp_paths(self):
          # return list of lists [xfp, *deriv]
@@ -65,8 +66,8 @@ index 446998a2..cabb2003 100644
 +        return ret
  
      @classmethod
-     def find_match(cls, M, N, xfp_paths, addr_fmt=None):
-@@ -305,24 +309,31 @@ class MultisigWallet(WalletABC):
+     def find_match(cls, M, N, xfp_paths, addr_fmts=None):
+@@ -305,24 +309,29 @@ class MultisigWallet(WalletABC):
          # the same prefix path per-each xfp, as indicated 
          # xfp_paths (unordered)?
          # - could also check non-prefix part is all non-hardened
@@ -79,20 +80,25 @@ index 446998a2..cabb2003 100644
              if x[0] not in self.xfp_paths:
                  return False
 -            prefix = self.xfp_paths[x[0]]
+-
+-            if len(x) < len(prefix):
+-                # PSBT specs a path shorter than wallet's xpub
+-                #print('path len: %d vs %d' % (len(prefix), len(x)))
+-                return False
+-
+-            comm = len(prefix)
+-            if tuple(prefix[:comm]) != tuple(x[:comm]):
+-                # xfp => maps to wrong path
+-                #print('path mismatch:\n%r\n%r\ncomm=%d' % (prefix[:comm], x[:comm], comm))
 +            for prefix in self.xfp_paths[x[0]]:
 +                if len(x) < len(prefix):
 +                    # PSBT specs a path shorter than wallet's xpub
 +                    #print('path len: %d vs %d' % (len(prefix), len(x)))
 +                    return False
- 
--            if len(x) < len(prefix):
--                # PSBT specs a path shorter than wallet's xpub
--                #print('path len: %d vs %d' % (len(prefix), len(x)))
--                return False
++
 +                comm = len(prefix)
 +                if tuple(prefix[:comm]) != tuple(x[:comm]):
 +                    # xfp => maps to wrong path
-+                    # But maybe there is another path that does match, so keep going
 +                    #print('path mismatch:\n%r\n%r\ncomm=%d' % (prefix[:comm], x[:comm], comm))
 +                    continue
 +                else:
@@ -100,14 +106,9 @@ index 446998a2..cabb2003 100644
 +                    break
 +            else:
 +                # No match was found
- 
--            comm = len(prefix)
--            if tuple(prefix[:comm]) != tuple(x[:comm]):
--                # xfp => maps to wrong path
--                #print('path mismatch:\n%r\n%r\ncomm=%d' % (prefix[:comm], x[:comm], comm))
                  return False
  
          return True
 -- 
-2.39.5 (Apple Git-154)
+2.51.0
 

@@ -4,6 +4,7 @@ import atexit
 import os
 import subprocess
 import time
+import threading
 import unittest
 import sys
 import argparse
@@ -22,6 +23,11 @@ from test_device import (
 
 # Class for emulator control
 class BitBox02Emulator(DeviceEmulator):
+    # Maximum time to wait for simulator startup (5 minutes)
+    MAX_STARTUP_TIME = 300
+    # Maximum time to wait for simulator shutdown
+    MAX_SHUTDOWN_TIME = 30
+
     def __init__(self, simulator):
         self.simulator = simulator
         self.path = "127.0.0.1:15423"
@@ -55,16 +61,38 @@ class BitBox02Emulator(DeviceEmulator):
         if self.simulator_proc.poll() is not None:
             raise RuntimeError(f"BitBox02 simulator failed with exit code {self.simulator_proc.poll()}")
 
-        self.setup_client = Bitbox02Client(self.path)
-        self.setup_bb02 = self.setup_client.restore_device()
-        self.setup_client.close()
+        # Run restore_device in a thread with timeout to prevent CI from hanging
+        setup_error = None
+
+        def do_restore():
+            nonlocal setup_error
+            try:
+                self.setup_client = Bitbox02Client(self.path)
+                self.setup_bb02 = self.setup_client.restore_device()
+                self.setup_client.close()
+            except Exception as e:
+                setup_error = e
+
+        restore_thread = threading.Thread(target=do_restore)
+        restore_thread.start()
+        restore_thread.join(timeout=self.MAX_STARTUP_TIME)
+
+        if restore_thread.is_alive():
+            self.simulator_proc.terminate()
+            raise RuntimeError("BitBox02 simulator startup timed out after 5 minutes")
+        if setup_error:
+            raise setup_error
 
         atexit.register(self.stop)
 
     def stop(self):
         super().stop()
         self.simulator_proc.terminate()
-        self.simulator_proc.wait()
+        try:
+            self.simulator_proc.wait(timeout=self.MAX_SHUTDOWN_TIME)
+        except subprocess.TimeoutExpired:
+            self.simulator_proc.kill()
+            self.simulator_proc.wait(timeout=5)
         self.log.close()
         atexit.unregister(self.stop)
 

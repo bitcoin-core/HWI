@@ -46,19 +46,19 @@ runs:
       if: matrix.test.script == 'Wheel'
       shell: bash
       run: |
-        cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+        cd test; ./run_tests.py --${{ matrix.device }} --interface=cli --device-only; cd ..
 
     - name: Run tests (Sdist)
       if: matrix.test.script == 'Sdist'
       shell: bash
       run: |
-        cd test; ./run_tests.py $DEVICE --interface=cli --device-only; cd ..
+        cd test; ./run_tests.py --${{ matrix.device }} --interface=cli --device-only; cd ..
 
     - name: Run tests (Bindist)
       if: matrix.test.script == 'Bindist'
       shell: bash
       run: |
-        cd test; poetry run ./run_tests.py $DEVICE --interface=bindist --device-only; cd ..
+        cd test; poetry run ./run_tests.py --${{ matrix.device }} --interface=bindist --device-only; cd ..
 
     - if: failure()
       shell: bash

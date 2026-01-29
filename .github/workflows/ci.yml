@@ -114,10 +114,7 @@ jobs:
     with:
       sim: trezor
       include: ${{ needs.prepare-sim-matrices.outputs.trezor }}
-      # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep Trezor 1
-      # binaries compatible with Debian Bookworm (glibc 2.36) Python containers.
-      # Trezor T binaries don't need this.
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   sim-builder-coldcard:
     name: Coldcard sim builder
@@ -126,7 +123,7 @@ jobs:
     with:
       sim: coldcard
       include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   sim-builder-bitbox:
     name: Bitbox sim builder
@@ -162,27 +159,23 @@ jobs:
     with:
       sim: keepkey
       include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
-      runs-on: ubuntu-22.04
-
-  ledger-s-app-builder:
-    name: Ledger Nano S Bitcoin App builder
-    uses: ./.github/workflows/ledger-app-builder.yml
-    with:
-      app: nano_s
       runs-on: ubuntu-latest
 
-  ledger-x-app-builder:
-    name: Ledger Nano X Bitcoin App builder
+  ledger-legacy-app-builder:
+    name: Ledger Bitcoin Legacy App builder
+    uses: ./.github/workflows/ledger-legacy-app-builder.yml
+    with:
+      runs-on: ubuntu-latest
+
+  ledger-app-builder:
+    name: Ledger Bitcoin App builder
     uses: ./.github/workflows/ledger-app-builder.yml
     with:
-      app: nano_x
       runs-on: ubuntu-latest
 
   bitcoind-builder:
     name: bitcoind builder
-    # Ubuntu 22.04 ships with glibc 2.35, which is needed to keep binaries
-    # compatible with Debian Bookworm (glibc 2.36) Python containers.
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-bitcoind
@@ -201,16 +194,16 @@ jobs:
       device: trezor-t
       runs-on: ubuntu-latest
 
-  test-ledger-s:
+  test-ledger-legacy:
     uses: ./.github/workflows/device-test.yml
-    needs: [sim-builder-ledger, ledger-s-app-builder, bitcoind-builder, dist-builder]
+    needs: [sim-builder-ledger, ledger-legacy-app-builder, bitcoind-builder, dist-builder]
     with:
       device: ledger-legacy
       runs-on: ubuntu-latest
 
-  test-ledger-x:
+  test-ledger:
     uses: ./.github/workflows/device-test.yml
-    needs: [sim-builder-ledger, ledger-x-app-builder, bitcoind-builder, dist-builder]
+    needs: [sim-builder-ledger, ledger-app-builder, bitcoind-builder, dist-builder]
     with:
       device: ledger
       runs-on: ubuntu-latest
@@ -220,7 +213,7 @@ jobs:
     needs: [sim-builder-coldcard, bitcoind-builder, dist-builder]
     with:
       device: coldcard
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
 
   test-bitbox01:
     uses: ./.github/workflows/device-test.yml
