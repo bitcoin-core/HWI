@@ -4,7 +4,7 @@
     { "name": "trezor-t", "archive": "trezor-firmware", "paths": "test/work/trezor-firmware" }
   ],
   "coldcard": [
-    { "name": "coldcard", "archive": "coldcard-mpy", "paths": "test/work/firmware/external/micropython/ports/unix/coldcard-mpy test/work/firmware/unix/coldcard-mpy test/work/firmware/unix/l-mpy test/work/firmware/unix/l-port" }
+    { "name": "coldcard", "archive": "coldcard-firmware", "paths": "test/work/firmware" }
   ],
   "bitbox": [
     { "name": "bitbox01", "archive": "mcu", "paths": "test/work/mcu" },
