@@ -7,7 +7,7 @@ together with a Bitcoin Core Wallet. As hardware wallet example we have used a T
 Create a watch-only Bitcoin Core wallet for Trezor
 ==================================================
 
-Create your watch-only Bitcoin Core Wallet as described in `Using Bitcoin Core with Hardware Wallets <../bitcoin-core-usage.rst>`_. 
+Create your watch-only Bitcoin Core Wallet as described in `Using Bitcoin Core with Hardware Wallets <../bitcoin-core-usage.html>`_.
 You find all the details well described in this link. But in summary, one opens a terminal and runs ``bitcoind``. E.g.
 
 ::
