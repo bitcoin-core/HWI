@@ -63,11 +63,15 @@ class CCProtocolPacker:
 
     @staticmethod
     def start_backup():
-        # prompts user with password for encrytped backup
+        # prompts user with password for encrypted backup
         return b'back'
 
     @staticmethod
-    def encrypt_start(device_pubkey, version=0x1):
+    def encrypt_start(device_pubkey, version=USB_NCRY_V1):
+        supported_versions = [USB_NCRY_V1, USB_NCRY_V2]
+        if version not in supported_versions:
+            raise ValueError("Unsupported USB encryption version. "
+                             "Supported versions: %s" % (supported_versions))
         assert len(device_pubkey) == 64, "want uncompressed 64-byte pubkey, no prefix byte"
         return pack('<4sI64s', b'ncry', version, device_pubkey)
 
@@ -121,6 +125,36 @@ class CCProtocolPacker:
         return pack('<4sI32s', b'enrl', length, file_sha)
 
     @staticmethod
+    def miniscript_ls():
+        # list registered miniscript wallet names
+        return b'msls'
+
+    @staticmethod
+    def miniscript_delete(name):
+        # delete registered miniscript wallet by name
+        assert 2 <= len(name) <= 40, "name len"
+        return b'msdl' + name.encode('ascii')
+
+    @staticmethod
+    def miniscript_get(name):
+        # get registered miniscript wallet object by name
+        assert 2 <= len(name) <= 40, "name len"
+        return b'msgt' + name.encode('ascii')
+
+    @staticmethod
+    def miniscript_address(name, change=False, idx=0):
+        # get miniscript address from internal or external chain by id
+        assert 2 <= len(name) <= 40, "name len"
+        assert 0 <= idx < (2**31), "child idx"
+        return pack('<4sII', b'msas', int(change), idx) + name.encode('ascii')
+
+    @staticmethod
+    def miniscript_enroll(length, file_sha):
+        # miniscript details must already be uploaded as a text file, this starts approval process.
+        assert len(file_sha) == 32
+        return pack('<4sI32s', b'mins', length, file_sha)
+
+    @staticmethod
     def multisig_check(M, N, xfp_xor):
         # do we have a wallet already that matches M+N and xor(*xfps)?
         return pack('<4s3I', b'msck', M, N, xfp_xor)
@@ -140,7 +174,7 @@ class CCProtocolPacker:
     @staticmethod
     def show_p2sh_address(M, xfp_paths, witdeem_script, addr_fmt=AF_P2SH):
         # For multisig (aka) P2SH cases, you will need all the info required to build
-        # the redeem script, and the Coldcard must already have been enrolled 
+        # the redeem script, and the Coldcard must already have been enrolled
         # into the wallet.
         # - redeem script must be provided
         # - full subkey paths for each involved key is required in a list of lists of ints, where
@@ -224,72 +258,85 @@ class CCProtocolUnpacker:
     # - given full rx message to work from
     # - this is done after un-framing
 
-    @classmethod
-    def decode(cls, msg):
+    @staticmethod
+    def decode(msg):
         assert len(msg) >= 4
         sign = str(msg[0:4], 'utf8', 'ignore')
 
-        d = getattr(cls, sign, cls)
-        if d is cls:
+        d = getattr(CCProtocolUnpacker, sign, None)
+        if d is None:
             raise CCFramingError('Unknown response signature: ' + repr(sign))
 
         return d(msg)
-        
 
     # struct info for each response
-    
+
+    @staticmethod
     def okay(msg):
         # trivial response, w/ no content
         assert len(msg) == 4
         return None
 
     # low-level errors
+    @staticmethod
     def fram(msg):
-        raise CCFramingError("Framing Error", str(msg[4:], 'utf8'))
+        raise CCFramingError("Framing Error: " + str(msg[4:], 'utf8'))
+
+    @staticmethod
     def err_(msg):
         raise CCProtoError("Coldcard Error: " + str(msg[4:], 'utf8', 'ignore'), msg[4:])
 
+    @staticmethod
     def refu(msg):
         # user didn't want to approve something
         raise CCUserRefused()
 
+    @staticmethod
     def busy(msg):
         # user didn't want to approve something
         raise CCBusyError()
 
+    @staticmethod
     def biny(msg):
         # binary string: length implied by msg framing
         return msg[4:]
 
+    @staticmethod
     def int1(msg):
         return unpack_from('<I', msg, 4)[0]
 
+    @staticmethod
     def int2(msg):
         return unpack_from('<2I', msg, 4)
 
+    @staticmethod
     def int3(msg):
         return unpack_from('<3I', msg, 4)
 
+    @staticmethod
     def mypb(msg):
-        # response to "ncry" command: 
+        # response to "ncry" command:
         # - the (uncompressed) pubkey of the Coldcard
         # - info about master key: xpub, fingerprint of that
-        # - anti-MitM: remote xpub 
+        # - anti-MitM: remote xpub
         # session key is SHA256(point on sec256pk1 in binary) via D-H
         dev_pubkey, fingerprint, xpub_len = unpack_from('64sII', msg, 4)
         xpub = msg[-xpub_len:] if xpub_len else b''
         return dev_pubkey, fingerprint, xpub
 
+    @staticmethod
     def asci(msg):
         # hex/base58 string or other for-computers string, which isn't international
         return msg[4:].decode('ascii')
 
+    @staticmethod
     def smrx(msg):
         # message signing result. application specific!
         # returns actual address used (text), and raw binary signature (65 bytes)
         aln = unpack_from('<I', msg, 4)[0]
         return msg[8:aln+8].decode('ascii'), msg[8+aln:]
 
+    @staticmethod
     def strx(msg):
         # txn signing result, or other file operation. application specific!
         # returns length of resulting PSBT and it's sha256

@@ -1,6 +1,4 @@
 
-__version__ = '1.0.2'
+__version__ = '1.4.0'
 
 __all__ = [ "client", "protocol", "constants" ]
-
-

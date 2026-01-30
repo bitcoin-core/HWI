@@ -8,27 +8,26 @@
 #
 #   - ec_mult, ec_setup, aes_setup, mitm_verify
 #
-import hid, sys, os, platform
-from binascii import b2a_hex, a2b_hex
+import hid, os, socket, atexit
+from binascii import b2a_hex
 from hashlib import sha256
-from .protocol import CCProtocolPacker, CCProtocolUnpacker, CCProtoError, MAX_MSG_LEN, MAX_BLK_LEN
+from .constants import USB_NCRY_V1, USB_NCRY_V2
+from .protocol import CCProtocolPacker, CCProtocolUnpacker, CCProtoError, MAX_MSG_LEN
 from .utils import decode_xpub, get_pubkey_string
 
 # unofficial, unpermissioned... USB numbers
 COINKITE_VID = 0xd13e
 CKCC_PID     = 0xcc10
 
-# Unix domain socket used by the simulator
-CKCC_SIMULATOR_PATH = '/tmp/ckcc-simulator.sock'
+DEFAULT_SIM_SOCKET = "/tmp/ckcc-simulator.sock"
+
 
 class ColdcardDevice:
-    def __init__(self, sn=None, dev=None, encrypt=True):
+    def __init__(self, sn=None, dev=None, encrypt=True, ncry_ver=USB_NCRY_V1, is_simulator=False):
         # Establish connection via USB (HID) or Unix Pipe
-        self.is_simulator = False
+        self.is_simulator = is_simulator
 
-        if not dev and sn and '/' in sn:
-            if platform.system() == 'Windows':
-                raise RuntimeError("Cannot connect to simulator. Is it running?")
+        if not dev and ((sn and ('/' in sn)) or self.is_simulator):
             dev = UnixSimulatorPipe(sn)
             found = 'simulator'
             self.is_simulator = True
@@ -49,7 +48,7 @@ class ColdcardDevice:
                 break
 
             if not dev:
-                raise KeyError("Could not find Coldcard!" 
+                raise KeyError("Could not find Coldcard!"
                         if not sn else ('Cannot find CC with serial: '+sn))
         else:
             found = dev.get_serial_number_string()
@@ -58,6 +57,7 @@ class ColdcardDevice:
         self.serial = found
 
         # they will be defined after we've established a shared secret w/ device
+        self.ncry_ver = ncry_ver
         self.session_key = None
         self.encrypt_request = None
         self.decrypt_response = None
@@ -67,7 +67,7 @@ class ColdcardDevice:
         self.resync()
 
         if encrypt:
-            self.start_encryption()
+            self.start_encryption(version=self.ncry_ver)
 
     def close(self):
         # close underlying HID device
@@ -101,9 +101,13 @@ class ColdcardDevice:
         # first byte of each 64-byte packet encodes length or packet-offset
         assert 4 <= len(msg) <= MAX_MSG_LEN, "msg length: %d" % len(msg)
 
-        if not self.encrypt_request:
+        if self.encrypt_request is None:
             # disable encryption if not already enabled for this connection
             encrypt = False
+
+        if self.encrypt_request and self.ncry_ver == USB_NCRY_V2:
+            # ncry version 2 - everything needs to be encrypted
+            encrypt = True
 
         if encrypt:
             msg = self.encrypt_request(msg)
@@ -111,7 +115,7 @@ class ColdcardDevice:
         left = len(msg)
         offset = 0
         while left > 0:
-            # Note: first byte always zero (HID report number), 
+            # Note: first byte always zero (HID report number),
             # [1] is framing header (length+flags)
             # [2:65] payload (63 bytes, perhaps including padding)
             here = min(63, left)
@@ -224,7 +228,7 @@ class ColdcardDevice:
         self.encrypt_request = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).encrypt
         self.decrypt_response = pyaes.AESModeOfOperationCTR(session_key, pyaes.Counter(0)).decrypt
 
-    def start_encryption(self):
+    def start_encryption(self, version=USB_NCRY_V1):
         # setup encryption on the link
         # - pick our own key pair, IV for AES
         # - send IV and pubkey to device
@@ -233,9 +237,11 @@ class ColdcardDevice:
 
         pubkey = self.ec_setup()
 
-        msg = CCProtocolPacker.encrypt_start(pubkey)
+        msg = CCProtocolPacker.encrypt_start(pubkey, version=version)
 
         his_pubkey, fingerprint, xpub = self.send_recv(msg, encrypt=False)
+
+        self.ncry_ver = version
 
         self.session_key = self.ec_mult(his_pubkey)
 
@@ -248,7 +254,6 @@ class ColdcardDevice:
         self.aes_setup(self.session_key)
 
     def mitm_verify(self, sig, expected_xpub):
-        # If Pycoin is not available, do it using ecdsa
         from ecdsa import BadSignatureError, SECP256k1, VerifyingKey
         # of the returned (pubkey, chaincode) tuple, chaincode is not used
         pubkey, _ = decode_xpub(expected_xpub)
@@ -318,41 +323,65 @@ class ColdcardDevice:
 
         return data
 
-    def hash_password(self, text_password):
+    def hash_password(self, text_password, v3=False):
         # Turn text password into a key for use in HSM auth protocol
+        # - changed from pbkdf2_hmac_sha256 to pbkdf2_hmac_sha512 in version 4 of CC firmware
         from hashlib import pbkdf2_hmac, sha256
         from .constants import PBKDF2_ITER_COUNT
 
         salt = sha256(b'pepper' + self.serial.encode('ascii')).digest()
 
-        return pbkdf2_hmac('sha256', text_password, salt, PBKDF2_ITER_COUNT)
+        return pbkdf2_hmac('sha256' if v3 else 'sha512', text_password, salt, PBKDF2_ITER_COUNT)[:32]
+
+    def firmware_version(self):
+        return self.send_recv(CCProtocolPacker.version()).split("\n")
+
+    def is_edge(self):
+        # returns True if device is running EDGE firmware version
+        if self.is_simulator:
+            cmd = "import version; RV.write(str(int(getattr(version, 'is_edge', 0))))"
+            rv = self.send_recv(b'EXEC' + cmd.encode('utf-8'), timeout=60000, encrypt=False)
+            return rv == b"1"
+
+        return self.firmware_version()[1][-1] == "X"
 
 
 class UnixSimulatorPipe:
     # Use a UNIX pipe to the simulator instead of a real USB connection.
     # - emulates the API of hidapi device object.
 
-    def __init__(self, path):
-        import socket, atexit
+    def __init__(self, socket_path=None):
+        self.socket_path = socket_path or DEFAULT_SIM_SOCKET
         self.pipe = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
-            self.pipe.connect(path)
+            self.pipe.connect(self.socket_path)
         except Exception:
             self.close()
             raise RuntimeError("Cannot connect to simulator. Is it running?")
 
-        instance = 0
-        while instance < 10:
-            pn = '/tmp/ckcc-client-%d-%d.sock' % (os.getpid(), instance)
+        last_err = None
+        for instance in range(5):
+            # if simulator has PID in socket path, client will have matching, or empty
+            pn = '/tmp/ckcc-client%s-%d-%d.sock' % (self.get_sim_pid(), os.getpid(), instance)
             try:
                 self.pipe.bind(pn)     # just needs any name
                 break
-            except OSError:
-                instance += 1
+            except OSError as err:
+                last_err = err
+                if os.path.exists(pn):
+                    os.remove(pn)
                 continue
+        else:
+            raise last_err  # raise whatever was raised last in the loop
 
         self.pipe_name = pn
         atexit.register(self.close)
+
+    def get_sim_pid(self):
+        # return str PID if any in socket_path
+        if self.socket_path == DEFAULT_SIM_SOCKET:
+            return ""
+        return "-" + self.socket_path.split(".")[0].split("-")[-1]
 
     def read(self, max_count, timeout_ms=None):
         import socket
@@ -383,7 +412,7 @@ class UnixSimulatorPipe:
             pass
 
     def get_serial_number_string(self):
-        return 'simulator'
+        return 'F1'*6
 
 
 # EOF
