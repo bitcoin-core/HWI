@@ -20,18 +20,13 @@ runs:
 
     - if: inputs.device == 'coldcard'
       shell: bash
-      env:
-        # Keep in sync with test/setup_environment.sh
-        COLDCARD_VERSION: "2025-09-30T1238-v5.4.4"
       run: |
         apt-get update
         apt-get install -y libpcsclite-dev libusb-1.0-0 swig
-        git config --global user.email "ci@ci.com"
-        git config --global user.name "ci"
-        # Note: cannot use --shallow-submodules because lwip submodule on git.savannah.gnu.org doesn't support it
-        pushd test/work; git clone --recursive --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git; popd
-        tar -xvf coldcard-mpy.tar.gz
-        pushd test/work/firmware; git am ../../data/coldcard-multisig.patch; popd
+
+        # Extract the archive - this includes the full firmware directory
+        tar -xvf coldcard-firmware.tar.gz
+
         poetry run pip install -r test/work/firmware/requirements.txt
         pip install -r test/work/firmware/requirements.txt
         poetry run pip install pysdl2-dll
