@@ -23,7 +23,7 @@ pyaes = "^1.6"
 mnemonic = "~0"
 typing-extensions = "^4.4"
 libusb1 = ">=1.7,<4"
-pyside2 = { version = "^5.14.0", optional = true, python = "<3.10" }
+pyside2 = { version = "^5.15.2.1", optional = true, python = "<3.11" }
 cbor2 = ">=5.4.6,<5.8"
 pyserial = "^3.5"
 semver = "^3.0.1"

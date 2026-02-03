@@ -4,7 +4,7 @@ Release Process
 1. Bump version number in ``pyproject.toml`` and ``hwilib/__init__.py``, generate the setup.py file, and git tag release
 2. Build distribution archives for PyPi with ``contrib/build_dist.sh``
 3. For MacOS and Linux, use ``contrib/build_bin.sh``. This needs to be run on a macOS machine for the macOS binary and on a Linux machine for the linux one.
-4. For Windows, use ``contrib/build_wine.sh`` to build the Windows binary using wine
+4. For Windows, use ``contrib/build_wine.sh`` to build the Windows binary using wine. Note that this uses Python 3.10.11 via the NuGet package because python.org no longer hosts the MSIs for newer 3.10.x releases.
 5. Make ``SHA256SUMS.txt`` using ``contrib/make_shasums.sh``.
 6. Make ``SHA256SUMS.txt.asc`` using ``gpg --clearsign SHA256SUMS.txt``
 7. Upload distribution archives to PyPi
@@ -26,7 +26,7 @@ Build everything::
 
     docker run -it --name hwi-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-builder /bin/bash -c "contrib/build_bin.sh && contrib/build_dist.sh"
     docker run -it --name hwi-wine-builder -v $PWD:/opt/hwi --rm  --workdir /opt/hwi hwi-wine-builder /bin/bash -c "contrib/build_wine.sh"
-    docker run --platform linux/arm64 -it --rm --name hwi-builder-arm64 -v $PWD:/opt/hwi --workdir /opt/hwi hwi-builder-arm64 /bin/bash -c "contrib/build_bin.sh --without-gui && contrib/build_dist.sh --without-gui" 
+    docker run --platform linux/arm64 -it --rm --name hwi-builder-arm64 -v $PWD:/opt/hwi --workdir /opt/hwi hwi-builder-arm64 /bin/bash -c "contrib/build_bin.sh --without-gui && contrib/build_dist.sh --without-gui"
 
 Building macOS binary
 =====================
@@ -35,14 +35,14 @@ Note that the macOS build is non-deterministic.
 
 First install `pyenv <https://github.com/pyenv/pyenv>`_ using whichever method you prefer.
 
-Then a deterministic build of Python 3.9.19 needs to be installed. This can be done with the patch in ``contrib/reproducible-python.diff``. First ``cd`` into HWI's source tree. Then use::
+Then a deterministic build of Python 3.10.16 needs to be installed. This can be done with the patch in ``contrib/reproducible-python.diff``. First ``cd`` into HWI's source tree. Then use::
 
-    cat contrib/reproducible-python.diff | PYTHON_CONFIGURE_OPTS="--enable-framework" BUILD_DATE="Jan  1 2019" BUILD_TIME="00:00:00" pyenv install -kp 3.9.19
+    cat contrib/reproducible-python.diff | PYTHON_CONFIGURE_OPTS="--enable-framework" BUILD_DATE="Jan  1 2026" BUILD_TIME="00:00:00" pyenv install -kp 3.10.16
 
-Make sure that python 3.9.19 is active::
+Make sure that python 3.10.16 is active::
 
     $ python --version
-    Python 3.9.19
+    Python 3.10.16
 
 Now install `Poetry <https://github.com/sdispater/poetry>`_ with ``pip install poetry``
 
