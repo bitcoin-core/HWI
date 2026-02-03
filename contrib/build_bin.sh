@@ -48,7 +48,7 @@ fi
 
 target_tarfile="hwi-${VERSION}-${OS}-${ARCH}.tar.gz"
 
-if [[ $gui_support == "--with-gui" ]]; then
+if [[ $gui_support == "--with-gui" && $ARCH == "x86_64" ]]; then
     tar -czf $target_tarfile hwi hwi-qt
 else
     tar -czf $target_tarfile hwi
