@@ -89,13 +89,6 @@
                 [ "button", 2, false ],
                 [ "setbool", "seen_msg_hash", false ]
             ]
-        },
-        {
-            "regexp": "^(Cancel|Reject).*",
-            "actions": [
-                [ "button", 1, true ],
-                [ "button", 1, false ]
-            ]
         }
     ]
 }

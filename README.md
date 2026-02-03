@@ -1,6 +1,6 @@
 # Bitcoin Hardware Wallet Interface
 
-[![Build Status](https://api.cirrus-ci.com/github/bitcoin-core/HWI.svg)](https://cirrus-ci.com/github/bitcoin-core/HWI)
+[![CI](https://github.com/bitcoin-core/HWI/actions/workflows/ci.yml/badge.svg)](https://github.com/bitcoin-core/HWI/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/hwi/badge/?version=latest)](https://hwi.readthedocs.io/en/latest/?badge=latest)
 
 The Bitcoin Hardware Wallet Interface is a Python library and command line tool for interacting with hardware wallets.
