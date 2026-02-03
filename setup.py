@@ -17,11 +17,10 @@ packages = \
  'hwilib.devices.ledger_bitcoin.ledgercomm',
  'hwilib.devices.ledger_bitcoin.ledgercomm.interfaces',
  'hwilib.devices.trezorlib',
- 'hwilib.devices.trezorlib.transport',
- 'hwilib.ui']
+ 'hwilib.devices.trezorlib.transport']
 
 package_data = \
-{'': ['*'], 'hwilib': ['udev/*']}
+{'': ['*'], 'hwilib': ['udev/*', 'ui/*']}
 
 modules = \
 ['hwi', 'hwi-qt']
