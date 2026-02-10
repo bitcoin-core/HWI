@@ -26,9 +26,9 @@ except ImportError:
     print('Could not import UI files, did you run contrib/generate-ui.sh')
     exit(-1)
 
-from PySide2.QtGui import QRegExpValidator
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFileDialog, QLineEdit, QMessageBox, QMainWindow, QMenu
-from PySide2.QtCore import QCoreApplication, QRegExp, Signal, Slot
+from PySide6.QtGui import QRegularExpressionValidator
+from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFileDialog, QLineEdit, QMessageBox, QMainWindow, QMenu
+from PySide6.QtCore import QCoreApplication, QRegularExpression, Signal, Slot
 
 def do_command(f, *args, **kwargs):
     result = {}
@@ -59,7 +59,7 @@ class SendPinDialog(QDialog):
         self.setWindowTitle('Send Pin')
         self.client = client
         self.ui.pin_lineedit.setFocus()
-        self.ui.pin_lineedit.setValidator(QRegExpValidator(QRegExp("[1-9]+"), None))
+        self.ui.pin_lineedit.setValidator(QRegularExpressionValidator(QRegularExpression("[1-9]+"), None))
         self.ui.pin_lineedit.setEchoMode(QLineEdit.Password)
 
         self.ui.p1_button.clicked.connect(self.button_clicked(1))
@@ -100,7 +100,7 @@ class GetXpubDialog(QDialog):
         self.setWindowTitle('Get xpub')
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(QRegularExpressionValidator(QRegularExpression("m(/[0-9]+['Hh]?)+"), None))
         self.ui.path_lineedit.setFocus()
         self.ui.buttonBox.button(QDialogButtonBox.Close).setAutoDefault(False)
 
@@ -186,7 +186,7 @@ class SignMessageDialog(QDialog):
         self.setWindowTitle('Sign Message')
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(QRegularExpressionValidator(QRegularExpression("m(/[0-9]+['Hh]?)+"), None))
         self.ui.msg_textedit.setFocus()
 
         self.ui.signmsg_button.clicked.connect(self.signmsg_button_clicked)
@@ -207,7 +207,7 @@ class DisplayAddressDialog(QDialog):
         self.setWindowTitle('Display Address')
         self.client = client
 
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp("m(/[0-9]+['Hh]?)+"), None))
+        self.ui.path_lineedit.setValidator(QRegularExpressionValidator(QRegularExpression("m(/[0-9]+['Hh]?)+"), None))
         self.ui.path_lineedit.setFocus()
 
         self.ui.go_button.clicked.connect(self.go_button_clicked)
@@ -239,7 +239,7 @@ class GetKeypoolOptionsDialog(QDialog):
         self.ui.internal_checkbox.setChecked(opts['internal'])
         self.ui.keypool_checkbox.setChecked(opts['keypool'])
         self.ui.account_spinbox.setValue(opts['account'])
-        self.ui.path_lineedit.setValidator(QRegExpValidator(QRegExp(r"m(/[0-9]+['Hh]?)+/\*"), None))
+        self.ui.path_lineedit.setValidator(QRegularExpressionValidator(QRegularExpression(r"m(/[0-9]+['Hh]?)+/\*"), None))
         if opts['account_used']:
             self.ui.account_radio.setChecked(True)
             self.ui.path_radio.setChecked(False)
@@ -307,7 +307,7 @@ try:
             if not device_response():
                 return False
             dialog.enable_buttons()
-            dialog.exec_()
+            dialog.exec()
             return dialog.result() == QDialog.Accepted
 
         def attestation_check(self, result: bool) -> None:
@@ -390,7 +390,7 @@ class HWIQt(QMainWindow):
     def show_setpassphrasedialog(self):
         self.current_dialog = SetPassphraseDialog()
         self.current_dialog.accepted.connect(self.setpassphrasedialog_accepted)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def setpassphrasedialog_accepted(self):
@@ -455,7 +455,7 @@ class HWIQt(QMainWindow):
     def show_sendpindialog(self, prompt_pin=True):
         self.current_dialog = SendPinDialog(self.client, prompt_pin)
         self.current_dialog.pin_sent_success.connect(self.sendpindialog_accepted)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def sendpindialog_accepted(self):
@@ -468,28 +468,28 @@ class HWIQt(QMainWindow):
     @Slot()
     def show_getxpubdialog(self):
         self.current_dialog = GetXpubDialog(self.client)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def show_signpsbtdialog(self):
         self.current_dialog = SignPSBTDialog(self.client)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def show_signmessagedialog(self):
         self.current_dialog = SignMessageDialog(self.client)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def show_displayaddressdialog(self):
         self.current_dialog = DisplayAddressDialog(self.client)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def show_getkeypooloptionsdialog(self):
         self.current_dialog = GetKeypoolOptionsDialog(self.getkeypool_opts)
         self.current_dialog.accepted.connect(self.getkeypooloptionsdialog_accepted)
-        self.current_dialog.exec_()
+        self.current_dialog.exec()
 
     @Slot()
     def getkeypooloptionsdialog_accepted(self):
@@ -543,7 +543,7 @@ def process_gui_commands(cli_args):
     window.refresh_clicked()
 
     window.show()
-    ret = app.exec_()
+    ret = app.exec()
     result = {'success': ret == 0}
 
     return result
