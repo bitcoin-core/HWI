@@ -22,10 +22,8 @@ from ..common import (
     Chain,
 )
 
-import hid
-
-CYPHEROCK_VENDOR_ID = 0x3503
-CYPHEROCK_PRODUCT_ID = 0x0103
+from .cypherock_sdk.hw_hid import get_available_devices, DeviceConnection
+from .cypherock_sdk.interfaces import IDevice
 
 class CypherockClient(HardwareWalletClient):
     """
@@ -35,14 +33,21 @@ class CypherockClient(HardwareWalletClient):
     def __init__(self, path: str, password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN) -> None:
         super(CypherockClient, self).__init__(path, password, expert, chain)
 
+        all_devices = get_available_devices()
+        for device in all_devices:
+            if device["path"] == path:
+                self.device: IDevice = device
+                break
+        else:
+            raise DeviceConnectionError(f"Device not found: {path}")
+
         try:
-            self.device = hid.device()
-            self.device.open_path(path.encode())
+            self.connection = DeviceConnection.connect(self.device)
         except Exception as e:
             raise DeviceConnectionError(f"Failed to connect to Cypherock X1: {e}")
 
     def get_master_fingerprint(self) -> bytes:
-        return bytes.fromhex(self.device.get_serial_number_string())
+        return bytes.fromhex(self.device["fingerprint"])
 
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         raise NotImplementedError("The CypherockClient class "
@@ -105,7 +110,7 @@ class CypherockClient(HardwareWalletClient):
         raise UnavailableActionError('The Cypherock X1 does not support creating a backup via software')
 
     def close(self) -> None:
-        self.device.close()
+        self.connection.destroy()
 
     def prompt_pin(self) -> bool:
         """
@@ -142,21 +147,4 @@ class CypherockClient(HardwareWalletClient):
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
-    results = []
-    devices = []
-    devices.extend(hid.enumerate(CYPHEROCK_VENDOR_ID, CYPHEROCK_PRODUCT_ID))
-
-    for d in devices:
-        if d.get('path') is not None and d.get('serial_number') is not None:
-            d_data: Dict[str, Any] = {}
-            d_data['type'] = 'cypherock'
-            d_data['model'] = 'cypherock-x1'
-            d_data['label'] = None
-            d_data['needs_pin_sent'] = False
-            d_data['needs_passphrase_sent'] = False
-            d_data['path'] = d['path'].decode()
-            d_data['fingerprint'] = bytes.fromhex(d['serial_number']).hex()  # Using the serial number as the fingerprint for now
-
-            results.append(d_data)
-
-    return results
+    return get_available_devices()
