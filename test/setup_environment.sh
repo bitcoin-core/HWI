@@ -69,7 +69,7 @@ TREZOR_VERSION="core/v2.9.6"
 BITBOX01_VERSION="v7.1.0"
 BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
-SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
+SPECULOS_VERSION="v0.25.13"  # Requires Python >=3.10 (v0.25.11+)
 JADE_VERSION="1.0.36"
 
 # Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
@@ -292,9 +292,19 @@ if [[ -n ${build_ledger} ]]; then
 
     cd speculos
 
+    # Work around -Werror build failures in Speculos' bundled deps.
+    # GCC < 15 errors out on unknown "-Wno-error=..." options, so only add the
+    # unterminated-string-initialization suppression when the compiler supports it.
+    CFLAGS="-O -fno-builtin -fPIC -Wall -Wextra -Werror -Wno-error=maybe-uninitialized -Wno-error=array-parameter -Wno-error=array-bounds"
+    cc_major=$(cc -dumpversion | cut -d. -f1)
+    if [ "${cc_major:-0}" -ge 15 ]; then
+        CFLAGS="$CFLAGS -Wno-error=unterminated-string-initialization"
+    fi
+    export CFLAGS
+
     # Build the simulator. This is cached, but it is also fast
     mkdir -p build
-    cmake -Bbuild -S .
+    cmake -Bbuild -S . -DCMAKE_C_FLAGS="${CFLAGS}"
     make -C build/
 
     cd ..
