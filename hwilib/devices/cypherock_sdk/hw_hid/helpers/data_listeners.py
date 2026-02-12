@@ -1,4 +1,3 @@
-import asyncio
 import threading
 import time
 import uuid
@@ -22,9 +21,7 @@ class DataListener:
         self.listening = False
         self.pool: [PoolData] = []
 
-        self.read_timeout_id = None
-
-        self.read_thread = None
+        self.read_thread: Optional[threading.Thread]  = None
         self._monitor_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
@@ -48,20 +45,24 @@ class DataListener:
     def peek(self):
         return self.pool.copy()
 
-    def clear_read_interval(self):
-        if self.read_timeout_id:
-            self.read_timeout_id.cancel()
-            self.read_timeout_id = None
+    def stop_read_thread(self):
+        if self.read_thread and self.read_thread.is_alive():
+            self.read_thread.join(timeout=1.0)
+            self.read_thread = None
 
-    def set_read_interval(self):
-        self.read_timeout_id = asyncio.create_task(self.on_read())
+    def start_read_thread(self):
+        if self.read_thread is None or not self.read_thread.is_alive():
+            self.read_thread = threading.Thread(
+                target=self._run_read_loop, daemon=True
+            )
+            self.read_thread.start()
 
     def start_listening(self):
         self.listening = True
-        self.set_read_interval()
+        self.start_read_thread()
 
     def stop_listening(self):
-        self.clear_read_interval()
+        self.stop_read_thread()
         self.listening = False
 
     def add_all_listeners(self) -> None:
@@ -78,30 +79,24 @@ class DataListener:
             self._monitor_thread.join(timeout=1.0)
             logger.debug("Device disconnect monitor thread stopped.")
 
-    def on_read(self):
-        if not self.listening:
-            self.clear_read_interval()
-            return
-
-        try:
-            data = self._read_data()
-            if data:
-                self.on_data(data)
-        except Exception as error:
-            logger.error("Error while reading data from device")
-            logger.error(error)
-        finally:
-            if self.listening:
-                self.set_read_interval()
+    def _run_read_loop(self):
+        while self.listening:
+            try:
+                data = self._read_data()
+                if data:
+                    self.on_data(data)
+            except Exception as error:
+                logger.error("Error while reading data from device")
+                logger.error(error)
+            time.sleep(0.1)  # Small delay to avoid busy-waiting
 
     def _read_data(self):
-        return self._read_hid_data()
-
-    def _read_hid_data(self):
         try:
             return self.connection.read(64)
         except Exception as error:
-            if self.on_error_callback:
+            # Only call error callback for actual errors, not timeouts/empty reads
+            error_str = str(error).lower()
+            if "timeout" not in error_str and "read error" not in error_str and self.on_error_callback:
                 self.on_error_callback(error)
             return None
 
