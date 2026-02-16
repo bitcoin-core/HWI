@@ -1,4 +1,3 @@
-import asyncio
 from typing import List, Optional
 from ....errors import (
     DeviceCommunicationError,
@@ -15,7 +14,7 @@ from ...encoders.packet.packet import DecodedPacketData
 from .wait_for_packet import wait_for_packet
 
 
-async def write_command(
+def write_command(
     connection: IDeviceConnection,
     packet: bytes,
     version: PacketVersion,
@@ -42,6 +41,7 @@ async def write_command(
     if not connection.is_connected():
         raise DeviceConnectionError(DeviceConnectionErrorType.CONNECTION_CLOSED)
 
+    # Start waiting for acknowledgment packet (non-blocking, runs in background thread)
     ack_promise = wait_for_packet(
         connection=connection,
         version=version,
@@ -51,38 +51,31 @@ async def write_command(
     )
 
     try:
-        send_task = asyncio.create_task(connection.send(packet))
+        # Send the packet synchronously (blocking call)
+        try:
+            connection.send(packet)
+        except Exception as send_error:
+            # If send fails, cancel the ack wait and raise error
+            ack_promise.cancel()
+            if not connection.is_connected():
+                raise DeviceConnectionError(
+                    DeviceConnectionErrorType.CONNECTION_CLOSED
+                )
+            else:
+                raise DeviceCommunicationError(
+                    DeviceCommunicationErrorType.WRITE_ERROR
+                ) from send_error
 
-        done, pending = await asyncio.wait(
-            [send_task, ack_promise.task], return_when=asyncio.FIRST_COMPLETED
-        )
-
-        if send_task in done:
-            try:
-                await send_task
-            except Exception:
-                ack_promise.cancel()
-                if not connection.is_connected():
-                    raise DeviceConnectionError(
-                        DeviceConnectionErrorType.CONNECTION_CLOSED
-                    )
-                else:
-                    raise DeviceCommunicationError(
-                        DeviceCommunicationErrorType.WRITE_ERROR
-                    )
-
-        if ack_promise.task in done:
+        # Wait for acknowledgment (blocking call, will return result or raise error)
+        try:
+            return ack_promise.result()
+        except Exception as ack_error:
+            # If ack wait was cancelled, check why
             if ack_promise.is_cancelled():
-                raise Exception("Operation cancelled")
-
-            return await ack_promise.result()
-
-        for task in pending:
-            if task != ack_promise.task:
-                task.cancel()
-
-        return await ack_promise.result()
+                raise Exception("Operation cancelled") from ack_error
+            raise
 
     except Exception as error:
+        # Ensure we cancel the ack wait if something goes wrong
         ack_promise.cancel()
         raise error

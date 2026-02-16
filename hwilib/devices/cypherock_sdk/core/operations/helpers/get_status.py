@@ -9,7 +9,7 @@ from .write_command import write_command
 from .can_retry import can_retry
 
 
-async def get_status(
+def get_status(
     connection: IDeviceConnection,
     version: PacketVersion,
     max_tries: int = 5,
@@ -50,7 +50,7 @@ async def get_status(
 
     while tries <= inner_max_tries and not is_success:
         try:
-            received_packet = await write_command(
+            received_packet = write_command(
                 connection=connection,
                 packet=packet,
                 version=version,

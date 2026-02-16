@@ -2,7 +2,6 @@ from typing import (
     Protocol,
     Optional,
     Callable,
-    Awaitable,
     Any,
     Dict,
 )
@@ -24,23 +23,23 @@ class ISDK(Protocol):
 
     def destroy(self) -> None: ...
 
-    async def send_query(
+    def send_query(
         self,
         data: bytes,
         options: Optional[Dict[str, Any]] = None,
     ) -> None: ...
 
-    async def get_result(
+    def get_result(
         self,
         options: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]: ...
 
-    async def wait_for_result(
+    def wait_for_result(
         self,
         params: Optional[Dict[str, Any]] = None,
     ) -> bytes: ...
 
-    async def get_status(
+    def get_status(
         self,
         max_tries: Optional[int] = None,
         timeout: Optional[int] = None,
@@ -48,13 +47,13 @@ class ISDK(Protocol):
     ) -> Any:  # Status from proto types
         ...
 
-    async def send_abort(
+    def send_abort(
         self,
         options: Optional[Dict[str, Any]] = None,
     ) -> Any:  # Status from proto types
         ...
 
-    async def run_operation(self, operation: Callable[[], Awaitable[Any]]) -> Any: ...
+    def run_operation(self, operation: Callable[[], Any]) -> Any: ...
 
 
 __all__ = [

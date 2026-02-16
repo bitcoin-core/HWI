@@ -7,7 +7,7 @@ from ..helpers import get_command_output
 from ...encoders.proto.generated.core_pb2 import Status, Msg, ErrorType
 
 
-async def get_result(
+def get_result(
     connection: IDeviceConnection,
     version: PacketVersion,
     sequence_number: int,
@@ -18,7 +18,7 @@ async def get_result(
 ) -> Dict[str, Union[bool, Union[Status, bytes]]]:
     assert_condition(applet_id, 'Invalid appletId')
 
-    command_output = await get_command_output(
+    command_output = get_command_output(
         connection=connection,
         version=version,
         max_tries=max_tries,

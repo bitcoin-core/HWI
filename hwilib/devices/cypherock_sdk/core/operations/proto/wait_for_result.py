@@ -1,4 +1,4 @@
-import asyncio
+import time
 from typing import Optional, Callable, Dict, Any
 from ....interfaces import IDeviceConnection
 from ....errors import DeviceAppError, DeviceAppErrorType, DeviceCompatibilityError, DeviceCompatibilityErrorType
@@ -30,7 +30,7 @@ class IWaitForCommandOutputParams:
         self.allow_core_data = allow_core_data
 
 
-async def wait_for_result(
+def wait_for_result(
     connection: IDeviceConnection,
     sequence_number: int,
     applet_id: int,
@@ -52,7 +52,7 @@ async def wait_for_result(
         )
 
     while True:
-        response = await get_result(
+        response = get_result(
             connection=connection,
             version=version,
             applet_id=applet_id,
@@ -93,4 +93,4 @@ async def wait_for_result(
             if on_status:
                 on_status(status)
 
-        await asyncio.sleep((options.get('interval', 200) if options else 200) / 1000)
+        time.sleep((options.get('interval', 200) if options else 200) / 1000)

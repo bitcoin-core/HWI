@@ -1,5 +1,6 @@
 from typing import Optional
-import asyncio
+import time
+import threading
 from ....interfaces import IDeviceConnection
 from ....errors import (
     DeviceConnectionError,
@@ -16,105 +17,125 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def wait_for_idle(
+def wait_for_idle(
     connection: IDeviceConnection,
     version: PacketVersion,
     timeout: Optional[int] = None,
 ) -> None:
-    async def promise_executor():
+    logger.debug("Waiting for device to be idle")
+    
+    usable_config = config
+    is_completed = threading.Event()
+    stop_event = threading.Event()
+    error_to_raise = [None]  # Use list to allow modification from nested function
+    
+    timeout_val = (
+        timeout
+        if timeout is not None
+        else usable_config.constants.IDLE_TIMEOUT
+    ) / 1000  # Convert to seconds
+    
+    recheck_interval = usable_config.constants.IDLE_RECHECK_TIME / 1000  # Convert to seconds
+    
+    def check_if_idle():
+        """Check if device is idle and handle completion/errors"""
         try:
-            logger.debug("Waiting for device to be idle")
-            is_completed = False
-
-            usable_config = config
-            timeout_id: Optional[asyncio.Task] = None
-            recheck_timeout_id: Optional[asyncio.Task] = None
-
-            def clean_up():
-                nonlocal is_completed
-                is_completed = True
-                if timeout_id:
-                    timeout_id.cancel()
-                if recheck_timeout_id:
-                    recheck_timeout_id.cancel()
-
-            def set_recheck_timeout():
-                nonlocal recheck_timeout_id
-                if is_completed:
-                    return
-
-                if recheck_timeout_id:
-                    recheck_timeout_id.cancel()
-
-                recheck_timeout_id = asyncio.create_task(
-                    asyncio.sleep(usable_config.constants.IDLE_RECHECK_TIME / 1000)
+            if not connection.is_connected():
+                is_completed.set()
+                error_to_raise[0] = DeviceConnectionError(
+                    DeviceConnectionErrorType.CONNECTION_CLOSED
                 )
-
-            async def recheck_if_idle():
-                try:
-                    if not connection.is_connected():
-                        clean_up()
-                        raise DeviceConnectionError(
-                            DeviceConnectionErrorType.CONNECTION_CLOSED
-                        )
-
-                    if is_completed:
-                        return
-
-                    status = await get_status(
-                        connection=connection,
-                        version=version,
-                        dont_log=True,
-                    )
-
-                    if (
-                        status.device_idle_state
-                        != DeviceIdleState.DEVICE_IDLE_STATE_USB
-                    ):
-                        clean_up()
-                        return
-
-                    set_recheck_timeout()
-                except Exception as error:
-                    if hasattr(error, "code") and error.code in [
-                        e.value for e in DeviceConnectionErrorType
-                    ]:
-                        clean_up()
-                        raise error
-
-                    logger.error("Error while rechecking if idle")
-                    logger.error(error)
-                    set_recheck_timeout()
-
-            async def timeout_handler():
-                await asyncio.sleep(
-                    (
-                        timeout
-                        if timeout is not None
-                        else usable_config.constants.IDLE_TIMEOUT
-                    )
-                    / 1000
+                return
+            
+            if is_completed.is_set():
+                return
+            
+            # Get device status (synchronous call)
+            status = get_status(
+                connection=connection,
+                version=version,
+                dont_log=True,
+            )
+            
+            # Check if device is in USB idle state
+            if status.device_idle_state != DeviceIdleState.DEVICE_IDLE_STATE_USB:
+                # Device is not idle, we're done waiting
+                is_completed.set()
+                return
+            
+            # Device is idle, continue waiting (will check again after interval)
+            
+        except Exception as error:
+            if hasattr(error, "code") and error.code in [
+                e.value for e in DeviceConnectionErrorType
+            ]:
+                is_completed.set()
+                error_to_raise[0] = error
+                return
+            
+            logger.error("Error while rechecking if idle")
+            logger.error(error)
+            # Continue polling despite error
+    
+    def timeout_handler():
+        """Timeout thread that raises error if timeout is reached"""
+        time.sleep(timeout_val)
+        
+        if not is_completed.is_set():
+            is_completed.set()
+            stop_event.set()
+            
+            if not connection.is_connected():
+                error_to_raise[0] = DeviceConnectionError(
+                    DeviceConnectionErrorType.CONNECTION_CLOSED
                 )
-                clean_up()
-
+            else:
+                error_to_raise[0] = DeviceAppError(DeviceAppErrorType.EXECUTING_OTHER_COMMAND)
+    
+    # Start timeout thread
+    timeout_thread = threading.Thread(target=timeout_handler, daemon=True)
+    timeout_thread.start()
+    
+    # Main polling loop
+    start_time = time.time()
+    
+    try:
+        while not is_completed.is_set() and not stop_event.is_set():
+            # Check connection
+            if not connection.is_connected():
+                is_completed.set()
+                error_to_raise[0] = DeviceConnectionError(
+                    DeviceConnectionErrorType.CONNECTION_CLOSED
+                )
+                break
+            
+            # Check if idle
+            check_if_idle()
+            
+            if is_completed.is_set():
+                break
+            
+            # Sleep before next check
+            time.sleep(recheck_interval)
+            
+            # Also check elapsed time as backup (in case timeout thread has issues)
+            elapsed = time.time() - start_time
+            if elapsed >= timeout_val:
+                is_completed.set()
+                stop_event.set()
                 if not connection.is_connected():
-                    raise DeviceConnectionError(
+                    error_to_raise[0] = DeviceConnectionError(
                         DeviceConnectionErrorType.CONNECTION_CLOSED
                     )
                 else:
-                    raise DeviceAppError(DeviceAppErrorType.EXECUTING_OTHER_COMMAND)
-
-            timeout_id = asyncio.create_task(timeout_handler())
-            set_recheck_timeout()
-
-            while not is_completed:
-                if recheck_timeout_id and recheck_timeout_id.done():
-                    await recheck_if_idle()
-                    if not is_completed:
-                        set_recheck_timeout()
-                await asyncio.sleep(0.01)
-
-        except Exception as error:
-            raise error
-
-    await promise_executor()
+                    error_to_raise[0] = DeviceAppError(DeviceAppErrorType.EXECUTING_OTHER_COMMAND)
+                break
+        
+        # If there's an error to raise, raise it
+        if error_to_raise[0]:
+            raise error_to_raise[0]
+            
+    except Exception as error:
+        is_completed.set()
+        stop_event.set()
+        raise error

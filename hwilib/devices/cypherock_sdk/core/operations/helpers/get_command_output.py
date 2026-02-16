@@ -9,7 +9,7 @@ from .write_command import write_command
 from .can_retry import can_retry
 
 
-async def get_command_output(
+def get_command_output(
     connection: IDeviceConnection,
     version: PacketVersion,
     sequence_number: int,
@@ -54,7 +54,7 @@ async def get_command_output(
 
         while tries <= inner_max_tries and not is_success:
             try:
-                received_packet = await write_command(
+                received_packet = write_command(
                     connection=connection,
                     packet=packet,
                     version=version,

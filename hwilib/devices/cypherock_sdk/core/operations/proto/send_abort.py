@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def send_abort(
+def send_abort(
     connection: IDeviceConnection,
     version: PacketVersion,
     sequence_number: int,
@@ -52,7 +52,7 @@ async def send_abort(
     packet = packets_list[0]
     while tries <= inner_max_tries and not is_success:
         try:
-            received_packet = await write_command(
+            received_packet = write_command(
                 connection=connection,
                 packet=packet,
                 version=version,
@@ -88,6 +88,6 @@ async def send_abort(
     if not status:
         raise Exception('Did not found status')
 
-    await wait_for_idle(connection=connection, version=version)
+    wait_for_idle(connection=connection, version=version)
 
     return status

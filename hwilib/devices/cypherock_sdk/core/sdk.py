@@ -52,7 +52,7 @@ class SDK:
         return self.connection.destroy()
 
     # ************** v3 Packet Version with protobuf ****************
-    async def send_query(
+    def send_query(
         self,
         data: bytes,
         options: Optional[Dict[str, Any]] = None,
@@ -68,7 +68,7 @@ class SDK:
         if max_tries is None:
             max_tries = 5
 
-        return await operations.send_query(
+        return operations.send_query(
             connection=self.connection,
             data=data,
             applet_id=self.applet_id,
@@ -78,7 +78,7 @@ class SDK:
             timeout=timeout,
         )
 
-    async def get_result(self, options: Optional[Dict[str, Any]] = None):
+    def get_result(self, options: Optional[Dict[str, Any]] = None):
         sequence_number = options.get("sequence_number") if options else None
         if sequence_number is None:
             sequence_number = self.get_sequence_number()
@@ -90,7 +90,7 @@ class SDK:
         if max_tries is None:
             max_tries = 5
 
-        return await operations.get_result(
+        return operations.get_result(
             connection=self.connection,
             applet_id=self.applet_id,
             sequence_number=sequence_number,
@@ -99,7 +99,7 @@ class SDK:
             timeout=timeout,
         )
 
-    async def wait_for_result(self, params: Optional[Dict[str, Any]] = None):
+    def wait_for_result(self, params: Optional[Dict[str, Any]] = None):
         sequence_number = params.get("sequence_number") if params else None
         if sequence_number is None:
             sequence_number = self.get_sequence_number()
@@ -107,7 +107,7 @@ class SDK:
         on_status = params.get("on_status") if params else None
         options = params.get("options") if params else None
 
-        return await operations.wait_for_result(
+        return operations.wait_for_result(
             connection=self.connection,
             version=PacketVersionMap.v3,
             applet_id=self.applet_id,
@@ -116,7 +116,7 @@ class SDK:
             options=options,
         )
 
-    async def get_status(
+    def get_status(
         self,
         max_tries: Optional[int] = None,
         timeout: Optional[int] = None,
@@ -128,7 +128,7 @@ class SDK:
         if dont_log is None:
             dont_log = False
 
-        return await operations.get_status(
+        return operations.get_status(
             connection=self.connection,
             version=PacketVersionMap.v3,
             max_tries=max_tries,
@@ -136,7 +136,7 @@ class SDK:
             dont_log=dont_log,
         )
 
-    async def send_abort(self, options: Optional[Dict[str, Any]] = None):
+    def send_abort(self, options: Optional[Dict[str, Any]] = None):
         sequence_number = options.get("sequence_number") if options else None
         if sequence_number is None:
             sequence_number = self.get_new_sequence_number()
@@ -148,7 +148,7 @@ class SDK:
         if max_tries is None:
             max_tries = 5
 
-        return await operations.send_abort(
+        return operations.send_abort(
             connection=self.connection,
             sequence_number=sequence_number,
             version=PacketVersionMap.v3,
@@ -156,10 +156,10 @@ class SDK:
             timeout=timeout,
         )
 
-    async def make_device_ready(self) -> None:
-        await self.ensure_if_usb_idle()
+    def make_device_ready(self) -> None:
+        self.ensure_if_usb_idle()
 
-        status = await self.get_status()
+        status = self.get_status()
         if status.device_idle_state in [
             DeviceIdleState.DEVICE_IDLE_STATE_USB,
             DeviceIdleState.DEVICE_IDLE_STATE_DEVICE,
@@ -167,14 +167,14 @@ class SDK:
             if status.abort_disabled:
                 raise DeviceAppError(DeviceAppErrorType.EXECUTING_OTHER_COMMAND)
 
-            await self.send_abort()
+            self.send_abort()
 
-    async def run_operation(self, operation: Callable[[], Awaitable[Any]]) -> Any:
+    def run_operation(self, operation: Callable[[], Any]) -> Any:
         try:
             self.connection.before_operation()
-            await self.make_device_ready()
+            self.make_device_ready()
 
-            result = await operation()
+            result = operation()
 
             if self.connection.is_connected():
                 self.connection.after_operation()
@@ -186,9 +186,9 @@ class SDK:
 
             raise error
 
-    async def ensure_if_usb_idle(self) -> None:
+    def ensure_if_usb_idle(self) -> None:
         try:
-            await operations.wait_for_idle(
+            operations.wait_for_idle(
                 connection=self.connection,
                 version=PacketVersionMap.v3,
             )

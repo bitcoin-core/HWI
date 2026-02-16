@@ -8,14 +8,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def get_status(
+def get_status(
     connection: IDeviceConnection,
     version: PacketVersion,
     max_tries: int = 5,
     timeout: Optional[int] = None,
     dont_log: bool = False,
 ) -> Status:
-    result = await get_status_helper(
+    result = get_status_helper(
         connection=connection,
         version=version,
         max_tries=max_tries,

@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def send_query(
+def send_query(
     connection: IDeviceConnection,
     applet_id: int,
     data: bytes,
@@ -29,7 +29,7 @@ async def send_query(
     msg = Msg(cmd=Command(applet_id=applet_id))
     msg_data = uint8array_to_hex(msg.SerializeToString())
 
-    return await send_command_helper(
+    return send_command_helper(
         connection=connection,
         proto_data=msg_data,
         raw_data=raw_data,
