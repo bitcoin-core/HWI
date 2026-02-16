@@ -119,7 +119,7 @@ def create_status_listener(params: CreateStatusListenerParams) -> Dict[str, Any]
                         ),
                         str(event_index),
                     )
-                    logger.verbose(
+                    logger.info(
                         "Event", {"event": event_name, "eventIndex": event_index}
                     )
 
@@ -141,7 +141,7 @@ def create_status_listener(params: CreateStatusListenerParams) -> Dict[str, Any]
                         ),
                         str(event_index),
                     )
-                    logger.verbose(
+                    logger.info(
                         "Event", {"event": event_name, "eventIndex": event_index}
                     )
 
