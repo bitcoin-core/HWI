@@ -30,3 +30,4 @@ class GetPublicKeyResult:
     """Result of get public key operation."""
 
     public_key: bytes
+    address: str
