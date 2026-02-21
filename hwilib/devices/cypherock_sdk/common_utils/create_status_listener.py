@@ -22,13 +22,13 @@ def get_numbers_from_enums(enums: Type[Enum]) -> List[int]:
             for member in enums
             if isinstance(member.value, int) and member.value >= 0
         ]
-    except Exception as e:
+    except Exception:
         return enums.values()
 
 def get_names_from_enums(enums: Type[Enum]) -> List[str]:
     try:
         return [member.name for member in enums]
-    except Exception as e:
+    except Exception:
         return enums.keys()
 
 def create_dict_from_enums(enums: Type[Enum]) -> Dict[str, int]:

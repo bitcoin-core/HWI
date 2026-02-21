@@ -224,6 +224,7 @@ def wait_for_packet(
 
     # Override cancel to also stop the thread
     original_cancel = task.cancel
+
     def cancel_with_stop():
         stop_event.set()
         original_cancel()

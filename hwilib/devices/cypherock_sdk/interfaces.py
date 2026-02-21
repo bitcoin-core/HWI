@@ -1,3 +1,4 @@
+# flake8: noqa E704
 from typing import List, Literal, Optional, Protocol, TypedDict, runtime_checkable
 
 class IDevice(TypedDict):

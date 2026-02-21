@@ -48,7 +48,7 @@ class DeviceConnection(IDeviceConnection):
     @staticmethod
     def create():
         devices = get_available_devices()
-        
+
         if not devices:
             raise DeviceConnectionError("No devices found")
 

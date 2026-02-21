@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, Callable, Awaitable
+from typing import Optional, Dict, Any, Callable
 from ..interfaces import IDeviceConnection
 from .operations import proto as operations
 from .utils.packet_version import PacketVersionMap

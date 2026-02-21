@@ -110,7 +110,7 @@ def hex_to_uint8array(data: str) -> bytes:
         return bytes()
 
     # Split the hex string into pairs of characters
-    hex_pairs = [hex_str[i : i + 2] for i in range(0, len(hex_str), 2)]
+    hex_pairs = [hex_str[i: i + 2] for i in range(0, len(hex_str), 2)]
 
     # Convert each pair to an integer and then to a byte
     return bytes(int(pair, 16) for pair in hex_pairs)
@@ -212,7 +212,7 @@ def hex_to_ascii(hex_str: str) -> str:
     result = ""
 
     for i in range(0, len(hex_formatted), 2):
-        char_code = int(hex_formatted[i : i + 2], 16)
+        char_code = int(hex_formatted[i: i + 2], 16)
         result += chr(char_code)
 
     return result

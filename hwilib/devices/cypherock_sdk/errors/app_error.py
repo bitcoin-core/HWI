@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Dict, Any, Optional, Union
+from .card_error import cardErrorTypeDetails
 from .device_error import DeviceError
 
 
@@ -24,9 +25,6 @@ class DeviceAppErrorType(Enum):
     DEVICE_AUTH_FAILED = "APP_0700"
     CARD_AUTH_FAILED = "APP_0701"
 
-
-# Import here to avoid circular imports
-from .card_error import cardErrorTypeDetails
 
 deviceAppErrorTypeDetails: Dict[DeviceAppErrorType, Dict[str, Any]] = {
     DeviceAppErrorType.UNKNOWN_ERROR: {

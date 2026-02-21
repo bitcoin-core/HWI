@@ -21,7 +21,7 @@ class DataListener:
         self.listening = False
         self.pool: [PoolData] = []
 
-        self.read_thread: Optional[threading.Thread]  = None
+        self.read_thread: Optional[threading.Thread] = None
         self._monitor_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
@@ -143,4 +143,3 @@ class DataListener:
         if not is_device_connected:
             self.destroy()
             self.on_close()
-

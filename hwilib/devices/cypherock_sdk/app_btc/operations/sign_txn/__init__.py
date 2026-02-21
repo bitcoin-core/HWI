@@ -1,4 +1,3 @@
-import copy
 from typing import List
 from ....core.types import ISDK
 from ....common_utils import (
@@ -103,9 +102,7 @@ def sign_txn(
     result = helper.wait_for_result()
     assert_or_throw_invalid_result(result.meta_accepted)
 
-    inputs = copy.deepcopy(params.txn.inputs)
-
-    for i, input_data in enumerate(params.txn.inputs):
+    for input_data in params.txn.inputs:
         prev_txn_hash = bytes.fromhex(input_data.prev_txn_id)[::-1].hex()
 
         helper.send_query(

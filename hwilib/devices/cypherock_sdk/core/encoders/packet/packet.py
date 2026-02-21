@@ -156,7 +156,7 @@ def encode_packet(
             usable_config.radix.total_packet,
         )
         data_chunk = serialized_data[
-            (i - 1) * chunk_size : (i - 1) * chunk_size + chunk_size
+            (i - 1) * chunk_size: (i - 1) * chunk_size + chunk_size
         ]
         payload = data_chunk
         payload_length = int_to_uint_byte(
@@ -214,18 +214,18 @@ def decode_packet(
         # Add bounds checking for all field reads
         if offset + len(start_of_frame) > len(data):
             break
-        start_of_frame = data[offset : offset + len(start_of_frame)]
+        start_of_frame = data[offset: offset + len(start_of_frame)]
         offset += len(start_of_frame)
 
         if offset + usable_config.radix.crc // 4 > len(data):
             break
-        crc = data[offset : offset + usable_config.radix.crc // 4]
+        crc = data[offset: offset + usable_config.radix.crc // 4]
         offset += usable_config.radix.crc // 4
 
         if offset + usable_config.radix.current_packet_number // 4 > len(data):
             break
         current_packet_number = int(
-            data[offset : offset + usable_config.radix.current_packet_number // 4],
+            data[offset: offset + usable_config.radix.current_packet_number // 4],
             16,
         )
         offset += usable_config.radix.current_packet_number // 4
@@ -233,7 +233,7 @@ def decode_packet(
         if offset + usable_config.radix.total_packet // 4 > len(data):
             break
         total_packet_number = int(
-            data[offset : offset + usable_config.radix.total_packet // 4],
+            data[offset: offset + usable_config.radix.total_packet // 4],
             16,
         )
         offset += usable_config.radix.total_packet // 4
@@ -241,7 +241,7 @@ def decode_packet(
         if offset + usable_config.radix.sequence_number // 4 > len(data):
             break
         sequence_number = int(
-            data[offset : offset + usable_config.radix.sequence_number // 4],
+            data[offset: offset + usable_config.radix.sequence_number // 4],
             16,
         )
         offset += usable_config.radix.sequence_number // 4
@@ -249,7 +249,7 @@ def decode_packet(
         if offset + usable_config.radix.packet_type // 4 > len(data):
             break
         packet_type = int(
-            data[offset : offset + usable_config.radix.packet_type // 4],
+            data[offset: offset + usable_config.radix.packet_type // 4],
             16,
         )
         offset += usable_config.radix.packet_type // 4
@@ -257,7 +257,7 @@ def decode_packet(
         if offset + usable_config.radix.timestamp_length // 4 > len(data):
             break
         timestamp = int(
-            data[offset : offset + usable_config.radix.timestamp_length // 4],
+            data[offset: offset + usable_config.radix.timestamp_length // 4],
             16,
         )
         offset += usable_config.radix.timestamp_length // 4
@@ -265,7 +265,7 @@ def decode_packet(
         if offset + usable_config.radix.payload_length // 4 > len(data):
             break
         payload_length = int(
-            data[offset : offset + usable_config.radix.payload_length // 4],
+            data[offset: offset + usable_config.radix.payload_length // 4],
             16,
         )
         offset += usable_config.radix.payload_length // 4
@@ -275,7 +275,7 @@ def decode_packet(
             available_length = len(data) - offset
             read_length = min(payload_length * 2, available_length)
             if read_length > 0:
-                payload_data = data[offset : offset + read_length]
+                payload_data = data[offset: offset + read_length]
                 offset += read_length
         data = data[offset:]
 
@@ -337,17 +337,17 @@ def decode_payload_data(payload: str, version: PacketVersion) -> Dict[str, str]:
     data_size_half = usable_config.radix.data_size // 4
 
     protobuf_data_size = int(
-        payload[payload_offset : payload_offset + data_size_half], 16
+        payload[payload_offset: payload_offset + data_size_half], 16
     )
     payload_offset += data_size_half
 
-    raw_data_size = int(payload[payload_offset : payload_offset + data_size_half], 16)
+    raw_data_size = int(payload[payload_offset: payload_offset + data_size_half], 16)
     payload_offset += data_size_half
 
-    protobuf_data = payload[payload_offset : payload_offset + protobuf_data_size * 2]
+    protobuf_data = payload[payload_offset: payload_offset + protobuf_data_size * 2]
     payload_offset += protobuf_data_size * 2
 
-    raw_data = payload[payload_offset : payload_offset + raw_data_size * 2]
+    raw_data = payload[payload_offset: payload_offset + raw_data_size * 2]
     payload_offset += raw_data_size * 2
 
     return {

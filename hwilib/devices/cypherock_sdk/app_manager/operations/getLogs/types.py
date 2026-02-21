@@ -6,4 +6,3 @@ GetLogsEventHandler = Callable[[GetLogsStatus], None]
 
 # Re-export error types
 __all__ = ["GetLogsError", "GetLogsErrorType", "GetLogsEventHandler"]
-
