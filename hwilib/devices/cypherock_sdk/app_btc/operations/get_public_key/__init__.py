@@ -86,9 +86,7 @@ def get_public_key(
     if not result.result.public_key or len(result.result.public_key) == 0:
         raise DeviceAppError(DeviceAppErrorType.INVALID_MSG_FROM_DEVICE)
 
-    # TODO: Firmware should return the address
-
     return GetPublicKeyResult(
         public_key=result.result.public_key,
-        address="",
+        address=result.result.address,
     )

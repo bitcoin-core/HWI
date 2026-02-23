@@ -14,21 +14,21 @@ _sym_db = _symbol_database.Default()
 from .. import error_pb2 as core_dot_error__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18\x62tc/get_public_key.proto\x12\x03\x62tc\x1a\x10\x63ore/error.proto\"H\n\x1aGetPublicKeyIntiateRequest\x12\x11\n\twallet_id\x18\x01 \x01(\x0c\x12\x17\n\x0f\x64\x65rivation_path\x18\x02 \x03(\r\"0\n\x1aGetPublicKeyResultResponse\x12\x12\n\npublic_key\x18\x01 \x01(\x0c\"U\n\x13GetPublicKeyRequest\x12\x33\n\x08initiate\x18\x01 \x01(\x0b\x32\x1f.btc.GetPublicKeyIntiateRequestH\x00\x42\t\n\x07request\"\x81\x01\n\x14GetPublicKeyResponse\x12\x31\n\x06result\x18\x01 \x01(\x0b\x32\x1f.btc.GetPublicKeyResultResponseH\x00\x12*\n\x0c\x63ommon_error\x18\x02 \x01(\x0b\x32\x12.error.CommonErrorH\x00\x42\n\n\x08response*\xa3\x01\n\x12GetPublicKeyStatus\x12\x1e\n\x1aGET_PUBLIC_KEY_STATUS_INIT\x10\x00\x12!\n\x1dGET_PUBLIC_KEY_STATUS_CONFIRM\x10\x01\x12(\n$GET_PUBLIC_KEY_STATUS_SEED_GENERATED\x10\x02\x12 \n\x1cGET_PUBLIC_KEY_STATUS_VERIFY\x10\x03\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18\x62tc/get_public_key.proto\x12\x03\x62tc\x1a\x10\x63ore/error.proto\"H\n\x1aGetPublicKeyIntiateRequest\x12\x11\n\twallet_id\x18\x01 \x01(\x0c\x12\x17\n\x0f\x64\x65rivation_path\x18\x02 \x03(\r\"A\n\x1aGetPublicKeyResultResponse\x12\x12\n\npublic_key\x18\x01 \x01(\x0c\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\t\"U\n\x13GetPublicKeyRequest\x12\x33\n\x08initiate\x18\x01 \x01(\x0b\x32\x1f.btc.GetPublicKeyIntiateRequestH\x00\x42\t\n\x07request\"\x81\x01\n\x14GetPublicKeyResponse\x12\x31\n\x06result\x18\x01 \x01(\x0b\x32\x1f.btc.GetPublicKeyResultResponseH\x00\x12*\n\x0c\x63ommon_error\x18\x02 \x01(\x0b\x32\x12.error.CommonErrorH\x00\x42\n\n\x08response*\xa3\x01\n\x12GetPublicKeyStatus\x12\x1e\n\x1aGET_PUBLIC_KEY_STATUS_INIT\x10\x00\x12!\n\x1dGET_PUBLIC_KEY_STATUS_CONFIRM\x10\x01\x12(\n$GET_PUBLIC_KEY_STATUS_SEED_GENERATED\x10\x02\x12 \n\x1cGET_PUBLIC_KEY_STATUS_VERIFY\x10\x03\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'btc.get_public_key_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_GETPUBLICKEYSTATUS']._serialized_start=395
-  _globals['_GETPUBLICKEYSTATUS']._serialized_end=558
+  _globals['_GETPUBLICKEYSTATUS']._serialized_start=412
+  _globals['_GETPUBLICKEYSTATUS']._serialized_end=575
   _globals['_GETPUBLICKEYINTIATEREQUEST']._serialized_start=51
   _globals['_GETPUBLICKEYINTIATEREQUEST']._serialized_end=123
   _globals['_GETPUBLICKEYRESULTRESPONSE']._serialized_start=125
-  _globals['_GETPUBLICKEYRESULTRESPONSE']._serialized_end=173
-  _globals['_GETPUBLICKEYREQUEST']._serialized_start=175
-  _globals['_GETPUBLICKEYREQUEST']._serialized_end=260
-  _globals['_GETPUBLICKEYRESPONSE']._serialized_start=263
-  _globals['_GETPUBLICKEYRESPONSE']._serialized_end=392
+  _globals['_GETPUBLICKEYRESULTRESPONSE']._serialized_end=190
+  _globals['_GETPUBLICKEYREQUEST']._serialized_start=192
+  _globals['_GETPUBLICKEYREQUEST']._serialized_end=277
+  _globals['_GETPUBLICKEYRESPONSE']._serialized_start=280
+  _globals['_GETPUBLICKEYRESPONSE']._serialized_end=409
 # @@protoc_insertion_point(module_scope)
