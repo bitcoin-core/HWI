@@ -2,8 +2,6 @@ from typing import List
 from ....core.types import ISDK
 from ....common_utils import (
     create_status_listener,
-    hex_to_uint8array,
-    uint8array_to_hex,
 )
 from ...proto.generated.btc.sign_txn_pb2 import SignTxnStatus
 from ...proto.generated.common_pb2 import SeedGenerationStatus
@@ -103,15 +101,13 @@ def sign_txn(
     assert_or_throw_invalid_result(result.meta_accepted)
 
     for input_data in params.txn.inputs:
-        prev_txn_hash = bytes.fromhex(input_data.prev_txn_id)[::-1].hex()
-
         helper.send_query(
             {
                 "input": {
-                    "prev_txn_hash": hex_to_uint8array(prev_txn_hash),
+                    "prev_txn_hash": input_data.prev_txn_id,
                     "prev_output_index": input_data.prev_index,
-                    "script_pub_key": hex_to_uint8array(input_data.script_pub_key),
-                    "value": int(input_data.value),
+                    "script_pub_key": input_data.script_pub_key,
+                    "value": input_data.value,
                     "sequence": input_data.sequence
                     or SIGN_TXN_DEFAULT_PARAMS["input"]["sequence"],
                     "change_index": input_data.change_index,
@@ -123,7 +119,7 @@ def sign_txn(
         assert_or_throw_invalid_result(result.input_accepted)
 
         helper.send_in_chunks(
-            hex_to_uint8array(input_data.prev_txn),
+            input_data.prev_txn,
             "prev_txn_chunk",
             "prev_txn_chunk_accepted",
         )
@@ -132,8 +128,8 @@ def sign_txn(
         helper.send_query(
             {
                 "output": {
-                    "script_pub_key": hex_to_uint8array(output.script_pub_key),
-                    "value": int(output.value),
+                    "script_pub_key": output.script_pub_key,
+                    "value": output.value,
                     "is_change": output.is_change,
                     "changes_index": output.address_index,
                 }
@@ -142,7 +138,7 @@ def sign_txn(
         result = helper.wait_for_result()
         assert_or_throw_invalid_result(result.output_accepted)
 
-    signatures: List[str] = []
+    signatures: List[bytes] = []
 
     for i in range(len(params.txn.inputs)):
         helper.send_query(
@@ -156,7 +152,7 @@ def sign_txn(
         result = helper.wait_for_result()
         assert_or_throw_invalid_result(result.signature)
 
-        signatures.append(uint8array_to_hex(result.signature.signature))
+        signatures.append(result.signature.signature)
 
     force_status_update(SignTxnEvent.PIN_CARD)
 

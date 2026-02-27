@@ -20,13 +20,13 @@ SignTxnEventHandler = Callable[[SignTxnEvent], None]
 class SignTxnInputData:
     """Input data for transaction signing."""
 
-    prev_txn_id: str
+    prev_txn_id: bytes
     prev_index: int
-    value: str
-    script_pub_key: str
+    value: int
+    script_pub_key: bytes
     change_index: int
     address_index: int
-    prev_txn: str
+    prev_txn: bytes
     sequence: Optional[int] = None
 
 
@@ -34,8 +34,8 @@ class SignTxnInputData:
 class SignTxnOutputData:
     """Output data for transaction signing."""
 
-    value: str
-    script_pub_key: str
+    value: int
+    script_pub_key: bytes
     is_change: bool
     address_index: Optional[int] = None
 
@@ -64,4 +64,4 @@ class SignTxnParams:
 class SignTxnResult:
     """Result of sign transaction operation."""
 
-    signatures: List[str]
+    signatures: List[bytes]
