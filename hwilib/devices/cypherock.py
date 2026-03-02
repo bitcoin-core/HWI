@@ -19,9 +19,9 @@ from .cypherock_sdk.hw_hid import get_available_devices, DeviceConnection
 from .cypherock_sdk.interfaces import IDevice
 
 from .. import _base58 as base58
-from ..common import AddressType, Chain, hash256
+from ..common import AddressType, Chain, hash256, sha256
 from ..descriptor import MultisigDescriptor
-from ..errors import BadArgumentError, DeviceConnectionError, UnavailableActionError
+from ..errors import BadArgumentError, DeviceConnectionError, UnavailableActionError, common_err_msgs, handle_errors
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey, is_standard_path, parse_path
 from ..psbt import PSBT
@@ -46,6 +46,10 @@ def convert_xpub_to_standard(xpub: str, chain: Chain = Chain.MAIN) -> str:
 
     return standard_xpub
 
+def get_master_fingerprint_from_device(manager_app: ManagerApp) -> bytes:
+    device_info = manager_app.get_device_info()
+    return sha256(device_info.device_serial)[:4]
+
 class CypherockClient(HardwareWalletClient):
     """
     The `CypherockClient` is a `HardwareWalletClient` for interacting with Cypherock X1 devices.
@@ -66,11 +70,15 @@ class CypherockClient(HardwareWalletClient):
             self.connection = DeviceConnection.connect(self.device)
             self.manager_app = ManagerApp.create(self.connection)
             self.btc_app = BtcApp.create(self.connection)
+            self.wallet = self.manager_app.select_wallet().wallet
+            self.master_fingerprint: Optional(bytes) = None
         except Exception as e:
             raise DeviceConnectionError(f"Failed to connect to Cypherock X1: {e}")
 
     def get_master_fingerprint(self) -> bytes:
-        return bytes.fromhex(self.device["fingerprint"])
+        if self.master_fingerprint is None:
+            self.master_fingerprint = get_master_fingerprint_from_device(self.manager_app)
+        return self.master_fingerprint
 
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         """
@@ -84,8 +92,7 @@ class CypherockClient(HardwareWalletClient):
         if len(parsed_path) < 3:
             raise BadArgumentError(f"The Cypherock X1 only supports BIP 32 derivation paths of at least depth 3, but {path} has depth {len(parsed_path)}")
 
-        wallet_id = self.select_wallet()
-        params = GetXpubsParams(wallet_id=wallet_id, derivation_paths=[{"path": parsed_path[0:3]}])
+        params = GetXpubsParams(wallet_id=self.wallet.id, derivation_paths=[{"path": parsed_path[0:3]}])
         response = self.btc_app.get_xpubs(params)
         standard_xpub = convert_xpub_to_standard(response.xpubs[0])
         return ExtendedKey.deserialize(standard_xpub).derive_pub_path(parsed_path[3:])
@@ -235,7 +242,7 @@ class CypherockClient(HardwareWalletClient):
 
         # Sign transaction
         params = SignTxnParams(
-            wallet_id=self.select_wallet(),
+            wallet_id=self.wallet.id,
             derivation_path=derivation_path,
             txn=txn_data,
         )
@@ -287,8 +294,7 @@ class CypherockClient(HardwareWalletClient):
         if not is_standard_path(parsed_path, addr_type, self.chain):
             raise BadArgumentError(f"Cypherock X1 requires BIP 44 standard paths, but {keypath} is not a standard path")
 
-        wallet_id = self.select_wallet()
-        params = GetPublicKeyParams(wallet_id=wallet_id, derivation_path=parsed_path)
+        params = GetPublicKeyParams(wallet_id=self.wallet.id, derivation_path=parsed_path)
         response = self.btc_app.get_public_key(params)
         return response.address
 
@@ -371,9 +377,15 @@ class CypherockClient(HardwareWalletClient):
         """
         return True
 
-    def select_wallet(self) -> bytes:
-        wallet_info = self.manager_app.select_wallet()
-        return wallet_info.wallet.id
-
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
-    return get_available_devices()
+    devices = get_available_devices()
+
+    results = []
+    for device in devices:
+        with handle_errors(common_err_msgs["enumerate"], device):
+            connection = DeviceConnection.connect(device)
+            device["fingerprint"] = get_master_fingerprint_from_device(ManagerApp.create(connection)).hex()
+            connection.destroy()
+        results.append(device)
+
+    return results
