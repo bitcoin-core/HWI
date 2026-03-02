@@ -8,6 +8,7 @@ These are necessary for the devices to be reachable on linux environments.
  - `51-hid-digitalbitbox.rules`, `52-hid-digitalbitbox.rules` (Digital Bitbox): https://shiftcrypto.ch/start_linux
  - `51-trezor.rules` (Trezor): https://github.com/trezor/trezor-common/blob/master/udev/51-trezor.rules
  - `51-usb-keepkey.rules` (Keepkey): https://github.com/keepkey/udev-rules/blob/master/51-usb-keepkey.rules
+ - `21-cypherock.rules` (Cypherock): https://github.com/Cypherock/cysync-scripts/blob/main/configure-usb.sh
 
 # Usage
 
