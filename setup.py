@@ -16,6 +16,7 @@ packages = \
  'hwilib.devices.ledger_bitcoin.exception',
  'hwilib.devices.ledger_bitcoin.ledgercomm',
  'hwilib.devices.ledger_bitcoin.ledgercomm.interfaces',
+ 'hwilib.devices.onekeylib',
  'hwilib.devices.trezorlib',
  'hwilib.devices.trezorlib.transport',
  'hwilib.ui']

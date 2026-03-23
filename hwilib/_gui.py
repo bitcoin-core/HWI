@@ -418,7 +418,7 @@ class HWIQt(QMainWindow):
 
         self.ui.setpass_button.setEnabled(self.device_info['type'] != 'bitbox02')
         self.ui.signmsg_button.setEnabled(True)
-        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] in ('trezor', 'keepkey', 'bitbox02', ))
+        self.ui.toggle_passphrase_button.setEnabled(self.device_info['type'] in ('trezor', 'onekey', 'keepkey', 'bitbox02', ))
 
         self.get_device_info()
 

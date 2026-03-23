@@ -1,5 +1,6 @@
 __all__ = [
     'trezor',
+    'onekey',
     'ledger',
     'keepkey',
     'digitalbitbox',

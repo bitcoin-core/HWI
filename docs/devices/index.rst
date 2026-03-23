@@ -63,6 +63,9 @@ The table below lists what devices and features are supported for each device.
 
 \* There are some caveats. See the `sign_tx` for these devices.
 
+OneKey capability behavior depends on device model and firmware.
+For locked devices, model-specific unlock instructions are returned in ``enumerate`` warnings.
+
 Support Policy
 ================
 
@@ -97,6 +100,8 @@ Device APIs
 .. automodule:: hwilib.devices.ledger
    :members:
 .. automodule:: hwilib.devices.trezor
+   :members:
+.. automodule:: hwilib.devices.onekey
    :members:
 .. automodule:: hwilib.devices.digitalbitbox
    :members:
