@@ -1047,7 +1047,7 @@ class PSBT(object):
         """
         # To make things easier, we split up the global transaction
         # and use the PSBTv2 fields for PSBTv0
-        if self.tx is not None:
+        if self.version == 0:
             self.setup_from_tx(self.tx)
 
     def setup_from_tx(self, tx: CTransaction):
