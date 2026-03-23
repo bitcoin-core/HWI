@@ -9,12 +9,16 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      timeout-minutes:
+        required: false
+        type: number
+        default: 45
 
 jobs:
   test-device:
     name: Python ${{ matrix.python-version }} ${{ matrix.device }} ${{ matrix.test.script || matrix.test.interface }}
     runs-on: ${{ inputs.runs-on }}
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     strategy:
       fail-fast: false
       matrix:

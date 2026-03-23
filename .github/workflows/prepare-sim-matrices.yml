@@ -20,6 +20,9 @@ on:
       keepkey:
         description: JSON include array for keepkey
         value: ${{ jobs.prepare.outputs.keepkey }}
+      onekey:
+        description: JSON include array for onekey
+        value: ${{ jobs.prepare.outputs.onekey }}
 
 jobs:
   prepare:
@@ -32,6 +35,7 @@ jobs:
       jade: ${{ steps.gen.outputs.jade }}
       ledger: ${{ steps.gen.outputs.ledger }}
       keepkey: ${{ steps.gen.outputs.keepkey }}
+      onekey: ${{ steps.gen.outputs.onekey }}
     steps:
       - uses: actions/checkout@v4
       - id: gen
@@ -40,7 +44,7 @@ jobs:
           set -euo pipefail
           sudo apt-get install -y jq
           map_file=".github/sim-build-map.json"
-          for sim in trezor coldcard bitbox jade ledger keepkey; do
+          for sim in trezor coldcard bitbox jade ledger keepkey onekey; do
             include=$(jq -c --arg s "$sim" '.[$s]' "$map_file")
             if [[ -z "$include" || "$include" == "null" ]]; then
               echo "Missing entry for $sim in $map_file" >&2

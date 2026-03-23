@@ -18,6 +18,9 @@ runs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build libltdl-dev
+        if [[ "${{ inputs.name }}" == onekey* ]]; then
+          sudo apt-get install -y llvm-dev libclang-dev clang libusb-1.0-0-dev curl libprotobuf-dev git-lfs
+        fi
         pip install poetry uv
         wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
         sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
@@ -50,4 +53,3 @@ runs:
       with:
         name: ${{ inputs.name }}-sim
         path: ${{ inputs.archive }}.tar.gz
-

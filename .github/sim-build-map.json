@@ -18,5 +18,9 @@
   ],
   "keepkey": [
     { "name": "keepkey", "archive": "keepkey-firmware", "paths": "test/work/keepkey-firmware/bin" }
+  ],
+  "onekey": [
+    { "name": "onekey-pro", "archive": "onekey-firmware-pro", "paths": "test/work/onekey-firmware-pro/core/build/unix test/work/onekey-firmware-pro/core/src" },
+    { "name": "onekey-classic1s", "archive": "onekey-firmware-classic1s", "paths": "test/work/onekey-firmware-classic1s/legacy/firmware" }
   ]
 }

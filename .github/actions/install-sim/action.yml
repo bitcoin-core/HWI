@@ -84,3 +84,19 @@ runs:
         apt-get update
         apt-get install -y libusb-1.0-0
         tar -xvf keepkey-firmware.tar.gz
+
+    - if: startsWith(inputs.device, 'onekey')
+      shell: bash
+      run: |
+        apt-get update
+        apt-get install -y libsdl2-2.0-0 libsdl2-image-2.0-0 libusb-1.0-0
+        if [ "${{ inputs.device }}" = "onekey-pro" ]; then
+          # Pro emulator requires a real (virtual) X display — SDL_VIDEODRIVER=dummy
+          # is not sufficient because the firmware calls SDL_Init(SDL_INIT_VIDEO).
+          apt-get install -y xvfb
+          Xvfb :99 -screen 0 1024x768x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          tar -xvf onekey-firmware-pro.tar.gz
+        else
+          tar -xvf onekey-firmware-classic1s.tar.gz
+        fi

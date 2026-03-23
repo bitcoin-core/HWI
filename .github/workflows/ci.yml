@@ -161,6 +161,15 @@ jobs:
       include: ${{ needs.prepare-sim-matrices.outputs.keepkey }}
       runs-on: ubuntu-latest
 
+  sim-builder-onekey:
+    name: OneKey sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: onekey
+      include: ${{ needs.prepare-sim-matrices.outputs.onekey }}
+      runs-on: ubuntu-latest
+
   ledger-legacy-app-builder:
     name: Ledger Bitcoin Legacy App builder
     uses: ./.github/workflows/ledger-legacy-app-builder.yml
@@ -243,3 +252,18 @@ jobs:
       device: keepkey
       runs-on: ubuntu-latest
 
+  test-onekey-pro:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-onekey, bitcoind-builder, dist-builder]
+    with:
+      device: onekey-pro
+      runs-on: ubuntu-latest
+      timeout-minutes: 60
+
+  test-onekey-classic1s:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-onekey, bitcoind-builder, dist-builder]
+    with:
+      device: onekey-classic1s
+      runs-on: ubuntu-latest
+      timeout-minutes: 60
