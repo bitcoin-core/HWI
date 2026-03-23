@@ -30,6 +30,14 @@ while [[ $# -gt 0 ]]; do
         build_keepkey=1
         shift
         ;;
+        --onekey-pro)
+        build_onekey_pro=1
+        shift
+        ;;
+        --onekey-classic1s)
+        build_onekey_classic1s=1
+        shift
+        ;;
         --jade)
         build_jade=1
         shift
@@ -49,6 +57,8 @@ while [[ $# -gt 0 ]]; do
         build_bitbox01=1
         build_ledger=1
         build_keepkey=1
+        build_onekey_pro=1
+        build_onekey_classic1s=1
         build_jade=1
         build_bitbox02=1
         build_bitcoind=1
@@ -69,6 +79,8 @@ TREZOR_VERSION="core/v2.9.6"
 BITBOX01_VERSION="v7.1.0"
 BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
+ONEKEY_VERSION="3bb8767e55f88005830880d4f797e91d4077ee01"
+ONEKEY_CLASSIC1S_VERSION="ee01f0114fd18dbdf3da3ee8de5dec9b391f1bc8"
 SPECULOS_VERSION="v0.25.10"  # Last version supporting Python 3.9 (v0.25.11+ requires >=3.10)
 JADE_VERSION="1.0.36"
 
@@ -124,6 +136,11 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
         git am ../../data/trezor-t-build.patch
+        # Fix for newer Rust nightly (>=2026-03-15): reexport_test_harness_main now requires
+        # explicit #![feature(custom_test_frameworks)] declaration
+        if ! grep -q 'feature(custom_test_frameworks)' core/embed/rust/src/lib.rs; then
+            sed -i '/#!\[reexport_test_harness_main/i #![feature(custom_test_frameworks)]' core/embed/rust/src/lib.rs
+        fi
         uv sync
         cd core
         uv run make build_unix
@@ -298,6 +315,104 @@ if [[ -n ${build_ledger} ]]; then
     make -C build/
 
     cd ..
+fi
+
+if [[ -n ${build_onekey_pro} ]]; then
+    if ! command -v git-lfs >/dev/null 2>&1; then
+        echo "git-lfs is required to fetch OneKey emulator assets" >&2
+        exit 1
+    fi
+
+    if [ ! -d "onekey-firmware-pro" ]; then
+        git clone --recursive https://github.com/OneKeyHQ/firmware-pro.git onekey-firmware-pro
+        cd onekey-firmware-pro
+    else
+        cd onekey-firmware-pro
+        git fetch origin
+    fi
+
+    git checkout ${ONEKEY_VERSION}
+    git submodule update --init --recursive
+    git config --local core.hooksPath .git/hooks
+    git lfs install --local --force
+    git lfs pull
+    git lfs checkout
+
+    if ! command -v uv >/dev/null 2>&1; then
+        python3 -m pip install uv
+    fi
+    uv python install 3.10
+    if [ ! -d ".venv-min" ]; then
+        uv venv --python 3.10 .venv-min
+    fi
+    . .venv-min/bin/activate
+    python -m ensurepip --upgrade
+    python -m pip install --upgrade pip setuptools wheel
+    python -m pip install scons protobuf click mako munch requests termcolor Pillow typing-extensions construct
+    python -m pip install -e python
+
+    if ! command -v rustup >/dev/null 2>&1; then
+        curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+    fi
+    . "$HOME/.cargo/env"
+    rustup toolchain install nightly
+    rustup override set nightly
+
+    if git apply --check ../../data/onekey-pro-firmware-build.patch; then
+        git apply ../../data/onekey-pro-firmware-build.patch
+    elif git apply -R --check ../../data/onekey-pro-firmware-build.patch; then
+        echo "OneKey build patch already applied"
+    else
+        echo "Failed to apply OneKey firmware build patch" >&2
+        exit 1
+    fi
+
+    cd core
+    CFLAGS="${CFLAGS:+${CFLAGS} }-Wno-error=dangling-pointer" make build_unix
+    find . -name "trezor.flash" -exec rm {} \; || true
+    cd ../..
+fi
+
+if [[ -n ${build_onekey_classic1s} ]]; then
+    if [ ! -d "onekey-firmware-classic1s" ]; then
+        git clone --recursive https://github.com/OneKeyHQ/firmware-classic1s.git onekey-firmware-classic1s
+        cd onekey-firmware-classic1s
+    else
+        cd onekey-firmware-classic1s
+        git fetch origin
+    fi
+
+    git checkout ${ONEKEY_CLASSIC1S_VERSION}
+    git submodule update --init --recursive
+
+    if git apply --check ../../data/onekey-classic1s-emulator.patch; then
+        git apply ../../data/onekey-classic1s-emulator.patch
+    elif git apply -R --check ../../data/onekey-classic1s-emulator.patch; then
+        echo "OneKey Classic 1S emulator patch already applied"
+    else
+        echo "Failed to apply OneKey Classic 1S emulator patch" >&2
+        exit 1
+    fi
+
+    if ! command -v uv >/dev/null 2>&1; then
+        python3 -m pip install uv
+    fi
+    uv python install 3.10
+    if [ ! -d ".venv-build" ]; then
+        uv venv --python 3.10 .venv-build
+    fi
+    . .venv-build/bin/activate
+    python -m ensurepip --upgrade
+    python -m pip install --upgrade pip setuptools wheel
+    python -m pip install scons protobuf nanopb click ed25519 requests termcolor Pillow simple-rlp ecdsa mako munch pyserial typing-extensions
+
+    cd legacy
+    export EMULATOR=1 DEBUG_LINK=1
+    make vendor
+    ./script/setup
+    CFLAGS="${CFLAGS:+${CFLAGS} }-Wno-error=array-bounds" ./script/cibuild
+    find . -name "emulator.img" -exec rm {} \; || true
+    cd ../..
 fi
 
 if [[ -n ${build_jade} ]]; then
