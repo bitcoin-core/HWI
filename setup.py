@@ -26,7 +26,7 @@ package_data = \
 modules = \
 ['hwi', 'hwi-qt']
 install_requires = \
-['cbor2>=5.4.6,<5.8',
+['cbor2>=5.4.6,!=5.8.0,<6.0.0',
  'ecdsa>=0,<1',
  'hidapi>=0.14.0',
  'libusb1>=1.7,<4',
