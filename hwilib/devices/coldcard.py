@@ -39,6 +39,7 @@ from .ckcc.constants import (
     AF_P2WSH,
     AF_P2SH,
     AF_P2WSH_P2SH,
+    AF_P2TR,
 )
 from .._base58 import (
     get_xpub_fingerprint,
@@ -262,7 +263,9 @@ class ColdcardClient(HardwareWalletClient):
         elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
+            if not self.is_edge:
+                raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet. Use EDGE.")
+            addr_fmt = AF_P2TR
         else:
             raise BadArgumentError("Unknown address type")
 
