@@ -115,12 +115,15 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     fi
 
     if [[ -n ${build_trezor_t} ]]; then
-        rustup update
-        rustup toolchain uninstall nightly
-        rustup toolchain install nightly
-        rustup default nightly
-        rustup component add rustfmt
-        rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+        # Pin the Rust nightly to the one trezor-firmware ${TREZOR_VERSION} expects
+        # (see its shell.nix: rust-bin.nightly."2025-04-15"). The rolling "nightly"
+        # channel has drifted and newer nightlies reject the firmware's
+        # reexport_test_harness_main attribute with error E0658.
+        TREZOR_RUST_NIGHTLY="nightly-2025-04-15"
+        rustup toolchain install ${TREZOR_RUST_NIGHTLY}
+        rustup default ${TREZOR_RUST_NIGHTLY}
+        rustup component add rustfmt --toolchain ${TREZOR_RUST_NIGHTLY}
+        rustup component add rust-src --toolchain ${TREZOR_RUST_NIGHTLY}-x86_64-unknown-linux-gnu
         # Build trezor t emulator. This is pretty fast, so rebuilding every time is ok
         # But there should be some caching that makes this faster
         git am ../../data/trezor-t-build.patch
