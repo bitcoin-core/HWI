@@ -45,6 +45,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
         self.supports_legacy = True
+        self.supports_arbitrary_keypool_paths = True
 
     def start(self):
         super().start()

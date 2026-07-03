@@ -36,6 +36,7 @@ class DeviceEmulator():
         self.include_xpubs = None
         self.supports_device_multiple_multisig = None
         self.supports_legacy = None
+        self.supports_arbitrary_keypool_paths = True
 
     def start(self):
         assert self.type is not None
@@ -313,13 +314,14 @@ class TestGetKeypool(DeviceTestCase):
             addr_info = self.wrpc.getaddressinfo(self.wrpc.getrawchangeaddress('bech32'))
             self.assertTrue(addr_info['hdkeypath'].startswith("m/84h/1h/3h/1/"))
 
-        keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
-        self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
-        import_result = self.wrpc.importdescriptors(keypool_desc)
-        self.assertTrue(import_result[0]['success'])
-        for _ in range(0, 21):
-            addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'bech32'))
-            self.assertTrue(addr_info['hdkeypath'].startswith("m/0h/0h/4h/"))
+        if self.emulator.supports_arbitrary_keypool_paths:
+            keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', 'm/0h/0h/4h/*', '0', '20'])
+            self.assertIsInstance(keypool_desc, list, f"getkeypool returned error: {keypool_desc}")
+            import_result = self.wrpc.importdescriptors(keypool_desc)
+            self.assertTrue(import_result[0]['success'])
+            for _ in range(0, 21):
+                addr_info = self.wrpc.getaddressinfo(self.wrpc.getnewaddress('', 'bech32'))
+                self.assertTrue(addr_info['hdkeypath'].startswith("m/0h/0h/4h/"))
 
         keypool_desc = self.do_command(self.dev_args + ['getkeypool', '--path', '/0h/0h/4h/*', '0', '20'])
         self.assertEqual(keypool_desc['error'], 'Path must start with m/')
@@ -498,10 +500,12 @@ class TestSignTx(DeviceTestCase):
         in_amt = 1
         number_inputs = 0
         # Single-sig
-        if "segwit" in input_types:
+        if "segwit" in input_types or "sh_wit" in input_types:
             self.wpk_rpc.sendtoaddress(sh_wpkh_addr, in_amt)
+            number_inputs += 1
+        if "segwit" in input_types or "wit" in input_types:
             self.wpk_rpc.sendtoaddress(wpkh_addr, in_amt)
-            number_inputs += 2
+            number_inputs += 1
         if "legacy" in input_types:
             self.wpk_rpc.sendtoaddress(pkh_addr, in_amt)
             number_inputs += 1
