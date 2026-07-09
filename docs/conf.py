@@ -71,5 +71,18 @@ autodoc_member_order = "bysource"
 # Show both class and init docstring
 autoclass_content = "both"
 
-# Mock these imports
-autodoc_mock_imports = ["hid", "ecdsa", "pyaes", "mnemonic", "typing_extensions", "usb1", "PySide2"]
+autodoc_mock_imports = [
+    "hid",
+    "hidapi",
+    "libusb1",
+    "usb",
+    "usb.core",
+    "usb.util",
+    "usb1",           
+    "btchip",
+    "trezorlib",
+    "ledgerblue",
+    "jadepy",
+    "PySide2",
+    "hwilib.udevinstaller",
+]
