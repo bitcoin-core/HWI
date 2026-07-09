@@ -40,7 +40,7 @@ install_requires = \
 
 extras_require = \
 {':python_version == "3.6"': ['dataclasses>=0.8,<0.9'],
- 'qt:python_version < "3.10"': ['pyside2>=5.14.0,<6.0.0']}
+ 'qt': ['pyside6>=6.4.0']}
 
 entry_points = \
 {'console_scripts': ['hwi = hwilib._cli:main', 'hwi-qt = hwilib._gui:main']}
