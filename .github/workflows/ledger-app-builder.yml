@@ -16,10 +16,10 @@ jobs:
     steps:
       - run: |
           # Pin to v2.4.1 - last version that worked with HWI CI (PR #795 merged Sept 2025)
-          git clone --branch 2.4.1 --depth 1 https://github.com/LedgerHQ/app-bitcoin-new.git
-          cd app-bitcoin-new
+          git clone --branch 2.4.1 --depth 1 https://github.com/LedgerHQ/app-bitcoin.git
+          cd app-bitcoin
           make DEBUG=1 BOLOS_SDK=$NANOX_SDK
       - uses: actions/upload-artifact@v4
         with:
           name: ledger_app
-          path: app-bitcoin-new/bin/app.elf
+          path: app-bitcoin/bin/app.elf
