@@ -28,5 +28,17 @@ class TestPSBT(unittest.TestCase):
                 serd = psbt.serialize()
                 self.assertEqual(valid, serd)
 
+    def test_convert_to_v0(self):
+        # BIP 370 vector "1 input, 2 output updated PSBTv2, with PSBT_IN_SEQUENCE"
+        psbt = PSBT()
+        psbt.deserialize("cHNidP8BAgQCAAAAAQQBAQEFAQIB+wQCAAAAAAEAUgIAAAABwaolbiFLlqGCL5PeQr/ztfP/jQUZMG41FddRWl6AWxIAAAAAAP////8BGMaaOwAAAAAWABSwo68UQghBJpPKfRZoUrUtsK7wbgAAAAABAR8Yxpo7AAAAABYAFLCjrxRCCEEmk8p9FmhStS2wrvBuAQ4gCwrZIUGcHIcZc11y3HOfnqngY40f5MHu8PmUQISBX8gBDwQAAAAAARAE/v///wAiAgLWAfhIRqZ1X3dr4A49nej7EKzJNfuDxF+wFi1MrVq3khj2nYc+VAAAgAEAAIAAAACAAAAAACoAAAABAwgACK8vAAAAAAEEFgAUxDD2TEdW2jENvRoIVXLvKZkmJywAIgIC42+/9T3VNAcM+P05ZhRoDzV6m4Xbc0C/HPp0XSrXs0AY9p2HPlQAAIABAACAAAAAgAEAAABkAAAAAQMIi73rCwAAAAABBBYAFE3Rk6yWSlasG54cyoRU/i9HT4UTAA==")
+        psbt.convert_to_v0()
+
+        self.assertEqual(psbt.version, 0)
+        self.assertEqual(psbt.tx.nVersion, 2)
+        self.assertEqual(len(psbt.tx.vin), 1)
+        self.assertEqual(psbt.tx.vin[0].nSequence, 0xfffffffe)
+        self.assertEqual(len(psbt.tx.vout), 2)
+
 if __name__ == "__main__":
     unittest.main()
