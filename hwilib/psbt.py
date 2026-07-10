@@ -290,6 +290,8 @@ class PartiallySignedInput:
                 if len(v) != 4:
                     raise PSBTSerializationError("Input time based locktime is not 4 bytes")
                 self.time_locktime = struct.unpack("<I", v)[0]
+                if self.time_locktime < 500000000:
+                    raise PSBTSerializationError("Input time based locktime is less than 500000000")
             elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_HEIGHT_LOCKTIME:
                 if self.version == 0:
                     raise PSBTSerializationError("PSBT_IN_REQUIRED_HEIGHT_LOCKTIME is not allowed in PSBTv0")
@@ -301,6 +303,8 @@ class PartiallySignedInput:
                 if len(v) != 4:
                     raise PSBTSerializationError("Input height based locktime is not 4 bytes")
                 self.height_locktime = struct.unpack("<I", v)[0]
+                if self.height_locktime == 0 or self.height_locktime >= 500000000:
+                    raise PSBTSerializationError("Input height based locktime is not greater than 0 and less than 500000000")
             elif key_type == PartiallySignedInput.PSBT_IN_TAP_KEY_SIG:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input Taproot key signature already provided")
