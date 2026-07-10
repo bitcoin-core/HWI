@@ -809,6 +809,7 @@ class PSBT(object):
 
         input_count = None
         output_count = None
+        found_unsigned_tx = False
 
         # Read loop
         while True:
@@ -841,6 +842,7 @@ class PSBT(object):
                     raise PSBTSerializationError("Global unsigned tx is invalid")
                 if len(tx_bytes.read(1)) > 0:
                     raise PSBTSerializationError("Global unsigned tx is not serialized without witness")
+                found_unsigned_tx = True
 
                 # Make sure that all scriptSigs and scriptWitnesses are empty
                 for txin in self.tx.vin:
@@ -910,7 +912,7 @@ class PSBT(object):
         # Check PSBT version constraints
         if self.version == 0:
             # make sure that we got an unsigned tx
-            if self.tx.is_null():
+            if not found_unsigned_tx:
                 raise PSBTSerializationError("No unsigned transaction was provided")
             # Make sure no v2 fields are present
             if self.tx_version is not None:
@@ -936,7 +938,7 @@ class PSBT(object):
             if output_count is None:
                 raise PSBTSerializationError("PSBT_GLOBAL_OUTPUT_COUNT is required in PSBTv2")
             # Unsigned tx is disallowed
-            if not self.tx.is_null():
+            if found_unsigned_tx:
                 raise PSBTSerializationError("PSBT_GLOBAL_UNSIGNED_TX is not allowed in PSBTv2")
 
         # Read input data
