@@ -28,6 +28,21 @@ class TestPSBT(unittest.TestCase):
                 serd = psbt.serialize()
                 self.assertEqual(valid, serd)
 
+    def test_lock_time(self):
+        for valid, lock_time in self.data['locktimes']:
+            with self.subTest(valid=valid):
+                psbt = PSBT()
+                psbt.deserialize(valid)
+                self.assertEqual(psbt.compute_lock_time(), lock_time)
+
+    def test_conflicting_lock_time(self):
+        for valid in self.data['conflicting_locktimes']:
+            with self.subTest(valid=valid):
+                psbt = PSBT()
+                psbt.deserialize(valid)
+                with self.assertRaises(PSBTSerializationError):
+                    psbt.compute_lock_time()
+
     def test_convert_to_v0(self):
         # BIP 370 vector "1 input, 2 output updated PSBTv2, with PSBT_IN_SEQUENCE,
         # and all locktime fields"; the height locktime of 10000 wins
