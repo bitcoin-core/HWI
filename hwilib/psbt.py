@@ -835,7 +835,12 @@ class PSBT(object):
 
                 # read in value
                 tx_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
-                self.tx.deserialize(tx_bytes)
+                try:
+                    self.tx.deserialize_without_witness(tx_bytes)
+                except Exception:
+                    raise PSBTSerializationError("Global unsigned tx is invalid")
+                if len(tx_bytes.read(1)) > 0:
+                    raise PSBTSerializationError("Global unsigned tx is not serialized without witness")
 
                 # Make sure that all scriptSigs and scriptWitnesses are empty
                 for txin in self.tx.vin:
