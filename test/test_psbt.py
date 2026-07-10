@@ -42,5 +42,13 @@ class TestPSBT(unittest.TestCase):
         self.assertEqual(len(psbt.tx.vout), 2)
         self.assertEqual(psbt.tx.nLockTime, 10000)
 
+        # BIP 370 vector "1 input, 2 output PSBTv2, required fields only",
+        # which omits PSBT_IN_SEQUENCE
+        psbt = PSBT()
+        psbt.deserialize("cHNidP8BAgQCAAAAAQQBAQEFAQIB+wQCAAAAAAEOIAsK2SFBnByHGXNdctxzn56p4GONH+TB7vD5lECEgV/IAQ8EAAAAAAABAwgACK8vAAAAAAEEFgAUxDD2TEdW2jENvRoIVXLvKZkmJywAAQMIi73rCwAAAAABBBYAFE3Rk6yWSlasG54cyoRU/i9HT4UTAA==")
+        psbt.convert_to_v0()
+
+        self.assertEqual(psbt.tx.vin[0].nSequence, 0xffffffff)
+
 if __name__ == "__main__":
     unittest.main()

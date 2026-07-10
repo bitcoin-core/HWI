@@ -1122,9 +1122,10 @@ class PSBT(object):
         for psbt_in in self.inputs:
             assert psbt_in.prev_txid is not None
             assert psbt_in.prev_out is not None
-            assert psbt_in.sequence is not None
 
-            txin = CTxIn(COutPoint(uint256_from_str(psbt_in.prev_txid), psbt_in.prev_out), b"", psbt_in.sequence)
+            # If omitted, the sequence number is assumed to be the final sequence number
+            sequence = psbt_in.sequence if psbt_in.sequence is not None else 0xffffffff
+            txin = CTxIn(COutPoint(uint256_from_str(psbt_in.prev_txid), psbt_in.prev_out), b"", sequence)
             tx.vin.append(txin)
 
         for psbt_out in self.outputs:
