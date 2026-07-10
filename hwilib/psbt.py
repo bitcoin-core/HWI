@@ -247,6 +247,8 @@ class PartiallySignedInput:
                 witness_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.final_script_witness.deserialize(witness_bytes)
             elif key_type == PartiallySignedInput.PSBT_IN_PREVIOUS_TXID:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_PREVIOUS_TXID is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input previous txid is already provided")
                 elif len(key) != 1:
@@ -256,6 +258,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Previous txid is not 32 bytes")
                 self.prev_txid = txid
             elif key_type == PartiallySignedInput.PSBT_IN_OUTPUT_INDEX:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_OUTPUT_INDEX is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input previous output index is already provided")
                 elif len(key) != 1:
@@ -265,7 +269,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Previous output index is not 4 bytes")
                 self.prev_out = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_SEQUENCE:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_SEQUENCE is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input sequence is already provided")
                 elif len(key) != 1:
@@ -275,7 +280,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Input sequence is not 4 bytes")
                 self.sequence = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_TIME_LOCKTIME:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_REQUIRED_TIME_LOCKTIME is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input required time based locktime is already provided")
                 elif len(key) != 1:
@@ -285,7 +291,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Input time based locktime is not 4 bytes")
                 self.time_locktime = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_HEIGHT_LOCKTIME:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_REQUIRED_HEIGHT_LOCKTIME is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input required height based locktime index is already provided")
                 elif len(key) != 1:
@@ -619,6 +626,8 @@ class PartiallySignedOutput:
             elif key_type == PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
             elif key_type == PartiallySignedOutput.PSBT_OUT_AMOUNT:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_OUT_AMOUNT is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output amount already provided")
                 elif len(key) != 1:
@@ -628,6 +637,8 @@ class PartiallySignedOutput:
                     raise PSBTSerializationError("Output amount is not 8 bytes")
                 self.amount = struct.unpack("<q", v)[0]
             elif key_type == PartiallySignedOutput.PSBT_OUT_SCRIPT:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_OUT_SCRIPT is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output script already provided")
                 elif len(key) != 1:
