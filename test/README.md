@@ -311,6 +311,18 @@ $ cmake -Bbuild -H.
 $ make -C build/
 ```
 
+### Automation rules
+
+The Ledger tests drive the emulator's buttons with
+`data/speculos-automation.json`. Speculos matches each rule against every
+text fragment drawn on the screen, so beware of this pitfall when editing
+it: screens can contain randomly generated base58 addresses, wrapped over
+several lines, and a rule matching a short word can accidentally match a
+wrapped address line. The resulting extra button press derails the rest of
+the flow. This happened with a rule for the "To" screen title when an
+address ended in "To". Keep rules multi-word where possible, or pin them to
+the title row with `"y": 3` like the "To" rule.
+
 ## Coldcard emulator
 
 Clone the repository:

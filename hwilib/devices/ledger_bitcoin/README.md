@@ -1,8 +1,8 @@
 # Ledger Bitcoin application client
 
-This is a stripped down version of the client provided at https://github.com/LedgerHQ/app-bitcoin-new/tree/master/bitcoin_client.
+This is a stripped down version of the client provided at https://github.com/LedgerHQ/app-bitcoin/tree/master/bitcoin_client.
 
-This stripped down version was made at commit [4e82e44ecfe4ba358da9848087e7e597309abc53](https://github.com/LedgerHQ/app-bitcoin-new/commit/4e82e44ecfe4ba358da9848087e7e597309abc53)
+This stripped down version was made at commit [4e82e44ecfe4ba358da9848087e7e597309abc53](https://github.com/LedgerHQ/app-bitcoin/commit/4e82e44ecfe4ba358da9848087e7e597309abc53)
 
 ## Changes
 

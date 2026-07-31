@@ -1047,7 +1047,7 @@ class PSBT(object):
         """
         # To make things easier, we split up the global transaction
         # and use the PSBTv2 fields for PSBTv0
-        if self.tx is not None:
+        if self.version == 0:
             self.setup_from_tx(self.tx)
 
     def setup_from_tx(self, tx: CTransaction):
@@ -1110,7 +1110,7 @@ class PSBT(object):
 
         :return: A CTransaction
         """
-        if not self.tx.is_null():
+        if self.version == 0:
             return self.tx
 
         assert self.tx_version is not None
@@ -1153,6 +1153,7 @@ class PSBT(object):
         """
         Sets this PSBT to version 0
         """
+        tx = self.get_unsigned_tx()
         self._convert_version(0)
-        self.tx = self.get_unsigned_tx()
+        self.tx = tx
         self.explicit_version = False
