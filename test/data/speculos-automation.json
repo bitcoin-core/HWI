@@ -3,6 +3,7 @@
     "rules": [
         {
             "regexp": "^(Security risk|High fees warning).*",
+            "y": 34,
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
