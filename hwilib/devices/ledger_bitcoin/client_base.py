@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from typing import Tuple, Optional, Union, List
 from io import BytesIO
 
@@ -45,6 +47,25 @@ class TransportClient:
     def stop(self) -> None:
         self.transport.close()
 
+@dataclass(frozen=True)
+class PartialSignature:
+    """Represents a partial signature returned by sign_psbt. Such objects can be added to the PSBT.
+
+    It always contains a pubkey and a signature.
+    The pubkey is a compressed 33-byte for legacy and segwit Scripts, or 32-byte x-only key for taproot.
+    The signature is in the format it would be pushed on the scriptSig or the witness stack, therefore of
+    variable length, and possibly concatenated with the SIGHASH flag byte if appropriate.
+
+    The tapleaf_hash is also filled if signing for a tapscript.
+
+    Note: not to be confused with 'partial signature' of protocols like MuSig2;
+    """
+    pubkey: bytes
+    signature: bytes
+    tapleaf_hash: Optional[bytes] = None
+
+
+SignPsbtYieldedObject = Union[PartialSignature]
 
 class Client:
     def __init__(self, transport_client: TransportClient, chain: Chain = Chain.MAIN) -> None:
@@ -183,18 +204,19 @@ class Client:
 
         raise NotImplementedError
 
-    def sign_psbt(self, psbt: PSBT, wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, bytes, bytes]]:
+    def sign_psbt(self, psbt: Union[PSBT, bytes, str], wallet: WalletPolicy, wallet_hmac: Optional[bytes]) -> List[Tuple[int, SignPsbtYieldedObject]]:
         """Signs a PSBT using a registered wallet (or a standard wallet that does not need registration).
 
         Signature requires explicit approval from the user.
 
         Parameters
         ----------
-        psbt : PSBT
+        psbt : PSBT | bytes | str
             A PSBT of version 0 or 2, with all the necessary information to sign the inputs already filled in; what the
             required fields changes depending on the type of input.
             The non-witness UTXO must be present for both legacy and SegWit inputs, or the hardware wallet will reject
             signing (this will change for Taproot inputs).
+            The argument can be either a `PSBT` object, or `bytes`, or a base64-encoded `str`.
 
         wallet : WalletPolicy
             The registered wallet policy, or a standard wallet policy.
@@ -204,11 +226,10 @@ class Client:
 
         Returns
         -------
-        List[Tuple[int, bytes, bytes]]
+        List[Tuple[int, PartialSignature]]
             A list of tuples returned by the hardware wallets, where each element is a tuple of:
             - an integer, the index of the input being signed;
-            - a `bytes` array of length 33 (compressed ecdsa pubkey) or 32 (x-only BIP-0340 pubkey), the corresponding pubkey for this signature;
-            - a `bytes` array with the signature.
+            - an instance of `PartialSignature`.
         """
 
         raise NotImplementedError
