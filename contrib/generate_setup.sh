@@ -5,6 +5,8 @@ set -ex
 
 # Setup poetry and install the dependencies
 poetry install -E qt
+# Generate the Python modules so Poetry consistently detects hwilib.ui as a package.
+poetry run contrib/generate-ui.sh
 
 # Build the source distribution
 poetry build -f sdist

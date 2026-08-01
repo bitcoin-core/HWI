@@ -14,6 +14,7 @@ gui_support="${1:---with-gui}";
 # Setup poetry and install the dependencies
 if [[ $gui_support == "--with-gui" ]]; then
     poetry install -E qt
+    poetry run contrib/generate-ui.sh
 else
     poetry install
 fi
