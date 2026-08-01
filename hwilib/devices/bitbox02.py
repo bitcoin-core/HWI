@@ -23,7 +23,7 @@ import socket
 from functools import wraps
 
 from .._base58 import decode_check, encode_check
-from ..descriptor import MultisigDescriptor
+from ..descriptor import MultisigDescriptor, PubkeyProvider
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
 from .._script import (
@@ -59,6 +59,7 @@ from ..common import (
     AddressType,
     Chain,
 )
+from ..policy import BIP388Policy
 
 import hid
 
@@ -437,6 +438,63 @@ class Bitbox02Client(HardwareWalletClient):
                 name="",  # enter name on the device
                 xpub_type=bitbox02.btc.BTCRegisterScriptConfigRequest.AUTO_XPUB_TPUB,
             )
+
+    def _bip388_script_config(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> Tuple[bitbox02.btc.BTCScriptConfig, Sequence[int]]:
+        device_fingerprint = self.get_master_fingerprint()
+        our_keypath: Optional[Sequence[int]] = None
+        keys = []
+
+        for key_info in bip388_policy.keys_info:
+            pubkey = PubkeyProvider.parse(key_info)
+            if pubkey.extkey is None or pubkey.extkey.is_private or pubkey.deriv_path is not None:
+                raise BadArgumentError("Invalid BIP388 key information")
+
+            origin = pubkey.origin
+            keys.append(
+                bitbox02.common.KeyOriginInfo(
+                    root_fingerprint=b"" if origin is None else origin.fingerprint,
+                    keypath=[] if origin is None else origin.path,
+                    xpub=util.parse_xpub(pubkey.extkey.to_string()),
+                )
+            )
+
+            if origin is not None and origin.fingerprint == device_fingerprint:
+                device_xpub = decode_check(self._get_xpub(origin.path))
+                if _xpubs_equal_ignoring_version(device_xpub, pubkey.extkey.serialize()):
+                    if our_keypath is not None:
+                        raise BadArgumentError("This BitBox02 occurs more than once in the policy")
+                    our_keypath = origin.path
+
+        if our_keypath is None:
+            raise BadArgumentError("This BitBox02 is not one of the policy keys")
+
+        return (
+            bitbox02.btc.BTCScriptConfig(
+                policy=bitbox02.btc.BTCScriptConfig.Policy(
+                    policy=bip388_policy.descriptor_template,
+                    keys=keys,
+                )
+            ),
+            our_keypath,
+        )
+
+    @bitbox02_exception
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> Optional[str]:
+        script_config, keypath = self._bip388_script_config(bip388_policy)
+        self.init().btc_register_script_config(
+            coin=self._get_coin(),
+            script_config=script_config,
+            keypath=keypath,
+            name=bip388_policy.name,
+            xpub_type=bitbox02.btc.BTCRegisterScriptConfigRequest.AUTO_XPUB_TPUB,
+        )
+        return None
 
     def _multisig_scriptconfig(
         self,
