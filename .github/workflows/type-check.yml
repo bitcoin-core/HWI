@@ -40,4 +40,5 @@ jobs:
           hwilib/hwwclient.py
           hwilib/__init__.py
           hwilib/key.py
+          hwilib/policy.py
           hwilib/udevinstaller.py

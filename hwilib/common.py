@@ -9,7 +9,6 @@ from enum import Enum
 
 from typing import Union
 
-
 class Chain(Enum):
     """
     The blockchain network to use
@@ -55,7 +54,6 @@ class AddressType(Enum):
             return AddressType[s.upper()]
         except KeyError:
             return s
-
 
 def sha256(s: bytes) -> bytes:
     """
