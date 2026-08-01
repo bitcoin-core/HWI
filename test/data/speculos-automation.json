@@ -28,7 +28,7 @@
             ]
         },
         {
-            "regexp": "^(Address|Review|Amount|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Spend from|Wallet name|Wallet policy|Descriptor template|Verify Bitcoin|Output|Warning).*",
+            "regexp": "^(Address|Review|Account name|Amount|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Our key|Path|Public key|Spend from|Wallet name|Wallet policy|Descriptor template|Verify Bitcoin|Output|Warning).*",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]

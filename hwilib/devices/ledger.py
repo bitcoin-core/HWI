@@ -33,6 +33,8 @@ from ..common import (
     AddressType,
     Chain,
 )
+from ..policy import BIP388Policy
+from .ledger_registration import encode_policy_registration
 from .ledger_bitcoin.client import (
     createClient,
     NewClient,
@@ -481,6 +483,24 @@ class LedgerClient(HardwareWalletClient):
         address_index = int(multisig.pubkeys[0].deriv_path.split("/")[2])
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
+
+    @ledger_exception
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> Optional[str]:
+        if isinstance(self.client, LegacyClient):
+            raise BadArgumentError(
+                "Registering a BIP388 policy is not supported by this version of the Bitcoin App"
+            )
+
+        wallet_policy = WalletPolicy(
+            name=bip388_policy.name,
+            descriptor_template=bip388_policy.descriptor_template,
+            keys_info=bip388_policy.keys_info,
+        )
+        _, registration = self.client.register_wallet(wallet_policy)
+        return encode_policy_registration(registration, bip388_policy.name)
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """

@@ -12,6 +12,7 @@ from .commands import (
     getdescriptors,
     prompt_pin,
     toggle_passphrase,
+    register,
     restore_device,
     send_pin,
     setup_device,
@@ -24,6 +25,7 @@ from .common import (
     AddressType,
     Chain,
 )
+from .policy import BIP388Policy
 from .errors import (
     handle_errors,
     DEVICE_CONN_ERROR,
@@ -58,6 +60,10 @@ def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient
 
 def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
     return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
+
+def register_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Optional[str]]:
+    policy = BIP388Policy.from_descriptor(name=args.name, descriptor=args.desc)
+    return register(client, bip388_policy=policy)
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password, expert=args.expert, chain=args.chain, allow_emulators=args.allow_emulators)
@@ -196,6 +202,11 @@ def get_parser() -> HWIArgumentParser:
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
     displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT) # type: ignore
     displayaddr_parser.set_defaults(func=displayaddress_handler)
+
+    register_parser = subparsers.add_parser('register', help='Register a BIP388 wallet policy')
+    register_parser.add_argument('--name', help='Name for the policy', required=True)
+    register_parser.add_argument('--desc', help='Combined multipath output descriptor', required=True)
+    register_parser.set_defaults(func=register_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')
     setupdev_parser.add_argument('--label', '-l', help='The name to give to the device', default='')

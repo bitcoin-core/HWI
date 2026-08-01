@@ -17,7 +17,11 @@ from .key import (
     get_bip44_chain,
 )
 from .psbt import PSBT
-from .common import AddressType, Chain
+from .common import (
+    AddressType,
+    Chain,
+)
+from .policy import BIP388Policy
 
 
 class HardwareWalletClient(object):
@@ -134,6 +138,16 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    def register_bip388_policy(
+        self,
+        bip388_policy: BIP388Policy,
+    ) -> Optional[str]:
+        """Register a BIP388 policy and return an opaque registration, if any."""
+
+        raise NotImplementedError(
+            "This device does not support BIP388 policy registration or it is not yet implemented"
+        )
 
     def wipe_device(self) -> bool:
         """

@@ -55,6 +55,7 @@ from .common import (
     Chain,
 )
 from .hwwclient import HardwareWalletClient
+from .policy import BIP388Policy
 from .psbt import PSBT
 
 from itertools import count
@@ -493,6 +494,16 @@ def displayaddress(
                 addr_type = AddressType.TAP
             return {"address": client.display_singlesig_address(pubkey.get_full_derivation_path(0), addr_type)}
     raise BadArgumentError("Missing both path and descriptor")
+
+def register(
+    client: HardwareWalletClient,
+    bip388_policy: BIP388Policy,
+) -> Dict[str, Optional[str]]:
+    """Register a BIP388 policy on the device."""
+
+    if bip388_policy.registration is not None:
+        raise BadArgumentError("A policy being registered cannot already have a registration")
+    return {"registration": client.register_bip388_policy(bip388_policy)}
 
 def setup_device(client: HardwareWalletClient, label: str = "", backup_passphrase: str = "") -> Dict[str, bool]:
     """

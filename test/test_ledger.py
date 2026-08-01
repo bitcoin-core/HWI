@@ -17,11 +17,13 @@ from test_device import (
     TestDisplayAddress,
     TestGetKeypool,
     TestGetDescriptors,
+    TestPolicyRegistration,
     TestSignMessage,
     TestSignTx,
 )
 
 from hwilib._cli import process_commands
+from hwilib.devices.ledger_registration import decode_policy_registration
 
 class LedgerEmulator(DeviceEmulator):
     def __init__(self, path, legacy=False):
@@ -164,6 +166,13 @@ class TestLedgerGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], "1067f2a53975faf7ac265be505c1c50ef80a0dcbe1f53f50497c5618e8888dbd")
         self.assertEqual(result['pubkey'], "035879ca173a9c1b3f300ec587fb4cc6d54d618e30584e425c1b53b98828708f1d")
 
+class TestLedgerPolicyRegistration(TestPolicyRegistration):
+    def assert_registration(self, registration):
+        super().assert_registration(registration)
+        device_registration, policy_name = decode_policy_registration(registration)
+        self.assertNotEqual(device_registration, b"")
+        self.assertEqual(policy_name, "HWI policy")
+
 def ledger_test_suite(emulator, bitcoind, interface, legacy=False):
     dev_emulator = LedgerEmulator(emulator, legacy)
 
@@ -186,6 +195,8 @@ def ledger_test_suite(emulator, bitcoind, interface, legacy=False):
     suite.addTest(DeviceTestCase.parameterize(TestGetDescriptors, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestGetKeypool, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+    if not legacy:
+        suite.addTest(DeviceTestCase.parameterize(TestLedgerPolicyRegistration, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=True))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
 

@@ -261,6 +261,33 @@ class TestDeviceConnect(DeviceTestCase):
         self.assertEqual(gmxp_res['error'], 'Unknown device type specified')
         self.assertEqual(gmxp_res['code'], -4)
 
+class TestPolicyRegistration(DeviceTestCase):
+    def __init__(self, *args, returns_registration, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.returns_registration = returns_registration
+
+    def assert_registration(self, registration):
+        self.assertRegex(registration, r"^(?:[0-9a-f]{2})+$")
+
+    def test_register_policy(self):
+        account_path = "m/48h/1h/0h/2h"
+        account_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
+        descriptor = (
+            f"wsh(pk([{self.emulator.fingerprint}/48h/1h/0h/2h]"
+            f"{account_xpub}"
+            "/<0;1>/*))"
+        )
+        result = self.do_command(
+            self.dev_args + ["register", "--name", "HWI policy", "--desc", descriptor]
+        )
+
+        self.assertNotIn("error", result)
+        self.assertIn("registration", result)
+        if self.returns_registration:
+            self.assert_registration(result["registration"])
+        else:
+            self.assertIsNone(result["registration"])
+
 class TestGetKeypool(DeviceTestCase):
     def setUp(self):
         super().setUp()
