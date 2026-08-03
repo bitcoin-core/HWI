@@ -288,7 +288,7 @@ class LedgerClient(HardwareWalletClient):
                         for xpub_bytes, xpub_origin in psbt2.xpub.items():
                             xpub = ExtendedKey.from_bytes(xpub_bytes)
                             if (xpub_origin.fingerprint == pk_origin.fingerprint) and (xpub_origin.path == pk_origin.path[:len(xpub_origin.path)]):
-                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), None).to_string(hardened_char="'"))
+                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), None, 0).to_string(hardened_char="'"))
                                 break
                         else:
                             # No xpub, Ledger will not accept this multisig
@@ -406,7 +406,7 @@ class LedgerClient(HardwareWalletClient):
 
         # Build a PubkeyProvider for the key we're going to use
         origin = KeyOriginInfo(self.get_master_fingerprint(), path)
-        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), None)
+        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), None, 0)
         key_str = pk_prov.to_string(hardened_char="'")
 
         # Make the Wallet object

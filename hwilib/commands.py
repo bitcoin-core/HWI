@@ -339,7 +339,7 @@ def getdescriptor(
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
-    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix)
+    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix, 0)
     if addr_type is AddressType.LEGACY:
         return PKHDescriptor(pubkey)
     elif addr_type is AddressType.SH_WIT:

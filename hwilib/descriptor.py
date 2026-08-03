@@ -103,16 +103,19 @@ class PubkeyProvider(object):
         self,
         origin: Optional['KeyOriginInfo'],
         pubkey: str,
-        deriv_path: Optional[str]
+        deriv_path: Optional[str],
+        expr_index: int
     ) -> None:
         """
         :param origin: The key origin if one is available
         :param pubkey: The public key. Either a hex string or a serialized extended pubkey
         :param deriv_path: Additional derivation path if the pubkey is an extended pubkey
+        :param expr_index: The position of this key within the descriptor
         """
         self.origin = origin
         self.pubkey = pubkey
         self.deriv_path = deriv_path
+        self.expr_index = expr_index
 
         # Make ExtendedKey from pubkey if it isn't hex
         self.extkey = None
@@ -124,11 +127,12 @@ class PubkeyProvider(object):
             self.extkey = ExtendedKey.deserialize(self.pubkey)
 
     @classmethod
-    def parse(cls, s: str) -> 'PubkeyProvider':
+    def parse(cls, s: str, key_expr_index: int) -> 'PubkeyProvider':
         """
         Deserialize a key expression from the string into a ``PubkeyProvider``.
 
         :param s: String containing the key expression
+        :param key_expr_index: The position of this key within the descriptor
         :return: A new ``PubkeyProvider`` containing the details given by ``s``
         """
         origin = None
@@ -145,7 +149,7 @@ class PubkeyProvider(object):
             pubkey = s[:slash_idx]
             deriv_path = s[slash_idx:]
 
-        return cls(origin, pubkey, deriv_path)
+        return cls(origin, pubkey, deriv_path, key_expr_index)
 
     def to_string(self, hardened_char: str = "h") -> str:
         """
@@ -475,12 +479,13 @@ def _get_expr(s: str) -> Tuple[str, str]:
         return s, ""
     return s[0:i], s[i:]
 
-def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
+def parse_pubkey(expr: str, key_expr_index: int) -> Tuple['PubkeyProvider', str, int]:
     """
     Parses an individual pubkey expression from a string that may contain more than one pubkey expression.
 
     :param expr: The expression to parse a pubkey expression from
-    :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, and the remainder of the expression as the second item.
+    :param key_expr_index: The position of the next key to be parsed
+    :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, the remainder of the expression as the second item, and the index of the next key expression as the third.
     """
     end = len(expr)
     comma_idx = expr.find(",")
@@ -488,7 +493,7 @@ def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
     if comma_idx != -1:
         end = comma_idx
         next_expr = expr[end + 1:]
-    return PubkeyProvider.parse(expr[:end]), next_expr
+    return PubkeyProvider.parse(expr[:end], key_expr_index), next_expr, (key_expr_index + 1)
 
 
 class _ParseDescriptorContext(Enum):
@@ -512,7 +517,7 @@ class _ParseDescriptorContext(Enum):
     """Within a ``tr()`` descriptor"""
 
 
-def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor':
+def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index: int) -> Tuple['Descriptor', int]:
     """
     :meta private:
 
@@ -521,22 +526,23 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
 
     :param desc: The descriptor string to parse
     :param ctx: The :class:`_ParseDescriptorContext` indicating the level we are in
-    :return: The parsed descriptor
+    :param key_expr_index: The position of the next key to be parsed within the descriptor
+    :return: The parsed descriptor as the first item, and the index of the next key expression as the second.
     :raises: ValueError: if the descriptor is malformed
     """
     func, expr = _get_func_expr(desc)
     if func == "pk":
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("more than one pubkey in pk descriptor")
-        return PKDescriptor(pubkey)
+        return PKDescriptor(pubkey), key_expr_index
     if func == "pkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have pkh at top level, in sh(), or in wsh()")
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
-        return PKHDescriptor(pubkey)
+        return PKHDescriptor(pubkey), key_expr_index
     if func == "sortedmulti" or func == "multi":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have multi/sortedmulti at top level, in sh(), or in wsh()")
@@ -546,7 +552,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
         expr = expr[comma_idx + 1:]
         pubkeys = []
         while expr:
-            pubkey, expr = parse_pubkey(expr)
+            pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
             pubkeys.append(pubkey)
         if len(pubkeys) == 0 or len(pubkeys) > 16:
             raise ValueError("Cannot have {} keys in a multisig; must have between 1 and 16 keys, inclusive".format(len(pubkeys)))
@@ -556,28 +562,28 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
             raise ValueError("Multisig threshold cannot be larger than the number of keys; threshold is {} but only {} keys specified".format(thresh, len(pubkeys)))
         if ctx == _ParseDescriptorContext.TOP and len(pubkeys) > 3:
             raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys")
-        return MultisigDescriptor(pubkeys, thresh, is_sorted)
+        return MultisigDescriptor(pubkeys, thresh, is_sorted), key_expr_index
     if func == "wpkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wpkh() at top level or inside sh()")
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
-        return WPKHDescriptor(pubkey)
+        return WPKHDescriptor(pubkey), key_expr_index
     if func == "sh":
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have sh() at top level")
-        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2SH)
-        return SHDescriptor(subdesc)
+        subdesc, key_expr_index = _parse_descriptor(expr, _ParseDescriptorContext.P2SH, key_expr_index)
+        return SHDescriptor(subdesc), key_expr_index
     if func == "wsh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wsh() at top level or inside sh()")
-        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH)
-        return WSHDescriptor(subdesc)
+        subdesc, key_expr_index = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH, key_expr_index)
+        return WSHDescriptor(subdesc), key_expr_index
     if func == "tr":
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
-        internal_key, expr = parse_pubkey(expr)
+        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         subscripts = []
         depths = []
         if expr:
@@ -597,7 +603,8 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
                         raise ValueError("tr() supports at most {MAX_TAPROOT_NODES} nesting levels")
                 # Process script expression
                 sarg, expr = _get_expr(expr)
-                subscripts.append(_parse_descriptor(sarg, _ParseDescriptorContext.P2TR))
+                subdesc, key_expr_index = _parse_descriptor(sarg, _ParseDescriptorContext.P2TR, key_expr_index)
+                subscripts.append(subdesc)
                 depths.append(len(branches))
                 # Process closing braces
                 while len(branches) > 0 and branches[-1]:
@@ -610,7 +617,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
 
                 if len(branches) == 0:
                     break
-        return TRDescriptor(internal_key, subscripts, depths)
+        return TRDescriptor(internal_key, subscripts, depths), key_expr_index
     if ctx == _ParseDescriptorContext.P2SH:
         raise ValueError("A function is needed within P2SH")
     elif ctx == _ParseDescriptorContext.P2WSH:
@@ -634,4 +641,4 @@ def parse_descriptor(desc: str) -> 'Descriptor':
         computed = DescriptorChecksum(desc)
         if computed != checksum:
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
-    return _parse_descriptor(desc, _ParseDescriptorContext.TOP)
+    return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
