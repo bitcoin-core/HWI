@@ -31,6 +31,7 @@ DEVICE_BUSY = -15 #: Device is busy
 NEED_TO_BE_ROOT = -16 #: User needs to be root to perform action
 HELP_TEXT = -17 #: Help text was requested by the user
 DEVICE_NOT_INITIALIZED = -18 #: Device is not initialized
+INVALID_POLICY = -19 #: Supplied descriptor cannot become a valid BIP 388 wallet policy
 
 # Exceptions
 class HWWError(Exception):
@@ -203,6 +204,16 @@ class DeviceBusyError(HWWError):
 class NeedsRootError(HWWError):
     def __init__(self, msg: str):
         HWWError.__init__(self, msg, NEED_TO_BE_ROOT)
+
+class InvalidPolicyError(HWWError):
+    """
+    :class:`HWWError` for :data:`INVALID_POLICY`
+    """
+    def __init__(self, msg: str):
+        """
+        :param msg: The error message
+        """
+        HWWError.__init__(self, msg, INVALID_POLICY)
 
 @contextmanager
 def handle_errors(
