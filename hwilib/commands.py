@@ -584,3 +584,16 @@ def install_udev_rules(source: str, location: str) -> Dict[str, bool]:
         from .udevinstaller import UDevInstaller
         return {"success": UDevInstaller.install(source, location)}
     raise NotImplementedError("udev rules are not needed on your platform")
+
+
+def register_descriptor(client: HardwareWalletClient, name: str, descriptor: str) -> Dict[str, str]:
+    """
+    Register a descriptor with the device.
+
+    Returns any information that will be needed in the future to inform the
+    device about the descriptor to sign with. Some devices do not require any
+    information and will return nothing.
+
+    :return: A dictionary with the ``registration`` key containing a string
+    """
+    return {"registration": client.register_descriptor(name, parse_descriptor(descriptor)).serialize()}
