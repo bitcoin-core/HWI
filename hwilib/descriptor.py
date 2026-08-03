@@ -18,6 +18,7 @@ from .key import (
     path_to_string,
 )
 from .common import hash160, sha256
+from .errors import InvalidPolicyError
 
 from binascii import unhexlify
 from collections import namedtuple
@@ -227,6 +228,40 @@ class PubkeyProvider(object):
             path.append(pos)
         return path
 
+    def get_bip388_placeholder(self) -> str:
+        """
+        Get the key placeholder expression for this pubkey to be used in BIP 388 Wallet Policies.
+        The descriptor will be first checked for whether it likely confirms to BIP 388. Specifically:
+
+        - All pubkeys must be ranged
+        - All multipath specifiers must be exactly 2 items.
+
+        :return: The key placeholder expression
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        if not self.ranged:
+            raise InvalidPolicyError("BIP 388 requires all pubkeys to be ranged")
+        if self.multipath_len > 2:
+            raise InvalidPolicyError("BIP 388 requires all multipath specifiers to be exactly 2 elements")
+        deriv_path = multipath_to_string(self.deriv_path, hardened_char="'") if self.deriv_path else ""
+        if self.ranged:
+            deriv_path += "/*"
+        return f"@{self.expr_index}{deriv_path}"
+
+    def get_bip388_key_info(self) -> str:
+        """
+        Serialize the pubkey expression to a string without the trailing derivation path.
+        Used in the Key information vector of BIP 388 Wallet Policies.
+
+        :return: The pubkey expression without trailing derivaiton path as a string
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        s = ""
+        if self.origin:
+            s += "[{}]".format(self.origin.to_string("'"))
+        s += self.pubkey
+        return s
+
     def __lt__(self, other: 'PubkeyProvider') -> bool:
         return self.pubkey < other.pubkey
 
@@ -276,6 +311,40 @@ class Descriptor(object):
         Returns the scripts for a descriptor at the given `pos` for ranged descriptors.
         """
         raise NotImplementedError("The Descriptor base class does not implement this method")
+
+    def get_bip388_template(self) -> str:
+        """
+        Get the BIP 388 Wallet Descriptor Template string for this descriptor.
+
+        Some BIP 388 specified checks are performed to determine. See ``get_bip388_placeholder()`` for the
+        pubkey specific checks that are performed.
+
+        Note that not all BIP 388 specified checks are performed, specifically the following checks are not performed:
+
+        - Duplicate keys check
+        - Disjoint multipath check
+
+        :return: The template string
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        return "{}({}{})".format(
+            self.name,
+            ",".join([p.get_bip388_placeholder() for p in self.pubkeys]),
+            self.subdescriptors[0].get_bip388_template() if len(self.subdescriptors) > 0 else ""
+        )
+
+    def get_pubkey_providers(self) -> list['PubkeyProvider']:
+        """
+        Get the strings of all pubkey expressions contained in this descriptor,
+        in the same order that they appear in the descriptor string. These can be used with
+        :func:`get_bip388_template` to get a full BIP 388 Wallet Policy for this descriptor.
+
+        :return: List of pubkey expression strings
+        """
+        out = [p for p in self.pubkeys]
+        for s in self.subdescriptors:
+            out.extend(s.get_pubkey_providers())
+        return out
 
 
 class PKDescriptor(Descriptor):
@@ -366,6 +435,9 @@ class MultisigDescriptor(Descriptor):
 
         return ExpandedScripts(script, None, None)
 
+    def get_bip388_template(self) -> str:
+        return "{}({},{})".format(self.name, self.thresh, ",".join([p.get_bip388_placeholder() for p in self.pubkeys]))
+
 
 class SHDescriptor(Descriptor):
     """
@@ -443,6 +515,26 @@ class TRDescriptor(Descriptor):
                 path[-1] = True
         r += ")"
         return r
+
+    def get_bip388_template(self) -> str:
+        r = f"{self.name}({self.pubkeys[0].get_bip388_placeholder()}"
+        path: List[bool] = [] # Track left or right for each depth
+        for p, depth in enumerate(self.depths):
+            r += ","
+            while len(path) <= depth:
+                if len(path) > 0:
+                    r += "{"
+                path.append(False)
+            r += self.subdescriptors[p].get_bip388_template()
+            while len(path) > 0 and path[-1]:
+                if len(path) > 0:
+                    r += "}"
+                path.pop()
+            if len(path) > 0:
+                path[-1] = True
+        r += ")"
+        return r
+
 
 def _get_func_expr(s: str) -> Tuple[str, str]:
     """
