@@ -15,8 +15,10 @@ from typing import (
 )
 
 from ..descriptor import (
+    Descriptor,
     MultisigDescriptor,
     PubkeyProvider,
+    RegisteredDescriptor,
 )
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -548,6 +550,17 @@ class LedgerClient(HardwareWalletClient):
         :returns: True if Bitcoin App version is greater than or equal to 2.1.0, and not the "Legacy" release. False otherwise.
         """
         return isinstance(self.client, NewClient)
+
+    @ledger_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        if isinstance(self.client, LegacyClient):
+            raise UnavailableActionError("Legacy Ledger app does not support descriptor registration")
+
+        template = descriptor.get_bip388_template()
+        keys = [p.get_bip388_key_info() for p in descriptor.get_pubkey_providers()]
+        policy = WalletPolicy(name, template, keys)
+        _, registered_hmac = self.client.register_wallet(policy)
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="ledger", registration=registered_hmac)
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
