@@ -23,6 +23,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h")
         self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
@@ -38,11 +39,13 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].pubkeys[0].expr_index, 0)
 
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].origin.fingerprint.hex(), "00000002")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].pubkeys[1].expr_index, 1)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("002084b64b2b8651df8fd3e9735f6269edbf9e03abf619ae0788be9f17bf18e83d59"))
@@ -57,11 +60,13 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].pubkeys[0].expr_index, 0)
 
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].origin.fingerprint.hex(), "00000002")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
         self.assertEqual(desc.subdescriptors[0].pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].pubkeys[1].expr_index, 1)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("a91495ee6326805b1586bb821fc3c0eeab2c68441b4187"))
@@ -77,11 +82,13 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[0].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[0].expr_index, 0)
 
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[1].origin.fingerprint.hex(), "00000002")
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[1].origin.get_derivation_path(), "m/48h/0h/0h/2h")
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[1].pubkey, "tpubDFHiBJDeNvqPWNJbzzxqDVXmJZoNn2GEtoVcFhMjXipQiorGUmps3e5ieDGbRrBPTFTh9TXEKJCwbAGW9uZnfrVPbMxxbFohuFzfT6VThty")
         self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[1].deriv_path, "/0/0")
+        self.assertEqual(desc.subdescriptors[0].subdescriptors[0].pubkeys[1].expr_index, 1)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("a914779ae0f6958e98b997cc177f9b554289905fbb5587"))
@@ -109,6 +116,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(len(desc.pubkeys[0].origin.path), 0)
         self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
@@ -123,6 +131,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h/0/0")
         self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
         self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("0014d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa"))
@@ -136,6 +145,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h/0/0")
         self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
         self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
         e = desc.expand(0)
         self.assertEqual(e.output_script, unhexlify("76a914d95fc47eada9e4c3cf59a2cbf9e96517c3ba2efa88ac"))
@@ -149,6 +159,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin, None)
         self.assertEqual(desc.pubkeys[0].pubkey, "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7")
         self.assertEqual(desc.pubkeys[0].deriv_path, None)
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
 
     def test_parse_empty_descriptor(self):
@@ -192,6 +203,7 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h")
         self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
         self.assertEqual(desc.to_string_no_checksum(), d)
 
         d = "tr([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0,{pk(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B),{{pk(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B),pk(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B)},pk(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B)}})"
@@ -202,6 +214,11 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].origin.get_derivation_path(), "m/84h/1h/0h")
         self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.pubkeys[0].deriv_path, "/0/0")
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
+        self.assertEqual(desc.subdescriptors[0].pubkeys[0].expr_index, 1)
+        self.assertEqual(desc.subdescriptors[1].pubkeys[0].expr_index, 2)
+        self.assertEqual(desc.subdescriptors[2].pubkeys[0].expr_index, 3)
+        self.assertEqual(desc.subdescriptors[3].pubkeys[0].expr_index, 4)
         self.assertEqual(desc.depths, [1, 3, 3, 2])
         self.assertEqual(desc.to_string_no_checksum(), d)
 
@@ -213,6 +230,8 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.depths, [0])
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].pubkey, "669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0")
         self.assertEqual(desc.to_string_no_checksum(), d)
+        self.assertEqual(desc.pubkeys[0].expr_index, 0)
+        self.assertEqual(desc.subdescriptors[0].pubkeys[0].expr_index, 1)
 
 
 if __name__ == "__main__":
