@@ -16,7 +16,11 @@ from typing import (
     Tuple,
     Union,
 )
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -848,6 +852,14 @@ class TrezorClient(HardwareWalletClient):
         elif self.client.features.model == "1":
             return bool(self.client.version >= (1, 10, 4))
         return True
+
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        """
+        The Trezor does not support registering descriptors
+
+        "raises UnavilableActionError: Always, this function is unavailable
+        """
+        raise UnavailableActionError("The Trezor does not support registering descriptors")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:

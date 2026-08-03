@@ -4,11 +4,16 @@ Keepkey
 """
 
 from ..common import Chain
+from ..descriptor import (
+    Descriptor,
+    RegisteredDescriptor,
+)
 from ..errors import (
     DEVICE_NOT_INITIALIZED,
     DeviceNotReadyError,
     common_err_msgs,
     handle_errors,
+    UnavailableActionError,
 )
 from .trezorlib import protobuf
 from .trezorlib.transport import (
@@ -170,6 +175,14 @@ class KeepkeyClient(TrezorClient):
         :returns: False, always
         """
         return False
+
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        """
+        The KeepKey does not support registering descriptors
+
+        "raises UnavilableActionError: Always, this function is unavailable
+        """
+        raise UnavailableActionError("The KeepKey does not support registering descriptors")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
