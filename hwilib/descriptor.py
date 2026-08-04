@@ -324,8 +324,6 @@ class MultisigDescriptor(Descriptor):
         super().__init__(pubkeys, [], "sortedmulti" if is_sorted else "multi")
         self.thresh = thresh
         self.is_sorted = is_sorted
-        if self.is_sorted:
-            self.pubkeys.sort()
 
     def to_string_no_checksum(self, hardened_char: str = "h") -> str:
         return "{}({},{})".format(self.name, self.thresh, ",".join([p.to_string(hardened_char) for p in self.pubkeys]))
