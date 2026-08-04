@@ -10,11 +10,17 @@ Descriptors can be parsed, however the actual scripts are not generated.
 """
 
 
-from .key import ExtendedKey, KeyOriginInfo, parse_path
+from .key import (
+    ExtendedKey,
+    KeyOriginInfo,
+    parse_path,
+    path_to_string,
+)
 from .common import hash160, sha256
 
 from binascii import unhexlify
 from collections import namedtuple
+from copy import deepcopy
 from enum import Enum
 from typing import (
     List,
@@ -103,8 +109,9 @@ class PubkeyProvider(object):
         self,
         origin: Optional['KeyOriginInfo'],
         pubkey: str,
-        deriv_path: Optional[str],
-        expr_index: int
+        deriv_path: Optional[List[int]],
+        expr_index: int,
+        ranged: bool
     ) -> None:
         """
         :param origin: The key origin if one is available
@@ -116,6 +123,7 @@ class PubkeyProvider(object):
         self.pubkey = pubkey
         self.deriv_path = deriv_path
         self.expr_index = expr_index
+        self.ranged = ranged
 
         # Make ExtendedKey from pubkey if it isn't hex
         self.extkey = None
@@ -137,6 +145,7 @@ class PubkeyProvider(object):
         """
         origin = None
         deriv_path = None
+        ranged = False
 
         if s[0] == "[":
             end = s.index("]")
@@ -147,9 +156,13 @@ class PubkeyProvider(object):
         slash_idx = s.find("/")
         if slash_idx != -1:
             pubkey = s[:slash_idx]
-            deriv_path = s[slash_idx:]
+            path_str = s[slash_idx + 1:]
+            ranged = path_str.endswith("*")
+            if ranged:
+                path_str = path_str[:-2]
+            deriv_path = parse_path(path_str)
 
-        return cls(origin, pubkey, deriv_path, key_expr_index)
+        return cls(origin, pubkey, deriv_path, key_expr_index, ranged)
 
     def to_string(self, hardened_char: str = "h") -> str:
         """
@@ -162,16 +175,17 @@ class PubkeyProvider(object):
             s += "[{}]".format(self.origin.to_string(hardened_char))
         s += self.pubkey
         if self.deriv_path:
-            s += self.deriv_path
+            s += path_to_string(self.deriv_path, hardened_char)
+        if self.ranged:
+            s += "/*"
         return s
 
     def get_pubkey_bytes(self, pos: int) -> bytes:
         if self.extkey is not None:
             if self.deriv_path is not None:
-                path_str = self.deriv_path[1:]
-                if path_str[-1] == "*":
-                    path_str = path_str[:-1] + str(pos)
-                path = parse_path(path_str)
+                path = deepcopy(self.deriv_path)
+                if self.ranged:
+                    path.append(pos)
                 child_key = self.extkey.derive_pub_path(path)
                 return child_key.pubkey
             else:
@@ -183,9 +197,10 @@ class PubkeyProvider(object):
         Returns the full derivation path at the given position, including the origin
         """
         path = self.origin.get_derivation_path() if self.origin is not None else "m/"
-        path += self.deriv_path if self.deriv_path is not None else ""
-        if path[-1] == "*":
-            path = path[:-1] + str(pos)
+        if self.deriv_path:
+            path += path_to_string(self.deriv_path)
+        if self.ranged:
+            path += str(pos)
         return path
 
     def get_full_derivation_int_list(self, pos: int) -> List[int]:
@@ -194,19 +209,10 @@ class PubkeyProvider(object):
         Includes the origin and master key fingerprint as an int
         """
         path: List[int] = self.origin.get_full_int_list() if self.origin is not None else []
-        if self.deriv_path is not None:
-            der_split = self.deriv_path.split("/")
-            for p in der_split:
-                if not p:
-                    continue
-                if p == "*":
-                    i = pos
-                elif p[-1] in "'phHP":
-                    assert len(p) >= 2
-                    i = int(p[:-1]) | 0x80000000
-                else:
-                    i = int(p)
-                path.append(i)
+        if self.deriv_path:
+            path.extend(self.deriv_path)
+        if self.ranged:
+            path.append(pos)
         return path
 
     def __lt__(self, other: 'PubkeyProvider') -> bool:

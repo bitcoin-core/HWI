@@ -281,14 +281,7 @@ class KeyOriginInfo(object):
         return r
 
     def _path_string(self, hardened_char: str = "h") -> str:
-        s = ""
-        for i in self.path:
-            hardened = is_hardened(i)
-            i &= ~HARDENED_FLAG
-            s += "/" + str(i)
-            if hardened:
-                s += hardened_char
-        return s
+        return path_to_string(self.path, hardened_char)
 
     def to_string(self, hardened_char: str = "h") -> str:
         """
@@ -339,6 +332,7 @@ def parse_path(nstr: str) -> List[int]:
 
     :param nstr: path string
     :return: list of integers
+    :raises ValueError: If the path contains any invalid characters
     """
     if not nstr:
         return []
@@ -361,6 +355,23 @@ def parse_path(nstr: str) -> List[int]:
         return [str_to_harden(x) for x in n]
     except Exception:
         raise ValueError("Invalid BIP32 path", nstr)
+
+
+def path_to_string(path: Sequence[int], hardened_char: str = "h") -> str:
+    """
+    Convert a list of ints specifying a BIP32 derivation path to a string
+
+    :param path: Path as a list of ints
+    :return: String representing the path
+    """
+    s = ""
+    for i in path:
+        hardened = is_hardened(i)
+        i &= ~HARDENED_FLAG
+        s += "/" + str(i)
+        if hardened:
+            s += hardened_char
+    return s
 
 
 def get_bip44_purpose(addrtype: AddressType) -> int:

@@ -437,8 +437,7 @@ class JadeClient(HardwareWalletClient):
                             'path': []})
 
             # Instead hold it as the address path
-            path = pubkey.deriv_path[1:] if pubkey.deriv_path[0] == '/' else pubkey.deriv_path
-            paths.append(parse_path(path))
+            paths.append(pubkey.deriv_path)
 
         if multisig.is_sorted and paths[:-1] != paths[1:]:
             logging.warning('Sorted multisig with different derivations per signer')
