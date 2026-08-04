@@ -458,6 +458,21 @@ class JadeClient(HardwareWalletClient):
 
         return str(address)
 
+    @jade_exception
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        address = self.jade.get_receive_address(
+            self._network(),
+            multipath_index,
+            index,
+            descriptor_name=registered_descriptor.name,
+        )
+        return str(address)
+
     # Setup a new device
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
