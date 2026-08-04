@@ -29,6 +29,7 @@ from ._serialize import (
 from base64 import b64decode, b64encode
 from binascii import unhexlify
 from collections import namedtuple
+from copy import deepcopy
 from enum import Enum
 from io import BufferedReader, BytesIO
 from typing import (
@@ -353,6 +354,17 @@ class Descriptor(object):
         for s in self.subdescriptors:
             out.extend(s.get_pubkey_providers())
         return out
+
+    def derive(self, pos: int, multipath_index: int = 0) -> 'Descriptor':
+        """Select a multipath entry and address index from a ranged descriptor."""
+
+        descriptor = deepcopy(self)
+        for pubkey in descriptor.get_pubkey_providers():
+            path = pubkey.get_deriv_path(pos, multipath_index)
+            pubkey.deriv_path = [[step] for step in path] or None
+            pubkey.ranged = False
+            pubkey.multipath_len = 1
+        return descriptor
 
 
 class PKDescriptor(Descriptor):

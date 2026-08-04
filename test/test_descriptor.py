@@ -16,6 +16,21 @@ from binascii import unhexlify
 import unittest
 
 class TestDescriptor(unittest.TestCase):
+    def test_derive(self):
+        xpub = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B"
+        descriptor_str = "wsh(multi(1,{0}/<0;1;2>/*,{0}/<10;11;12>/*))".format(xpub)
+        descriptor = parse_descriptor(descriptor_str)
+
+        self.assertEqual(
+            descriptor.derive(7).to_string_no_checksum(),
+            "wsh(multi(1,{0}/0/7,{0}/10/7))".format(xpub),
+        )
+        self.assertEqual(
+            descriptor.derive(7, multipath_index=2).to_string_no_checksum(),
+            "wsh(multi(1,{0}/2/7,{0}/12/7))".format(xpub),
+        )
+        self.assertEqual(descriptor.to_string_no_checksum(), descriptor_str)
+
     def test_parse_descriptor_with_origin(self):
         d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
         desc = parse_descriptor(d)
