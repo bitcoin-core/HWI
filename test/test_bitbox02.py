@@ -18,6 +18,7 @@ from test_device import (
     TestDisplayAddress,
     TestGetKeypool,
     TestGetDescriptors,
+    TestRegisterDescriptor,
     TestSignTx,
 )
 
@@ -128,6 +129,7 @@ def bitbox02_test_suite(simulator, bitcoind, interface):
     # TestSignMessage is removed, since its only testcase is for legacy p2pkh, which is not supported by BitBox02
     # suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestBitbox02GetXpub, bitcoind, emulator=dev_emulator, interface=interface))
+    suite.addTest(DeviceTestCase.parameterize(TestRegisterDescriptor, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=False, sorted=False))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()

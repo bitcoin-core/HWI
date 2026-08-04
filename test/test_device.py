@@ -16,7 +16,7 @@ from typing import Dict
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
-from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider
+from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider, RegisteredDescriptor
 from hwilib.key import ExtendedKey, KeyOriginInfo
 from hwilib.psbt import PSBT
 
@@ -784,3 +784,29 @@ class TestSignMessage(DeviceTestCase):
     def test_bad_path(self):
         result = self.do_command(self.dev_args + ['signmessage', "Message signing test", 'f'])
         self.assertEqual(result['code'], -7)
+
+class TestRegisterDescriptor(DeviceTestCase):
+    def __init__(self, *args, returns_registration, sorted=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.returns_registration = returns_registration
+        self.sorted = sorted
+
+    def test_register_descriptor(self):
+        account_path = "m/48h/1h/0h/2h"
+        account_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
+        multi = "sortedmulti" if self.sorted else "multi"
+        descriptor = f"wsh({multi}(1,[{self.emulator.fingerprint}{account_path[1:]}]{account_xpub}/<0;1>/*,[1a0f5425{account_path[1:]}]tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H/<0;1>/*))" # noqa: E702
+        desc_name = "HWI_testing"
+        result = self.do_command(self.dev_args + ["registerdescriptor", desc_name, descriptor])
+
+        self.assertNotIn("error", result)
+        self.assertIn("registration", result)
+        reg_str = result["registration"]
+        reg = RegisteredDescriptor.deserialize(reg_str)
+        self.assertEqual(reg.name, desc_name)
+        self.assertEqual(reg.descriptor.to_string_no_checksum(), descriptor)
+        self.assertEqual(reg.device_type, self.emulator.type)
+        if self.returns_registration:
+            self.assertGreater(len(reg.registration), 0)
+        else:
+            self.assertEqual(len(reg.registration), 0)
