@@ -810,3 +810,15 @@ class TestRegisterDescriptor(DeviceTestCase):
             self.assertGreater(len(reg.registration), 0)
         else:
             self.assertEqual(len(reg.registration), 0)
+
+        result = self.do_command(self.dev_args + [
+            "displayaddress",
+            "--index", "7",
+            "--multipath-index", "1",
+            "--registration", result["registration"],
+        ])
+        self.assertNotIn("error", result)
+        self.assertNotIn("code", result)
+        self.assertIn("address", result)
+        self.assertEqual(result["index"], 7)
+        self.assertEqual(result["multipath_index"], 1)
