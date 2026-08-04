@@ -327,7 +327,7 @@ def getdescriptor(
     origin = KeyOriginInfo(master_fpr, parsed_path[:i])
     path_base = origin.get_derivation_path()
 
-    path_suffix = parsed_path[i:]
+    path_suffix = [[p] for p in parsed_path[i:]]
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:

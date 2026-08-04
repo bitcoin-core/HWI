@@ -323,17 +323,7 @@ class KeyOriginInfo(object):
         return xfp
 
 
-def parse_path(nstr: str) -> List[int]:
-    """
-    Convert BIP32 path string to list of uint32 integers with hardened flags.
-    Several conventions are supported to set the hardened flag: -1, 1', 1h
-
-    e.g.: "0/1h/1" -> [0, 0x80000001, 1]
-
-    :param nstr: path string
-    :return: list of integers
-    :raises ValueError: If the path contains any invalid characters
-    """
+def _parse_path(nstr: str, allow_multipath: bool) -> List[List[int]]:
     if not nstr:
         return []
 
@@ -351,10 +341,75 @@ def parse_path(nstr: str) -> List[int]:
         else:
             return int(x)
 
+    def parse_index(x: str, seen_multipath: bool) -> Tuple[List[int], bool]:
+        if x.startswith("<"):
+            if seen_multipath:
+                raise ValueError("Cannot have multiple multipath specifiers")
+            if not allow_multipath:
+                raise ValueError(f"Multipath specifier not allowed: {x}")
+            if not x.endswith(">"):
+                raise ValueError(f"Invalid multipath specification, missing trailing '>': {x}")
+            mp = x[1:-1].split(";")
+            if len(mp) < 2:
+                raise ValueError(f"Invalid multipath specification, less than 2 indexes specified: {x}")
+            seen_multipath = True
+            return [str_to_harden(p) for p in mp], seen_multipath
+        return [str_to_harden(x)], seen_multipath
+
     try:
-        return [str_to_harden(x) for x in n]
+        path = []
+        seen_multipath = False
+        for x in n:
+            idx, seen_multipath = parse_index(x, seen_multipath)
+            path.append(idx)
+        return path
+    except ValueError as e:
+        raise e
     except Exception:
-        raise ValueError("Invalid BIP32 path", nstr)
+        raise ValueError(f"Invalid BIP32 path: {nstr}")
+
+
+def parse_path(nstr: str) -> List[int]:
+    """
+    Convert BIP32 path string to list of uint32 integers with hardened flags.
+    Several conventions are supported to set the hardened flag: -1, 1', 1h
+
+    e.g.: "0/1h/1" -> [0, 0x80000001, 1]
+
+    :param nstr: path string
+    :return: list of integers
+    :raises ValueError: If the path contains any invalid characters
+    """
+    return [i[0] for i in _parse_path(nstr, False)]
+
+
+def parse_multipath(s: str) -> List[List[int]]:
+    """
+    Convert multipath BIP32 path strings as specified in BIP389 to a list of lists ints.
+
+    :param s: path string
+    :return: list of lists of integers
+    :raises ValueError: If the path contains any invalid specifiers
+    """
+    return _parse_path(s, True)
+
+
+def _path_to_string(path: Sequence[Sequence[int]], hardened_char: str = "h") -> str:
+    def index_to_str(i: int) -> str:
+        hardened = is_hardened(i)
+        i &= ~HARDENED_FLAG
+        out = str(i)
+        if hardened:
+            out += hardened_char
+        return out
+
+    s = ""
+    for mp in path:
+        if len(mp) == 1:
+            s += f"/{index_to_str(mp[0])}"
+        else:
+            s += f"/<{';'.join([index_to_str(p) for p in mp])}>"
+    return s
 
 
 def path_to_string(path: Sequence[int], hardened_char: str = "h") -> str:
@@ -364,14 +419,17 @@ def path_to_string(path: Sequence[int], hardened_char: str = "h") -> str:
     :param path: Path as a list of ints
     :return: String representing the path
     """
-    s = ""
-    for i in path:
-        hardened = is_hardened(i)
-        i &= ~HARDENED_FLAG
-        s += "/" + str(i)
-        if hardened:
-            s += hardened_char
-    return s
+    return _path_to_string([[i] for i in path], hardened_char)
+
+
+def multipath_to_string(path: Sequence[Sequence[int]], hardened_char: str = "h") -> str:
+    """
+    Convert a list of list of ints specifying a multipath BIP32 path to a string as specified by BIP389
+
+    :param path: The path as a list of list of ints
+    :return: String representing the path
+    """
+    return _path_to_string(path, hardened_char)
 
 
 def get_bip44_purpose(addrtype: AddressType) -> int:

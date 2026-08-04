@@ -712,7 +712,7 @@ class TrezorClient(HardwareWalletClient):
             if p.extkey is not None:
                 xpub = p.extkey
                 hd_node = messages.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=p.deriv_path))
+                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=p.get_deriv_path(0, 0)))
             else:
                 hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=pk)
                 pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=[]))

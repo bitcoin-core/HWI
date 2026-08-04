@@ -13,14 +13,14 @@ Descriptors can be parsed, however the actual scripts are not generated.
 from .key import (
     ExtendedKey,
     KeyOriginInfo,
-    parse_path,
+    parse_multipath,
+    multipath_to_string,
     path_to_string,
 )
 from .common import hash160, sha256
 
 from binascii import unhexlify
 from collections import namedtuple
-from copy import deepcopy
 from enum import Enum
 from typing import (
     List,
@@ -109,7 +109,7 @@ class PubkeyProvider(object):
         self,
         origin: Optional['KeyOriginInfo'],
         pubkey: str,
-        deriv_path: Optional[List[int]],
+        deriv_path: Optional[List[List[int]]],
         expr_index: int,
         ranged: bool
     ) -> None:
@@ -124,6 +124,7 @@ class PubkeyProvider(object):
         self.deriv_path = deriv_path
         self.expr_index = expr_index
         self.ranged = ranged
+        self.multipath_len = max([len(p) for p in self.deriv_path]) if self.deriv_path is not None and len(self.deriv_path) > 0 else 1
 
         # Make ExtendedKey from pubkey if it isn't hex
         self.extkey = None
@@ -160,7 +161,8 @@ class PubkeyProvider(object):
             ranged = path_str.endswith("*")
             if ranged:
                 path_str = path_str[:-2]
-            deriv_path = parse_path(path_str)
+            if len(path_str) > 0:
+                deriv_path = parse_multipath(path_str)
 
         return cls(origin, pubkey, deriv_path, key_expr_index, ranged)
 
@@ -175,42 +177,52 @@ class PubkeyProvider(object):
             s += "[{}]".format(self.origin.to_string(hardened_char))
         s += self.pubkey
         if self.deriv_path:
-            s += path_to_string(self.deriv_path, hardened_char)
+            s += multipath_to_string(self.deriv_path, hardened_char)
         if self.ranged:
             s += "/*"
         return s
 
-    def get_pubkey_bytes(self, pos: int) -> bytes:
+    def get_deriv_path(self, pos: int, multipath_pos: int) -> List[int]:
+        path = []
+        if self.deriv_path:
+            for p in self.deriv_path:
+                if len(p) == 1:
+                    path.append(p[0])
+                else:
+                    path.append(p[multipath_pos])
+        if self.ranged:
+            path.append(pos)
+        return path
+
+    def get_pubkey_bytes(self, pos: int, multipath_pos: int = 0) -> bytes:
         if self.extkey is not None:
             if self.deriv_path is not None:
-                path = deepcopy(self.deriv_path)
-                if self.ranged:
-                    path.append(pos)
+                path = self.get_deriv_path(pos, multipath_pos)
                 child_key = self.extkey.derive_pub_path(path)
                 return child_key.pubkey
             else:
                 return self.extkey.pubkey
         return unhexlify(self.pubkey)
 
-    def get_full_derivation_path(self, pos: int) -> str:
+    def get_full_derivation_path(self, pos: int, multipath_pos: int = 0) -> str:
         """
         Returns the full derivation path at the given position, including the origin
         """
         path = self.origin.get_derivation_path() if self.origin is not None else "m/"
         if self.deriv_path:
-            path += path_to_string(self.deriv_path)
+            path += path_to_string(self.get_deriv_path(pos, multipath_pos))
         if self.ranged:
             path += str(pos)
         return path
 
-    def get_full_derivation_int_list(self, pos: int) -> List[int]:
+    def get_full_derivation_int_list(self, pos: int, multipath_pos: int = 0) -> List[int]:
         """
         Returns the full derivation path as an integer list at the given position.
         Includes the origin and master key fingerprint as an int
         """
         path: List[int] = self.origin.get_full_int_list() if self.origin is not None else []
         if self.deriv_path:
-            path.extend(self.deriv_path)
+            path.extend(self.get_deriv_path(pos, multipath_pos))
         if self.ranged:
             path.append(pos)
         return path
@@ -557,8 +569,14 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         thresh = int(expr[:comma_idx])
         expr = expr[comma_idx + 1:]
         pubkeys = []
+        multipath_len = None
         while expr:
             pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+            if pubkey.multipath_len > 1:
+                if multipath_len is None:
+                    multipath_len = pubkey.multipath_len
+                elif multipath_len != pubkey.multipath_len:
+                    raise ValueError("Mismatched multipath paths")
             pubkeys.append(pubkey)
         if len(pubkeys) == 0 or len(pubkeys) > 16:
             raise ValueError("Cannot have {} keys in a multisig; must have between 1 and 16 keys, inclusive".format(len(pubkeys)))
@@ -589,7 +607,10 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
     if func == "tr":
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
+        multipath_len = None
         internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        if internal_key.multipath_len > 1:
+            multipath_len = internal_key.multipath_len
         subscripts = []
         depths = []
         if expr:
@@ -610,6 +631,12 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
                 # Process script expression
                 sarg, expr = _get_expr(expr)
                 subdesc, key_expr_index = _parse_descriptor(sarg, _ParseDescriptorContext.P2TR, key_expr_index)
+                for pub in subdesc.pubkeys:
+                    if pub.multipath_len > 1:
+                        if multipath_len is None:
+                            multipath_len = pub.multipath_len
+                        elif multipath_len != pub.multipath_len:
+                            raise ValueError("Mismatched multipath paths")
                 subscripts.append(subdesc)
                 depths.append(len(branches))
                 # Process closing braces
