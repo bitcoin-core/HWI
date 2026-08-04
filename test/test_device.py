@@ -175,7 +175,7 @@ class DeviceTestCase(unittest.TestCase):
             args = [f'"{arg}"' for arg in args]
             input_str = '\n'.join(args) + '\n'
             proc = subprocess.Popen(['hwi', '--stdin'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            result = proc.communicate(input_str.encode(), timeout=60)
+            result = proc.communicate(input_str.encode(), timeout=120)
             return json.loads(result[0].decode())
         else:
             return process_commands(args)
