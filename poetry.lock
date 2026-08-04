@@ -1421,4 +1421,4 @@ qt = ["pyside2"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.16"
-content-hash = "43edd39753cb2700c3092e71d4466c1335048f14071c4e7f88a7ad2d01b298cb"
+content-hash = "b8f79f8e4f03ac26913c912846f0c5eb6c2e70535cee0a2cc769082d5de66895"
