@@ -9,7 +9,11 @@ from typing import (
     Union,
 )
 
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -59,6 +63,7 @@ from hashlib import sha256
 import base64
 import hid
 import io
+import json
 import sys
 import time
 import struct
@@ -414,6 +419,42 @@ class ColdcardClient(HardwareWalletClient):
         :returns: Whether Taproot is supported
         """
         return self.is_edge
+
+    @coldcard_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        conf = {
+            "desc": descriptor.to_string(),
+            "name": name
+        }
+        conf_bytes = json.dumps(conf).encode()
+
+        stream = io.BytesIO(conf_bytes)
+        size = len(conf_bytes)
+
+        # Send the descriptor bytes
+        left = size
+        check = sha256()
+        for pos in range(0, size, MAX_BLK_LEN):
+            here = stream.read(min(MAX_BLK_LEN, left))
+            if not here:
+                break
+            left -= len(here)
+            result = self.device.send_recv(CCProtocolPacker.upload(pos, size, here))
+            assert result == pos
+            check.update(here)
+
+        # verify the send
+        expect = check.digest()
+        result = self.device.send_recv(CCProtocolPacker.sha256())
+        assert len(result) == 32
+        if result != expect:
+            raise DeviceFailureError(f"Wrong checksum, expected {expect.hex()}, got {result.hex()}")
+
+        # Register the descriptor
+        self.device.send_recv(CCProtocolPacker.multisig_enroll(size, expect), timeout=None)
+        if self.device.is_simulator:
+            self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="coldcard", registration=b"")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = True) -> List[Dict[str, Any]]:
