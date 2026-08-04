@@ -36,7 +36,7 @@ Clone Bitcoin Core and build it. Clone HWI.
     $ cd ..
     $ git clone https://github.com/bitcoin-core/HWI.git
     $ cd HWI
-    $ python3 setup.py install
+    $ pip install .
 
 You may need some dependencies, on ubuntu install ``libudev-dev`` and ``libusb-1.0-0-dev``
 

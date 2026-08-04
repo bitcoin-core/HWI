@@ -16,10 +16,6 @@ Sets up Wine with Python and everything needed to build Windows binaries. Create
 
 `wine` needs to be installed
 
-## `generate_setup.sh`
-
-Builds the source distribution and extracts the setup.py from it.
-
 ## `build.Dockerfile`
 
 A Dockerfile for setting up the deterministic build environment.

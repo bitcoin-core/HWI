@@ -1,7 +1,7 @@
 Release Process
 ***************
 
-1. Bump version number in ``pyproject.toml`` and ``hwilib/__init__.py``, generate the setup.py file, and git tag release
+1. Bump version number in ``pyproject.toml`` and ``hwilib/__init__.py``, and git tag release
 2. Build distribution archives for PyPi with ``contrib/build_dist.sh``
 3. For MacOS and Linux, use ``contrib/build_bin.sh``. This needs to be run on a macOS machine for the macOS binary and on a Linux machine for the linux one.
 4. For Windows, use ``contrib/build_wine.sh`` to build the Windows binary using wine. Note that this uses Python 3.10.11 via the NuGet package because python.org no longer hosts the MSIs for newer 3.10.x releases.
