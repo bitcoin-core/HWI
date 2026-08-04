@@ -454,7 +454,7 @@ class LedgerClient(HardwareWalletClient):
         def is_valid_der_path(pk: PubkeyProvider) -> bool:
             if pk.deriv_path is None:
                 return False
-            return len(pk.deriv_path) == 3 and pk.deriv_path[1] in [0, 1] and 0 <= pk.deriv_path[2] <= 0x7fffffff and pk.ranged
+            return len(pk.deriv_path) == 3 and pk.deriv_path[1] in [[0], [1]] and 0 <= pk.deriv_path[2][0] <= 0x7fffffff and pk.ranged
 
         if any(not is_valid_der_path(pk) for pk in multisig.pubkeys):
             raise BadArgumentError("Ledger Bitcoin app requires derivation paths ending with /0/* or /1/* for multisig")
@@ -476,8 +476,8 @@ class LedgerClient(HardwareWalletClient):
         _, registered_hmac = self.client.register_wallet(multisig_wallet)
 
         assert multisig.pubkeys[0].deriv_path is not None  # already checked above with is_valid_der_path
-        change = 0 if multisig.pubkeys[0].deriv_path[3] == 0 else 1
-        address_index = int(multisig.pubkeys[0].deriv_path[2])
+        change = 0 if multisig.pubkeys[0].deriv_path[3] == [0] else 1
+        address_index = int(multisig.pubkeys[0].deriv_path[2][0])
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
 
