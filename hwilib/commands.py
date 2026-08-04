@@ -27,7 +27,6 @@ from .key import (
     get_bip44_purpose,
     get_bip44_chain,
     H_,
-    HARDENED_FLAG,
     is_hardened,
     KeyOriginInfo,
     parse_path,
@@ -328,18 +327,13 @@ def getdescriptor(
     origin = KeyOriginInfo(master_fpr, parsed_path[:i])
     path_base = origin.get_derivation_path()
 
-    path_suffix = ""
-    for p in parsed_path[i:]:
-        hardened = is_hardened(p)
-        p &= ~HARDENED_FLAG
-        path_suffix += "/{}{}".format(p, "h" if hardened else "")
-    path_suffix += "/*"
+    path_suffix = parsed_path[i:]
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
         client.xpub_cache[path_base] = client.get_pubkey_at_path(path_base).to_string()
 
-    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix, 0)
+    pubkey = PubkeyProvider(origin, client.xpub_cache.get(path_base, ""), path_suffix, 0, True)
     if addr_type is AddressType.LEGACY:
         return PKHDescriptor(pubkey)
     elif addr_type is AddressType.SH_WIT:
