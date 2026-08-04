@@ -522,6 +522,33 @@ class Bitbox02Client(HardwareWalletClient):
         return address
 
     @bitbox02_exception
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        descriptor = registered_descriptor.descriptor
+        account_keypath = None
+        device_fingerprint = self.get_master_fingerprint()
+        for pubkey in descriptor.get_pubkey_providers():
+            if (
+                pubkey.origin is not None
+                and pubkey.origin.fingerprint == device_fingerprint
+            ):
+                account_keypath = pubkey.origin.path
+                break
+        if account_keypath is None:
+            raise BadArgumentError("This BitBox02 is not one of the policy keys")
+
+        return self.init().btc_address(
+            [*account_keypath, multipath_index, index],
+            coin=self._get_coin(),
+            script_config=self._bip388_script_config(descriptor),
+            display=True,
+        )
+
+    @bitbox02_exception
     def display_multisig_address(
         self,
         addr_type: AddressType,
