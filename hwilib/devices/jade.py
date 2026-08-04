@@ -20,7 +20,11 @@ from typing import (
     Tuple,
     Union
 )
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -529,6 +533,13 @@ class JadeClient(HardwareWalletClient):
         :returns: False, always
         """
         return False
+
+    @jade_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        template = descriptor.get_bip388_template()
+        datavalues = {f"@{p.expr_index}": p.get_bip388_key_info() for p in descriptor.get_pubkey_providers()}
+        self.jade.register_descriptor(self._network(), name, template, datavalues)
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="jade", registration=b"")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
