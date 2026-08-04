@@ -57,8 +57,16 @@ from typing import (
 def backup_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return backup_device(client, label=args.label, backup_passphrase=args.backup_passphrase)
 
-def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
-    return displayaddress(client, desc=args.desc, path=args.path, addr_type=args.addr_type)
+def displayaddress_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[int, str]]:
+    return displayaddress(
+        client,
+        desc=args.desc,
+        path=args.path,
+        addr_type=args.addr_type,
+        registration=args.registration,
+        index=args.index,
+        multipath_index=args.multipath_index,
+    )
 
 def enumerate_handler(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return enumerate(password=args.password, expert=args.expert, chain=args.chain, allow_emulators=args.allow_emulators)
@@ -198,7 +206,13 @@ def get_parser() -> HWIArgumentParser:
     group = displayaddr_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--desc', help='Output Descriptor. E.g. wpkh([00000000/84h/0h/0h]xpub.../0/0), where 00000000 must match --fingerprint and xpub can be obtained with getxpub. See doc/descriptors.md in Bitcoin Core')
     group.add_argument('--path', help='The BIP 32 derivation path of the key embedded in the address, default follows BIP43 convention, e.g. ``m/84h/0h/0h/1/*``')
+    group.add_argument('--registration', help='Registration returned by the registerdescriptor command')
     displayaddr_parser.add_argument("--addr-type", help="The address type to display", type=AddressType.argparse, choices=list(AddressType), default=AddressType.WIT) # type: ignore
+    displayaddr_policy_group = displayaddr_parser.add_argument_group("BIP388 policy")
+    displayaddr_policy_group.add_argument('--index', help='Address index to display from the policy', type=int)
+    displayaddr_multipath_group = displayaddr_policy_group.add_mutually_exclusive_group()
+    displayaddr_multipath_group.add_argument('--multipath-index', help='Multipath index to select from the policy', type=int)
+    displayaddr_multipath_group.add_argument('--change', help='Select the change branch (equivalent to --multipath-index 1)', action='store_const', const=1, dest='multipath_index')
     displayaddr_parser.set_defaults(func=displayaddress_handler)
 
     setupdev_parser = subparsers.add_parser('setup', help='Setup a device. Passphrase protection uses the password given by -p. Requires interactive mode')

@@ -139,6 +139,18 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        """Display and return an address from a BIP388 descriptor policy."""
+
+        raise NotImplementedError(
+            "This device does not support BIP388 policy address display or it is not yet implemented"
+        )
+
     def wipe_device(self) -> bool:
         """
         Wipe the device.
