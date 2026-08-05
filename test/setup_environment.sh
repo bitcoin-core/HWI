@@ -69,7 +69,7 @@ TREZOR_VERSION="core/v2.9.6"
 BITBOX01_VERSION="v7.1.0"
 BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
-SPECULOS_VERSION="v0.26.9"  # Requires Python >=3.10 (v0.25.11+)
+SPECULOS_VERSION="ed952a54801f59a71399462b5422976d84c817bb"  # Requires Python >=3.10 (v0.25.11+)
 JADE_VERSION="1.0.36"
 
 # Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
@@ -271,7 +271,7 @@ fi
 if [[ -n ${build_ledger} ]]; then
     # Clone ledger simulator Speculos if it doesn't exist, or update it if it does
     if [ ! -d "speculos" ]; then
-        git clone --recursive --depth 1 --shallow-submodules --branch ${SPECULOS_VERSION} https://github.com/LedgerHQ/speculos.git
+        git clone --recursive --depth 1 --shallow-submodules --revision ${SPECULOS_VERSION} https://github.com/LedgerHQ/speculos.git
     else
         pushd speculos
         git fetch
