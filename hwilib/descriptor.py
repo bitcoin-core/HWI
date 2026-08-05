@@ -18,11 +18,19 @@ from .key import (
     path_to_string,
 )
 from .common import hash160, sha256
-from .errors import InvalidPolicyError
+from .errors import BadArgumentError, InvalidPolicyError
+from ._serialize import (
+    deser_compact_size,
+    deser_string,
+    ser_compact_size,
+    ser_string,
+)
 
+from base64 import b64decode, b64encode
 from binascii import unhexlify
 from collections import namedtuple
 from enum import Enum
+from io import BufferedReader, BytesIO
 from typing import (
     List,
     Optional,
@@ -767,3 +775,53 @@ def parse_descriptor(desc: str) -> 'Descriptor':
         if computed != checksum:
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
     return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
+
+class RegisteredDescriptor:
+    """
+    An object containing a policy that was registered with a device
+    """
+
+    REG_VERSION = 0x00
+    REG_NAME = 0x01
+    REG_DESCRIPTOR = 0x02
+    REG_DEVICE_TYPE = 0x03
+    REG_REGISTRATION = 0x04
+
+    def __init__(self, name: str, descriptor: Descriptor, device_type: str, registration: bytes) -> None:
+        self.version = 1
+        self.name = name
+        self.descriptor = descriptor
+        self.device_type = device_type
+        self.registration = registration
+
+    def serialize(self) -> str:
+        r = b"rdesc"
+
+        r += ser_compact_size(self.version)
+        r += ser_string(self.name.encode())
+        r += ser_string(self.descriptor.to_string().encode())
+        r += ser_string(self.device_type.encode())
+        r += ser_string(self.registration)
+
+        return b64encode(r).decode()
+
+    @classmethod
+    def deserialize(cls, policy: str) -> 'RegisteredDescriptor':
+        policy_bytes = b64decode(policy.strip())
+        s = BufferedReader(BytesIO(policy_bytes))  # type: ignore
+
+        magic = s.read(5)
+        if magic != b"rdesc":
+            raise BadArgumentError("Policy has invalid magic bytes")
+
+        version = deser_compact_size(s)
+
+        if version != 1:
+            raise BadArgumentError("Serialized policy registration has unknown version number")
+
+        name = deser_string(s).decode()
+        descriptor = parse_descriptor(deser_string(s).decode())
+        device_type = deser_string(s).decode()
+        registration = deser_string(s)
+
+        return cls(name, descriptor, device_type, registration)
