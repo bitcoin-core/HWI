@@ -39,7 +39,7 @@ install_requires = \
  'typing-extensions>=4.4,<5.0']
 
 extras_require = \
-{'qt:python_version < "3.10"': ['pyside2>=5.14.0,<6.0.0']}
+{'qt:python_version < "3.11"': ['pyside2>=5.15.2.1,<6.0.0.0']}
 
 entry_points = \
 {'console_scripts': ['hwi = hwilib._cli:main', 'hwi-qt = hwilib._gui:main']}
@@ -60,7 +60,7 @@ setup_kwargs = {
     'install_requires': install_requires,
     'extras_require': extras_require,
     'entry_points': entry_points,
-    'python_requires': '>=3.9,<3.13',
+    'python_requires': '>=3.10,<3.13',
 }
 
 

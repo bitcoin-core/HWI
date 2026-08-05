@@ -3,6 +3,7 @@
 set -ex
 
 pushd hwilib/ui
+rm -f ui_*.py
 for file in *.ui
 do
     gen_file=ui_`echo $file| cut -d. -f1`.py

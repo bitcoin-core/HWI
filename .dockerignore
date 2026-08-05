@@ -1,0 +1,11 @@
+# Exclude local build artifacts and any symlinks outside the context
+build*
+
+# Local documentation files (can be symlinks outside the context)
+*.md
+
+# Common Python / tooling artifacts
+__pycache__/
+*.pyc
+.venv/
+dist/

@@ -3,7 +3,11 @@
 
 set -ex
 
-PYTHON_VERSION=3.9.13
+# Note: Python MSIs/EXEs are no longer hosted for 3.10.x on python.org.
+# The NuGet python package currently only goes up to 3.10.11, so Windows builds use that.
+PYTHON_VERSION=3.10.11
+PYTHON_NUGET_URL="https://api.nuget.org/v3-flatcontainer/python/${PYTHON_VERSION}/python.${PYTHON_VERSION}.nupkg"
+PYTHON_NUGET_HASH="7c6f99b160a36a7e09492dfcff2b0a3a60bb5229ca44cdcc3ecb32871a6144d0"
 
 PYTHON_FOLDER="python3"
 PYHOME="c:/$PYTHON_FOLDER"
@@ -19,20 +23,15 @@ WINDOWS_SDK_VERSION=10.0.17763.0
 
 wine 'wineboot'
 
-# Install Python
-# Get the PGP keys
-wget -O pubkeys.txt -N -c "https://keybase.io/stevedower/pgp_keys.asc?fingerprint=7ed10b6531d7c8e1bc296021fc624643487034e5"
-gpg --import pubkeys.txt
-rm pubkeys.txt
-
-# Install python components
-for msifile in core dev exe lib pip tools; do
-    wget -N -c "https://www.python.org/ftp/python/$PYTHON_VERSION/amd64/${msifile}.msi"
-    wget -N -c "https://www.python.org/ftp/python/$PYTHON_VERSION/amd64/${msifile}.msi.asc"
-    gpg --verify "${msifile}.msi.asc" "${msifile}.msi"
-    wine msiexec /i "${msifile}.msi" /qb TARGETDIR=$PYHOME
-    rm $msifile.msi*
-done
+# Install Python from NuGet package
+wget -O python.nupkg -N -c "$PYTHON_NUGET_URL"
+echo "$PYTHON_NUGET_HASH  python.nupkg" | sha256sum -c
+rm -rf python-nupkg
+7z x python.nupkg -opython-nupkg >/dev/null
+rm -rf ~/.wine/drive_c/python3
+mkdir -p ~/.wine/drive_c/python3
+cp -a python-nupkg/tools/* ~/.wine/drive_c/python3/
+rm -rf python.nupkg python-nupkg
 
 # Get and build libusb
 wget -N -c -O libusb.tar.bz2 "$LIBUSB_URL"
@@ -40,7 +39,7 @@ echo "$LIBUSB_HASH  libusb.tar.bz2" | sha256sum -c
 tar -xf libusb.tar.bz2
 pushd "libusb-$LIBUSB_VERSION"
 ./configure --host=x86_64-w64-mingw32
-faketime -f "2019-01-01 00:00:00" make
+faketime -f "2026-01-01 00:00:00" make
 cp libusb/.libs/libusb-1.0.dll ~/.wine/drive_c/python3/
 popd
 rm -r libusb*
@@ -62,7 +61,7 @@ $PYTHON -m pip install poetry
 
 # We also need to change the timestamps of all of the base library files
 lib_dir=~/.wine/drive_c/python3/Lib
-TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "201901010000.00" '{}' \;
+TZ=UTC find ${lib_dir} -name '*.py' -type f -execdir touch -t "202601010000.00" '{}' \;
 
 # Install python dependencies
 POETRY="wine $PYHOME/Scripts/poetry.exe"
