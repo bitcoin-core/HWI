@@ -32,7 +32,9 @@ from collections import namedtuple
 from copy import deepcopy
 from enum import Enum
 from io import BufferedReader, BytesIO
+import re
 from typing import (
+    Dict,
     List,
     Optional,
     Tuple,
@@ -40,6 +42,18 @@ from typing import (
 
 
 MAX_TAPROOT_NODES = 128
+
+
+_EXTENDED_KEY_RE = re.compile(
+    r"(?P<origin>\[[^\]]+\])?(?P<key>[1-9A-HJ-NP-Za-km-z]{100,120})"
+)
+_MINISCRIPT_FUNCTION_RE = re.compile(r"(?<![A-Za-z0-9_])(?P<name>[a-z_:]+)\(")
+_MINISCRIPT_FUNCTIONS = {
+    "after", "and_b", "and_n", "and_v", "andor", "hash160", "hash256",
+    "multi_a", "musig", "older", "or_b", "or_c", "or_d", "or_i", "pk",
+    "pk_h", "pk_k", "pkh", "ripemd160", "sha256", "sortedmulti_a", "thresh",
+}
+_MINISCRIPT_WRAPPERS = set("acdtvjsnlu")
 
 
 ExpandedScripts = namedtuple("ExpandedScripts", ["output_script", "redeem_script", "witness_script"])
@@ -877,6 +891,93 @@ def parse_descriptor(desc: str) -> 'Descriptor':
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
     return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
 
+
+class TRMiniscriptDescriptor(Descriptor):
+    """A ``tr()`` descriptor whose tapscript leaves are kept as text."""
+
+    def __init__(self, descriptor: str) -> None:
+        if descriptor.count("#") > 1:
+            raise BadArgumentError("Descriptor has more than one checksum separator")
+        if "#" in descriptor:
+            descriptor, checksum = descriptor.split("#", 1)
+            expected = DescriptorChecksum(descriptor)
+            if checksum != expected:
+                raise BadArgumentError(
+                    f"The descriptor checksum does not match: got {checksum}, expected {expected}"
+                )
+        func, expr = _get_func_expr(descriptor)
+        if func != "tr" or not descriptor.endswith(")"):
+            raise BadArgumentError("Only tr() Miniscript policies can use text parsing")
+        internal_key, tree = _get_expr(expr)
+        if not tree.startswith(",") or len(tree) == 1:
+            raise BadArgumentError("Text-parsed tr() policy must have tapscript leaves")
+        parse_descriptor(f"tr({internal_key})")
+
+        for match in _MINISCRIPT_FUNCTION_RE.finditer(tree[1:]):
+            name = match.group("name")
+            parts = name.split(":")
+            wrappers = parts[0] if len(parts) == 2 else ""
+            if len(parts) > 2 or any(wrapper not in _MINISCRIPT_WRAPPERS for wrapper in wrappers):
+                raise BadArgumentError(f"Unknown Miniscript wrapper: {name}")
+            if parts[-1] not in _MINISCRIPT_FUNCTIONS:
+                raise BadArgumentError(f"Unknown Miniscript fragment: {parts[-1]}")
+
+        self._descriptor = descriptor
+        key_indexes: Dict[str, int] = {}
+        providers: List[PubkeyProvider] = []
+        template_parts: List[str] = []
+        last_end = 0
+        for match in _EXTENDED_KEY_RE.finditer(descriptor):
+            key = match.group("key")
+            try:
+                extkey = ExtendedKey.deserialize(key)
+            except Exception as exc:
+                raise BadArgumentError(f"Invalid extended key in descriptor: {key}") from exc
+            if extkey.is_private:
+                raise BadArgumentError("BIP388 key information must use extended public keys")
+
+            origin_str = ""
+            raw_origin = match.group("origin")
+            if raw_origin is not None:
+                try:
+                    origin = KeyOriginInfo.from_string(raw_origin[1:-1])
+                except Exception as exc:
+                    raise BadArgumentError(f"Invalid key origin: {raw_origin}") from exc
+                normalized_origin = origin.to_string(hardened_char="'")
+                origin_str = f"[{normalized_origin}]"
+            key_info = origin_str + extkey.to_string()
+            if key_info not in key_indexes:
+                key_indexes[key_info] = len(providers)
+                providers.append(PubkeyProvider.parse(key_info, len(providers)))
+
+            template_parts.append(descriptor[last_end:match.start()])
+            template_parts.append(f"@{key_indexes[key_info]}")
+            last_end = match.end()
+
+        if not providers:
+            raise BadArgumentError("Descriptor does not contain any extended public keys")
+        template_parts.append(descriptor[last_end:])
+        self._template = "".join(template_parts)
+        super().__init__(providers, [], "")
+
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
+        return self._descriptor
+
+    def get_bip388_template(self) -> str:
+        return self._template
+
+    def derive(self, pos: int, change: bool = False) -> 'Descriptor':
+        raise NotImplementedError("HWI cannot expand this registered policy descriptor")
+
+
+def parse_registration_descriptor(desc: str) -> 'Descriptor':
+    """Parse a descriptor, preserving tapscript Miniscript leaves as text."""
+
+    try:
+        return parse_descriptor(desc)
+    except ValueError:
+        return TRMiniscriptDescriptor(desc)
+
 class RegisteredDescriptor:
     """
     An object containing a policy that was registered with a device
@@ -921,7 +1022,7 @@ class RegisteredDescriptor:
             raise BadArgumentError("Serialized policy registration has unknown version number")
 
         name = deser_string(s).decode()
-        descriptor = parse_descriptor(deser_string(s).decode())
+        descriptor = parse_registration_descriptor(deser_string(s).decode())
         device_type = deser_string(s).decode()
         registration = deser_string(s)
 

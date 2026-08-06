@@ -41,11 +41,11 @@ from .descriptor import (
     Descriptor,
     RegisteredDescriptor,
     parse_descriptor,
+    parse_registration_descriptor,
     MultisigDescriptor,
     TRDescriptor,
     PKHDescriptor,
     PubkeyProvider,
-    RegisteredDescriptor,
     SHDescriptor,
     WPKHDescriptor,
     WSHDescriptor,
@@ -636,4 +636,5 @@ def register_descriptor(client: HardwareWalletClient, name: str, descriptor: str
 
     :return: A dictionary with the ``registration`` key containing a string
     """
-    return {"registration": client.register_descriptor(name, parse_descriptor(descriptor)).serialize()}
+    descriptor_obj = parse_registration_descriptor(descriptor)
+    return {"registration": client.register_descriptor(name, descriptor_obj).serialize()}
