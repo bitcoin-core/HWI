@@ -383,8 +383,7 @@ class JadeClient(HardwareWalletClient):
         """
         Sign a transaction with the Blockstream Jade.
         """
-        if registered_descriptors:
-            raise UnavailableActionError("The Jade does not support BIP388 policy signing")
+        # registered_descriptors are intentionally unused because the descriptors were stored by register_descriptor.
         # Old firmware does not have native PSBT handling - use legacy method
         if self.PSBT_SUPPORTED_FW_VERSION > self.fw_version.finalize_version():
             return self.legacy_sign_tx(psbt)
