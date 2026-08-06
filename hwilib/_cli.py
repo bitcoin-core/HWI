@@ -89,7 +89,7 @@ def signmessage_handler(args: argparse.Namespace, client: HardwareWalletClient) 
     return signmessage(client, message=args.message, path=args.path)
 
 def signtx_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, Union[bool, str]]:
-    return signtx(client, psbt=args.psbt)
+    return signtx(client, psbt=args.psbt, registrations=args.registrations)
 
 def wipe_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     return wipe_device(client)
@@ -165,6 +165,12 @@ def get_parser() -> HWIArgumentParser:
 
     signtx_parser = subparsers.add_parser('signtx', help='Sign a PSBT')
     signtx_parser.add_argument('psbt', help='The Partially Signed Bitcoin Transaction to sign')
+    signtx_parser.add_argument(
+        '--registration',
+        dest='registrations',
+        action='append',
+        help='Registration returned by the registerdescriptor command; may be specified multiple times',
+    )
     signtx_parser.set_defaults(func=signtx_handler)
 
     getxpub_parser = subparsers.add_parser('getxpub', help='Get an extended public key')

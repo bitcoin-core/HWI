@@ -10,6 +10,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -188,7 +189,11 @@ class LedgerClient(HardwareWalletClient):
         return ExtendedKey.deserialize(xpub_str)
 
     @ledger_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
@@ -202,6 +207,8 @@ class LedgerClient(HardwareWalletClient):
 
         - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported for single signature addresses.
         """
+        if registered_descriptors:
+            raise UnavailableActionError("The Ledger does not support BIP388 policy signing")
         master_fp = self.get_master_fingerprint()
 
         def legacy_sign_tx() -> PSBT:

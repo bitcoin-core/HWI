@@ -74,6 +74,7 @@ from typing import (
     Any,
     Callable,
     Optional,
+    Set,
 )
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
@@ -154,7 +155,11 @@ class ColdcardClient(HardwareWalletClient):
         return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the Coldcard.
 
@@ -162,6 +167,8 @@ class ColdcardClient(HardwareWalletClient):
         - Multisigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
         - Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
         """
+        if registered_descriptors:
+            raise UnavailableActionError("The Coldcard does not support BIP388 policy signing")
         self.device.check_mitm()
 
         # Get this devices master key fingerprint

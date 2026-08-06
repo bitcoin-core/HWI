@@ -359,7 +359,11 @@ class TrezorClient(HardwareWalletClient):
         return xpub
 
     @trezor_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the Trezor. There are some limitations to what transactions can be signed.
 
@@ -368,6 +372,8 @@ class TrezorClient(HardwareWalletClient):
         - Send-to-self transactions will result in no prompt for outputs as all outputs will be detected as change.
         - Transactions containing Taproot inputs cannot have external inputs.
         """
+        if registered_descriptors:
+            raise UnavailableActionError("The Trezor does not support BIP388 policy signing")
         self._check_unlocked()
 
         # Get this devices master key fingerprint

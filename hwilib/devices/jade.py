@@ -17,6 +17,7 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Union
 )
@@ -374,10 +375,16 @@ class JadeClient(HardwareWalletClient):
     # Sign tx PSBT - newer Jade firmware supports native PSBT signing, but old firmwares require
     # mapping to the legacy 'sign_tx' structures.
     @jade_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the Blockstream Jade.
         """
+        if registered_descriptors:
+            raise UnavailableActionError("The Jade does not support BIP388 policy signing")
         # Old firmware does not have native PSBT handling - use legacy method
         if self.PSBT_SUPPORTED_FW_VERSION > self.fw_version.finalize_version():
             return self.legacy_sign_tx(psbt)

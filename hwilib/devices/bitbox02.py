@@ -14,6 +14,7 @@ from typing import (
     Tuple,
     List,
     Sequence,
+    Set,
     TypeVar,
 )
 import base64
@@ -567,7 +568,11 @@ class Bitbox02Client(HardwareWalletClient):
         return address
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the BitBox02.
 
@@ -577,6 +582,9 @@ class Bitbox02Client(HardwareWalletClient):
 
         Transactions with legacy inputs are not supported.
         """
+        if registered_descriptors:
+            raise UnavailableActionError("The BitBox02 does not support BIP388 policy signing")
+
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
