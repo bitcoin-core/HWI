@@ -15,6 +15,7 @@ from ..errors import (
     handle_errors,
     UnavailableActionError,
 )
+from ..psbt import PSBT
 from .trezorlib import protobuf
 from .trezorlib.transport import (
     hid,
@@ -175,6 +176,15 @@ class KeepkeyClient(TrezorClient):
         :returns: False, always
         """
         return False
+
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
+        if registered_descriptor is not None:
+            raise UnavailableActionError("The KeepKey does not support BIP388 policy signing")
+        return super().sign_tx(psbt)
 
     def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
         """
