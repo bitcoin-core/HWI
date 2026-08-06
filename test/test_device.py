@@ -804,6 +804,10 @@ class TestRegisterDescriptor(DeviceTestCase):
         self.returns_registration = returns_registration
         self.sorted = sorted
 
+    def setUp(self):
+        super().setUp()
+        self.setup_wallets()
+
     def test_register_descriptor(self):
         account_path = "m/48h/1h/0h/2h"
         account_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
@@ -823,3 +827,34 @@ class TestRegisterDescriptor(DeviceTestCase):
             self.assertGreater(len(reg.registration), 0)
         else:
             self.assertEqual(len(reg.registration), 0)
+
+        import_result = self.wrpc.importdescriptors([{
+            "desc": AddChecksum(descriptor),
+            "timestamp": "now",
+            "active": True,
+        }])
+        self.assertTrue(import_result[0]["success"])
+
+        self.wpk_rpc.sendtoaddress(self.wrpc.getnewaddress(), 1)
+        self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
+        psbt = self.wrpc.walletcreatefundedpsbt(
+            [],
+            [{self.wpk_rpc.getnewaddress(): 0.5}],
+            0,
+            {},
+            True,
+        )["psbt"]
+        for include_xpubs in (False, True):
+            with self.subTest(include_xpubs=include_xpubs):
+                xpubs = {}
+                if include_xpubs:
+                    for provider in reg.descriptor.get_pubkey_providers():
+                        assert provider.extkey is not None
+                        assert provider.origin is not None
+                        xpubs[provider.extkey.serialize()] = provider.origin
+
+                self.sign_and_finalize(
+                    self._set_global_xpubs(psbt, xpubs),
+                    "--registration",
+                    reg_str,
+                )
