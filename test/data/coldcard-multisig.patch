@@ -60,7 +60,7 @@ index 1e692d41..6294e9a3 100644
          # return list of lists [xfp, *deriv]
 -        return list(self.xfp_paths.values())
 +        ret = []
-+        for paths_list in self.xfp_paths:
++        for paths_list in self.xfp_paths.values():
 +            for xfp_path in paths_list:
 +                ret.append(xfp_path)
 +        return ret
@@ -111,4 +111,3 @@ index 1e692d41..6294e9a3 100644
          return True
 -- 
 2.51.0
-
