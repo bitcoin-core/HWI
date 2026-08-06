@@ -138,7 +138,11 @@ class ColdcardClient(HardwareWalletClient):
         return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the Coldcard.
 
@@ -146,6 +150,7 @@ class ColdcardClient(HardwareWalletClient):
         - Multisigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
         - Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
         """
+        # registered_descriptor is intentionally unused because the descriptor was stored by register_descriptor.
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
