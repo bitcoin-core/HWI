@@ -275,6 +275,76 @@ class PubkeyProvider(object):
         return self.pubkey < other.pubkey
 
 
+class MusigPubkeyProvider(PubkeyProvider):
+    """A ``musig()`` aggregate key expression with a shared derivation path."""
+
+    def __init__(
+        self,
+        participants: List['PubkeyProvider'],
+        deriv_path: Optional[List[List[int]]],
+        ranged: bool,
+    ) -> None:
+        self.participants = participants
+        self.origin = None
+        self.pubkey = ""
+        self.deriv_path = deriv_path
+        self.expr_index = participants[0].expr_index
+        self.ranged = ranged
+        self.multipath_len = max([len(p) for p in deriv_path]) if deriv_path else 1
+        self.extkey = None
+
+    @classmethod
+    def parse_musig(cls, s: str, key_expr_index: int) -> Tuple['MusigPubkeyProvider', int]:
+        func, expr = _get_func_expr(s)
+        if func != "musig":
+            raise ValueError(f"Expected musig() key expression, got {func}()")
+
+        close_idx = s.rindex(")")
+        suffix = s[close_idx + 1:]
+        deriv_path = None
+        ranged = False
+        if suffix:
+            if not suffix.startswith("/"):
+                raise ValueError("MuSig derivation path must begin with '/'")
+            path_str = suffix[1:]
+            ranged = path_str.endswith("*")
+            if ranged:
+                path_str = path_str[:-2]
+            if path_str:
+                deriv_path = parse_multipath(path_str)
+
+        participants = []
+        while expr:
+            participant, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+            if participant.deriv_path is not None or participant.ranged:
+                raise ValueError("MuSig participant derivation paths must follow musig()")
+            participants.append(participant)
+        if len(participants) < 2:
+            raise ValueError("musig() requires at least two participants")
+        return cls(participants, deriv_path, ranged), key_expr_index
+
+    def to_string(self, hardened_char: str = "h") -> str:
+        participants = ",".join(p.to_string(hardened_char) for p in self.participants)
+        result = f"musig({participants})"
+        if self.deriv_path:
+            result += multipath_to_string(self.deriv_path, hardened_char)
+        if self.ranged:
+            result += "/*"
+        return result
+
+    def get_bip388_placeholder(self) -> str:
+        if not self.ranged:
+            raise InvalidPolicyError("BIP 388 requires all pubkeys to be ranged")
+        if self.multipath_len > 2:
+            raise InvalidPolicyError("BIP 388 requires all multipath specifiers to be exactly 2 elements")
+        participants = ",".join(f"@{p.expr_index}" for p in self.participants)
+        deriv_path = multipath_to_string(self.deriv_path, hardened_char="'") if self.deriv_path else ""
+        return f"musig({participants}){deriv_path}/*"
+
+    def get_pubkey_bytes(self, pos: int, multipath_pos: int = 0) -> bytes:
+        raise NotImplementedError("HWI cannot expand musig() aggregate keys")
+
+
 class Descriptor(object):
     r"""
     An abstract class for Descriptors themselves.
@@ -350,16 +420,28 @@ class Descriptor(object):
 
         :return: List of pubkey expression strings
         """
-        out = [p for p in self.pubkeys]
+        out = []
+        for pubkey in self.pubkeys:
+            if isinstance(pubkey, MusigPubkeyProvider):
+                out.extend(pubkey.participants)
+            else:
+                out.append(pubkey)
         for s in self.subdescriptors:
             out.extend(s.get_pubkey_providers())
+        return out
+
+    def get_derivation_providers(self) -> list['PubkeyProvider']:
+        """Get key expressions whose derivation suffixes belong to the descriptor."""
+        out = list(self.pubkeys)
+        for subdescriptor in self.subdescriptors:
+            out.extend(subdescriptor.get_derivation_providers())
         return out
 
     def derive(self, pos: int, multipath_index: int = 0) -> 'Descriptor':
         """Select a multipath entry and address index from a ranged descriptor."""
 
         descriptor = deepcopy(self)
-        for pubkey in descriptor.get_pubkey_providers():
+        for pubkey in descriptor.get_derivation_providers():
             path = pubkey.get_deriv_path(pos, multipath_index)
             pubkey.deriv_path = [[step] for step in path] or None
             pubkey.ranged = False
@@ -720,12 +802,19 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
         multipath_len = None
-        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        internal_expr, expr = _get_expr(expr)
+        internal_key: PubkeyProvider
+        if internal_expr.startswith("musig("):
+            internal_key, key_expr_index = MusigPubkeyProvider.parse_musig(internal_expr, key_expr_index)
+        else:
+            internal_key = PubkeyProvider.parse(internal_expr, key_expr_index)
+            key_expr_index += 1
         if internal_key.multipath_len > 1:
             multipath_len = internal_key.multipath_len
         subscripts = []
         depths = []
         if expr:
+            expr = _get_const(expr, ",")
             # Path from top of the tree to what we're currently processing.
             # branches[i] == False: left branch in the i'th step from the top
             # branches[i] == true: right branch
