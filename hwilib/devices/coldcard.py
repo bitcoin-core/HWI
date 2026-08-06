@@ -116,10 +116,10 @@ class ColdcardClient(HardwareWalletClient):
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
 
-        self._is_edge = None
+        self._is_edge: Optional[bool] = None
 
     @property
-    def is_edge(self):
+    def is_edge(self) -> bool:
         """
         Cached property, no need to ask device more than once
         :return: bool
@@ -131,7 +131,7 @@ class ColdcardClient(HardwareWalletClient):
                 # silent fail, normal firmware is implied
                 pass
 
-        return self._is_edge
+        return bool(self._is_edge)
 
     def _supports_psbt_v2(self) -> bool:
         if self.device.is_simulator or self.is_edge:
@@ -375,10 +375,12 @@ class ColdcardClient(HardwareWalletClient):
             or not isinstance(descriptor.subdescriptors[0], MultisigDescriptor)
         ):
             raise BadArgumentError("Coldcard only supports wsh(sortedmulti()) policies")
-        return self.display_multisig_address(
+        address = self.display_multisig_address(
             AddressType.WIT,
             descriptor.subdescriptors[0],
         )
+        assert isinstance(address, str)
+        return address
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
@@ -472,7 +474,7 @@ class ColdcardClient(HardwareWalletClient):
         Only COLDCARD EDGE support taproot.
         :returns: Whether Taproot is supported
         """
-        return self.is_edge
+        return bool(self.is_edge)
 
     @coldcard_exception
     def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
