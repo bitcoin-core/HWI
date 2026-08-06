@@ -154,7 +154,11 @@ class ColdcardClient(HardwareWalletClient):
         # quick method to get fingerprint of wallet
         return struct.pack('<I', self.device.master_fingerprint)
 
-    def _sign_tx_once(self, psbt: PSBT) -> PSBT:
+    def _sign_tx_once(
+        self,
+        psbt: PSBT,
+        miniscript_name: Optional[str] = None,
+    ) -> PSBT:
         # Get psbt in hex and then make binary
         fd = io.BytesIO(base64.b64decode(psbt.serialize()))
 
@@ -181,7 +185,14 @@ class ColdcardClient(HardwareWalletClient):
             raise DeviceFailureError("Wrong checksum:\nexpect: %s\n   got: %s" % (b2a_hex(expect).decode('ascii'), b2a_hex(result).decode('ascii')))
 
         # start the signing process
-        ok = self.device.send_recv(CCProtocolPacker.sign_transaction(sz, expect), timeout=None)
+        ok = self.device.send_recv(
+            CCProtocolPacker.sign_transaction(
+                sz,
+                expect,
+                miniscript_name=miniscript_name,
+            ),
+            timeout=None,
+        )
         assert ok is None
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
@@ -229,6 +240,29 @@ class ColdcardClient(HardwareWalletClient):
 
         return psbt
 
+    def _sign_with_policy_names(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Set[RegisteredDescriptor],
+        master_fp: bytes,
+    ) -> PSBT:
+        for registration in sorted(
+            registered_descriptors,
+            key=lambda registration: registration.serialize(),
+        ):
+            psbt = self._sign_tx_once(psbt, registration.name)
+
+        # Named policy requests only cover matching inputs. Use an unnamed
+        # request to infer a policy for any remaining unsigned device inputs.
+        if any(
+            psbt_in.has_fingerprint(master_fp)
+            and not psbt_in.has_signature(master_fp)
+            for psbt_in in psbt.inputs
+        ):
+            psbt = self._sign_tx_once(psbt)
+
+        return psbt
+
     @coldcard_exception
     def sign_tx(
         self,
@@ -242,8 +276,6 @@ class ColdcardClient(HardwareWalletClient):
         - Multisigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
         - Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
         """
-        if registered_descriptors:
-            raise UnavailableActionError("The Coldcard does not support BIP388 policy signing")
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
@@ -253,7 +285,16 @@ class ColdcardClient(HardwareWalletClient):
         if psbt.version == 2 and not self._supports_psbt_v2():
             psbt.convert_to_v0()
 
-        return self._sign_without_policy_names(psbt, master_fp)
+        if self.is_edge and registered_descriptors:
+            psbt = self._sign_with_policy_names(
+                psbt,
+                registered_descriptors,
+                master_fp,
+            )
+        else:
+            psbt = self._sign_without_policy_names(psbt, master_fp)
+
+        return psbt
 
     @coldcard_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
