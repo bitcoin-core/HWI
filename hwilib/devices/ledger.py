@@ -188,7 +188,11 @@ class LedgerClient(HardwareWalletClient):
         return ExtendedKey.deserialize(xpub_str)
 
     @ledger_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
         """
         Sign a transaction with a Ledger device. Not all transactions can be signed by a Ledger.
 
@@ -202,6 +206,8 @@ class LedgerClient(HardwareWalletClient):
 
         - Only keys derived with standard BIP 44, 49, 84, and 86 derivation paths are supported for single signature addresses.
         """
+        if registered_descriptor is not None and isinstance(self.client, LegacyClient):
+            raise UnavailableActionError("Legacy Ledger app does not support BIP388 policy signing")
         master_fp = self.get_master_fingerprint()
 
         def legacy_sign_tx() -> PSBT:
@@ -227,6 +233,14 @@ class LedgerClient(HardwareWalletClient):
 
         # Figure out which wallets are signing
         wallets: Dict[bytes, Tuple[int, AddressType, WalletPolicy, Optional[bytes]]] = {}
+        registered_wallet = None
+        if registered_descriptor is not None:
+            descriptor = registered_descriptor.descriptor
+            registered_wallet = WalletPolicy(
+                registered_descriptor.name,
+                descriptor.get_bip388_template(),
+                [p.get_bip388_key_info() for p in descriptor.get_pubkey_providers()],
+            )
         pubkeys: Dict[int, bytes] = {}
         for input_num, psbt_in in builtins.enumerate(psbt2.inputs):
             utxo = None
@@ -266,6 +280,16 @@ class LedgerClient(HardwareWalletClient):
                         script_addrtype = AddressType.TAP
                     else:
                         continue
+
+            if registered_wallet is not None:
+                assert registered_descriptor is not None
+                wallets[registered_wallet.id] = (
+                    signing_priority[script_addrtype],
+                    script_addrtype,
+                    registered_wallet,
+                    registered_descriptor.registration,
+                )
+                continue
 
             # Check if P2WSH
             if is_p2wsh(scriptcode):
