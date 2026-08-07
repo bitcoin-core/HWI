@@ -16,7 +16,8 @@ from contextlib import contextmanager
 NO_DEVICE_TYPE = -1 #: Device type was not specified
 MISSING_ARGUMENTS = -2 #: Arguments are missing
 DEVICE_CONN_ERROR = -3 #: Error connecting to the device
-UNKNWON_DEVICE_TYPE = -4 #: Device type is unknown
+UNKNOWN_DEVICE_TYPE = -4 #: Device type is unknown
+UNKNWON_DEVICE_TYPE = UNKNOWN_DEVICE_TYPE #: Deprecated misspelling of :data:`UNKNOWN_DEVICE_TYPE`, kept for compatibility
 INVALID_TX = -5 #: Transaction is invalid
 NO_PASSWORD = -6 #: No password provided, but one is needed
 BAD_ARGUMENT = -7 #: Bad, malformed, or conflicting argument was provided
@@ -122,13 +123,13 @@ class DeviceAlreadyUnlockedError(HWWError):
 
 class UnknownDeviceError(HWWError):
     """
-    :class:`HWWError` for :data:`DEVICE_TYPE`
+    :class:`HWWError` for :data:`UNKNOWN_DEVICE_TYPE`
     """
     def __init__(self, msg: str):
         """
         :param msg: The error message
         """
-        HWWError.__init__(self, msg, UNKNWON_DEVICE_TYPE)
+        HWWError.__init__(self, msg, UNKNOWN_DEVICE_TYPE)
 
 class NotImplementedError(HWWError):
     """
