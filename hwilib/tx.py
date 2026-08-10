@@ -240,6 +240,15 @@ class CTransaction(object):
         self.sha256 = None
         self.hash = None
 
+    def deserialize_without_witness(self, f: Readable) -> None:
+        self.nVersion = struct.unpack("<i", f.read(4))[0]
+        self.vin = deser_vector(f, CTxIn)
+        self.vout = deser_vector(f, CTxOut)
+        self.wit = CTxWitness()
+        self.nLockTime = struct.unpack("<I", f.read(4))[0]
+        self.sha256 = None
+        self.hash = None
+
     def serialize_without_witness(self) -> bytes:
         r = b""
         r += struct.pack("<i", self.nVersion)

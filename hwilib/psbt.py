@@ -247,6 +247,8 @@ class PartiallySignedInput:
                 witness_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
                 self.final_script_witness.deserialize(witness_bytes)
             elif key_type == PartiallySignedInput.PSBT_IN_PREVIOUS_TXID:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_PREVIOUS_TXID is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input previous txid is already provided")
                 elif len(key) != 1:
@@ -256,6 +258,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Previous txid is not 32 bytes")
                 self.prev_txid = txid
             elif key_type == PartiallySignedInput.PSBT_IN_OUTPUT_INDEX:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_OUTPUT_INDEX is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input previous output index is already provided")
                 elif len(key) != 1:
@@ -265,7 +269,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Previous output index is not 4 bytes")
                 self.prev_out = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_SEQUENCE:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_SEQUENCE is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input sequence is already provided")
                 elif len(key) != 1:
@@ -275,7 +280,8 @@ class PartiallySignedInput:
                     raise PSBTSerializationError("Input sequence is not 4 bytes")
                 self.sequence = struct.unpack("<I", v)[0]
             elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_TIME_LOCKTIME:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_REQUIRED_TIME_LOCKTIME is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input required time based locktime is already provided")
                 elif len(key) != 1:
@@ -284,8 +290,11 @@ class PartiallySignedInput:
                 if len(v) != 4:
                     raise PSBTSerializationError("Input time based locktime is not 4 bytes")
                 self.time_locktime = struct.unpack("<I", v)[0]
+                if self.time_locktime < 500000000:
+                    raise PSBTSerializationError("Input time based locktime is less than 500000000")
             elif key_type == PartiallySignedInput.PSBT_IN_REQUIRED_HEIGHT_LOCKTIME:
-                pass
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_IN_REQUIRED_HEIGHT_LOCKTIME is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input required height based locktime index is already provided")
                 elif len(key) != 1:
@@ -294,6 +303,8 @@ class PartiallySignedInput:
                 if len(v) != 4:
                     raise PSBTSerializationError("Input height based locktime is not 4 bytes")
                 self.height_locktime = struct.unpack("<I", v)[0]
+                if self.height_locktime == 0 or self.height_locktime >= 500000000:
+                    raise PSBTSerializationError("Input height based locktime is not greater than 0 and less than 500000000")
             elif key_type == PartiallySignedInput.PSBT_IN_TAP_KEY_SIG:
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, input Taproot key signature already provided")
@@ -619,6 +630,8 @@ class PartiallySignedOutput:
             elif key_type == PartiallySignedOutput.PSBT_OUT_BIP32_DERIVATION:
                 DeserializeHDKeypath(f, key, self.hd_keypaths, [34, 66])
             elif key_type == PartiallySignedOutput.PSBT_OUT_AMOUNT:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_OUT_AMOUNT is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output amount already provided")
                 elif len(key) != 1:
@@ -628,6 +641,8 @@ class PartiallySignedOutput:
                     raise PSBTSerializationError("Output amount is not 8 bytes")
                 self.amount = struct.unpack("<q", v)[0]
             elif key_type == PartiallySignedOutput.PSBT_OUT_SCRIPT:
+                if self.version == 0:
+                    raise PSBTSerializationError("PSBT_OUT_SCRIPT is not allowed in PSBTv0")
                 if key in key_lookup:
                     raise PSBTSerializationError("Duplicate key, output script already provided")
                 elif len(key) != 1:
@@ -809,6 +824,7 @@ class PSBT(object):
 
         input_count = None
         output_count = None
+        found_unsigned_tx = False
 
         # Read loop
         while True:
@@ -835,7 +851,13 @@ class PSBT(object):
 
                 # read in value
                 tx_bytes = BufferedReader(BytesIO(deser_string(f))) # type: ignore
-                self.tx.deserialize(tx_bytes)
+                try:
+                    self.tx.deserialize_without_witness(tx_bytes)
+                except Exception:
+                    raise PSBTSerializationError("Global unsigned tx is invalid")
+                if len(tx_bytes.read(1)) > 0:
+                    raise PSBTSerializationError("Global unsigned tx is not serialized without witness")
+                found_unsigned_tx = True
 
                 # Make sure that all scriptSigs and scriptWitnesses are empty
                 for txin in self.tx.vin:
@@ -905,7 +927,7 @@ class PSBT(object):
         # Check PSBT version constraints
         if self.version == 0:
             # make sure that we got an unsigned tx
-            if self.tx.is_null():
+            if not found_unsigned_tx:
                 raise PSBTSerializationError("No unsigned transaction was provided")
             # Make sure no v2 fields are present
             if self.tx_version is not None:
@@ -931,7 +953,7 @@ class PSBT(object):
             if output_count is None:
                 raise PSBTSerializationError("PSBT_GLOBAL_OUTPUT_COUNT is required in PSBTv2")
             # Unsigned tx is disallowed
-            if not self.tx.is_null():
+            if found_unsigned_tx:
                 raise PSBTSerializationError("PSBT_GLOBAL_UNSIGNED_TX is not allowed in PSBTv2")
 
         # Read input data
@@ -1117,14 +1139,15 @@ class PSBT(object):
 
         tx = CTransaction()
         tx.nVersion = self.tx_version
-        self.nLockTime = self.compute_lock_time()
+        tx.nLockTime = self.compute_lock_time()
 
         for psbt_in in self.inputs:
             assert psbt_in.prev_txid is not None
             assert psbt_in.prev_out is not None
-            assert psbt_in.sequence is not None
 
-            txin = CTxIn(COutPoint(uint256_from_str(psbt_in.prev_txid), psbt_in.prev_out), b"", psbt_in.sequence)
+            # If omitted, the sequence number is assumed to be the final sequence number
+            sequence = psbt_in.sequence if psbt_in.sequence is not None else 0xffffffff
+            txin = CTxIn(COutPoint(uint256_from_str(psbt_in.prev_txid), psbt_in.prev_out), b"", sequence)
             tx.vin.append(txin)
 
         for psbt_out in self.outputs:
