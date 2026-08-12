@@ -52,7 +52,6 @@ class JadeEmulator(DeviceEmulator):
         self.supports_taproot = False
         self.strict_bip48 = False
         self.include_xpubs = False
-        self.supports_device_multiple_multisig = True
         self.supports_legacy = True
         self.supports_arbitrary_keypool_paths = True
 

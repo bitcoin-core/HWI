@@ -42,7 +42,6 @@ class BitBox02Emulator(DeviceEmulator):
         self.supports_taproot = False
         self.strict_bip48 = False
         self.include_xpubs = True
-        self.supports_device_multiple_multisig = True
         self.supports_legacy = False
         self.supports_arbitrary_keypool_paths = True
 

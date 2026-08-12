@@ -34,7 +34,6 @@ class DeviceEmulator():
         self.supports_taproot = None
         self.strict_bip48 = None
         self.include_xpubs = None
-        self.supports_device_multiple_multisig = None
         self.supports_legacy = None
         self.supports_arbitrary_keypool_paths = True
 
@@ -50,7 +49,6 @@ class DeviceEmulator():
         assert self.supports_unsorted_ms is not None
         assert self.strict_bip48 is not None
         assert self.include_xpubs is not None
-        assert self.supports_device_multiple_multisig is not None
         assert self.supports_legacy is not None
 
     def stop(self):
@@ -364,10 +362,9 @@ class TestSignTx(DeviceTestCase):
         self.setup_wallets()
 
     def _generate_and_finalize(self, unknown_inputs, psbt):
-        if not self.emulator.supports_device_multiple_multisig:
-            # We will need Core to sign so that the multisig is complete
-            core_sign_res = self.wpk_rpc.walletprocesspsbt(psbt=psbt, finalize=False)
-            psbt = core_sign_res["psbt"]
+        # We will need Core to sign so that the multisig is complete
+        core_sign_res = self.wpk_rpc.walletprocesspsbt(psbt=psbt, finalize=False)
+        psbt = core_sign_res["psbt"]
 
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
@@ -446,43 +443,42 @@ class TestSignTx(DeviceTestCase):
 
         desc_pubkeys = []
         xpubs: Dict[bytes, KeyOriginInfo] = {}
-        for account in range(0, 3 if self.emulator.supports_device_multiple_multisig else 1):
-            path = f"/48h/1h/{account}h/{coin_type}h"
-            origin = '{}{}'.format(self.emulator.fingerprint, path)
-            xpub = self.do_command(self.dev_args + ["getxpub", "m{}".format(path)])
-            desc_pubkeys.append("[{}]{}/0/0".format(origin, xpub["xpub"]))
-            if self.emulator.include_xpubs:
-                extkey = ExtendedKey.deserialize(xpub["xpub"])
-                xpubs[extkey.serialize()] = KeyOriginInfo.from_string(origin)
+        path = f"/48h/1h/0h/{coin_type}h"
+        origin = '{}{}'.format(self.emulator.fingerprint, path)
+        xpub = self.do_command(self.dev_args + ["getxpub", "m{}".format(path)])
+        desc_pubkeys.append("[{}]{}/0/*".format(origin, xpub["xpub"]))
+        if self.emulator.include_xpubs:
+            extkey = ExtendedKey.deserialize(xpub["xpub"])
+            xpubs[extkey.serialize()] = KeyOriginInfo.from_string(origin)
 
-        if not self.emulator.supports_device_multiple_multisig:
-            # If the device does not support itself in the multisig more than once,
-            # we need to fetch a key from Core, and use another key that will not be signed with
-            counter_descs = self.wpk_rpc.listdescriptors()["descriptors"]
-            desc = parse_descriptor(counter_descs[0]["desc"])
-            pubkey_prov = None
-            while pubkey_prov is None:
-                if len(desc.pubkeys) > 0:
-                    pubkey_prov = desc.pubkeys[0]
-                else:
-                    desc = desc.subdescriptors[0]
-            assert pubkey_prov.extkey is not None
-            assert pubkey_prov.origin is not None
-            pubkey_prov.deriv_path = "/0/0"
-            desc_pubkeys.append(pubkey_prov.to_string())
-            if self.emulator.include_xpubs:
-                xpubs[pubkey_prov.extkey.serialize()] = pubkey_prov.origin
+        # fetch a key from Core, and use another key that will not be signed with
+        counter_descs = self.wpk_rpc.listdescriptors()["descriptors"]
+        desc = parse_descriptor(counter_descs[0]["desc"])
+        pubkey_prov = None
+        while pubkey_prov is None:
+            if len(desc.pubkeys) > 0:
+                pubkey_prov = desc.pubkeys[0]
+            else:
+                desc = desc.subdescriptors[0]
+        assert pubkey_prov.extkey is not None
+        assert pubkey_prov.origin is not None
+        pubkey_prov.deriv_path = [[0]]
+        pubkey_prov.ranged = True
+        pubkey_prov.expr_index = 1
+        desc_pubkeys.append(pubkey_prov.to_string())
+        if self.emulator.include_xpubs:
+            xpubs[pubkey_prov.extkey.serialize()] = pubkey_prov.origin
 
-            # A fixed key
-            fixed_extkey = ExtendedKey.deserialize("tpubDCBWBScQPGv4Xk3JSbhw6wYYpayMjb2eAYyArpbSqQTbLDpphHGAetB6VQgVeftLML8vDSUEWcC2xDi3qJJ3YCDChJDvqVzpgoYSuT52MhJ")
-            fixed_origin = KeyOriginInfo(b"\xde\xad\xbe\xef", [0x80000000])
-            desc_pubkeys.append(PubkeyProvider(fixed_origin, fixed_extkey.to_string(), "/0/0").to_string())
-            if self.emulator.include_xpubs:
-                xpubs[fixed_extkey.serialize()] = fixed_origin
+        # A fixed key
+        fixed_extkey = ExtendedKey.deserialize("tpubDCBWBScQPGv4Xk3JSbhw6wYYpayMjb2eAYyArpbSqQTbLDpphHGAetB6VQgVeftLML8vDSUEWcC2xDi3qJJ3YCDChJDvqVzpgoYSuT52MhJ")
+        fixed_origin = KeyOriginInfo(b"\xde\xad\xbe\xef", [0x80000000])
+        desc_pubkeys.append(PubkeyProvider(fixed_origin, fixed_extkey.to_string(), [[0]], 2, True).to_string())
+        if self.emulator.include_xpubs:
+            xpubs[fixed_extkey.serialize()] = fixed_origin
 
         desc = AddChecksum(f"{desc_prefix}sortedmulti(2,{desc_pubkeys[0]},{desc_pubkeys[1]},{desc_pubkeys[2]}){desc_suffix}")
 
-        return desc, self.rpc.deriveaddresses(desc)[0], xpubs
+        return desc, self.rpc.deriveaddresses(desc, [0, 1])[0], xpubs
 
     def _test_signtx(self, input_types, multisig_types, external, op_return: bool):
         # Import some keys to the watch only wallet and send coins to them
@@ -520,7 +516,7 @@ class TestSignTx(DeviceTestCase):
 
             xpubs.update(sh_multi_xpubs)
 
-            sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "label": "shmulti"}
+            sh_multi_import = {'desc': sh_multi_desc, "timestamp": "now", "range": [0, 10]}
             multi_result = self.wrpc.importdescriptors([sh_multi_import])
             self.assertTrue(multi_result[0]['success'])
 
@@ -533,8 +529,8 @@ class TestSignTx(DeviceTestCase):
             xpubs.update(sh_wsh_xpubs)
             xpubs.update(wsh_xpubs)
 
-            sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "label": "shwshmulti"}
-            wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "label": "wshmulti"}
+            sh_wsh_multi_import = {'desc': sh_wsh_multi_desc, "timestamp": "now", "range": [0, 10]}
+            wsh_multi_import = {'desc': wsh_multi_desc, "timestamp": "now", "range": [0, 10]}
 
             multi_result = self.wrpc.importdescriptors([sh_wsh_multi_import, wsh_multi_import])
             self.assertTrue(multi_result[0]['success'])
