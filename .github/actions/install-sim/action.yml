@@ -57,7 +57,7 @@ runs:
       shell: bash
       run: |
         apt-get update
-        apt-get install -y libusb-1.0-0 qemu-user-static
+        apt-get install -y libusb-1.0-0 qemu-user-static gcc-arm-linux-gnueabihf libsdl2-image-dev libvncserver-dev
         tar -xvf speculos.tar.gz
         poetry run pip install -e test/work/speculos
         pip install -e test/work/speculos

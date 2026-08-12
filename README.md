@@ -33,7 +33,7 @@ brew install libusb
 ```
 git clone https://github.com/bitcoin-core/HWI.git
 cd HWI
-poetry install # or 'pip3 install .' or 'python3 setup.py install'
+pip install . # or poetry install
 ```
 
 This project uses the [Poetry](https://github.com/sdispater/poetry) dependency manager. HWI and its dependencies can be installed via poetry by executing the following in the root source directory:
@@ -42,17 +42,10 @@ This project uses the [Poetry](https://github.com/sdispater/poetry) dependency m
 poetry install
 ```
 
-Pip can also be used to automatically install HWI and its dependencies using the `setup.py` file (which is usually in sync with `pyproject.toml`):
+Pip can also be used to automatically install HWI and its dependencies using the `pyproject.toml`:
 
 ```
 pip3 install .
-```
-
-The `setup.py` file can be used to install HWI and its dependencies so long as `setuptools` is also installed:
-
-```
-pip3 install -U setuptools
-python3 setup.py install
 ```
 
 ## Dependencies

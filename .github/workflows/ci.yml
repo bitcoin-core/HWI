@@ -95,9 +95,6 @@ jobs:
               git config --global --add safe.directory ${{ github.workspace }}
               contrib/build_bin.sh
               contrib/build_dist.sh
-              # Verify setup.py regeneration is stable after generating GUI artifacts.
-              contrib/generate_setup.sh
-              git diff --exit-code -- setup.py
               find dist -type f -exec sha256sum {} \;
             "
 
