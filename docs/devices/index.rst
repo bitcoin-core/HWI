@@ -108,3 +108,5 @@ Device APIs
    :members:
 .. automodule:: hwilib.devices.jade
    :members:
+.. automodule:: hwilib.devices.banshee
+   :members:

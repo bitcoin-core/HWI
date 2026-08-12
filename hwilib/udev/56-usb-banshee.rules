@@ -1,0 +1,1 @@
+KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="b05e", MODE="0660", TAG+="uaccess", TAG+="udev-acl", SYMLINK+="banshee%n"
