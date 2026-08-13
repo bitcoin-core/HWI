@@ -43,6 +43,7 @@ class BitBox01Emulator(DeviceEmulator):
         self.include_xpubs = False
         self.supports_legacy = True
         self.supports_arbitrary_keypool_paths = True
+        self.register_multisig = False
 
     def start(self):
         super().start()

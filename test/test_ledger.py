@@ -49,6 +49,7 @@ class LedgerEmulator(DeviceEmulator):
         self.supports_legacy = True
         # Bitcoin app 2.5.0 enforces standard Ledger paths for xpub derivation.
         self.supports_arbitrary_keypool_paths = legacy
+        self.register_multisig = not legacy
 
     def start(self):
         super().start()

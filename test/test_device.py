@@ -36,6 +36,7 @@ class DeviceEmulator():
         self.include_xpubs = None
         self.supports_legacy = None
         self.supports_arbitrary_keypool_paths = True
+        self.register_multisig = None
 
     def start(self):
         assert self.type is not None
@@ -50,6 +51,7 @@ class DeviceEmulator():
         assert self.strict_bip48 is not None
         assert self.include_xpubs is not None
         assert self.supports_legacy is not None
+        assert self.register_multisig is not None
 
     def stop(self):
         pass
@@ -727,6 +729,12 @@ class TestDisplayAddress(DeviceTestCase):
             addr = self.rpc.deriveaddresses(desc)[0]
         else:
             self.fail("Oops the test is broken")
+
+        if self.emulator.register_multisig:
+            desc_name = f"{addrtype}_{'sorted' if sort else 'unsorted'}_{'xpub' if use_xpub else 'single'}"
+            result = self.do_command(self.dev_args + ["registerdescriptor", desc_name, desc])
+            self.assertNotIn("error", result)
+            self.assertIn("registration", result)
 
         return addr, desc
 
