@@ -137,45 +137,53 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
 fi
 
 if [[ -n ${build_coldcard} ]]; then
-    # Clone coldcard firmware if it doesn't exist, or update it if it does
-    coldcard_setup_needed=false
-    if [ ! -d "firmware" ]; then
-        git clone --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git
-        cd firmware
-        # Simulator setup initializes the required nested dependencies.
-        git submodule update --init
-        coldcard_setup_needed=true
-    else
-        cd firmware
-        git fetch --tags origin
-        git checkout --force "${COLDCARD_VERSION}"
-        git submodule update --init --force
-        coldcard_setup_needed=true
-    fi
-    # Add multisig fixtures used by the Coldcard multisig display tests.
-    git apply ../../data/coldcard-multisig.patch
+    do_coldcard_firmware() {
+        local coldcard_version="$1"
+        local coldcard_dir="$2"
 
-    # Build the simulator. This is cached, but it is also fast
-    poetry run pip install -r requirements.txt
-    pip install -r requirements.txt
-    cd unix
-    if [ "$coldcard_setup_needed" == true ] ; then
-        pushd ../external/micropython
-        # Do not treat new warnings from Ubuntu 24.04's compiler as errors.
-        git apply ../../ubuntu24_mpy.patch
-        popd
-        pushd ../external/micropython/mpy-cross/
+        # Clone coldcard firmware if it doesn't exist, or update it if it does
+        coldcard_setup_needed=false
+        if [ ! -d "${coldcard_dir}" ]; then
+            git clone --depth 1 --branch "${coldcard_version}" https://github.com/Coldcard/firmware.git "${coldcard_dir}"
+            cd "${coldcard_dir}"
+            # Simulator setup initializes the required nested dependencies.
+            git submodule update --init
+            coldcard_setup_needed=true
+        else
+            cd "${coldcard_dir}"
+            git fetch --tags origin
+            git checkout --force "${coldcard_version}"
+            git submodule update --init --force
+            coldcard_setup_needed=true
+        fi
+
+        # Add multisig fixtures used by the Coldcard multisig display tests.
+        git apply ../../data/coldcard-multisig.patch
+
+        # Build the simulator. This is cached, but it is also fast
+        poetry run pip install -r requirements.txt
+        pip install -r requirements.txt
+        cd unix
+        if [ "$coldcard_setup_needed" == true ] ; then
+            pushd ../external/micropython
+            # Do not treat new warnings from Ubuntu 24.04's compiler as errors.
+            git apply ../../ubuntu24_mpy.patch
+            popd
+            pushd ../external/micropython/mpy-cross/
+            make
+            popd
+            # Skip make setup, which builds MicroPython's bundled libffi and
+            # fails with current Autoconf. The simulator links system libffi.
+            # Initialize its only required MicroPython submodule directly.
+            git -C ../external/micropython submodule update --init lib/berkeley-db-1.xx
+            make ngu-setup
+            ln -sf ../external/micropython/ports/unix/coldcard-mpy .
+        fi
         make
-        popd
-        # Skip make setup, which builds MicroPython's bundled libffi and
-        # fails with current Autoconf. The simulator links system libffi.
-        # Initialize its only required MicroPython submodule directly.
-        git -C ../external/micropython submodule update --init lib/berkeley-db-1.xx
-        make ngu-setup
-        ln -sf ../external/micropython/ports/unix/coldcard-mpy .
-    fi
-    make
-    cd ../..
+        cd ../..
+    }
+
+    do_coldcard_firmware "${COLDCARD_VERSION}" firmware
 fi
 
 if [[ -n ${build_bitbox01} ]]; then
