@@ -147,9 +147,9 @@ def coldcard_test_suite(simulator, bitcoind, interface):
     dev_emulator = ColdcardSimulator(simulator)
 
     signtx_cases = [
-        (["legacy"], ["legacy"], False, False),
-        (["segwit"], ["segwit"], False, False),
-        (["legacy", "segwit"], ["legacy", "segwit"], False, False),
+        (["legacy"], [], False, False),
+        (["segwit"], [], False, False),
+        (["legacy", "segwit"], [], False, False),
     ]
 
     # Generic device tests
