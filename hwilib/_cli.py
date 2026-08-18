@@ -12,6 +12,7 @@ from .commands import (
     getdescriptors,
     prompt_pin,
     toggle_passphrase,
+    register_descriptor,
     restore_device,
     send_pin,
     setup_device,
@@ -104,6 +105,9 @@ def send_pin_handler(args: argparse.Namespace, client: HardwareWalletClient) -> 
 
 def install_udev_rules_handler(args: argparse.Namespace) -> Dict[str, bool]:
     return install_udev_rules('udev', args.location)
+
+def register_descriptor_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, str]:
+    return register_descriptor(client, args.name, args.descriptor)
 
 class HWIHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
@@ -224,6 +228,11 @@ def get_parser() -> HWIArgumentParser:
     sendpin_parser = subparsers.add_parser('sendpin', help='Send the numeric positions for your PIN to the device')
     sendpin_parser.add_argument('pin', help='The numeric positions of the PIN')
     sendpin_parser.set_defaults(func=send_pin_handler)
+
+    register_descriptor_parser = subparsers.add_parser("registerdescriptor", help="Register a descriptor with the device")
+    register_descriptor_parser.add_argument("name", help="A human readable name for this descriptor. May be used by the device to identify the descriptor being used.")
+    register_descriptor_parser.add_argument("descriptor", help="The descriptor to register.")
+    register_descriptor_parser.set_defaults(func=register_descriptor_handler)
 
     if sys.platform.startswith("linux"):
         udevrules_parser = subparsers.add_parser('installudevrules', help='Install and load the udev rule files for the hardware wallet devices')

@@ -16,7 +16,11 @@ from typing import (
     Tuple,
     Union,
 )
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -712,7 +716,7 @@ class TrezorClient(HardwareWalletClient):
             if p.extkey is not None:
                 xpub = p.extkey
                 hd_node = messages.HDNodeType(depth=xpub.depth, fingerprint=int.from_bytes(xpub.parent_fingerprint, 'big'), child_num=xpub.child_num, chain_code=xpub.chaincode, public_key=xpub.pubkey)
-                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=parse_path("m" + p.deriv_path if p.deriv_path is not None else "")))
+                pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=p.get_deriv_path(0, 0)))
             else:
                 hd_node = messages.HDNodeType(depth=0, fingerprint=0, child_num=0, chain_code=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', public_key=pk)
                 pubkey_objs.append(messages.HDNodePathType(node=hd_node, address_n=[]))
@@ -730,8 +734,7 @@ class TrezorClient(HardwareWalletClient):
             raise BadArgumentError("Unknown address type")
 
         for p in multisig.pubkeys:
-            keypath = p.origin.get_derivation_path() if p.origin is not None else "m/"
-            keypath += p.deriv_path if p.deriv_path is not None else ""
+            keypath = p.get_full_derivation_path(0)
             path = parse_path(keypath)
             try:
                 address = btc.get_address(
@@ -849,6 +852,14 @@ class TrezorClient(HardwareWalletClient):
         elif self.client.features.model == "1":
             return bool(self.client.version >= (1, 10, 4))
         return True
+
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        """
+        The Trezor does not support registering descriptors
+
+        "raises UnavilableActionError: Always, this function is unavailable
+        """
+        raise UnavailableActionError("The Trezor does not support registering descriptors")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:

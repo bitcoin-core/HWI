@@ -15,8 +15,10 @@ from typing import (
 )
 
 from ..descriptor import (
+    Descriptor,
     MultisigDescriptor,
     PubkeyProvider,
+    RegisteredDescriptor,
 )
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -288,7 +290,7 @@ class LedgerClient(HardwareWalletClient):
                         for xpub_bytes, xpub_origin in psbt2.xpub.items():
                             xpub = ExtendedKey.from_bytes(xpub_bytes)
                             if (xpub_origin.fingerprint == pk_origin.fingerprint) and (xpub_origin.path == pk_origin.path[:len(xpub_origin.path)]):
-                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), None).to_string(hardened_char="'"))
+                                key_exprs.append(PubkeyProvider(xpub_origin, xpub.to_string(), None, 0, False).to_string(hardened_char="'"))
                                 break
                         else:
                             # No xpub, Ledger will not accept this multisig
@@ -406,7 +408,7 @@ class LedgerClient(HardwareWalletClient):
 
         # Build a PubkeyProvider for the key we're going to use
         origin = KeyOriginInfo(self.get_master_fingerprint(), path)
-        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), None)
+        pk_prov = PubkeyProvider(origin, self.get_pubkey_at_path(f"m{origin._path_string()}").to_string(), None, 0, False)
         key_str = pk_prov.to_string(hardened_char="'")
 
         # Make the Wallet object
@@ -451,13 +453,12 @@ class LedgerClient(HardwareWalletClient):
         if isinstance(self.client, LegacyClient):
             raise BadArgumentError("Displaying multisignature addresses is not supported by this version of the Bitcoin App")
 
-        def is_valid_der_path(path: Optional[str]) -> bool:
-            if path is None:
+        def is_valid_der_path(pk: PubkeyProvider) -> bool:
+            if pk.deriv_path is None:
                 return False
-            path_parts = path.split("/")
-            return len(path_parts) == 3 and path_parts[1] in ["0", "1"] and path_parts[2].isdigit() and 0 <= int(path_parts[2]) <= 0x7fffffff
+            return len(pk.deriv_path) == 3 and pk.deriv_path[1] in [[0], [1]] and 0 <= pk.deriv_path[2][0] <= 0x7fffffff and pk.ranged
 
-        if any(not is_valid_der_path(pk.deriv_path) for pk in multisig.pubkeys):
+        if any(not is_valid_der_path(pk) for pk in multisig.pubkeys):
             raise BadArgumentError("Ledger Bitcoin app requires derivation paths ending with /0/* or /1/* for multisig")
 
         if not (all(pk.deriv_path == multisig.pubkeys[0].deriv_path for pk in multisig.pubkeys)):
@@ -477,8 +478,8 @@ class LedgerClient(HardwareWalletClient):
         _, registered_hmac = self.client.register_wallet(multisig_wallet)
 
         assert multisig.pubkeys[0].deriv_path is not None  # already checked above with is_valid_der_path
-        change = 0 if multisig.pubkeys[0].deriv_path[:3] == "/0/" else 1
-        address_index = int(multisig.pubkeys[0].deriv_path.split("/")[2])
+        change = 0 if multisig.pubkeys[0].deriv_path[3] == [0] else 1
+        address_index = int(multisig.pubkeys[0].deriv_path[2][0])
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
 
@@ -549,6 +550,17 @@ class LedgerClient(HardwareWalletClient):
         :returns: True if Bitcoin App version is greater than or equal to 2.1.0, and not the "Legacy" release. False otherwise.
         """
         return isinstance(self.client, NewClient)
+
+    @ledger_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        if isinstance(self.client, LegacyClient):
+            raise UnavailableActionError("Legacy Ledger app does not support descriptor registration")
+
+        template = descriptor.get_bip388_template()
+        keys = [p.get_bip388_key_info() for p in descriptor.get_pubkey_providers()]
+        policy = WalletPolicy(name, template, keys)
+        _, registered_hmac = self.client.register_wallet(policy)
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="ledger", registration=registered_hmac)
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:

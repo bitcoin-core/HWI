@@ -32,7 +32,11 @@ from ..common import (
     Chain,
     hash256,
 )
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -677,6 +681,14 @@ class DigitalbitboxClient(HardwareWalletClient):
         :returns: False, always
         """
         return False
+
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        """
+        The BitBox02 does not support registering descriptors
+
+        "raises UnavilableActionError: Always, this function is unavailable
+        """
+        raise UnavailableActionError("The Digital Bitbox does not support registering descriptors")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:

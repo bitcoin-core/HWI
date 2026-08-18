@@ -10,12 +10,27 @@ Descriptors can be parsed, however the actual scripts are not generated.
 """
 
 
-from .key import ExtendedKey, KeyOriginInfo, parse_path
+from .key import (
+    ExtendedKey,
+    KeyOriginInfo,
+    parse_multipath,
+    multipath_to_string,
+    path_to_string,
+)
 from .common import hash160, sha256
+from .errors import BadArgumentError, InvalidPolicyError
+from ._serialize import (
+    deser_compact_size,
+    deser_string,
+    ser_compact_size,
+    ser_string,
+)
 
+from base64 import b64decode, b64encode
 from binascii import unhexlify
 from collections import namedtuple
 from enum import Enum
+from io import BufferedReader, BytesIO
 from typing import (
     List,
     Optional,
@@ -103,16 +118,22 @@ class PubkeyProvider(object):
         self,
         origin: Optional['KeyOriginInfo'],
         pubkey: str,
-        deriv_path: Optional[str]
+        deriv_path: Optional[List[List[int]]],
+        expr_index: int,
+        ranged: bool
     ) -> None:
         """
         :param origin: The key origin if one is available
         :param pubkey: The public key. Either a hex string or a serialized extended pubkey
         :param deriv_path: Additional derivation path if the pubkey is an extended pubkey
+        :param expr_index: The position of this key within the descriptor
         """
         self.origin = origin
         self.pubkey = pubkey
         self.deriv_path = deriv_path
+        self.expr_index = expr_index
+        self.ranged = ranged
+        self.multipath_len = max([len(p) for p in self.deriv_path]) if self.deriv_path is not None and len(self.deriv_path) > 0 else 1
 
         # Make ExtendedKey from pubkey if it isn't hex
         self.extkey = None
@@ -124,15 +145,17 @@ class PubkeyProvider(object):
             self.extkey = ExtendedKey.deserialize(self.pubkey)
 
     @classmethod
-    def parse(cls, s: str) -> 'PubkeyProvider':
+    def parse(cls, s: str, key_expr_index: int) -> 'PubkeyProvider':
         """
         Deserialize a key expression from the string into a ``PubkeyProvider``.
 
         :param s: String containing the key expression
+        :param key_expr_index: The position of this key within the descriptor
         :return: A new ``PubkeyProvider`` containing the details given by ``s``
         """
         origin = None
         deriv_path = None
+        ranged = False
 
         if s[0] == "[":
             end = s.index("]")
@@ -143,9 +166,14 @@ class PubkeyProvider(object):
         slash_idx = s.find("/")
         if slash_idx != -1:
             pubkey = s[:slash_idx]
-            deriv_path = s[slash_idx:]
+            path_str = s[slash_idx + 1:]
+            ranged = path_str.endswith("*")
+            if ranged:
+                path_str = path_str[:-2]
+            if len(path_str) > 0:
+                deriv_path = parse_multipath(path_str)
 
-        return cls(origin, pubkey, deriv_path)
+        return cls(origin, pubkey, deriv_path, key_expr_index, ranged)
 
     def to_string(self, hardened_char: str = "h") -> str:
         """
@@ -158,52 +186,89 @@ class PubkeyProvider(object):
             s += "[{}]".format(self.origin.to_string(hardened_char))
         s += self.pubkey
         if self.deriv_path:
-            s += self.deriv_path
+            s += multipath_to_string(self.deriv_path, hardened_char)
+        if self.ranged:
+            s += "/*"
         return s
 
-    def get_pubkey_bytes(self, pos: int) -> bytes:
+    def get_deriv_path(self, pos: int, multipath_pos: int) -> List[int]:
+        path = []
+        if self.deriv_path:
+            for p in self.deriv_path:
+                if len(p) == 1:
+                    path.append(p[0])
+                else:
+                    path.append(p[multipath_pos])
+        if self.ranged:
+            path.append(pos)
+        return path
+
+    def get_pubkey_bytes(self, pos: int, multipath_pos: int = 0) -> bytes:
         if self.extkey is not None:
             if self.deriv_path is not None:
-                path_str = self.deriv_path[1:]
-                if path_str[-1] == "*":
-                    path_str = path_str[:-1] + str(pos)
-                path = parse_path(path_str)
+                path = self.get_deriv_path(pos, multipath_pos)
                 child_key = self.extkey.derive_pub_path(path)
                 return child_key.pubkey
             else:
                 return self.extkey.pubkey
         return unhexlify(self.pubkey)
 
-    def get_full_derivation_path(self, pos: int) -> str:
+    def get_full_derivation_path(self, pos: int, multipath_pos: int = 0) -> str:
         """
         Returns the full derivation path at the given position, including the origin
         """
         path = self.origin.get_derivation_path() if self.origin is not None else "m/"
-        path += self.deriv_path if self.deriv_path is not None else ""
-        if path[-1] == "*":
-            path = path[:-1] + str(pos)
+        if self.deriv_path:
+            path += path_to_string(self.get_deriv_path(pos, multipath_pos))
+        if self.ranged:
+            path += str(pos)
         return path
 
-    def get_full_derivation_int_list(self, pos: int) -> List[int]:
+    def get_full_derivation_int_list(self, pos: int, multipath_pos: int = 0) -> List[int]:
         """
         Returns the full derivation path as an integer list at the given position.
         Includes the origin and master key fingerprint as an int
         """
         path: List[int] = self.origin.get_full_int_list() if self.origin is not None else []
-        if self.deriv_path is not None:
-            der_split = self.deriv_path.split("/")
-            for p in der_split:
-                if not p:
-                    continue
-                if p == "*":
-                    i = pos
-                elif p[-1] in "'phHP":
-                    assert len(p) >= 2
-                    i = int(p[:-1]) | 0x80000000
-                else:
-                    i = int(p)
-                path.append(i)
+        if self.deriv_path:
+            path.extend(self.get_deriv_path(pos, multipath_pos))
+        if self.ranged:
+            path.append(pos)
         return path
+
+    def get_bip388_placeholder(self) -> str:
+        """
+        Get the key placeholder expression for this pubkey to be used in BIP 388 Wallet Policies.
+        The descriptor will be first checked for whether it likely confirms to BIP 388. Specifically:
+
+        - All pubkeys must be ranged
+        - All multipath specifiers must be exactly 2 items.
+
+        :return: The key placeholder expression
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        if not self.ranged:
+            raise InvalidPolicyError("BIP 388 requires all pubkeys to be ranged")
+        if self.multipath_len > 2:
+            raise InvalidPolicyError("BIP 388 requires all multipath specifiers to be exactly 2 elements")
+        deriv_path = multipath_to_string(self.deriv_path, hardened_char="'") if self.deriv_path else ""
+        if self.ranged:
+            deriv_path += "/*"
+        return f"@{self.expr_index}{deriv_path}"
+
+    def get_bip388_key_info(self) -> str:
+        """
+        Serialize the pubkey expression to a string without the trailing derivation path.
+        Used in the Key information vector of BIP 388 Wallet Policies.
+
+        :return: The pubkey expression without trailing derivaiton path as a string
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        s = ""
+        if self.origin:
+            s += "[{}]".format(self.origin.to_string("'"))
+        s += self.pubkey
+        return s
 
     def __lt__(self, other: 'PubkeyProvider') -> bool:
         return self.pubkey < other.pubkey
@@ -254,6 +319,40 @@ class Descriptor(object):
         Returns the scripts for a descriptor at the given `pos` for ranged descriptors.
         """
         raise NotImplementedError("The Descriptor base class does not implement this method")
+
+    def get_bip388_template(self) -> str:
+        """
+        Get the BIP 388 Wallet Descriptor Template string for this descriptor.
+
+        Some BIP 388 specified checks are performed to determine. See ``get_bip388_placeholder()`` for the
+        pubkey specific checks that are performed.
+
+        Note that not all BIP 388 specified checks are performed, specifically the following checks are not performed:
+
+        - Duplicate keys check
+        - Disjoint multipath check
+
+        :return: The template string
+        :raises InvalidPolicyError: If the pubkey does not meet the requirements for a wallet policy as specified in BIP 388
+        """
+        return "{}({}{})".format(
+            self.name,
+            ",".join([p.get_bip388_placeholder() for p in self.pubkeys]),
+            self.subdescriptors[0].get_bip388_template() if len(self.subdescriptors) > 0 else ""
+        )
+
+    def get_pubkey_providers(self) -> list['PubkeyProvider']:
+        """
+        Get the strings of all pubkey expressions contained in this descriptor,
+        in the same order that they appear in the descriptor string. These can be used with
+        :func:`get_bip388_template` to get a full BIP 388 Wallet Policy for this descriptor.
+
+        :return: List of pubkey expression strings
+        """
+        out = [p for p in self.pubkeys]
+        for s in self.subdescriptors:
+            out.extend(s.get_pubkey_providers())
+        return out
 
 
 class PKDescriptor(Descriptor):
@@ -324,8 +423,6 @@ class MultisigDescriptor(Descriptor):
         super().__init__(pubkeys, [], "sortedmulti" if is_sorted else "multi")
         self.thresh = thresh
         self.is_sorted = is_sorted
-        if self.is_sorted:
-            self.pubkeys.sort()
 
     def to_string_no_checksum(self, hardened_char: str = "h") -> str:
         return "{}({},{})".format(self.name, self.thresh, ",".join([p.to_string(hardened_char) for p in self.pubkeys]))
@@ -345,6 +442,9 @@ class MultisigDescriptor(Descriptor):
         script += n + b"\xae"
 
         return ExpandedScripts(script, None, None)
+
+    def get_bip388_template(self) -> str:
+        return "{}({},{})".format(self.name, self.thresh, ",".join([p.get_bip388_placeholder() for p in self.pubkeys]))
 
 
 class SHDescriptor(Descriptor):
@@ -424,6 +524,26 @@ class TRDescriptor(Descriptor):
         r += ")"
         return r
 
+    def get_bip388_template(self) -> str:
+        r = f"{self.name}({self.pubkeys[0].get_bip388_placeholder()}"
+        path: List[bool] = [] # Track left or right for each depth
+        for p, depth in enumerate(self.depths):
+            r += ","
+            while len(path) <= depth:
+                if len(path) > 0:
+                    r += "{"
+                path.append(False)
+            r += self.subdescriptors[p].get_bip388_template()
+            while len(path) > 0 and path[-1]:
+                if len(path) > 0:
+                    r += "}"
+                path.pop()
+            if len(path) > 0:
+                path[-1] = True
+        r += ")"
+        return r
+
+
 def _get_func_expr(s: str) -> Tuple[str, str]:
     """
     Get the function name and then the expression inside
@@ -477,12 +597,13 @@ def _get_expr(s: str) -> Tuple[str, str]:
         return s, ""
     return s[0:i], s[i:]
 
-def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
+def parse_pubkey(expr: str, key_expr_index: int) -> Tuple['PubkeyProvider', str, int]:
     """
     Parses an individual pubkey expression from a string that may contain more than one pubkey expression.
 
     :param expr: The expression to parse a pubkey expression from
-    :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, and the remainder of the expression as the second item.
+    :param key_expr_index: The position of the next key to be parsed
+    :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, the remainder of the expression as the second item, and the index of the next key expression as the third.
     """
     end = len(expr)
     comma_idx = expr.find(",")
@@ -490,7 +611,7 @@ def parse_pubkey(expr: str) -> Tuple['PubkeyProvider', str]:
     if comma_idx != -1:
         end = comma_idx
         next_expr = expr[end + 1:]
-    return PubkeyProvider.parse(expr[:end]), next_expr
+    return PubkeyProvider.parse(expr[:end], key_expr_index), next_expr, (key_expr_index + 1)
 
 
 class _ParseDescriptorContext(Enum):
@@ -514,7 +635,7 @@ class _ParseDescriptorContext(Enum):
     """Within a ``tr()`` descriptor"""
 
 
-def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor':
+def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index: int) -> Tuple['Descriptor', int]:
     """
     :meta private:
 
@@ -523,22 +644,23 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
 
     :param desc: The descriptor string to parse
     :param ctx: The :class:`_ParseDescriptorContext` indicating the level we are in
-    :return: The parsed descriptor
+    :param key_expr_index: The position of the next key to be parsed within the descriptor
+    :return: The parsed descriptor as the first item, and the index of the next key expression as the second.
     :raises: ValueError: if the descriptor is malformed
     """
     func, expr = _get_func_expr(desc)
     if func == "pk":
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("more than one pubkey in pk descriptor")
-        return PKDescriptor(pubkey)
+        return PKDescriptor(pubkey), key_expr_index
     if func == "pkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have pkh at top level, in sh(), or in wsh()")
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
-        return PKHDescriptor(pubkey)
+        return PKHDescriptor(pubkey), key_expr_index
     if func == "sortedmulti" or func == "multi":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have multi/sortedmulti at top level, in sh(), or in wsh()")
@@ -547,8 +669,14 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
         thresh = int(expr[:comma_idx])
         expr = expr[comma_idx + 1:]
         pubkeys = []
+        multipath_len = None
         while expr:
-            pubkey, expr = parse_pubkey(expr)
+            pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+            if pubkey.multipath_len > 1:
+                if multipath_len is None:
+                    multipath_len = pubkey.multipath_len
+                elif multipath_len != pubkey.multipath_len:
+                    raise ValueError("Mismatched multipath paths")
             pubkeys.append(pubkey)
         if len(pubkeys) == 0 or len(pubkeys) > 16:
             raise ValueError("Cannot have {} keys in a multisig; must have between 1 and 16 keys, inclusive".format(len(pubkeys)))
@@ -558,28 +686,31 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
             raise ValueError("Multisig threshold cannot be larger than the number of keys; threshold is {} but only {} keys specified".format(thresh, len(pubkeys)))
         if ctx == _ParseDescriptorContext.TOP and len(pubkeys) > 3:
             raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys")
-        return MultisigDescriptor(pubkeys, thresh, is_sorted)
+        return MultisigDescriptor(pubkeys, thresh, is_sorted), key_expr_index
     if func == "wpkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wpkh() at top level or inside sh()")
-        pubkey, expr = parse_pubkey(expr)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
-        return WPKHDescriptor(pubkey)
+        return WPKHDescriptor(pubkey), key_expr_index
     if func == "sh":
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have sh() at top level")
-        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2SH)
-        return SHDescriptor(subdesc)
+        subdesc, key_expr_index = _parse_descriptor(expr, _ParseDescriptorContext.P2SH, key_expr_index)
+        return SHDescriptor(subdesc), key_expr_index
     if func == "wsh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wsh() at top level or inside sh()")
-        subdesc = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH)
-        return WSHDescriptor(subdesc)
+        subdesc, key_expr_index = _parse_descriptor(expr, _ParseDescriptorContext.P2WSH, key_expr_index)
+        return WSHDescriptor(subdesc), key_expr_index
     if func == "tr":
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
-        internal_key, expr = parse_pubkey(expr)
+        multipath_len = None
+        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        if internal_key.multipath_len > 1:
+            multipath_len = internal_key.multipath_len
         subscripts = []
         depths = []
         if expr:
@@ -599,7 +730,14 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
                         raise ValueError("tr() supports at most {MAX_TAPROOT_NODES} nesting levels")
                 # Process script expression
                 sarg, expr = _get_expr(expr)
-                subscripts.append(_parse_descriptor(sarg, _ParseDescriptorContext.P2TR))
+                subdesc, key_expr_index = _parse_descriptor(sarg, _ParseDescriptorContext.P2TR, key_expr_index)
+                for pub in subdesc.pubkeys:
+                    if pub.multipath_len > 1:
+                        if multipath_len is None:
+                            multipath_len = pub.multipath_len
+                        elif multipath_len != pub.multipath_len:
+                            raise ValueError("Mismatched multipath paths")
+                subscripts.append(subdesc)
                 depths.append(len(branches))
                 # Process closing braces
                 while len(branches) > 0 and branches[-1]:
@@ -612,7 +750,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext') -> 'Descriptor'
 
                 if len(branches) == 0:
                     break
-        return TRDescriptor(internal_key, subscripts, depths)
+        return TRDescriptor(internal_key, subscripts, depths), key_expr_index
     if ctx == _ParseDescriptorContext.P2SH:
         raise ValueError("A function is needed within P2SH")
     elif ctx == _ParseDescriptorContext.P2WSH:
@@ -636,4 +774,54 @@ def parse_descriptor(desc: str) -> 'Descriptor':
         computed = DescriptorChecksum(desc)
         if computed != checksum:
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
-    return _parse_descriptor(desc, _ParseDescriptorContext.TOP)
+    return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
+
+class RegisteredDescriptor:
+    """
+    An object containing a policy that was registered with a device
+    """
+
+    REG_VERSION = 0x00
+    REG_NAME = 0x01
+    REG_DESCRIPTOR = 0x02
+    REG_DEVICE_TYPE = 0x03
+    REG_REGISTRATION = 0x04
+
+    def __init__(self, name: str, descriptor: Descriptor, device_type: str, registration: bytes) -> None:
+        self.version = 1
+        self.name = name
+        self.descriptor = descriptor
+        self.device_type = device_type
+        self.registration = registration
+
+    def serialize(self) -> str:
+        r = b"rdesc"
+
+        r += ser_compact_size(self.version)
+        r += ser_string(self.name.encode())
+        r += ser_string(self.descriptor.to_string().encode())
+        r += ser_string(self.device_type.encode())
+        r += ser_string(self.registration)
+
+        return b64encode(r).decode()
+
+    @classmethod
+    def deserialize(cls, policy: str) -> 'RegisteredDescriptor':
+        policy_bytes = b64decode(policy.strip())
+        s = BufferedReader(BytesIO(policy_bytes))  # type: ignore
+
+        magic = s.read(5)
+        if magic != b"rdesc":
+            raise BadArgumentError("Policy has invalid magic bytes")
+
+        version = deser_compact_size(s)
+
+        if version != 1:
+            raise BadArgumentError("Serialized policy registration has unknown version number")
+
+        name = deser_string(s).decode()
+        descriptor = parse_descriptor(deser_string(s).decode())
+        device_type = deser_string(s).decode()
+        registration = deser_string(s)
+
+        return cls(name, descriptor, device_type, registration)

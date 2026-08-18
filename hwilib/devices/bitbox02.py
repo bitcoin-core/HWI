@@ -23,7 +23,11 @@ import socket
 from functools import wraps
 
 from .._base58 import decode_check, encode_check
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..key import ExtendedKey
 from .._script import (
@@ -423,7 +427,7 @@ class Bitbox02Client(HardwareWalletClient):
         return xpub
 
     def _maybe_register_script_config(
-        self, script_config: bitbox02.btc.BTCScriptConfig, keypath: Sequence[int]
+        self, script_config: bitbox02.btc.BTCScriptConfig, keypath: Sequence[int], name: str = ""
     ) -> None:
         bb02 = self.init()
         is_registered = bb02.btc_is_script_config_registered(
@@ -434,7 +438,7 @@ class Bitbox02Client(HardwareWalletClient):
                 coin=self._get_coin(),
                 script_config=script_config,
                 keypath=keypath,
-                name="",  # enter name on the device
+                name=name,  # Default empty string means enter name on the device
                 xpub_type=bitbox02.btc.BTCRegisterScriptConfigRequest.AUTO_XPUB_TPUB,
             )
 
@@ -526,7 +530,7 @@ class Bitbox02Client(HardwareWalletClient):
         if not multisig.is_sorted:
             raise BadArgumentError("BitBox02 only supports sortedmulti descriptors")
 
-        path_suffixes = set(p.deriv_path for p in multisig.pubkeys)
+        path_suffixes = set(p.get_deriv_path(0, 0) for p in multisig.pubkeys)
         if len(path_suffixes) != 1:
             # Path suffix refers to the path after the account-level xpub, usually /<change>/<address>.
             # The BitBox02 currently enforces that all of them are the same.
@@ -962,3 +966,23 @@ class Bitbox02Client(HardwareWalletClient):
         :returns: False, always
         """
         return False
+
+    def _bip388_script_config(self, descriptor: Descriptor) -> bitbox02.btc.BTCScriptConfig:
+        desc_keys = []
+        for pk in descriptor.get_pubkey_providers():
+            desc_keys.append(bitbox02.common.KeyOriginInfo(
+                root_fingerprint=pk.origin.fingerprint if pk.origin else b"",
+                keypath=pk.origin.path if pk.origin else None,
+                xpub=util.parse_xpub(pk.pubkey)
+            ))
+        policy = bitbox02.btc.BTCScriptConfig.Policy(
+            policy=descriptor.get_bip388_template(),
+            keys=desc_keys,
+        )
+        return bitbox02.btc.BTCScriptConfig(policy=policy)
+
+    @bitbox02_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        script_config = self._bip388_script_config(descriptor)
+        self._maybe_register_script_config(script_config, [], name)
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="bitbox02", registration=b"")

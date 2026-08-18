@@ -10,7 +10,11 @@ from typing import (
     Optional,
     Union,
 )
-from .descriptor import MultisigDescriptor
+from .descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from .key import (
     ExtendedKey,
     get_bip44_purpose,
@@ -234,6 +238,16 @@ class HardwareWalletClient(object):
         Whether the device has a version that can sign for Taproot inputs
 
         :return: Whether Taproot is supported
+        """
+        raise NotImplementedError("The HardwareWalletClient base class "
+                                  "does not implement this method")
+
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        """
+        Register a descriptor with the device
+
+        :return: The registration result string
+        :raises UnavilableActionError: if appropriate for the device.
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")

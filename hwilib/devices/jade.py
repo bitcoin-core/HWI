@@ -20,7 +20,11 @@ from typing import (
     Tuple,
     Union
 )
-from ..descriptor import MultisigDescriptor
+from ..descriptor import (
+    Descriptor,
+    MultisigDescriptor,
+    RegisteredDescriptor,
+)
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
     ActionCanceledError,
@@ -437,8 +441,7 @@ class JadeClient(HardwareWalletClient):
                             'path': []})
 
             # Instead hold it as the address path
-            path = pubkey.deriv_path[1:] if pubkey.deriv_path[0] == '/' else pubkey.deriv_path
-            paths.append(parse_path(path))
+            paths.append(pubkey.get_deriv_path(0, 0))
 
         if multisig.is_sorted and paths[:-1] != paths[1:]:
             logging.warning('Sorted multisig with different derivations per signer')
@@ -530,6 +533,13 @@ class JadeClient(HardwareWalletClient):
         :returns: False, always
         """
         return False
+
+    @jade_exception
+    def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
+        template = descriptor.get_bip388_template()
+        datavalues = {f"@{p.expr_index}": p.get_bip388_key_info() for p in descriptor.get_pubkey_providers()}
+        self.jade.register_descriptor(self._network(), name, template, datavalues)
+        return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="jade", registration=b"")
 
 
 def enumerate(password: Optional[str] = None, expert: bool = False, chain: Chain = Chain.MAIN, allow_emulators: bool = False) -> List[Dict[str, Any]]:
