@@ -140,30 +140,20 @@ if [[ -n ${build_coldcard} ]]; then
     # Clone coldcard firmware if it doesn't exist, or update it if it does
     coldcard_setup_needed=false
     if [ ! -d "firmware" ]; then
-        # Note: cannot use --shallow-submodules because lwip submodule on git.savannah.gnu.org doesn't support it
-        git clone --recursive --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git
+        git clone --depth 1 --branch ${COLDCARD_VERSION} https://github.com/Coldcard/firmware.git
         cd firmware
+        # Simulator setup initializes the required nested dependencies.
+        git submodule update --init
         coldcard_setup_needed=true
     else
         cd firmware
-        git reset --hard HEAD~3 # Undo git-am for checking and updating
-        git fetch
-
-        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-        UPSTREAM=${1:-'@{u}'}
-        LOCAL=$(git rev-parse @)
-        REMOTE=$(git rev-parse "$UPSTREAM")
-        BASE=$(git merge-base @ "$UPSTREAM")
-
-        if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
-        elif [ $LOCAL = $BASE ]; then
-            git pull
-            coldcard_setup_needed=true
-        fi
+        git fetch --tags origin
+        git checkout --force "${COLDCARD_VERSION}"
+        git submodule update --init --force
+        coldcard_setup_needed=true
     fi
     # Add multisig fixtures used by the Coldcard multisig display tests.
-    git am ../../data/coldcard-multisig.patch
+    git apply ../../data/coldcard-multisig.patch
 
     # Build the simulator. This is cached, but it is also fast
     poetry run pip install -r requirements.txt
@@ -177,8 +167,12 @@ if [[ -n ${build_coldcard} ]]; then
         pushd ../external/micropython/mpy-cross/
         make
         popd
-        make setup
+        # Skip make setup, which builds MicroPython's bundled libffi and
+        # fails with current Autoconf. The simulator links system libffi.
+        # Initialize its only required MicroPython submodule directly.
+        git -C ../external/micropython submodule update --init lib/berkeley-db-1.xx
         make ngu-setup
+        ln -sf ../external/micropython/ports/unix/coldcard-mpy .
     fi
     make
     cd ../..
