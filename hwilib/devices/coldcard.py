@@ -358,9 +358,16 @@ class ColdcardClient(HardwareWalletClient):
         index: int,
         multipath_index: int = 0,
     ) -> str:
-        # CCProtocolPacker.miniscript_address() can request an address by
-        # policy name, but only COLDCARD Edge firmware supports it, so do not
-        # use it here yet.
+        if self.is_edge:
+            address = self.device.send_recv(
+                CCProtocolPacker.miniscript_address(registered_descriptor.name, multipath_index, index),
+                timeout=None,
+            )
+            assert isinstance(address, str)
+            if self.device.is_simulator:
+                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+            return address
+
         descriptor = registered_descriptor.descriptor.derive(index, multipath_index)
         if (
             not isinstance(descriptor, WSHDescriptor)
@@ -498,9 +505,20 @@ class ColdcardClient(HardwareWalletClient):
             raise DeviceFailureError(f"Wrong checksum, expected {expect.hex()}, got {result.hex()}")
 
         # Register the descriptor
-        self.device.send_recv(CCProtocolPacker.multisig_enroll(size, expect), timeout=None)
+        enroll = (
+            CCProtocolPacker.miniscript_enroll
+            if self.is_edge
+            else CCProtocolPacker.multisig_enroll
+        )
+        self.device.send_recv(enroll(size, expect), timeout=None)
         if self.device.is_simulator:
+            if self.is_edge:
+                # Wait for the enrollment story to start accepting input.
+                time.sleep(1)
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+            if self.is_edge:
+                # Enrollment displays a two-second "Saved" confirmation.
+                time.sleep(2.1)
         return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="coldcard", registration=b"")
 
 
