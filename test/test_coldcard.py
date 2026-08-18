@@ -11,6 +11,7 @@ import time
 import unittest
 
 from hwilib._cli import process_commands
+from hwilib import _bech32 as bech32
 from test_device import (
     Bitcoind,
     DeviceEmulator,
@@ -41,7 +42,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.supports_ms_display = not is_edge
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
-        self.supports_taproot = False
+        self.supports_taproot = is_edge
         self.strict_bip48 = False
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
@@ -143,6 +144,22 @@ class TestColdcardGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], '806b26507824f73bc331494afe122f428ef30dde80b2c1ce025d2d03aff411e7')
         self.assertEqual(result['pubkey'], '0368000bdff5e0b71421c37b8514de8acd4d98ba9908d183d9da56d02ca4fcfd08')
 
+class TestColdcardEdgeDisplayAddress(DeviceTestCase):
+    def test_display_taproot_address(self):
+        descriptors = self.do_command(self.dev_args + [
+            'getkeypool', '--addr-type', 'tap', '0', '0'
+        ])
+        expected = self.rpc.deriveaddresses(descriptors[0]['desc'], [0, 0])[0]
+
+        result = self.do_command(self.dev_args + [
+            'displayaddress', '--addr-type', 'tap', '--path', 'm/86h/1h/0h/0/0'
+        ])
+        self.assertNotIn('error', result)
+        self.assertIn('address', result)
+        displayed_witness = bech32.decode('tb', result['address'])
+        expected_witness = bech32.decode('bcrt', expected)
+        self.assertEqual(displayed_witness, expected_witness)
+
 def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
     dev_emulator = ColdcardSimulator(simulator, is_edge)
 
@@ -164,6 +181,8 @@ def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
     suite.addTest(DeviceTestCase.parameterize(TestRegisterDescriptor, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=False))
+    if is_edge:
+        suite.addTest(DeviceTestCase.parameterize(TestColdcardEdgeDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()
