@@ -14,6 +14,10 @@ while [[ $# -gt 0 ]]; do
         build_coldcard=1
         shift
         ;;
+        --coldcard-edge)
+        build_coldcard_edge=1
+        shift
+        ;;
         --bitbox01)
         build_bitbox01=1
         shift
@@ -73,6 +77,7 @@ SPECULOS_VERSION="ed952a54801f59a71399462b5422976d84c817bb"  # Requires Python >
 JADE_VERSION="1.0.36"
 
 COLDCARD_VERSION="2026-07-31T0519-v5.6.0"
+COLDCARD_EDGE_VERSION="2026-07-31T1609-v6.6.0X"
 
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
@@ -136,10 +141,12 @@ if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     cd ..
 fi
 
-if [[ -n ${build_coldcard} ]]; then
+if [[ -n ${build_coldcard} || -n ${build_coldcard_edge} ]]; then
     do_coldcard_firmware() {
         local coldcard_version="$1"
         local coldcard_dir="$2"
+        local coldcard_requirements="$3"
+        local coldcard_multisig_patch="$4"
 
         # Clone coldcard firmware if it doesn't exist, or update it if it does
         coldcard_setup_needed=false
@@ -158,11 +165,11 @@ if [[ -n ${build_coldcard} ]]; then
         fi
 
         # Add multisig fixtures used by the Coldcard multisig display tests.
-        git apply ../../data/coldcard-multisig.patch
+        git apply "../../data/${coldcard_multisig_patch}"
 
         # Build the simulator. This is cached, but it is also fast
-        poetry run pip install -r requirements.txt
-        pip install -r requirements.txt
+        poetry run pip install -r "${coldcard_requirements}"
+        pip install -r "${coldcard_requirements}"
         cd unix
         if [ "$coldcard_setup_needed" == true ] ; then
             pushd ../external/micropython
@@ -183,7 +190,12 @@ if [[ -n ${build_coldcard} ]]; then
         cd ../..
     }
 
-    do_coldcard_firmware "${COLDCARD_VERSION}" firmware
+    if [[ -n ${build_coldcard} ]]; then
+        do_coldcard_firmware "${COLDCARD_VERSION}" firmware requirements.txt coldcard-multisig.patch
+    fi
+    if [[ -n ${build_coldcard_edge} ]]; then
+        do_coldcard_firmware "${COLDCARD_EDGE_VERSION}" firmware unix/requirements.txt coldcard-edge-multisig.patch
+    fi
 fi
 
 if [[ -n ${build_bitbox01} ]]; then

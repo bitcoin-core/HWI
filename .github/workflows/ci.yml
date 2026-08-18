@@ -125,6 +125,15 @@ jobs:
       include: ${{ needs.prepare-sim-matrices.outputs.coldcard }}
       runs-on: ubuntu-latest
 
+  sim-builder-coldcard-edge:
+    name: Coldcard Edge sim builder
+    needs: prepare-sim-matrices
+    uses: ./.github/workflows/sim-builder.yml
+    with:
+      sim: coldcard-edge
+      include: ${{ needs.prepare-sim-matrices.outputs.coldcard_edge }}
+      runs-on: ubuntu-latest
+
   sim-builder-bitbox:
     name: Bitbox sim builder
     needs: prepare-sim-matrices
