@@ -14,6 +14,7 @@ import unittest
 from typing import Dict
 
 from authproxy import AuthServiceProxy, JSONRPCException
+from hwilib import _bech32 as bech32
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
 from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider, RegisteredDescriptor
@@ -847,3 +848,94 @@ class TestRegisterDescriptor(DeviceTestCase):
         self.assertNotIn("error", sign_result)
         self.assertTrue(sign_result["signed"])
         self.assertTrue(self.wrpc.finalizepsbt(sign_result["psbt"])["complete"])
+
+class TestMuSig2(DeviceTestCase):
+    def setUp(self):
+        super().setUp()
+        wallet_name = '{}_{}_test'.format(self.emulator.type, self.id())
+        self.rpc.createwallet(
+            wallet_name=wallet_name,
+            disable_private_keys=False,
+            blank=True,
+            descriptors=True,
+        )
+        self.wrpc = self.bitcoind.get_wallet_rpc(wallet_name)
+        self.wpk_rpc = self.bitcoind.get_wallet_rpc("supply")
+        self.wrpc.addhdkey()
+
+    def _device_sign(self, registration, psbt):
+        result = self.do_command(self.dev_args + [
+            "signtx",
+            "--registration", registration,
+            psbt,
+        ])
+        self.assertNotIn("error", result)
+        self.assertTrue(result["signed"])
+        return result["psbt"]
+
+    def test_musig2(self):
+        account_path = "m/87h/1h/0h"
+        device_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
+        device_key = f"[{self.emulator.fingerprint}{account_path[1:]}]{device_xpub}"
+
+        local_info = self.wrpc.derivehdkey(path=account_path)
+        local_key = local_info["origin"] + local_info["xpub"]
+        recovery_info = self.wrpc.derivehdkey(path="m/87h/1h/1h")
+        recovery_key = recovery_info["origin"] + recovery_info["xpub"]
+
+        descriptor = (
+            f"tr(musig({device_key},{local_key})/<0;1>/*,"
+            f"and_v(v:pk({recovery_key}/<0;1>/*),older(1)))"
+        )
+        registration = self.do_command(self.dev_args + [
+            "registerdescriptor", "MuSigTest", descriptor,
+        ])
+        self.assertNotIn("error", registration)
+        registration = registration["registration"]
+
+        imported = self.wrpc.importdescriptors([{
+            "desc": AddChecksum(descriptor),
+            "timestamp": "now",
+            "active": True,
+        }])
+        self.assertTrue(imported[0]["success"])
+
+        receive_address = self.wrpc.getnewaddress("", "bech32m")
+        display = self.do_command(self.dev_args + [
+            "displayaddress",
+            "--index", "0",
+            "--registration", registration,
+        ])
+        self.assertNotIn("error", display)
+        self.assertEqual(
+            bech32.decode("tb", display["address"]),
+            bech32.decode("bcrt", receive_address),
+        )
+
+        self.wpk_rpc.sendtoaddress(receive_address, 1)
+        self.wpk_rpc.generatetoaddress(1, self.wpk_rpc.getnewaddress())
+        psbt = self.wrpc.walletcreatefundedpsbt(
+            [],
+            [{self.wpk_rpc.getnewaddress("", "bech32m"): 0.5}],
+            0,
+            {"includeWatching": True},
+            True,
+        )["psbt"]
+        self.assertEqual(self.rpc.decodepsbt(psbt)["psbt_version"], 2)
+        device_nonce = self._device_sign(registration, psbt)
+        local_nonce = self.wrpc.walletprocesspsbt(psbt=psbt, finalize=False)["psbt"]
+        nonce_psbt = self.rpc.combinepsbt([device_nonce, local_nonce])
+        decoded = self.rpc.decodepsbt(nonce_psbt)
+        self.assertEqual(len(decoded["inputs"][0]["musig2_pubnonces"]), 2)
+
+        device_partial_sig = self._device_sign(registration, nonce_psbt)
+        local_partial_sig = self.wrpc.walletprocesspsbt(psbt=nonce_psbt, finalize=False)["psbt"]
+        signed_psbt = self.rpc.combinepsbt([device_partial_sig, local_partial_sig])
+        decoded = self.rpc.decodepsbt(signed_psbt)
+        self.assertEqual(len(decoded["inputs"][0]["musig2_partial_sigs"]), 2)
+
+        finalized = self.rpc.finalizepsbt(signed_psbt)
+        self.assertTrue(finalized["complete"])
+        txid = self.rpc.sendrawtransaction(finalized["hex"])
+        self.wpk_rpc.generatetoaddress(1, self.wpk_rpc.getnewaddress())
+        self.assertGreaterEqual(self.wrpc.gettransaction(txid)["confirmations"], 1)

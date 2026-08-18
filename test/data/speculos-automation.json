@@ -39,7 +39,7 @@
             ]
         },
         {
-            "regexp": "^(Address|Review|Account name|Amount|External amounts|You spend|You receive|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Our key|Their key|Unspendable key|Spend from|Spending policy|Primary spending path|Spending path|Transaction output|From account|Wallet name|Wallet policy|Descriptor template|Verify [Bb]itcoin|Output|Warning).*",
+            "regexp": "^(Address|Review|Account name|Amount|External amounts|You spend|You receive|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Our key|Their key|Unspendable key|Spend from|Spending policy|Primary.*ing path|Spending path|Transaction output|From account|Wallet name|Wallet policy|Descriptor template|Verify [Bb]itcoin|Output|Warning).*",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
@@ -62,8 +62,22 @@
             ]
         },
         {
+            "regexp": "^To \\([0-9]+/[0-9]+\\)$",
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
             "regexp": "^To.*",
             "y": 3,
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^From$",
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
