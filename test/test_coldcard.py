@@ -25,7 +25,7 @@ from test_device import (
 )
 
 class ColdcardSimulator(DeviceEmulator):
-    def __init__(self, simulator):
+    def __init__(self, simulator, is_edge=False):
         try:
             os.unlink("coldcard-emulator.stdout")
         except FileNotFoundError:
@@ -38,7 +38,7 @@ class ColdcardSimulator(DeviceEmulator):
         self.fingerprint = "0f056943"
         self.master_xpub = "tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB"
         self.password = ""
-        self.supports_ms_display = True
+        self.supports_ms_display = not is_edge
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
@@ -143,8 +143,8 @@ class TestColdcardGetXpub(DeviceTestCase):
         self.assertEqual(result['chaincode'], '806b26507824f73bc331494afe122f428ef30dde80b2c1ce025d2d03aff411e7')
         self.assertEqual(result['pubkey'], '0368000bdff5e0b71421c37b8514de8acd4d98ba9908d183d9da56d02ca4fcfd08')
 
-def coldcard_test_suite(simulator, bitcoind, interface):
-    dev_emulator = ColdcardSimulator(simulator)
+def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
+    dev_emulator = ColdcardSimulator(simulator, is_edge)
 
     signtx_cases = [
         (["legacy"], [], False, False),
@@ -173,9 +173,10 @@ if __name__ == '__main__':
     parser.add_argument('simulator', help='Path to the Coldcard simulator')
     parser.add_argument('bitcoind', help='Path to bitcoind binary')
     parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist'], default='library')
+    parser.add_argument('--edge', help='Test Coldcard Edge behavior', action='store_true')
     args = parser.parse_args()
 
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
-    sys.exit(not coldcard_test_suite(args.simulator, bitcoind, args.interface))
+    sys.exit(not coldcard_test_suite(args.simulator, bitcoind, args.interface, is_edge=args.edge))
