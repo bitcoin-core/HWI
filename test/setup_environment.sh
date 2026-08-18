@@ -72,8 +72,7 @@ KEEPKEY_VERSION="v7.10.0"
 SPECULOS_VERSION="ed952a54801f59a71399462b5422976d84c817bb"  # Requires Python >=3.10 (v0.25.11+)
 JADE_VERSION="1.0.36"
 
-# Keep COLDCARD_VERSION in sync with .github/actions/install-sim/action.yml
-COLDCARD_VERSION="2025-09-30T1238-v5.4.4"
+COLDCARD_VERSION="2026-07-31T0519-v5.6.0"
 
 if [[ -n ${build_trezor_1} || -n ${build_trezor_t} ]]; then
     # Clone trezor-firmware if it doesn't exist, or update it if it does
@@ -163,7 +162,7 @@ if [[ -n ${build_coldcard} ]]; then
             coldcard_setup_needed=true
         fi
     fi
-    # Apply patch to make simulator work in linux environments
+    # Add multisig fixtures used by the Coldcard multisig display tests.
     git am ../../data/coldcard-multisig.patch
 
     # Build the simulator. This is cached, but it is also fast
@@ -172,7 +171,7 @@ if [[ -n ${build_coldcard} ]]; then
     cd unix
     if [ "$coldcard_setup_needed" == true ] ; then
         pushd ../external/micropython
-        # Apply Ubuntu 24.04 compiler warning fixes (included in ColdCard firmware v5.4.4+)
+        # Do not treat new warnings from Ubuntu 24.04's compiler as errors.
         git apply ../../ubuntu24_mpy.patch
         popd
         pushd ../external/micropython/mpy-cross/
