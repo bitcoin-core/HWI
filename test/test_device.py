@@ -880,8 +880,11 @@ class TestMuSig2(DeviceTestCase):
 
         local_info = self.wrpc.derivehdkey(path=account_path)
         local_key = local_info["origin"] + local_info["xpub"]
-        recovery_info = self.wrpc.derivehdkey(path="m/87h/1h/1h")
-        recovery_key = recovery_info["origin"] + recovery_info["xpub"]
+        recovery_path = "m/87h/1h/1h"
+        recovery_xpub = self.do_command(
+            self.dev_args + ["getxpub", recovery_path]
+        )["xpub"]
+        recovery_key = f"[{self.emulator.fingerprint}{recovery_path[1:]}]{recovery_xpub}"
 
         descriptor = (
             f"tr(musig({device_key},{local_key})/<0;1>/*,"
@@ -912,13 +915,19 @@ class TestMuSig2(DeviceTestCase):
             bech32.decode("bcrt", receive_address),
         )
 
+        recovery_address = self.wrpc.getnewaddress("", "bech32m")
         self.wpk_rpc.sendtoaddress(receive_address, 1)
+        self.wpk_rpc.sendtoaddress(recovery_address, 1)
         self.wpk_rpc.generatetoaddress(1, self.wpk_rpc.getnewaddress())
+
+        key_path_utxo = self.wrpc.listunspent(
+            1, 9999999, [receive_address]
+        )[0]
         psbt = self.wrpc.walletcreatefundedpsbt(
-            [],
+            [{"txid": key_path_utxo["txid"], "vout": key_path_utxo["vout"]}],
             [{self.wpk_rpc.getnewaddress("", "bech32m"): 0.5}],
             0,
-            {"includeWatching": True},
+            {"add_inputs": False, "includeWatching": True},
             True,
         )["psbt"]
         self.assertEqual(self.rpc.decodepsbt(psbt)["psbt_version"], 2)
@@ -939,3 +948,33 @@ class TestMuSig2(DeviceTestCase):
         txid = self.rpc.sendrawtransaction(finalized["hex"])
         self.wpk_rpc.generatetoaddress(1, self.wpk_rpc.getnewaddress())
         self.assertGreaterEqual(self.wrpc.gettransaction(txid)["confirmations"], 1)
+
+        recovery_utxo = self.wrpc.listunspent(
+            1, 9999999, [recovery_address]
+        )[0]
+        recovery_psbt = self.wrpc.walletcreatefundedpsbt(
+            [{
+                "txid": recovery_utxo["txid"],
+                "vout": recovery_utxo["vout"],
+                "sequence": 1,
+            }],
+            [{self.wpk_rpc.getnewaddress("", "bech32m"): 0.5}],
+            0,
+            {"add_inputs": False, "includeWatching": True},
+            True,
+        )["psbt"]
+        self.assertEqual(
+            self.rpc.decodepsbt(recovery_psbt)["psbt_version"],
+            2,
+        )
+        recovery_psbt = self._device_sign(registration, recovery_psbt)
+        decoded = self.rpc.decodepsbt(recovery_psbt)
+        self.assertIn("taproot_script_path_sigs", decoded["inputs"][0])
+
+        finalized = self.rpc.finalizepsbt(recovery_psbt)
+        self.assertTrue(finalized["complete"])
+        recovery_txid = self.rpc.sendrawtransaction(finalized["hex"])
+        self.wpk_rpc.generatetoaddress(1, self.wpk_rpc.getnewaddress())
+        self.assertGreaterEqual(
+            self.wrpc.gettransaction(recovery_txid)["confirmations"], 1
+        )
