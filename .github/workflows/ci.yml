@@ -224,6 +224,14 @@ jobs:
       device: coldcard
       runs-on: ubuntu-latest
 
+  test-coldcard-edge:
+    uses: ./.github/workflows/device-test.yml
+    needs: [sim-builder-coldcard-edge, bitcoind-builder, dist-builder]
+    with:
+      device: coldcard-edge
+      runs-on: ubuntu-latest
+      python_versions: '["3.14"]'
+
   test-bitbox01:
     uses: ./.github/workflows/device-test.yml
     needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
