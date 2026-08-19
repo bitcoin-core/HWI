@@ -7,7 +7,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.device == 'ledger-legacy' && 'ledger' || inputs.device }}-sim
 
@@ -73,7 +73,7 @@ runs:
         pip install -e test/work/speculos
 
     - if: startsWith(inputs.device, 'ledger')
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_legacy' || 'ledger_app' }}
 

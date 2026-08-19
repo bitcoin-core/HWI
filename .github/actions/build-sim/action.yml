@@ -46,7 +46,7 @@ runs:
         done
         tar -czf "${{ inputs.archive }}.tar.gz" ${{ inputs.paths }}
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.name }}-sim
         path: ${{ inputs.archive }}.tar.gz

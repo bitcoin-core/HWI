@@ -37,7 +37,7 @@ jobs:
       ledger: ${{ steps.gen.outputs.ledger }}
       keepkey: ${{ steps.gen.outputs.keepkey }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: gen
         shell: bash
         run: |

@@ -34,7 +34,7 @@ jobs:
           - {script: 'Bindist'}
     container: python:${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: run test
         if: ${{ matrix.test.interface }}
         uses: ./.github/actions/test-device

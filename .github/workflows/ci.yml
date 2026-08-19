@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     container: python:3.12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - run: |
           pip install poetry
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     container: python:3.12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - run: |
           pip install poetry
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/build-push-action@v6
         with:
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/build-push-action@v6
         with:
@@ -98,7 +98,7 @@ jobs:
               find dist -type f -exec sha256sum {} \;
             "
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -186,7 +186,7 @@ jobs:
     name: bitcoind builder
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/build-bitcoind
 
   test-trezor-1:
