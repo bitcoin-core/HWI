@@ -7,7 +7,7 @@ runs:
       run: |
         pip install poetry
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: dist
         path: dist/
@@ -30,7 +30,7 @@ runs:
       run: |
         poetry install; cd dist; tar -xvf hwi*linux*.tar.gz; cd ..
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: bitcoind
 

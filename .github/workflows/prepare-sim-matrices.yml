@@ -8,6 +8,9 @@ on:
       coldcard:
         description: JSON include array for coldcard
         value: ${{ jobs.prepare.outputs.coldcard }}
+      coldcard_edge:
+        description: JSON include array for Coldcard Edge
+        value: ${{ jobs.prepare.outputs.coldcard_edge }}
       bitbox:
         description: JSON include array for bitbox
         value: ${{ jobs.prepare.outputs.bitbox }}
@@ -28,19 +31,20 @@ jobs:
     outputs:
       trezor: ${{ steps.gen.outputs.trezor }}
       coldcard: ${{ steps.gen.outputs.coldcard }}
+      coldcard_edge: ${{ steps.gen.outputs.coldcard_edge }}
       bitbox: ${{ steps.gen.outputs.bitbox }}
       jade: ${{ steps.gen.outputs.jade }}
       ledger: ${{ steps.gen.outputs.ledger }}
       keepkey: ${{ steps.gen.outputs.keepkey }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: gen
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get install -y jq
           map_file=".github/sim-build-map.json"
-          for sim in trezor coldcard bitbox jade ledger keepkey; do
+          for sim in trezor coldcard coldcard_edge bitbox jade ledger keepkey; do
             include=$(jq -c --arg s "$sim" '.[$s]' "$map_file")
             if [[ -z "$include" || "$include" == "null" ]]; then
               echo "Missing entry for $sim in $map_file" >&2

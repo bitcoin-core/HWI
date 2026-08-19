@@ -19,7 +19,7 @@ jobs:
           git clone --depth 1 https://github.com/LedgerHQ/app-bitcoin-legacy.git -b legacy-1.6.6
           cd app-bitcoin-legacy
           make DEBUG=1 BOLOS_SDK=$NANOSP_SDK
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ledger_app_legacy
           path: app-bitcoin-legacy/bin/app.elf
