@@ -45,6 +45,7 @@ from .descriptor import (
     TRDescriptor,
     PKHDescriptor,
     PubkeyProvider,
+    RegisteredDescriptor,
     SHDescriptor,
     WPKHDescriptor,
     WSHDescriptor,
@@ -183,19 +184,27 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
-def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
+def signtx(
+    client: HardwareWalletClient,
+    psbt: str,
+    registration: Optional[str] = None,
+) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
 
     :param client: The client to interact with
     :param psbt: The PSBT to sign
+    :param registration: Serialized registered descriptor for BIP388 policy signing
     :return: A dictionary containing the processed PSBT serialized in Base64.
         Returned as ``{"psbt": <base64 psbt string>}``.
     """
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    result = client.sign_tx(tx).serialize()
+    registered_descriptor = None
+    if registration is not None:
+        registered_descriptor = RegisteredDescriptor.deserialize(registration)
+    result = client.sign_tx(tx, registered_descriptor).serialize()
     return {"psbt": result, "signed": result != psbt}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:

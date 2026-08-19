@@ -442,6 +442,24 @@ class Bitbox02Client(HardwareWalletClient):
                 xpub_type=bitbox02.btc.BTCRegisterScriptConfigRequest.AUTO_XPUB_TPUB,
             )
 
+    def _bip388_script_config(
+        self,
+        descriptor: Descriptor,
+    ) -> bitbox02.btc.BTCScriptConfig:
+        desc_keys = []
+        for pk in descriptor.get_pubkey_providers():
+            desc_keys.append(bitbox02.common.KeyOriginInfo(
+                root_fingerprint=pk.origin.fingerprint if pk.origin else b"",
+                keypath=pk.origin.path if pk.origin else None,
+                xpub=util.parse_xpub(pk.pubkey)
+            ))
+        policy = bitbox02.btc.BTCScriptConfig.Policy(
+            policy=descriptor.get_bip388_template(),
+            keys=desc_keys,
+        )
+        script_config = bitbox02.btc.BTCScriptConfig(policy=policy)
+        return script_config
+
     def _multisig_scriptconfig(
         self,
         threshold: int,
@@ -594,7 +612,11 @@ class Bitbox02Client(HardwareWalletClient):
         return address
 
     @bitbox02_exception
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the BitBox02.
 
@@ -604,6 +626,35 @@ class Bitbox02Client(HardwareWalletClient):
 
         Transactions with legacy inputs are not supported.
         """
+        policy_script_config: Optional[bitbox02.btc.BTCScriptConfigWithKeypath] = None
+        if registered_descriptor is not None:
+            descriptor = registered_descriptor.descriptor
+            device_fingerprint = self.get_master_fingerprint()
+            account_keypath = None
+            for pubkey in descriptor.get_pubkey_providers():
+                if (
+                    pubkey.origin is None
+                    or pubkey.origin.fingerprint != device_fingerprint
+                    or pubkey.extkey is None
+                ):
+                    continue
+                device_xpub = decode_check(self._get_xpub(pubkey.origin.path))
+                if not _xpubs_equal_ignoring_version(
+                    device_xpub,
+                    pubkey.extkey.serialize(),
+                ):
+                    continue
+                if account_keypath is not None:
+                    raise BadArgumentError("This BitBox02 occurs more than once in the policy")
+                account_keypath = pubkey.origin.path
+            if account_keypath is None:
+                raise BadArgumentError("This BitBox02 is not one of the policy keys")
+
+            policy_script_config = bitbox02.btc.BTCScriptConfigWithKeypath(
+                script_config=self._bip388_script_config(descriptor),
+                keypath=account_keypath,
+            )
+
         def find_our_key(
             keypaths: Dict[bytes, KeyOriginInfo]
         ) -> Tuple[Optional[bytes], Optional[Sequence[int]]]:
@@ -650,6 +701,8 @@ class Bitbox02Client(HardwareWalletClient):
             redeem_script: bytes,
             witness_script: bytes,
         ) -> bitbox02.btc.BTCScriptConfigWithKeypath:
+            if policy_script_config is not None:
+                return policy_script_config
             if is_p2pkh(output.scriptPubKey):
                 raise BadArgumentError(
                     "The BitBox02 does not support legacy p2pkh scripts"
@@ -993,20 +1046,6 @@ class Bitbox02Client(HardwareWalletClient):
         :returns: False, always
         """
         return False
-
-    def _bip388_script_config(self, descriptor: Descriptor) -> bitbox02.btc.BTCScriptConfig:
-        desc_keys = []
-        for pk in descriptor.get_pubkey_providers():
-            desc_keys.append(bitbox02.common.KeyOriginInfo(
-                root_fingerprint=pk.origin.fingerprint if pk.origin else b"",
-                keypath=pk.origin.path if pk.origin else None,
-                xpub=util.parse_xpub(pk.pubkey)
-            ))
-        policy = bitbox02.btc.BTCScriptConfig.Policy(
-            policy=descriptor.get_bip388_template(),
-            keys=desc_keys,
-        )
-        return bitbox02.btc.BTCScriptConfig(policy=policy)
 
     @bitbox02_exception
     def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
