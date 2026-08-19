@@ -12,6 +12,7 @@ import unittest
 
 from hwilib._cli import process_commands
 from hwilib import _bech32 as bech32
+from hwilib.devices.coldcard import _firmware_version_supports_psbt_v2
 from test_device import (
     Bitcoind,
     DeviceEmulator,
@@ -24,6 +25,25 @@ from test_device import (
     TestSignMessage,
     TestSignTx,
 )
+
+
+class TestColdcardFirmware(unittest.TestCase):
+    def test_psbt_v2_support(self):
+        versions = {
+            "5.1.4": False,
+            "5.2.0": True,
+            "5.6.0": True,
+            "1.0.0Q": True,
+            "6.6.0X": True,
+            "unknown": False,
+        }
+        for version, expected in versions.items():
+            with self.subTest(version=version):
+                self.assertEqual(
+                    _firmware_version_supports_psbt_v2(version),
+                    expected,
+                )
+
 
 class ColdcardSimulator(DeviceEmulator):
     def __init__(self, simulator, is_edge=False):
