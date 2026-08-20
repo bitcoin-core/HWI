@@ -19,7 +19,7 @@ jobs:
           git clone --branch 2.5.0 --depth 1 https://github.com/LedgerHQ/app-bitcoin.git
           cd app-bitcoin
           make DEBUG=1 COIN=bitcoin_testnet BOLOS_SDK=$NANOX_SDK
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ledger_app
           path: app-bitcoin/bin/app.elf

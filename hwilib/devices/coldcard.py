@@ -43,6 +43,7 @@ from .ckcc.constants import (
     AF_P2WSH,
     AF_P2SH,
     AF_P2WSH_P2SH,
+    AF_P2TR,
 )
 from .._base58 import (
     get_xpub_fingerprint,
@@ -77,6 +78,15 @@ from typing import (
 
 CC_SIMULATOR_SOCK = '/tmp/ckcc-simulator.sock'
 # Using the simulator: https://github.com/Coldcard/firmware/blob/master/unix/README.md
+
+
+def _firmware_version_supports_psbt_v2(version: str) -> bool:
+    if version.endswith(("Q", "X")):
+        return True
+    try:
+        return tuple(int(part) for part in version.split(".")) >= (5, 2, 0)
+    except ValueError:
+        return False
 
 
 def coldcard_exception(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -122,6 +132,12 @@ class ColdcardClient(HardwareWalletClient):
 
         return self._is_edge
 
+    def _supports_psbt_v2(self) -> bool:
+        if self.device.is_simulator or self.is_edge:
+            return True
+        version = self.device.firmware_version()[1]
+        return _firmware_version_supports_psbt_v2(version)
+
     @coldcard_exception
     def get_pubkey_at_path(self, path: str) -> ExtendedKey:
         self.device.check_mitm()
@@ -164,9 +180,11 @@ class ColdcardClient(HardwareWalletClient):
                 if our_keys > passes:
                     passes = our_keys
 
+        if tx.version == 2 and not self._supports_psbt_v2():
+            tx.convert_to_v0()
+
         for _ in range(passes):
             # Get psbt in hex and then make binary
-            tx.convert_to_v0()
             fd = io.BytesIO(base64.b64decode(tx.serialize()))
 
             # learn size (portable way)
@@ -267,7 +285,9 @@ class ColdcardClient(HardwareWalletClient):
         elif addr_type == AddressType.LEGACY:
             addr_fmt = AF_CLASSIC
         elif addr_type == AddressType.TAP:
-            raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet")
+            if not self.is_edge:
+                raise UnavailableActionError("Coldcard does not support displaying Taproot addresses yet. Use EDGE.")
+            addr_fmt = AF_P2TR
         else:
             raise BadArgumentError("Unknown address type")
 

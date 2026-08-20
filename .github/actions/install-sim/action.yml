@@ -7,7 +7,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.device == 'ledger-legacy' && 'ledger' || inputs.device }}-sim
 
@@ -18,18 +18,28 @@ runs:
         apt-get install -y libsdl2-image-2.0-0 libusb-1.0-0
         tar -xvf trezor-firmware.tar.gz
 
-    - if: inputs.device == 'coldcard'
+    - if: startsWith(inputs.device, 'coldcard')
       shell: bash
       run: |
         apt-get update
         apt-get install -y libpcsclite-dev libusb-1.0-0 swig
 
+        archive=coldcard-firmware
+        if [[ "${{ inputs.device }}" == "coldcard-edge" ]]; then
+          archive=coldcard-edge-firmware
+        fi
         # Extract the archive - this includes the full firmware directory
-        tar -xvf coldcard-firmware.tar.gz
+        tar -xvf "${archive}.tar.gz"
 
-        poetry run pip install -r test/work/firmware/requirements.txt
-        pip install -r test/work/firmware/requirements.txt
+        requirements="test/work/firmware/requirements.txt"
+        if [[ "${{ inputs.device }}" == "coldcard-edge" ]]; then
+          # Edge's full firmware requirements pin legacy development tools that
+          # are not needed to run the simulator and do not build on modern Python.
+          requirements="test/work/firmware/unix/requirements.txt"
+        fi
+        poetry run pip install -r "${requirements}"
         poetry run pip install pysdl2-dll
+        pip install -r "${requirements}"
         pip install pysdl2-dll
 
     - if: inputs.device == 'bitbox01'
@@ -63,7 +73,7 @@ runs:
         pip install -e test/work/speculos
 
     - if: startsWith(inputs.device, 'ledger')
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.device == 'ledger-legacy' && 'ledger_app_legacy' || 'ledger_app' }}
 

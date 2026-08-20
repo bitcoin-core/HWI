@@ -7,7 +7,7 @@ import unittest
 from test_base58 import TestBase58
 from test_bech32 import TestSegwitAddress
 from test_bip32 import TestBIP32
-from test_coldcard import coldcard_test_suite
+from test_coldcard import coldcard_test_suite, TestColdcardFirmware
 from test_descriptor import TestDescriptor
 from test_device import Bitcoind
 from test_psbt import TestPSBT
@@ -31,6 +31,10 @@ trezor_t_group.add_argument('--trezor-t', dest='trezor_t', help='Run Trezor T te
 coldcard_group = parser.add_mutually_exclusive_group()
 coldcard_group.add_argument('--no-coldcard', dest='coldcard', help='Do not run Coldcard test with simulator', action='store_false')
 coldcard_group.add_argument('--coldcard', dest='coldcard', help='Run Coldcard test with simulator', action='store_true')
+
+coldcard_edge_group = parser.add_mutually_exclusive_group()
+coldcard_edge_group.add_argument('--no-coldcard-edge', dest='coldcard_edge', help='Do not run Coldcard Edge test with simulator', action='store_false')
+coldcard_edge_group.add_argument('--coldcard-edge', dest='coldcard_edge', help='Run Coldcard Edge test with simulator', action='store_true')
 
 ledger_group = parser.add_mutually_exclusive_group()
 ledger_group.add_argument('--no-ledger', dest='ledger', help='Do not run Ledger test with emulator', action='store_false')
@@ -59,6 +63,7 @@ dbb_group.add_argument('--bitbox02', dest='bitbox02', help='Run BitBox02 test wi
 parser.add_argument('--trezor-1-path', dest='trezor_1_path', help='Path to Trezor 1 emulator', default='work/trezor-firmware/legacy/firmware/trezor.elf')
 parser.add_argument('--trezor-t-path', dest='trezor_t_path', help='Path to Trezor T emulator', default='work/trezor-firmware/core/emu.sh')
 parser.add_argument('--coldcard-path', dest='coldcard_path', help='Path to Coldcard simulator', default='work/firmware/unix/simulator.py')
+parser.add_argument('--coldcard-edge-path', dest='coldcard_edge_path', help='Path to Coldcard Edge simulator', default='work/firmware/unix/simulator.py')
 parser.add_argument('--keepkey-path', dest='keepkey_path', help='Path to Keepkey emulator', default='work/keepkey-firmware/bin/kkemu')
 parser.add_argument('--bitbox01-path', dest='bitbox01_path', help='Path to Digital Bitbox simulator', default='work/mcu/build/bin/simulator')
 parser.add_argument('--ledger-path', dest='ledger_path', help='Path to Ledger emulator', default='work/speculos/speculos.py')
@@ -71,7 +76,7 @@ parser.add_argument('--interface', help='Which interface to send commands over',
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
-parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None, bitbox02=None)
+parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, coldcard_edge=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None, bitbox02=None)
 
 args = parser.parse_args()
 
@@ -84,6 +89,7 @@ if not args.device_only:
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPSBT))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBIP32))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestColdcardFirmware))
     if sys.platform.startswith("linux"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
     success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
@@ -93,6 +99,7 @@ if args.all:
     args.trezor_1 = True if args.trezor_1 is None else args.trezor_1
     args.trezor_t = True if args.trezor_t is None else args.trezor_t
     args.coldcard = True if args.coldcard is None else args.coldcard
+    args.coldcard_edge = True if args.coldcard_edge is None else args.coldcard_edge
     args.keepkey = True if args.keepkey is None else args.keepkey
     args.bitbox01 = True if args.bitbox01 is None else args.bitbox01
     args.ledger = True if args.ledger is None else args.ledger
@@ -104,6 +111,7 @@ else:
     args.trezor_1 = False if args.trezor_1 is None else args.trezor_1
     args.trezor_t = False if args.trezor_t is None else args.trezor_t
     args.coldcard = False if args.coldcard is None else args.coldcard
+    args.coldcard_edge = False if args.coldcard_edge is None else args.coldcard_edge
     args.keepkey = False if args.keepkey is None else args.keepkey
     args.bitbox01 = False if args.bitbox01 is None else args.bitbox01
     args.ledger = False if args.ledger is None else args.ledger
@@ -111,7 +119,7 @@ else:
     args.jade = False if args.jade is None else args.jade
     args.bitbox02 = False if args.bitbox02 is None else args.bitbox02
 
-if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade or args.bitbox02:
+if args.trezor_1 or args.trezor_t or args.coldcard or args.coldcard_edge or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade or args.bitbox02:
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
@@ -119,6 +127,8 @@ if args.trezor_1 or args.trezor_t or args.coldcard or args.ledger or args.ledger
         success &= digitalbitbox_test_suite(args.bitbox01_path, bitcoind, args.interface)
     if success and args.coldcard:
         success &= coldcard_test_suite(args.coldcard_path, bitcoind, args.interface)
+    if success and args.coldcard_edge:
+        success &= coldcard_test_suite(args.coldcard_edge_path, bitcoind, args.interface, is_edge=True)
     if success and args.trezor_1:
         success &= trezor_test_suite(args.trezor_1_path, bitcoind, args.interface, '1')
     if success and args.trezor_t:

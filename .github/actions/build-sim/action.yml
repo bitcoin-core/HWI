@@ -16,8 +16,13 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build libltdl-dev
+        apt_options=(
+          -o Acquire::Retries=3
+          -o Acquire::http::Timeout=30
+          -o Acquire::https::Timeout=30
+        )
+        timeout 5m sudo apt-get "${apt_options[@]}" update
+        timeout 30m sudo apt-get "${apt_options[@]}" install -y gcc-arm-linux-gnueabihf libsdl2-image-dev libslirp-dev libpcsclite-dev ninja-build libltdl-dev
         pip install poetry uv
         wget https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip
         sudo unzip protoc-22.0-linux-x86_64.zip -d /usr/local
@@ -46,7 +51,7 @@ runs:
         done
         tar -czf "${{ inputs.archive }}.tar.gz" ${{ inputs.paths }}
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.name }}-sim
         path: ${{ inputs.archive }}.tar.gz
