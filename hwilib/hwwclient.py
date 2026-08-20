@@ -82,11 +82,16 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
         """
         Sign a partially signed bitcoin transaction (PSBT).
 
         :param psbt: The PSBT to sign
+        :param registered_descriptor: The registered BIP388 descriptor policy to sign with
         :return: The PSBT after being processed by the hardware wallet
         """
         raise NotImplementedError("The HardwareWalletClient base class "
@@ -138,6 +143,18 @@ class HardwareWalletClient(object):
         """
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
+
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        """Display and return an address from a BIP388 descriptor policy."""
+
+        raise NotImplementedError(
+            "This device does not support BIP388 policy address display or it is not yet implemented"
+        )
 
     def wipe_device(self) -> bool:
         """

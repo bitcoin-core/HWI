@@ -46,6 +46,8 @@ class ClientCommandCode(IntEnum):
     GET_MERKLE_LEAF_INDEX = 0x42
     GET_MORE_ELEMENTS = 0xA0
 
+CCMD_YIELD_MUSIG_PUBNONCE_TAG = 0xFFFFFFFF
+CCMD_YIELD_MUSIG_PARTIALSIGNATURE_TAG = 0xFFFFFFFE
 
 class ClientCommand:
     def execute(self, request: bytes) -> bytes:
@@ -350,7 +352,7 @@ class ClientCommandInterpreter:
         of a mapping of bytes to bytes.
 
         Adds the Merkle tree of the list of keys, and the Merkle tree of the list of corresponding
-        values, with the same semantics as the `add_known_list` applied separately to the two lists. 
+        values, with the same semantics as the `add_known_list` applied separately to the two lists.
 
         Parameters
         ----------

@@ -6,4 +6,5 @@ Example Usage
 
    bitcoin-core-usage
    examples
+   musig2
    walkthrough/walkthrough

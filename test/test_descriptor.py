@@ -1,7 +1,10 @@
 #! /usr/bin/env python3
 
 from hwilib.descriptor import (
+    TRMiniscriptDescriptor,
+    RegisteredDescriptor,
     parse_descriptor,
+    parse_registration_descriptor,
     MultisigDescriptor,
     SHDescriptor,
     TRDescriptor,
@@ -9,13 +12,67 @@ from hwilib.descriptor import (
     WPKHDescriptor,
     WSHDescriptor,
 )
-from hwilib.errors import InvalidPolicyError
+from hwilib.errors import BadArgumentError, InvalidPolicyError
 
 from binascii import unhexlify
 
 import unittest
 
 class TestDescriptor(unittest.TestCase):
+    def test_registered_miniscript_policy(self):
+        key_0 = "[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw"
+        key_1 = "[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7"
+        recovery_key = "[6738736c/86'/0'/0']xpub6CryUDWPS28eR2cDyojB8G354izmx294BdjeSvH469Ty3o2E6Tq5VjBJCn8rWBgesvTJnyXNAJ3QpLFGuNwqFXNt3gn612raffLWfdHNkYL"
+        multipath = "<0;1>/*"
+        descriptor = (
+            f"tr(musig({key_0},{key_1})/{multipath},"
+            f"and_v(v:pk({recovery_key}/{multipath}),older(12960)))"
+        )
+        parsed = parse_registration_descriptor(descriptor)
+        self.assertIsInstance(parsed, TRMiniscriptDescriptor)
+        self.assertEqual(
+            parsed.get_bip388_template(),
+            "tr(musig(@0,@1)/<0;1>/*,"
+            "and_v(v:pk(@2/<0;1>/*),older(12960)))",
+        )
+        self.assertEqual(
+            [provider.get_bip388_key_info() for provider in parsed.get_pubkey_providers()],
+            [key_0, key_1, recovery_key],
+        )
+
+        registration = RegisteredDescriptor(
+            name="recovery",
+            descriptor=parsed,
+            device_type="ledger",
+            registration=bytes(32),
+        )
+        round_trip = RegisteredDescriptor.deserialize(registration.serialize())
+        self.assertEqual(round_trip.descriptor.get_bip388_template(), parsed.get_bip388_template())
+
+        with self.assertRaisesRegex(BadArgumentError, "Only tr.*text parsing"):
+            parse_registration_descriptor(
+                f"wsh(and_v(v:pk({recovery_key}/{multipath}),older(12960)))"
+            )
+        with self.assertRaisesRegex(BadArgumentError, "Unknown Miniscript fragment"):
+            parse_registration_descriptor(
+                f"tr({key_0}/{multipath},unknown({recovery_key}/{multipath}))"
+            )
+
+    def test_derive(self):
+        xpub = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B"
+        descriptor_str = "wsh(multi(1,{0}/<0;1;2>/*,{0}/<10;11;12>/*))".format(xpub)
+        descriptor = parse_descriptor(descriptor_str)
+
+        self.assertEqual(
+            descriptor.derive(7).to_string_no_checksum(),
+            "wsh(multi(1,{0}/0/7,{0}/10/7))".format(xpub),
+        )
+        self.assertEqual(
+            descriptor.derive(7, multipath_index=2).to_string_no_checksum(),
+            "wsh(multi(1,{0}/2/7,{0}/12/7))".format(xpub),
+        )
+        self.assertEqual(descriptor.to_string_no_checksum(), descriptor_str)
+
     def test_parse_descriptor_with_origin(self):
         d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
         desc = parse_descriptor(d)
@@ -320,6 +377,16 @@ class TestDescriptor(unittest.TestCase):
             "tr([6738736c/86'/0'/0']xpub6CryUDWPS28eR2cDyojB8G354izmx294BdjeSvH469Ty3o2E6Tq5VjBJCn8rWBgesvTJnyXNAJ3QpLFGuNwqFXNt3gn612raffLWfdHNkYL/<0;1>/*)",
             ["[6738736c/86'/0'/0']xpub6CryUDWPS28eR2cDyojB8G354izmx294BdjeSvH469Ty3o2E6Tq5VjBJCn8rWBgesvTJnyXNAJ3QpLFGuNwqFXNt3gn612raffLWfdHNkYL"],
             "tr(@0/<0;1>/*)"
+        )
+        musig_descriptor = "tr(musig([6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw,[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7)/<0;1>/*)"
+        check(
+            musig_descriptor,
+            ["[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw", "[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7"],
+            "tr(musig(@0,@1)/<0;1>/*)"
+        )
+        self.assertEqual(
+            parse_descriptor(musig_descriptor).derive(7, multipath_index=1).to_string_no_checksum(hardened_char="'"),
+            "tr(musig([6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw,[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7)/1/7)",
         )
         check(
             "wsh(sortedmulti(2,[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw/<0;1>/*,[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7/<0;1>/*))",

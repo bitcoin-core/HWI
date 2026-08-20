@@ -39,7 +39,9 @@ from .errors import (
 )
 from .descriptor import (
     Descriptor,
+    RegisteredDescriptor,
     parse_descriptor,
+    parse_registration_descriptor,
     MultisigDescriptor,
     TRDescriptor,
     PKHDescriptor,
@@ -182,19 +184,27 @@ def getmasterxpub(client: HardwareWalletClient, addrtype: AddressType = AddressT
     """
     return {"xpub": client.get_master_xpub(addrtype, account).to_string()}
 
-def signtx(client: HardwareWalletClient, psbt: str) -> Dict[str, Union[bool, str]]:
+def signtx(
+    client: HardwareWalletClient,
+    psbt: str,
+    registration: Optional[str] = None,
+) -> Dict[str, Union[bool, str]]:
     """
     Sign a Partially Signed Bitcoin Transaction (PSBT) with the client.
 
     :param client: The client to interact with
     :param psbt: The PSBT to sign
+    :param registration: Serialized registered descriptor for BIP388 policy signing
     :return: A dictionary containing the processed PSBT serialized in Base64.
         Returned as ``{"psbt": <base64 psbt string>}``.
     """
     # Deserialize the transaction
     tx = PSBT()
     tx.deserialize(psbt)
-    result = client.sign_tx(tx).serialize()
+    registered_descriptor = None
+    if registration is not None:
+        registered_descriptor = RegisteredDescriptor.deserialize(registration)
+    result = client.sign_tx(tx, registered_descriptor).serialize()
     return {"psbt": result, "signed": result != psbt}
 
 def getxpub(client: HardwareWalletClient, path: str, expert: bool = False) -> Dict[str, Any]:
@@ -435,8 +445,11 @@ def displayaddress(
     client: HardwareWalletClient,
     path: Optional[str] = None,
     desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.WIT
-) -> Dict[str, str]:
+    addr_type: AddressType = AddressType.WIT,
+    registration: Optional[str] = None,
+    index: Optional[int] = None,
+    multipath_index: Optional[int] = None,
+) -> Dict[str, Union[int, str]]:
     """
     Display an address on the device for client.
     The address can be specified by the path with additional parameters, or by a descriptor.
@@ -445,10 +458,37 @@ def displayaddress(
     :param path: The path of the address to display. Mutually exclusive with ``desc``
     :param desc: The descriptor to display the address for. Mutually exclusive with ``path``
     :param addr_type: The address type to return. Only works with ``path``
+    :param registration: Serialized registered descriptor for BIP388 policy display
+    :param index: Address index to display for BIP388 policy mode
+    :param multipath_index: Multipath index to select for BIP388 policy mode
     :return: A dictionary containing the address displayed.
         Returned as ``{"address": <base58 or bech32 address string>}``.
     :raises: BadArgumentError: if an argument is malformed, missing, or conflicts.
     """
+    policy_mode = index is not None or registration is not None or multipath_index is not None
+    if policy_mode:
+        if registration is None:
+            raise BadArgumentError("Missing --registration")
+        if index is None:
+            raise BadArgumentError("Missing --index")
+        if index < 0:
+            raise BadArgumentError("Address index must be non-negative")
+        if multipath_index is None:
+            multipath_index = 0
+        elif multipath_index < 0:
+            raise BadArgumentError("Multipath index must be non-negative")
+
+        registered_descriptor = RegisteredDescriptor.deserialize(registration)
+        address = client.display_bip388_policy_address(
+            registered_descriptor,
+            index,
+            multipath_index,
+        )
+        return {
+            "address": address,
+            "index": index,
+            "multipath_index": multipath_index,
+        }
     if path is not None:
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
@@ -596,4 +636,5 @@ def register_descriptor(client: HardwareWalletClient, name: str, descriptor: str
 
     :return: A dictionary with the ``registration`` key containing a string
     """
-    return {"registration": client.register_descriptor(name, parse_descriptor(descriptor)).serialize()}
+    descriptor_obj = parse_registration_descriptor(descriptor)
+    return {"registration": client.register_descriptor(name, descriptor_obj).serialize()}

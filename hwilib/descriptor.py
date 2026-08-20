@@ -29,9 +29,12 @@ from ._serialize import (
 from base64 import b64decode, b64encode
 from binascii import unhexlify
 from collections import namedtuple
+from copy import deepcopy
 from enum import Enum
 from io import BufferedReader, BytesIO
+import re
 from typing import (
+    Dict,
     List,
     Optional,
     Tuple,
@@ -39,6 +42,18 @@ from typing import (
 
 
 MAX_TAPROOT_NODES = 128
+
+
+_EXTENDED_KEY_RE = re.compile(
+    r"(?P<origin>\[[^\]]+\])?(?P<key>[1-9A-HJ-NP-Za-km-z]{100,120})"
+)
+_MINISCRIPT_FUNCTION_RE = re.compile(r"(?<![A-Za-z0-9_])(?P<name>[a-z_:]+)\(")
+_MINISCRIPT_FUNCTIONS = {
+    "after", "and_b", "and_n", "and_v", "andor", "hash160", "hash256",
+    "multi_a", "musig", "older", "or_b", "or_c", "or_d", "or_i", "pk",
+    "pk_h", "pk_k", "pkh", "ripemd160", "sha256", "sortedmulti_a", "thresh",
+}
+_MINISCRIPT_WRAPPERS = set("acdtvjsnlu")
 
 
 ExpandedScripts = namedtuple("ExpandedScripts", ["output_script", "redeem_script", "witness_script"])
@@ -274,6 +289,76 @@ class PubkeyProvider(object):
         return self.pubkey < other.pubkey
 
 
+class MusigPubkeyProvider(PubkeyProvider):
+    """A ``musig()`` aggregate key expression with a shared derivation path."""
+
+    def __init__(
+        self,
+        participants: List['PubkeyProvider'],
+        deriv_path: Optional[List[List[int]]],
+        ranged: bool,
+    ) -> None:
+        self.participants = participants
+        self.origin = None
+        self.pubkey = ""
+        self.deriv_path = deriv_path
+        self.expr_index = participants[0].expr_index
+        self.ranged = ranged
+        self.multipath_len = max([len(p) for p in deriv_path]) if deriv_path else 1
+        self.extkey = None
+
+    @classmethod
+    def parse_musig(cls, s: str, key_expr_index: int) -> Tuple['MusigPubkeyProvider', int]:
+        func, expr = _get_func_expr(s)
+        if func != "musig":
+            raise ValueError(f"Expected musig() key expression, got {func}()")
+
+        close_idx = s.rindex(")")
+        suffix = s[close_idx + 1:]
+        deriv_path = None
+        ranged = False
+        if suffix:
+            if not suffix.startswith("/"):
+                raise ValueError("MuSig derivation path must begin with '/'")
+            path_str = suffix[1:]
+            ranged = path_str.endswith("*")
+            if ranged:
+                path_str = path_str[:-2]
+            if path_str:
+                deriv_path = parse_multipath(path_str)
+
+        participants = []
+        while expr:
+            participant, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+            if participant.deriv_path is not None or participant.ranged:
+                raise ValueError("MuSig participant derivation paths must follow musig()")
+            participants.append(participant)
+        if len(participants) < 2:
+            raise ValueError("musig() requires at least two participants")
+        return cls(participants, deriv_path, ranged), key_expr_index
+
+    def to_string(self, hardened_char: str = "h") -> str:
+        participants = ",".join(p.to_string(hardened_char) for p in self.participants)
+        result = f"musig({participants})"
+        if self.deriv_path:
+            result += multipath_to_string(self.deriv_path, hardened_char)
+        if self.ranged:
+            result += "/*"
+        return result
+
+    def get_bip388_placeholder(self) -> str:
+        if not self.ranged:
+            raise InvalidPolicyError("BIP 388 requires all pubkeys to be ranged")
+        if self.multipath_len > 2:
+            raise InvalidPolicyError("BIP 388 requires all multipath specifiers to be exactly 2 elements")
+        participants = ",".join(f"@{p.expr_index}" for p in self.participants)
+        deriv_path = multipath_to_string(self.deriv_path, hardened_char="'") if self.deriv_path else ""
+        return f"musig({participants}){deriv_path}/*"
+
+    def get_pubkey_bytes(self, pos: int, multipath_pos: int = 0) -> bytes:
+        raise NotImplementedError("HWI cannot expand musig() aggregate keys")
+
+
 class Descriptor(object):
     r"""
     An abstract class for Descriptors themselves.
@@ -349,10 +434,33 @@ class Descriptor(object):
 
         :return: List of pubkey expression strings
         """
-        out = [p for p in self.pubkeys]
+        out = []
+        for pubkey in self.pubkeys:
+            if isinstance(pubkey, MusigPubkeyProvider):
+                out.extend(pubkey.participants)
+            else:
+                out.append(pubkey)
         for s in self.subdescriptors:
             out.extend(s.get_pubkey_providers())
         return out
+
+    def get_derivation_providers(self) -> list['PubkeyProvider']:
+        """Get key expressions whose derivation suffixes belong to the descriptor."""
+        out = list(self.pubkeys)
+        for subdescriptor in self.subdescriptors:
+            out.extend(subdescriptor.get_derivation_providers())
+        return out
+
+    def derive(self, pos: int, multipath_index: int = 0) -> 'Descriptor':
+        """Select a multipath entry and address index from a ranged descriptor."""
+
+        descriptor = deepcopy(self)
+        for pubkey in descriptor.get_derivation_providers():
+            path = pubkey.get_deriv_path(pos, multipath_index)
+            pubkey.deriv_path = [[step] for step in path] or None
+            pubkey.ranged = False
+            pubkey.multipath_len = 1
+        return descriptor
 
 
 class PKDescriptor(Descriptor):
@@ -708,12 +816,19 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
         multipath_len = None
-        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        internal_expr, expr = _get_expr(expr)
+        internal_key: PubkeyProvider
+        if internal_expr.startswith("musig("):
+            internal_key, key_expr_index = MusigPubkeyProvider.parse_musig(internal_expr, key_expr_index)
+        else:
+            internal_key = PubkeyProvider.parse(internal_expr, key_expr_index)
+            key_expr_index += 1
         if internal_key.multipath_len > 1:
             multipath_len = internal_key.multipath_len
         subscripts = []
         depths = []
         if expr:
+            expr = _get_const(expr, ",")
             # Path from top of the tree to what we're currently processing.
             # branches[i] == False: left branch in the i'th step from the top
             # branches[i] == true: right branch
@@ -776,6 +891,93 @@ def parse_descriptor(desc: str) -> 'Descriptor':
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
     return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
 
+
+class TRMiniscriptDescriptor(Descriptor):
+    """A ``tr()`` descriptor whose tapscript leaves are kept as text."""
+
+    def __init__(self, descriptor: str) -> None:
+        if descriptor.count("#") > 1:
+            raise BadArgumentError("Descriptor has more than one checksum separator")
+        if "#" in descriptor:
+            descriptor, checksum = descriptor.split("#", 1)
+            expected = DescriptorChecksum(descriptor)
+            if checksum != expected:
+                raise BadArgumentError(
+                    f"The descriptor checksum does not match: got {checksum}, expected {expected}"
+                )
+        func, expr = _get_func_expr(descriptor)
+        if func != "tr" or not descriptor.endswith(")"):
+            raise BadArgumentError("Only tr() Miniscript policies can use text parsing")
+        internal_key, tree = _get_expr(expr)
+        if not tree.startswith(",") or len(tree) == 1:
+            raise BadArgumentError("Text-parsed tr() policy must have tapscript leaves")
+        parse_descriptor(f"tr({internal_key})")
+
+        for match in _MINISCRIPT_FUNCTION_RE.finditer(tree[1:]):
+            name = match.group("name")
+            parts = name.split(":")
+            wrappers = parts[0] if len(parts) == 2 else ""
+            if len(parts) > 2 or any(wrapper not in _MINISCRIPT_WRAPPERS for wrapper in wrappers):
+                raise BadArgumentError(f"Unknown Miniscript wrapper: {name}")
+            if parts[-1] not in _MINISCRIPT_FUNCTIONS:
+                raise BadArgumentError(f"Unknown Miniscript fragment: {parts[-1]}")
+
+        self._descriptor = descriptor
+        key_indexes: Dict[str, int] = {}
+        providers: List[PubkeyProvider] = []
+        template_parts: List[str] = []
+        last_end = 0
+        for match in _EXTENDED_KEY_RE.finditer(descriptor):
+            key = match.group("key")
+            try:
+                extkey = ExtendedKey.deserialize(key)
+            except Exception as exc:
+                raise BadArgumentError(f"Invalid extended key in descriptor: {key}") from exc
+            if extkey.is_private:
+                raise BadArgumentError("BIP388 key information must use extended public keys")
+
+            origin_str = ""
+            raw_origin = match.group("origin")
+            if raw_origin is not None:
+                try:
+                    origin = KeyOriginInfo.from_string(raw_origin[1:-1])
+                except Exception as exc:
+                    raise BadArgumentError(f"Invalid key origin: {raw_origin}") from exc
+                normalized_origin = origin.to_string(hardened_char="'")
+                origin_str = f"[{normalized_origin}]"
+            key_info = origin_str + extkey.to_string()
+            if key_info not in key_indexes:
+                key_indexes[key_info] = len(providers)
+                providers.append(PubkeyProvider.parse(key_info, len(providers)))
+
+            template_parts.append(descriptor[last_end:match.start()])
+            template_parts.append(f"@{key_indexes[key_info]}")
+            last_end = match.end()
+
+        if not providers:
+            raise BadArgumentError("Descriptor does not contain any extended public keys")
+        template_parts.append(descriptor[last_end:])
+        self._template = "".join(template_parts)
+        super().__init__(providers, [], "")
+
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
+        return self._descriptor
+
+    def get_bip388_template(self) -> str:
+        return self._template
+
+    def derive(self, pos: int, change: bool = False) -> 'Descriptor':
+        raise NotImplementedError("HWI cannot expand this registered policy descriptor")
+
+
+def parse_registration_descriptor(desc: str) -> 'Descriptor':
+    """Parse a descriptor, preserving tapscript Miniscript leaves as text."""
+
+    try:
+        return parse_descriptor(desc)
+    except ValueError:
+        return TRMiniscriptDescriptor(desc)
+
 class RegisteredDescriptor:
     """
     An object containing a policy that was registered with a device
@@ -820,7 +1022,7 @@ class RegisteredDescriptor:
             raise BadArgumentError("Serialized policy registration has unknown version number")
 
         name = deser_string(s).decode()
-        descriptor = parse_descriptor(deser_string(s).decode())
+        descriptor = parse_registration_descriptor(deser_string(s).decode())
         device_type = deser_string(s).decode()
         registration = deser_string(s)
 

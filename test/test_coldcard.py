@@ -21,6 +21,7 @@ from test_device import (
     TestDisplayAddress,
     TestGetKeypool,
     TestGetDescriptors,
+    TestMuSig2,
     TestRegisterDescriptor,
     TestSignMessage,
     TestSignTx,
@@ -203,6 +204,7 @@ def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
     suite.addTest(DeviceTestCase.parameterize(TestRegisterDescriptor, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=False))
     if is_edge:
         suite.addTest(DeviceTestCase.parameterize(TestColdcardEdgeDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+        suite.addTest(DeviceTestCase.parameterize(TestMuSig2, bitcoind, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()

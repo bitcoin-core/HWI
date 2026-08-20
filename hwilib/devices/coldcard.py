@@ -13,6 +13,7 @@ from ..descriptor import (
     Descriptor,
     MultisigDescriptor,
     RegisteredDescriptor,
+    WSHDescriptor,
 )
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -115,10 +116,10 @@ class ColdcardClient(HardwareWalletClient):
             device.open_path(path.encode())
             self.device = ColdcardDevice(dev=device)
 
-        self._is_edge = None
+        self._is_edge: Optional[bool] = None
 
     @property
-    def is_edge(self):
+    def is_edge(self) -> bool:
         """
         Cached property, no need to ask device more than once
         :return: bool
@@ -130,7 +131,7 @@ class ColdcardClient(HardwareWalletClient):
                 # silent fail, normal firmware is implied
                 pass
 
-        return self._is_edge
+        return bool(self._is_edge)
 
     def _supports_psbt_v2(self) -> bool:
         if self.device.is_simulator or self.is_edge:
@@ -154,7 +155,11 @@ class ColdcardClient(HardwareWalletClient):
         return struct.pack('<I', self.device.master_fingerprint)
 
     @coldcard_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptor: Optional[RegisteredDescriptor] = None,
+    ) -> PSBT:
         """
         Sign a transaction with the Coldcard.
 
@@ -162,6 +167,7 @@ class ColdcardClient(HardwareWalletClient):
         - Multisigs need to be registered on the device before a transaction spending that multisig will be signed by the device.
         - Multisigs must use BIP 67. This can be accomplished in Bitcoin Core using the `sortedmulti()` descriptor, available in Bitcoin Core 0.20.
         """
+        # registered_descriptor is intentionally unused because the descriptor was stored by register_descriptor.
         self.device.check_mitm()
 
         # Get this devices master key fingerprint
@@ -171,7 +177,7 @@ class ColdcardClient(HardwareWalletClient):
         # For multisigs, we may need to do multiple passes if we appear in an input multiple times
         passes = 1
         if not self.is_edge:
-            for psbt_in in tx.inputs:
+            for psbt_in in psbt.inputs:
                 our_keys = 0
                 for key in psbt_in.hd_keypaths.keys():
                     keypath = psbt_in.hd_keypaths[key]
@@ -180,12 +186,12 @@ class ColdcardClient(HardwareWalletClient):
                 if our_keys > passes:
                     passes = our_keys
 
-        if tx.version == 2 and not self._supports_psbt_v2():
-            tx.convert_to_v0()
+        if psbt.version == 2 and not self._supports_psbt_v2():
+            psbt.convert_to_v0()
 
         for _ in range(passes):
             # Get psbt in hex and then make binary
-            fd = io.BytesIO(base64.b64decode(tx.serialize()))
+            fd = io.BytesIO(base64.b64decode(psbt.serialize()))
 
             # learn size (portable way)
             sz = fd.seek(0, 2)
@@ -231,10 +237,10 @@ class ColdcardClient(HardwareWalletClient):
 
             result = self.device.download_file(result_len, result_sha, file_number=1)
 
-            tx = PSBT()
-            tx.deserialize(base64.b64encode(result).decode())
+            psbt = PSBT()
+            psbt.deserialize(base64.b64encode(result).decode())
 
-        return tx
+        return psbt
 
     @coldcard_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:
@@ -346,6 +352,36 @@ class ColdcardClient(HardwareWalletClient):
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return address
 
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        if self.is_edge:
+            address = self.device.send_recv(
+                CCProtocolPacker.miniscript_address(registered_descriptor.name, multipath_index, index),
+                timeout=None,
+            )
+            assert isinstance(address, str)
+            if self.device.is_simulator:
+                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+            return address
+
+        descriptor = registered_descriptor.descriptor.derive(index, multipath_index)
+        if (
+            not isinstance(descriptor, WSHDescriptor)
+            or len(descriptor.subdescriptors) != 1
+            or not isinstance(descriptor.subdescriptors[0], MultisigDescriptor)
+        ):
+            raise BadArgumentError("Coldcard only supports wsh(sortedmulti()) policies")
+        address = self.display_multisig_address(
+            AddressType.WIT,
+            descriptor.subdescriptors[0],
+        )
+        assert isinstance(address, str)
+        return address
+
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
         The Coldcard does not support setup via software.
@@ -438,7 +474,7 @@ class ColdcardClient(HardwareWalletClient):
         Only COLDCARD EDGE support taproot.
         :returns: Whether Taproot is supported
         """
-        return self.is_edge
+        return bool(self.is_edge)
 
     @coldcard_exception
     def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
@@ -471,9 +507,20 @@ class ColdcardClient(HardwareWalletClient):
             raise DeviceFailureError(f"Wrong checksum, expected {expect.hex()}, got {result.hex()}")
 
         # Register the descriptor
-        self.device.send_recv(CCProtocolPacker.multisig_enroll(size, expect), timeout=None)
+        enroll = (
+            CCProtocolPacker.miniscript_enroll
+            if self.is_edge
+            else CCProtocolPacker.multisig_enroll
+        )
+        self.device.send_recv(enroll(size, expect), timeout=None)
         if self.device.is_simulator:
+            if self.is_edge:
+                # Wait for the enrollment story to start accepting input.
+                time.sleep(1)
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+            if self.is_edge:
+                # Enrollment displays a two-second "Saved" confirmation.
+                time.sleep(2.1)
         return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="coldcard", registration=b"")
 
 

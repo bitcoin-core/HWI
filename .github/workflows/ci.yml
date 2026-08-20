@@ -232,6 +232,45 @@ jobs:
       runs-on: ubuntu-latest
       python_versions: '["3.14"]'
 
+  test-interoperability:
+    name: Python 3.14 interoperability cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [sim-builder-coldcard-edge, sim-builder-ledger, ledger-app-builder, bitcoind-builder]
+    container: python:3.14
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          pip install poetry
+          poetry install
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bitcoind
+
+      - run: |
+          tar -xvf bitcoind.tar.gz
+
+      - name: Install Coldcard Edge simulator
+        uses: ./.github/actions/install-sim
+        with:
+          device: coldcard-edge
+
+      - name: Install Ledger simulator
+        uses: ./.github/actions/install-sim
+        with:
+          device: ledger
+
+      - name: Run interoperability test
+        run: |
+          cd test
+          poetry run python test_interoperability.py --interface=cli
+
+      - if: failure()
+        run: |
+          tail -v -n +1 test/*-emulator.std* || true
+
   test-bitbox01:
     uses: ./.github/workflows/device-test.yml
     needs: [sim-builder-bitbox, bitcoind-builder, dist-builder]
