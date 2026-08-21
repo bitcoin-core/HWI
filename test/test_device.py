@@ -14,6 +14,7 @@ import unittest
 from typing import Dict
 
 from authproxy import AuthServiceProxy, JSONRPCException
+from hwilib import _bech32 as bech32
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
 from hwilib.descriptor import AddChecksum, parse_descriptor, PubkeyProvider, RegisteredDescriptor
@@ -806,3 +807,24 @@ class TestRegisterDescriptor(DeviceTestCase):
             self.assertGreater(len(reg.registration), 0)
         else:
             self.assertEqual(len(reg.registration), 0)
+
+        address_index = 7
+        multipath_index = 1
+        expected_address = self.rpc.deriveaddresses(
+            reg.descriptor.to_string(), [address_index, address_index]
+        )[multipath_index][0]
+        result = self.do_command(self.dev_args + [
+            "displayaddress",
+            "--index", str(address_index),
+            "--multipath-index", str(multipath_index),
+            "--registration", result["registration"],
+        ])
+        self.assertNotIn("error", result)
+        self.assertNotIn("code", result)
+        self.assertIn("address", result)
+        self.assertEqual(result["index"], address_index)
+        self.assertEqual(result["multipath_index"], multipath_index)
+        self.assertEqual(
+            bech32.decode("bcrt", expected_address),
+            bech32.decode("tb", result["address"]),
+        )

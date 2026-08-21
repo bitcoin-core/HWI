@@ -13,33 +13,43 @@
             "text": "Confirm",
             "x": 43, "y": 37,
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
             "text": "Confirm",
             "x": 41, "y": 34,
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
             "text": "Confirm account ",
             "actions": [
-                [ "button", 1, true ],
+                [ "button", 3, true ],
+                [ "button", 3, false ]
+            ]
+        },
+        {
+            "regexp": "^(Address|Review|Account name|Amount|External amounts|You spend|You receive|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Our key|Their key|Unspendable key|Spend from|Spending policy|Primary spending path|Spending path|Transaction output|From account|Wallet name|Wallet policy|Descriptor template|Verify [Bb]itcoin|Output|Warning).*",
+            "actions": [
                 [ "button", 2, true ],
-                [ "button", 1, false ],
                 [ "button", 2, false ]
             ]
         },
         {
-            "regexp": "^(Address|Review|Account name|Amount|External amounts|You spend|You receive|Fee|Confirm|The derivation|Derivation path|Reject if|The change path|Change path|Register wallet|Policy map|Key|Path|Public key|Our key|Their key|Unspendable key|Spend from|Spending policy|Primary spending path|Spending path|Transaction output|From account|Wallet name|Wallet policy|Descriptor template|Verify [Bb]itcoin|Output|Warning).*",
+            "regexp": "^Fee.*",
+            "y": 3,
+            "actions": [
+                [ "button", 2, true ],
+                [ "button", 2, false ]
+            ]
+        },
+        {
+            "regexp": "^Fees$",
+            "y": 7,
             "actions": [
                 [ "button", 2, true ],
                 [ "button", 2, false ]
@@ -63,10 +73,8 @@
         {
             "regexp": "^(Accept|Approve|Continue|Sign message|Sign transaction|Register account).*",
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
@@ -102,10 +110,8 @@
                 [ "seen_msg_hash", true ]
             ],
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ],
+                [ "button", 3, true ],
+                [ "button", 3, false ],
                 [ "setbool", "seen_msg_hash", false ]
             ]
         }

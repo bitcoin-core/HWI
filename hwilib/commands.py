@@ -39,6 +39,7 @@ from .errors import (
 )
 from .descriptor import (
     Descriptor,
+    RegisteredDescriptor,
     parse_descriptor,
     MultisigDescriptor,
     TRDescriptor,
@@ -435,8 +436,11 @@ def displayaddress(
     client: HardwareWalletClient,
     path: Optional[str] = None,
     desc: Optional[str] = None,
-    addr_type: AddressType = AddressType.WIT
-) -> Dict[str, str]:
+    addr_type: AddressType = AddressType.WIT,
+    registration: Optional[str] = None,
+    index: Optional[int] = None,
+    multipath_index: Optional[int] = None,
+) -> Dict[str, Union[int, str]]:
     """
     Display an address on the device for client.
     The address can be specified by the path with additional parameters, or by a descriptor.
@@ -445,10 +449,37 @@ def displayaddress(
     :param path: The path of the address to display. Mutually exclusive with ``desc``
     :param desc: The descriptor to display the address for. Mutually exclusive with ``path``
     :param addr_type: The address type to return. Only works with ``path``
+    :param registration: Serialized registered descriptor for BIP388 policy display
+    :param index: Address index to display for BIP388 policy mode
+    :param multipath_index: Multipath index to select for BIP388 policy mode
     :return: A dictionary containing the address displayed.
         Returned as ``{"address": <base58 or bech32 address string>}``.
     :raises: BadArgumentError: if an argument is malformed, missing, or conflicts.
     """
+    policy_mode = index is not None or registration is not None or multipath_index is not None
+    if policy_mode:
+        if registration is None:
+            raise BadArgumentError("Missing --registration")
+        if index is None:
+            raise BadArgumentError("Missing --index")
+        if index < 0:
+            raise BadArgumentError("Address index must be non-negative")
+        if multipath_index is None:
+            multipath_index = 0
+        elif multipath_index < 0:
+            raise BadArgumentError("Multipath index must be non-negative")
+
+        registered_descriptor = RegisteredDescriptor.deserialize(registration)
+        address = client.display_bip388_policy_address(
+            registered_descriptor,
+            index,
+            multipath_index,
+        )
+        return {
+            "address": address,
+            "index": index,
+            "multipath_index": multipath_index,
+        }
     if path is not None:
         return {"address": client.display_singlesig_address(path, addr_type)}
     elif desc is not None:
