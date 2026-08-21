@@ -65,5 +65,45 @@ class TestPSBT(unittest.TestCase):
 
         self.assertEqual(psbt.tx.vin[0].nSequence, 0xffffffff)
 
+    def test_has_fingerprint(self):
+        cases = [
+            ("BIP32", 7, {"19542eb0": True, "00000001": False}),
+            ("Taproot BIP32", 22, {"7c461e5d": True, "00000001": False}),
+        ]
+        for name, vector, fingerprints in cases:
+            with self.subTest(name=name):
+                psbt = PSBT()
+                psbt.deserialize(self.data["valid"][vector])
+                for fingerprint, expected in fingerprints.items():
+                    self.assertEqual(
+                        psbt.inputs[0].has_fingerprint(bytes.fromhex(fingerprint)),
+                        expected,
+                    )
+
+    def test_has_signature(self):
+        cases = [
+            ("partial signature", 4, {"b4a6ba67": True}),
+            (
+                "partial signature for another fingerprint",
+                7,
+                {"19542eb0": True, "e81a5744": False},
+            ),
+            ("Taproot key path", 9, {"772b2da7": True}),
+            (
+                "Taproot script path",
+                22,
+                {"2680dd6e": True, "580b0887": False},
+            ),
+        ]
+        for name, vector, fingerprints in cases:
+            with self.subTest(name=name):
+                psbt = PSBT()
+                psbt.deserialize(self.data["valid"][vector])
+                for fingerprint, expected in fingerprints.items():
+                    self.assertEqual(
+                        psbt.inputs[0].has_signature(bytes.fromhex(fingerprint)),
+                        expected,
+                    )
+
 if __name__ == "__main__":
     unittest.main()
