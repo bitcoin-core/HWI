@@ -13,6 +13,7 @@ from ..descriptor import (
     Descriptor,
     MultisigDescriptor,
     RegisteredDescriptor,
+    WSHDescriptor,
 )
 from ..hwwclient import HardwareWalletClient
 from ..errors import (
@@ -345,6 +346,40 @@ class ColdcardClient(HardwareWalletClient):
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return address
+
+    def display_bip388_policy_address(
+        self,
+        registered_descriptor: RegisteredDescriptor,
+        index: int,
+        multipath_index: int = 0,
+    ) -> str:
+        if self.is_edge:
+            if multipath_index not in (0, 1):
+                raise BadArgumentError("Coldcard Edge only supports receive and change branches")
+            address = self.device.send_recv(
+                CCProtocolPacker.miniscript_address(
+                    registered_descriptor.name,
+                    change=bool(multipath_index),
+                    idx=index,
+                ),
+                timeout=None,
+            )
+            assert isinstance(address, str)
+            if self.device.is_simulator:
+                self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
+            return address
+
+        descriptor = registered_descriptor.descriptor.derive(index, multipath_index)
+        if (
+            not isinstance(descriptor, WSHDescriptor)
+            or len(descriptor.subdescriptors) != 1
+            or not isinstance(descriptor.subdescriptors[0], MultisigDescriptor)
+        ):
+            raise BadArgumentError("Coldcard only supports wsh(sortedmulti()) policies")
+        return self.display_multisig_address(
+            AddressType.WIT,
+            descriptor.subdescriptors[0],
+        )
 
     def setup_device(self, label: str = "", passphrase: str = "") -> bool:
         """
