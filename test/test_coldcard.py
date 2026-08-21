@@ -200,7 +200,14 @@ def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
     suite.addTest(DeviceTestCase.parameterize(TestDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
-    suite.addTest(DeviceTestCase.parameterize(TestRegisterDescriptor, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=False))
+    suite.addTest(DeviceTestCase.parameterize(
+        TestRegisterDescriptor,
+        bitcoind,
+        emulator=dev_emulator,
+        interface=interface,
+        returns_registration=False,
+        supports_multiple_policies=is_edge,
+    ))
     if is_edge:
         suite.addTest(DeviceTestCase.parameterize(TestColdcardEdgeDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
 

@@ -23,6 +23,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -391,17 +392,23 @@ class DigitalbitboxClient(HardwareWalletClient):
         return xpub
 
     @digitalbitbox_exception
-    def sign_tx(self, tx: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
 
+        if registered_descriptors:
+            raise UnavailableActionError("The Digital Bitbox does not support BIP388 policy signing")
         # Create a transaction with all scriptsigs blanked out
-        blank_tx = tx.get_unsigned_tx()
+        blank_tx = psbt.get_unsigned_tx()
 
         # Get the master key fingerprint
         master_fp = self.get_master_fingerprint()
 
         # create sighashes
         sighash_tuples = []
-        for txin, psbt_in, i_num in zip(blank_tx.vin, tx.inputs, range(len(blank_tx.vin))):
+        for txin, psbt_in, i_num in zip(blank_tx.vin, psbt.inputs, range(len(blank_tx.vin))):
             sighash = b""
             utxo = None
             if psbt_in.witness_utxo:
@@ -497,7 +504,7 @@ class DigitalbitboxClient(HardwareWalletClient):
 
         # Return early if nothing to do
         if len(sighash_tuples) == 0:
-            return tx
+            return psbt
 
         for i in range(0, len(sighash_tuples), 15):
             tups = sighash_tuples[i:i + 15]
@@ -537,9 +544,9 @@ class DigitalbitboxClient(HardwareWalletClient):
 
             # add sigs to tx
             for tup, sig in zip(tups, der_sigs):
-                tx.inputs[tup[2]].partial_sigs[tup[3]] = sig
+                psbt.inputs[tup[2]].partial_sigs[tup[3]] = sig
 
-        return tx
+        return psbt
 
     @digitalbitbox_exception
     def sign_message(self, message: Union[str, bytes], keypath: str) -> str:

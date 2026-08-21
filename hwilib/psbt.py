@@ -164,6 +164,40 @@ class PartiallySignedInput:
         self.musig2_partial_sigs.clear()
         self.unknown.clear()
 
+    def has_fingerprint(self, fingerprint: bytes) -> bool:
+        """
+        Return whether this input contains a key with the specified fingerprint.
+        """
+        return any(
+            origin.fingerprint == fingerprint
+            for origin in self.hd_keypaths.values()
+        ) or any(
+            origin.fingerprint == fingerprint
+            for _, origin in self.tap_bip32_paths.values()
+        )
+
+    def has_signature(self, fingerprint: bytes) -> bool:
+        """
+        Return whether a key with the specified fingerprint has a signature.
+        """
+        for pubkey, origin in self.hd_keypaths.items():
+            if (
+                origin.fingerprint == fingerprint
+                and pubkey in self.partial_sigs
+            ):
+                return True
+        for pubkey, (leaf_hashes, origin) in self.tap_bip32_paths.items():
+            if origin.fingerprint != fingerprint:
+                continue
+            if not leaf_hashes and self.tap_key_sig:
+                return True
+            if any(
+                (pubkey, leaf_hash) in self.tap_script_sigs
+                for leaf_hash in leaf_hashes
+            ):
+                return True
+        return False
+
     def deserialize(self, f: Readable) -> None:
         """
         Deserialize a serialized PSBT input.

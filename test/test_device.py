@@ -197,6 +197,29 @@ class DeviceTestCase(unittest.TestCase):
         self.wrpc = self.bitcoind.get_wallet_rpc(wallet_name)
         self.wpk_rpc = self.bitcoind.get_wallet_rpc("supply")
 
+    def sign_and_finalize(self, psbt: str, *signtx_args: str) -> Dict:
+        """Sign a PSBT with the device and assert that it finalizes."""
+        sign_res = self.do_command(
+            self.dev_args + ["signtx", *signtx_args, psbt]
+        )
+        self.assertNotIn("error", sign_res)
+        self.assertTrue(sign_res["signed"])
+
+        finalize_res = self.wrpc.finalizepsbt(sign_res["psbt"])
+        self.assertTrue(finalize_res["complete"])
+        return finalize_res
+
+    def _set_global_xpubs(
+        self,
+        psbt: str,
+        xpubs: Dict[bytes, KeyOriginInfo],
+    ) -> str:
+        """Replace a PSBT's global xpub map."""
+        psbt_obj = PSBT()
+        psbt_obj.deserialize(psbt)
+        psbt_obj.xpub = xpubs
+        return psbt_obj.serialize()
+
     def setUp(self):
         self.emulator.start()
 
@@ -371,10 +394,7 @@ class TestSignTx(DeviceTestCase):
 
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
-            sign_res = self.do_command(self.dev_args + ['signtx', psbt])
-            finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
-            self.assertTrue(sign_res["signed"])
-            self.assertTrue(finalize_res["complete"])
+            finalize_res = self.sign_and_finalize(psbt)
         else:
             # Sign only input one on first pass
             # then rest on second pass to test ability to successfully
@@ -575,10 +595,7 @@ class TestSignTx(DeviceTestCase):
             )["psbt"]
 
             # We need to modify the psbt to include our xpubs as Core does not include xpubs
-            psbt_obj = PSBT()
-            psbt_obj.deserialize(psbt)
-            psbt_obj.xpub = xpubs
-            psbt = psbt_obj.serialize()
+            psbt = self._set_global_xpubs(psbt, xpubs)
 
             if external:
                 # Sign with unknown inputs in two steps
@@ -782,22 +799,41 @@ class TestSignMessage(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
 class TestRegisterDescriptor(DeviceTestCase):
-    def __init__(self, *args, returns_registration, sorted=True, **kwargs):
+    def __init__(
+        self,
+        *args,
+        returns_registration,
+        sorted=True,
+        supports_multiple_policies=True,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.returns_registration = returns_registration
         self.sorted = sorted
+        self.supports_multiple_policies = supports_multiple_policies
 
-    def test_register_descriptor(self):
-        account_path = "m/48h/1h/0h/2h"
+    def setUp(self):
+        super().setUp()
+        self.setup_wallets()
+
+    def _descriptor(self, account: int) -> str:
+        account_path = f"m/48h/1h/{account}h/2h"
         account_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
         multi = "sortedmulti" if self.sorted else "multi"
-        descriptor = f"wsh({multi}(1,[{self.emulator.fingerprint}{account_path[1:]}]{account_xpub}/<0;1>/*,[1a0f5425{account_path[1:]}]tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H/<0;1>/*))" # noqa: E702
-        desc_name = "HWI_testing"
-        result = self.do_command(self.dev_args + ["registerdescriptor", desc_name, descriptor])
+        cosigner_origin = "[1a0f5425/48h/1h/0h/2h]"
+        return f"wsh({multi}(1,[{self.emulator.fingerprint}{account_path[1:]}]{account_xpub}/<0;1>/*,{cosigner_origin}tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H/<0;1>/*))" # noqa: E702
+
+    def _register_descriptor(self, name: str, account: int) -> tuple[str, str]:
+        descriptor = self._descriptor(account)
+        result = self.do_command(self.dev_args + ["registerdescriptor", name, descriptor])
 
         self.assertNotIn("error", result)
         self.assertIn("registration", result)
-        reg_str = result["registration"]
+        return descriptor, result["registration"]
+
+    def test_register_descriptor(self):
+        descriptor, reg_str = self._register_descriptor("HWI_testing", 0)
+        desc_name = "HWI_testing"
         reg = RegisteredDescriptor.deserialize(reg_str)
         self.assertEqual(reg.name, desc_name)
         self.assertEqual(reg.descriptor.to_string_no_checksum(), descriptor)
@@ -806,3 +842,104 @@ class TestRegisterDescriptor(DeviceTestCase):
             self.assertGreater(len(reg.registration), 0)
         else:
             self.assertEqual(len(reg.registration), 0)
+
+        import_result = self.wrpc.importdescriptors([{
+            "desc": AddChecksum(descriptor),
+            "timestamp": "now",
+            "active": True,
+        }])
+        self.assertTrue(import_result[0]["success"])
+
+        self.wpk_rpc.sendtoaddress(self.wrpc.getnewaddress(), 1)
+        self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
+        psbt = self.wrpc.walletcreatefundedpsbt(
+            [],
+            [{self.wpk_rpc.getnewaddress(): 0.5}],
+            0,
+            {},
+            True,
+        )["psbt"]
+        for include_xpubs in (False, True):
+            with self.subTest(include_xpubs=include_xpubs):
+                xpubs = {}
+                if include_xpubs:
+                    for provider in reg.descriptor.get_pubkey_providers():
+                        assert provider.extkey is not None
+                        assert provider.origin is not None
+                        xpubs[provider.extkey.serialize()] = provider.origin
+
+                self.sign_and_finalize(
+                    self._set_global_xpubs(psbt, xpubs),
+                    "--registration",
+                    reg_str,
+                )
+
+    def test_sign_multiple_registered_descriptors(self):
+        if not self.supports_multiple_policies:
+            self.skipTest("Device only supports one registered policy per signing call")
+
+        descriptors = []
+        registrations = []
+        for account in range(2):
+            descriptor, registration = self._register_descriptor(f"HWI_testing_{account}", account)
+            descriptors.append(descriptor)
+            registrations.append(registration)
+
+        imports = [{
+            "desc": AddChecksum(descriptor),
+            "timestamp": "now",
+            "range": [0, 0],
+        } for descriptor in descriptors]
+        import_result = self.wrpc.importdescriptors(imports)
+        self.assertTrue(all(result["success"] for result in import_result))
+
+        addresses = [
+            self.rpc.deriveaddresses(AddChecksum(descriptor), [0, 0])[0][0]
+            for descriptor in descriptors
+        ]
+
+        device_descriptors = self.do_command(self.dev_args + ["getdescriptors"])
+        inferred_imports = []
+        for key, internal in (("receive", False), ("internal", True)):
+            descriptor = next(
+                descriptor
+                for descriptor in device_descriptors[key]
+                if descriptor.startswith("wpkh(")
+            )
+            inferred_imports.append({
+                "desc": descriptor,
+                "timestamp": "now",
+                "range": [0, 0],
+                "active": True,
+                "internal": internal,
+            })
+        inferred_result = self.wrpc.importdescriptors(inferred_imports)
+        self.assertTrue(all(result["success"] for result in inferred_result))
+        addresses.append(self.wrpc.getnewaddress("", "bech32"))
+
+        funding_txids = {
+            self.wpk_rpc.sendtoaddress(address, 1)
+            for address in addresses
+        }
+        self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
+
+        inputs = [
+            {"txid": utxo["txid"], "vout": utxo["vout"]}
+            for utxo in self.wrpc.listunspent(0, 9999999, addresses)
+            if utxo["txid"] in funding_txids
+        ]
+        self.assertEqual(len(inputs), 3)
+        psbt = self.wrpc.walletcreatefundedpsbt(
+            inputs,
+            [{self.wpk_rpc.getnewaddress(): 3}],
+            0,
+            {"subtractFeeFromOutputs": [0]},
+            True,
+        )["psbt"]
+        self.sign_and_finalize(
+            self._set_global_xpubs(psbt, {}),
+            "--registration",
+            registrations[0],
+            "--registration",
+            registrations[1],
+        )

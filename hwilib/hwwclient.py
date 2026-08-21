@@ -8,6 +8,7 @@ The :class:`HardwareWalletClient` is the class which all of the specific device 
 from typing import (
     Dict,
     Optional,
+    Set,
     Union,
 )
 from .descriptor import (
@@ -82,11 +83,16 @@ class HardwareWalletClient(object):
         raise NotImplementedError("The HardwareWalletClient base class "
                                   "does not implement this method")
 
-    def sign_tx(self, psbt: PSBT) -> PSBT:
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
         """
         Sign a partially signed bitcoin transaction (PSBT).
 
         :param psbt: The PSBT to sign
+        :param registered_descriptors: The registered BIP388 descriptor policies to sign with
         :return: The PSBT after being processed by the hardware wallet
         """
         raise NotImplementedError("The HardwareWalletClient base class "

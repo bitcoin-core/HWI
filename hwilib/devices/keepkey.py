@@ -15,6 +15,7 @@ from ..errors import (
     handle_errors,
     UnavailableActionError,
 )
+from ..psbt import PSBT
 from .trezorlib import protobuf
 from .trezorlib.transport import (
     hid,
@@ -35,6 +36,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
 )
 
 py_enumerate = enumerate # Need to use the enumerate built-in but there's another function already named that
@@ -175,6 +177,15 @@ class KeepkeyClient(TrezorClient):
         :returns: False, always
         """
         return False
+
+    def sign_tx(
+        self,
+        psbt: PSBT,
+        registered_descriptors: Optional[Set[RegisteredDescriptor]] = None,
+    ) -> PSBT:
+        if registered_descriptors:
+            raise UnavailableActionError("The KeepKey does not support BIP388 policy signing")
+        return super().sign_tx(psbt, registered_descriptors)
 
     def register_descriptor(self, name: str, descriptor: 'Descriptor') -> RegisteredDescriptor:
         """
