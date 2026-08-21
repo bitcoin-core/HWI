@@ -478,7 +478,12 @@ class ColdcardClient(HardwareWalletClient):
             raise DeviceFailureError(f"Wrong checksum, expected {expect.hex()}, got {result.hex()}")
 
         # Register the descriptor
-        self.device.send_recv(CCProtocolPacker.multisig_enroll(size, expect), timeout=None)
+        enroll = (
+            CCProtocolPacker.miniscript_enroll
+            if self.is_edge
+            else CCProtocolPacker.multisig_enroll
+        )
+        self.device.send_recv(enroll(size, expect), timeout=None)
         if self.device.is_simulator:
             self.device.send_recv(CCProtocolPacker.sim_keypress(b'y'))
         return RegisteredDescriptor(name=name, descriptor=descriptor, device_type="coldcard", registration=b"")
