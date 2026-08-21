@@ -13,29 +13,23 @@
             "text": "Confirm",
             "x": 43, "y": 37,
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
             "text": "Confirm",
             "x": 41, "y": 34,
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
             "text": "Confirm account ",
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
@@ -79,10 +73,8 @@
         {
             "regexp": "^(Accept|Approve|Continue|Sign message|Sign transaction|Register account).*",
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ]
+                [ "button", 3, true ],
+                [ "button", 3, false ]
             ]
         },
         {
@@ -118,10 +110,8 @@
                 [ "seen_msg_hash", true ]
             ],
             "actions": [
-                [ "button", 1, true ],
-                [ "button", 2, true ],
-                [ "button", 1, false ],
-                [ "button", 2, false ],
+                [ "button", 3, true ],
+                [ "button", 3, false ],
                 [ "setbool", "seen_msg_hash", false ]
             ]
         }
