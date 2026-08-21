@@ -197,6 +197,29 @@ class DeviceTestCase(unittest.TestCase):
         self.wrpc = self.bitcoind.get_wallet_rpc(wallet_name)
         self.wpk_rpc = self.bitcoind.get_wallet_rpc("supply")
 
+    def sign_and_finalize(self, psbt: str, *signtx_args: str) -> Dict:
+        """Sign a PSBT with the device and assert that it finalizes."""
+        sign_res = self.do_command(
+            self.dev_args + ["signtx", *signtx_args, psbt]
+        )
+        self.assertNotIn("error", sign_res)
+        self.assertTrue(sign_res["signed"])
+
+        finalize_res = self.wrpc.finalizepsbt(sign_res["psbt"])
+        self.assertTrue(finalize_res["complete"])
+        return finalize_res
+
+    def _set_global_xpubs(
+        self,
+        psbt: str,
+        xpubs: Dict[bytes, KeyOriginInfo],
+    ) -> str:
+        """Replace a PSBT's global xpub map."""
+        psbt_obj = PSBT()
+        psbt_obj.deserialize(psbt)
+        psbt_obj.xpub = xpubs
+        return psbt_obj.serialize()
+
     def setUp(self):
         self.emulator.start()
 
@@ -371,10 +394,7 @@ class TestSignTx(DeviceTestCase):
 
         if not unknown_inputs:
             # Just do the normal signing process to test "all inputs" case
-            sign_res = self.do_command(self.dev_args + ['signtx', psbt])
-            finalize_res = self.wrpc.finalizepsbt(sign_res['psbt'])
-            self.assertTrue(sign_res["signed"])
-            self.assertTrue(finalize_res["complete"])
+            finalize_res = self.sign_and_finalize(psbt)
         else:
             # Sign only input one on first pass
             # then rest on second pass to test ability to successfully
@@ -575,10 +595,7 @@ class TestSignTx(DeviceTestCase):
             )["psbt"]
 
             # We need to modify the psbt to include our xpubs as Core does not include xpubs
-            psbt_obj = PSBT()
-            psbt_obj.deserialize(psbt)
-            psbt_obj.xpub = xpubs
-            psbt = psbt_obj.serialize()
+            psbt = self._set_global_xpubs(psbt, xpubs)
 
             if external:
                 # Sign with unknown inputs in two steps
