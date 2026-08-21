@@ -799,26 +799,41 @@ class TestSignMessage(DeviceTestCase):
         self.assertEqual(result['code'], -7)
 
 class TestRegisterDescriptor(DeviceTestCase):
-    def __init__(self, *args, returns_registration, sorted=True, **kwargs):
+    def __init__(
+        self,
+        *args,
+        returns_registration,
+        sorted=True,
+        supports_multiple_policies=True,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.returns_registration = returns_registration
         self.sorted = sorted
+        self.supports_multiple_policies = supports_multiple_policies
 
     def setUp(self):
         super().setUp()
         self.setup_wallets()
 
-    def test_register_descriptor(self):
-        account_path = "m/48h/1h/0h/2h"
+    def _descriptor(self, account: int) -> str:
+        account_path = f"m/48h/1h/{account}h/2h"
         account_xpub = self.do_command(self.dev_args + ["getxpub", account_path])["xpub"]
         multi = "sortedmulti" if self.sorted else "multi"
-        descriptor = f"wsh({multi}(1,[{self.emulator.fingerprint}{account_path[1:]}]{account_xpub}/<0;1>/*,[1a0f5425{account_path[1:]}]tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H/<0;1>/*))" # noqa: E702
-        desc_name = "HWI_testing"
-        result = self.do_command(self.dev_args + ["registerdescriptor", desc_name, descriptor])
+        cosigner_origin = "[1a0f5425/48h/1h/0h/2h]"
+        return f"wsh({multi}(1,[{self.emulator.fingerprint}{account_path[1:]}]{account_xpub}/<0;1>/*,{cosigner_origin}tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H/<0;1>/*))" # noqa: E702
+
+    def _register_descriptor(self, name: str, account: int) -> tuple[str, str]:
+        descriptor = self._descriptor(account)
+        result = self.do_command(self.dev_args + ["registerdescriptor", name, descriptor])
 
         self.assertNotIn("error", result)
         self.assertIn("registration", result)
-        reg_str = result["registration"]
+        return descriptor, result["registration"]
+
+    def test_register_descriptor(self):
+        descriptor, reg_str = self._register_descriptor("HWI_testing", 0)
+        desc_name = "HWI_testing"
         reg = RegisteredDescriptor.deserialize(reg_str)
         self.assertEqual(reg.name, desc_name)
         self.assertEqual(reg.descriptor.to_string_no_checksum(), descriptor)
@@ -858,3 +873,73 @@ class TestRegisterDescriptor(DeviceTestCase):
                     "--registration",
                     reg_str,
                 )
+
+    def test_sign_multiple_registered_descriptors(self):
+        if not self.supports_multiple_policies:
+            self.skipTest("Device only supports one registered policy per signing call")
+
+        descriptors = []
+        registrations = []
+        for account in range(2):
+            descriptor, registration = self._register_descriptor(f"HWI_testing_{account}", account)
+            descriptors.append(descriptor)
+            registrations.append(registration)
+
+        imports = [{
+            "desc": AddChecksum(descriptor),
+            "timestamp": "now",
+            "range": [0, 0],
+        } for descriptor in descriptors]
+        import_result = self.wrpc.importdescriptors(imports)
+        self.assertTrue(all(result["success"] for result in import_result))
+
+        addresses = [
+            self.rpc.deriveaddresses(AddChecksum(descriptor), [0, 0])[0][0]
+            for descriptor in descriptors
+        ]
+
+        device_descriptors = self.do_command(self.dev_args + ["getdescriptors"])
+        inferred_imports = []
+        for key, internal in (("receive", False), ("internal", True)):
+            descriptor = next(
+                descriptor
+                for descriptor in device_descriptors[key]
+                if descriptor.startswith("wpkh(")
+            )
+            inferred_imports.append({
+                "desc": descriptor,
+                "timestamp": "now",
+                "range": [0, 0],
+                "active": True,
+                "internal": internal,
+            })
+        inferred_result = self.wrpc.importdescriptors(inferred_imports)
+        self.assertTrue(all(result["success"] for result in inferred_result))
+        addresses.append(self.wrpc.getnewaddress("", "bech32"))
+
+        funding_txids = {
+            self.wpk_rpc.sendtoaddress(address, 1)
+            for address in addresses
+        }
+        self.wpk_rpc.generatetoaddress(6, self.wpk_rpc.getnewaddress())
+
+        inputs = [
+            {"txid": utxo["txid"], "vout": utxo["vout"]}
+            for utxo in self.wrpc.listunspent(0, 9999999, addresses)
+            if utxo["txid"] in funding_txids
+        ]
+        self.assertEqual(len(inputs), 3)
+        psbt = self.wrpc.walletcreatefundedpsbt(
+            inputs,
+            [{self.wpk_rpc.getnewaddress(): 3}],
+            0,
+            {"subtractFeeFromOutputs": [0]},
+            True,
+        )["psbt"]
+        self.sign_and_finalize(
+            self._set_global_xpubs(psbt, {}),
+            "--registration",
+            registrations[0],
+            "--registration",
+            registrations[1],
+        )
