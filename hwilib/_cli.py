@@ -80,8 +80,8 @@ def getxpub_handler(args: argparse.Namespace, client: HardwareWalletClient) -> D
 def getkeypool_handler(args: argparse.Namespace, client: HardwareWalletClient) -> List[Dict[str, Any]]:
     return getkeypool(client, path=args.path, start=args.start, end=args.end, internal=args.internal, keypool=args.keypool, account=args.account, addr_type=args.addr_type, addr_all=args.all)
 
-def getdescriptors_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, List[str]]:
-    return getdescriptors(client, account=args.account)
+def getdescriptors_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Union[Dict[str, List[str]], List[str]]:
+    return getdescriptors(client, account=args.account, multipath=args.multipath)
 
 def restore_device_handler(args: argparse.Namespace, client: HardwareWalletClient) -> Dict[str, bool]:
     if args.interactive:
@@ -200,6 +200,7 @@ def get_parser() -> HWIArgumentParser:
 
     getdescriptors_parser = subparsers.add_parser('getdescriptors', help='Return receive and change descriptors for each supported address type, for import into a wallet.')
     getdescriptors_parser.add_argument('--account', help='BIP43 account', type=int, default=0)
+    getdescriptors_parser.add_argument('--multipath', help='Combine receive and change paths in BIP 389 multipath descriptors', action='store_true')
     getdescriptors_parser.set_defaults(func=getdescriptors_handler)
 
     displayaddr_parser = subparsers.add_parser('displayaddress', help='Display an address')

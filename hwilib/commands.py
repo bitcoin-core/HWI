@@ -279,7 +279,8 @@ def getdescriptor(
     addr_type: AddressType = AddressType.WIT,
     account: int = 0,
     start: Optional[int] = None,
-    end: Optional[int] = None
+    end: Optional[int] = None,
+    multipath: bool = False,
 ) -> Descriptor:
     """
     Get a descriptor from the client.
@@ -292,6 +293,8 @@ def getdescriptor(
     :param account: The BIP 44 account to use if ``path`` is not specified
     :param start: The start of the range to import, inclusive
     :param end: The end of the range to import, inclusive
+    :param multipath: Whether to combine the standard receive and change branches in a multipath descriptor.
+        Only applies when ``path`` is not specified.
     :return: The descriptor constructed given the above arguments and key fetched from the device
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
@@ -307,11 +310,10 @@ def getdescriptor(
         # Account
         parsed_path.append(H_(account))
 
-        # Receive or change
-        if internal:
-            parsed_path.append(1)
-        else:
-            parsed_path.append(0)
+        # Receive or change. For multipath descriptors, this is added to the
+        # public derivation suffix below so that both branches can be included.
+        if not multipath:
+            parsed_path.append(1 if internal else 0)
     else:
         if path[0] != "m":
             raise BadArgumentError("Path must start with m/")
@@ -329,6 +331,8 @@ def getdescriptor(
     path_base = origin.get_derivation_path()
 
     path_suffix = [[p] for p in parsed_path[i:]]
+    if multipath and not path:
+        path_suffix.append([0, 1])
 
     # Get the key at the base
     if client.xpub_cache.get(path_base) is None:
@@ -400,32 +404,44 @@ def getkeypool(
 
 def getdescriptors(
     client: HardwareWalletClient,
-    account: int = 0
-) -> Dict[str, List[str]]:
+    account: int = 0,
+    multipath: bool = False,
+) -> Union[Dict[str, List[str]], List[str]]:
     """
     Get descriptors from the client.
 
     :param client: The client to interact with
     :param account: The BIP 44 account to use
+    :param multipath: Whether to combine receive and change paths in multipath descriptors
     :return: Multiple descriptors from the device matching the BIP 44 standard paths and the given ``account``.
+        Multipath descriptors are returned as a list; otherwise they are grouped into receive and internal lists.
     :raises: BadArgumentError: if an argument is malformed or missing.
     """
     master_fpr = client.get_master_fingerprint()
 
     result = {}
 
-    for internal in [False, True]:
+    for internal in [False] if multipath else [False, True]:
         descriptors = []
         for addr_type in list(AddressType):
             try:
-                desc = getdescriptor(client, master_fpr=master_fpr, internal=internal, addr_type=addr_type, account=account)
+                desc = getdescriptor(
+                    client,
+                    master_fpr=master_fpr,
+                    internal=internal,
+                    addr_type=addr_type,
+                    account=account,
+                    multipath=multipath,
+                )
             except UnavailableActionError:
                 # Device does not support this address type or network. Skip.
                 continue
             if not isinstance(desc, Descriptor):
                 return desc
             descriptors.append(desc.to_string())
-        if internal:
+        if multipath:
+            return descriptors
+        elif internal:
             result["internal"] = descriptors
         else:
             result["receive"] = descriptors

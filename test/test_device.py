@@ -336,24 +336,30 @@ class TestGetDescriptors(DeviceTestCase):
         self.emulator.stop()
 
     def test_getdescriptors(self):
+        expected_count = 4 if self.emulator.supports_taproot else 3
+        multipath_descriptors = self.do_command(self.dev_args + ['getdescriptors', '--multipath'])
+        self.assertIsInstance(multipath_descriptors, list)
+        self.assertEqual(len(multipath_descriptors), expected_count)
+
+        expected_descriptors = {'receive': [], 'internal': []}
+        for descriptor in multipath_descriptors:
+            self.assertNotIn("'", descriptor)
+            self.assertIn('/<0;1>/*', descriptor)
+            info_result = self.rpc.getdescriptorinfo(descriptor)
+            self.assertTrue(info_result['isrange'])
+            self.assertTrue(info_result['issolvable'])
+            self.assertEqual(len(info_result['multipath_expansion']), 2)
+            for branch, expansion in zip(['receive', 'internal'], info_result['multipath_expansion']):
+                expected_descriptors[branch].append(expansion)
+
         descriptors = self.do_command(self.dev_args + ['getdescriptors'])
-
-        self.assertIn('receive', descriptors)
-        self.assertIn('internal', descriptors)
-        self.assertEqual(len(descriptors['receive']), 4 if self.emulator.supports_taproot else 3)
-        self.assertEqual(len(descriptors['internal']), 4 if self.emulator.supports_taproot else 3)
-
-        for descriptor in descriptors['receive']:
-            self.assertNotIn("'", descriptor)
-            info_result = self.rpc.getdescriptorinfo(descriptor)
-            self.assertTrue(info_result['isrange'])
-            self.assertTrue(info_result['issolvable'])
-
-        for descriptor in descriptors['internal']:
-            self.assertNotIn("'", descriptor)
-            info_result = self.rpc.getdescriptorinfo(descriptor)
-            self.assertTrue(info_result['isrange'])
-            self.assertTrue(info_result['issolvable'])
+        self.assertEqual(descriptors, expected_descriptors)
+        for descriptor_list in descriptors.values():
+            for descriptor in descriptor_list:
+                self.assertNotIn("'", descriptor)
+                info_result = self.rpc.getdescriptorinfo(descriptor)
+                self.assertTrue(info_result['isrange'])
+                self.assertTrue(info_result['issolvable'])
 
 class TestSignTx(DeviceTestCase):
     def __init__(self, *args, signtx_cases, **kwargs):
