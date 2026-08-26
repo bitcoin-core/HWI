@@ -19,6 +19,7 @@ from test_device import (
     TestGetKeypool,
     TestGetDescriptors,
     TestRegisterDescriptor,
+    TestSegwitMiniscriptDisplay,
     TestSignMessage,
     TestSignTx,
 )
@@ -50,6 +51,9 @@ class JadeEmulator(DeviceEmulator):
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
+        self.supports_segwit_miniscript = True
+        self.supports_taproot_miniscript = False
+        self.supports_musig2 = False
         self.strict_bip48 = False
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
@@ -251,6 +255,7 @@ def jade_test_suite(emulator, bitcoind, interface):
     suite.addTest(DeviceTestCase.parameterize(TestSignMessage, bitcoind, emulator=dev_emulator, interface=interface))
     suite.addTest(DeviceTestCase.parameterize(TestJadeSignTx, bitcoind, emulator=dev_emulator, interface=interface, signtx_cases=signtx_cases))
     suite.addTest(DeviceTestCase.parameterize(TestRegisterDescriptor, bitcoind, emulator=dev_emulator, interface=interface, returns_registration=False))
+    suite.addTest(DeviceTestCase.parameterize(TestSegwitMiniscriptDisplay, bitcoind, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()
