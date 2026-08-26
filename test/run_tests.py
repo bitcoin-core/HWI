@@ -11,6 +11,11 @@ from test_coldcard import coldcard_test_suite, TestColdcardFirmware
 from test_descriptor import TestDescriptor
 from test_device import Bitcoind
 from test_psbt import TestPSBT
+from test_selector import (
+    TestTestSelector,
+    get_unmatched_test_selectors,
+    set_test_selectors,
+)
 from test_trezor import trezor_test_suite
 from test_ledger import ledger_test_suite
 from test_digitalbitbox import digitalbitbox_test_suite
@@ -73,12 +78,20 @@ parser.add_argument('--bitbox02-path', dest='bitbox02_path', help='Path to BitBo
 parser.add_argument('--all', help='Run tests on all existing simulators', default=False, action='store_true')
 parser.add_argument('--bitcoind', help='Path to bitcoind', default='work/bitcoin/build/bin/bitcoind')
 parser.add_argument('--interface', help='Which interface to send commands over', choices=['library', 'cli', 'bindist', 'stdin'], default='library')
+parser.add_argument(
+    '--test',
+    action='append',
+    metavar='METHOD',
+    help='Run only this device test method; may be specified more than once',
+)
 
 parser.add_argument("--device-only", help="Only run device tests", action="store_true")
 
 parser.set_defaults(trezor_1=None, trezor_t=None, coldcard=None, coldcard_edge=None, keepkey=None, bitbox01=None, ledger=None, ledger_legacy=None, jade=None, bitbox02=None)
 
 args = parser.parse_args()
+if args.test:
+    args.device_only = True
 
 # Run tests
 success = True
@@ -90,6 +103,7 @@ if not args.device_only:
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBIP32))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestColdcardFirmware))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestTestSelector))
     if sys.platform.startswith("linux"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
     success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
@@ -119,7 +133,12 @@ else:
     args.jade = False if args.jade is None else args.jade
     args.bitbox02 = False if args.bitbox02 is None else args.bitbox02
 
-if args.trezor_1 or args.trezor_t or args.coldcard or args.coldcard_edge or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade or args.bitbox02:
+run_device_tests = args.trezor_1 or args.trezor_t or args.coldcard or args.coldcard_edge or args.ledger or args.ledger_legacy or args.keepkey or args.bitbox01 or args.jade or args.bitbox02
+if args.test and not run_device_tests:
+    parser.error("--test requires at least one device")
+
+set_test_selectors(args.test)
+if run_device_tests:
     # Start bitcoind
     bitcoind = Bitcoind.create(args.bitcoind)
 
@@ -143,5 +162,10 @@ if args.trezor_1 or args.trezor_t or args.coldcard or args.coldcard_edge or args
         success &= jade_test_suite(args.jade_path, bitcoind, args.interface)
     if success and args.bitbox02:
         success &= bitbox02_test_suite(args.bitbox02_path, bitcoind, args.interface)
+
+    unmatched_tests = get_unmatched_test_selectors()
+    if unmatched_tests:
+        print("No device tests matched: {}".format(", ".join(unmatched_tests)), file=sys.stderr)
+        success = False
 
 sys.exit(not success)

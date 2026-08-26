@@ -34,6 +34,13 @@ If an environment variable is not present or not set, then the simulator/emulato
 Otherwise the paths to those will need to be specified on the command line.
 `test_trezor.py`, `test_coldcard.py`, `test_keepkey.py`, `test_jade.py`, `test_bitbox02.py` and `test/test_digitalbitbox.py` can be disabled.
 
+To run specific device tests, repeat `--test` with a method name. Using `--test` implies `--device-only`:
+
+```
+./run_tests.py --ledger --test test_signtx
+./run_tests.py --ledger --test test_signtx --test test_big_tx
+```
+
 If you are building the Trezor emulator, the Coldcard simulator, the Keepkey emulator, the Jade emulator, the Digital Bitbox simulator, and `bitcoind` without `setup_environment.sh`, then you will need to make `work/` inside of `test/`.
 
 ```

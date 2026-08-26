@@ -13,6 +13,8 @@ import unittest
 
 from typing import Dict
 
+from test_selector import get_test_case_names
+
 from authproxy import AuthServiceProxy, JSONRPCException
 from hwilib import _bech32 as bech32
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
@@ -153,10 +155,8 @@ class DeviceTestCase(unittest.TestCase):
 
     @staticmethod
     def parameterize(testclass, bitcoind, emulator, interface='library', *args, **kwargs):
-        testloader = unittest.TestLoader()
-        testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
-        for name in testnames:
+        for name in get_test_case_names(testclass):
             suite.addTest(testclass(bitcoind, emulator, interface, name, *args, **kwargs))
         return suite
 

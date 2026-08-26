@@ -27,6 +27,7 @@ from test_device import (
     TestSignMessage,
     TestSignTx,
 )
+from test_selector import get_test_case_names
 
 from hwilib._cli import process_commands
 from hwilib.devices.keepkey import (
@@ -136,10 +137,8 @@ class KeepkeyTestCase(unittest.TestCase):
 
     @staticmethod
     def parameterize(testclass, emulator, interface='library'):
-        testloader = unittest.TestLoader()
-        testnames = testloader.getTestCaseNames(testclass)
         suite = unittest.TestSuite()
-        for name in testnames:
+        for name in get_test_case_names(testclass):
             suite.addTest(testclass(emulator, interface, name))
         return suite
 
