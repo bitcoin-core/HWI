@@ -75,6 +75,8 @@ BITBOX02_VERSION="firmware/v9.24.0"
 KEEPKEY_VERSION="v7.10.0"
 SPECULOS_VERSION="ed952a54801f59a71399462b5422976d84c817bb"  # Requires Python >=3.10 (v0.25.11+)
 JADE_VERSION="1.0.36"
+BITCOIND_REPO_URL="${BITCOIND_REPO_URL:-https://github.com/Sjors/bitcoin.git}"
+BITCOIND_BRANCH="${BITCOIND_BRANCH:-2025/06/musig2-power}"
 
 COLDCARD_VERSION="2026-07-31T0519-v5.6.0"
 COLDCARD_EDGE_VERSION="2026-07-31T1609-v6.6.0X"
@@ -453,28 +455,15 @@ fi
 
 if [[ -n ${build_bitcoind} ]]; then
     # Clone bitcoind if it doesn't exist, or update it if it does
-    bitcoind_setup_needed=false
     if [ ! -d "bitcoin" ]; then
-        git clone https://github.com/bitcoin/bitcoin.git
+        git clone --branch "$BITCOIND_BRANCH" "$BITCOIND_REPO_URL" bitcoin
         cd bitcoin
-        bitcoind_setup_needed=true
     else
         cd bitcoin
-        git reset --hard origin/master
-        git fetch
-
-        # Determine if we need to pull. From https://stackoverflow.com/a/3278427
-        UPSTREAM=${1:-'@{u}'}
-        LOCAL=$(git rev-parse @)
-        REMOTE=$(git rev-parse "$UPSTREAM")
-        BASE=$(git merge-base @ "$UPSTREAM")
-
-        if [ $LOCAL = $REMOTE ]; then
-            echo "Up-to-date"
-        elif [ $LOCAL = $BASE ]; then
-            git pull
-            bitcoind_setup_needed=true
-        fi
+        git remote set-url origin "$BITCOIND_REPO_URL"
+        git fetch origin "$BITCOIND_BRANCH"
+        git checkout -B "$BITCOIND_BRANCH" "origin/$BITCOIND_BRANCH"
+        git reset --hard "origin/$BITCOIND_BRANCH"
     fi
 
     # Build bitcoind. This is super slow, but it is cached so it runs fairly quickly.

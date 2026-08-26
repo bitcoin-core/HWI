@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
-from hwilib.psbt import PSBT
+from hwilib.key import KeyOriginInfo
+from hwilib.psbt import PSBT, PartiallySignedInput
 from hwilib.errors import PSBTSerializationError
 import json
 import os
@@ -104,6 +105,26 @@ class TestPSBT(unittest.TestCase):
                         psbt.inputs[0].has_signature(bytes.fromhex(fingerprint)),
                         expected,
                     )
+
+    def test_has_signing_data(self):
+        fingerprint = bytes.fromhex("0f056943")
+        participant_pubkey = b"\x02" + b"\x11" * 32
+        aggregate_pubkey = b"\x03" + b"\x22" * 32
+        key = (participant_pubkey, aggregate_pubkey, None)
+        psbt_in = PartiallySignedInput(2)
+        psbt_in.tap_bip32_paths[participant_pubkey[1:]] = (
+            set(),
+            KeyOriginInfo(fingerprint, [0]),
+        )
+
+        self.assertFalse(psbt_in.has_signing_data(fingerprint))
+        psbt_in.musig2_pub_nonces[key] = b"\x33" * 66
+        self.assertTrue(psbt_in.has_signing_data(fingerprint))
+        self.assertFalse(psbt_in.has_signing_data(b"\x00" * 4))
+
+        psbt_in.musig2_pub_nonces.clear()
+        psbt_in.musig2_partial_sigs[key] = b"\x44" * 32
+        self.assertTrue(psbt_in.has_signing_data(fingerprint))
 
 if __name__ == "__main__":
     unittest.main()

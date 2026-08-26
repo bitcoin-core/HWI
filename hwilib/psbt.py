@@ -198,6 +198,26 @@ class PartiallySignedInput:
                 return True
         return False
 
+    def has_signing_data(self, fingerprint: bytes) -> bool:
+        """
+        Return whether a key with the specified fingerprint has contributed
+        signing data, including a MuSig2 public nonce.
+        """
+        if self.has_signature(fingerprint):
+            return True
+
+        musig2_providers = {
+            participant_pubkey[1:]
+            for participant_pubkey, _, _ in (
+                self.musig2_pub_nonces.keys()
+                | self.musig2_partial_sigs.keys()
+            )
+        }
+        return any(
+            origin.fingerprint == fingerprint and pubkey in musig2_providers
+            for pubkey, (_, origin) in self.tap_bip32_paths.items()
+        )
+
     def deserialize(self, f: Readable) -> None:
         """
         Deserialize a serialized PSBT input.

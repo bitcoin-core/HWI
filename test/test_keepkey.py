@@ -61,6 +61,9 @@ class KeepkeyEmulator(DeviceEmulator):
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = False
+        self.supports_segwit_miniscript = False
+        self.supports_taproot_miniscript = False
+        self.supports_musig2 = False
         self.strict_bip48 = False
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
