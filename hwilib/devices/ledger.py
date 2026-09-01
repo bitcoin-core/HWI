@@ -480,15 +480,18 @@ class LedgerClient(HardwareWalletClient):
             raise BadArgumentError("Displaying multisignature addresses is not supported by this version of the Bitcoin App")
 
         def is_valid_der_path(pk: PubkeyProvider) -> bool:
-            if pk.deriv_path is None:
+            if pk.deriv_path is None or pk.ranged:
                 return False
-            return len(pk.deriv_path) == 3 and pk.deriv_path[1] in [[0], [1]] and 0 <= pk.deriv_path[2][0] <= 0x7fffffff and pk.ranged
+            if len(pk.deriv_path) != 2:
+                return False
+            change, index = pk.deriv_path
+            return change in ([0], [1]) and len(index) == 1 and 0 <= index[0] <= 0x7fffffff
 
         if any(not is_valid_der_path(pk) for pk in multisig.pubkeys):
-            raise BadArgumentError("Ledger Bitcoin app requires derivation paths ending with /0/* or /1/* for multisig")
+            raise BadArgumentError("Ledger Bitcoin app requires derivation paths ending with /0/<index> or /1/<index> for multisig")
 
         if not (all(pk.deriv_path == multisig.pubkeys[0].deriv_path for pk in multisig.pubkeys)):
-            raise BadArgumentError("Ledger Bitcoin app requires all derivation paths to end with /0/*, or all with /1/* for multisig")
+            raise BadArgumentError("Ledger Bitcoin app requires all derivation paths to end with the same /0/<index> or /1/<index> for multisig")
 
         if any(pk.origin is not None and len(pk.origin.path) > 4 for pk in multisig.pubkeys):
             raise BadArgumentError("Ledger Bitcoin app requires extended keys with derivation length at most 4")
@@ -504,8 +507,8 @@ class LedgerClient(HardwareWalletClient):
         _, registered_hmac = self.client.register_wallet(multisig_wallet)
 
         assert multisig.pubkeys[0].deriv_path is not None  # already checked above with is_valid_der_path
-        change = 0 if multisig.pubkeys[0].deriv_path[3] == [0] else 1
-        address_index = int(multisig.pubkeys[0].deriv_path[2][0])
+        change = multisig.pubkeys[0].deriv_path[0][0]
+        address_index = multisig.pubkeys[0].deriv_path[1][0]
 
         return self.client.get_wallet_address(multisig_wallet, registered_hmac, change, address_index, True)
 
