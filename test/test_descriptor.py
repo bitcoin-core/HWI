@@ -165,6 +165,13 @@ class TestDescriptor(unittest.TestCase):
     def test_parse_empty_descriptor(self):
         self.assertRaises(ValueError, parse_descriptor, "")
 
+    def test_parse_descriptor_trailing_characters(self):
+        key = "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7"
+        with self.assertRaisesRegex(ValueError, "Trailing characters"):
+            parse_descriptor("pkh({})abc".format(key))
+        with self.assertRaisesRegex(ValueError, "Trailing characters"):
+            parse_descriptor("sh(wpkh({}))x".format(key))
+
     def test_parse_descriptor_replace_h(self):
         d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
         desc = parse_descriptor(d)
