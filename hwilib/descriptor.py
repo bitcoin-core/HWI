@@ -16,6 +16,8 @@ from .key import (
     parse_multipath,
     multipath_to_string,
     path_to_string,
+    point_on_curve,
+    x_coord_on_curve,
 )
 from .common import AddressType
 from .errors import BadArgumentError, InvalidPolicyError
@@ -106,6 +108,33 @@ def AddChecksum(desc: str) -> str:
     return desc + "#" + DescriptorChecksum(desc)
 
 
+def _validate_pubkey(pubkey_bytes: bytes, x_only: bool, permit_uncompressed: bool) -> None:
+    """
+    Check that raw public key bytes encode a valid secp256k1 point for the
+    context they appear in, raising ``ValueError`` otherwise.
+
+    A 33-byte compressed key is accepted everywhere. A 32-byte x-only key is
+    accepted only in a taproot context. A 65-byte uncompressed key is accepted
+    only where uncompressed keys are permitted, i.e. at the top level and under
+    ``sh()``, and never under the segwit contexts ``wpkh()`` and ``wsh()`` or
+    in a taproot context. In every case the encoded point must lie on the curve.
+
+    :param pubkey_bytes: The raw public key bytes
+    :param x_only: Whether the key appears in a ``tr()`` context, where x-only keys are permitted
+    :param permit_uncompressed: Whether an uncompressed key is permitted in this context
+    """
+    if x_only and len(pubkey_bytes) == 32:
+        if x_coord_on_curve(int.from_bytes(pubkey_bytes, "big")):
+            return
+    elif len(pubkey_bytes) == 33 and pubkey_bytes[0] in (2, 3):
+        if x_coord_on_curve(int.from_bytes(pubkey_bytes[1:], "big")):
+            return
+    elif not x_only and permit_uncompressed and len(pubkey_bytes) == 65 and pubkey_bytes[0] == 4:
+        if point_on_curve(int.from_bytes(pubkey_bytes[1:33], "big"), int.from_bytes(pubkey_bytes[33:], "big")):
+            return
+    raise ValueError("Pubkey '{}' is invalid".format(pubkey_bytes.hex()))
+
+
 class PubkeyProvider(object):
     """
     A public key expression in a descriptor.
@@ -118,13 +147,17 @@ class PubkeyProvider(object):
         pubkey: str,
         deriv_path: Optional[List[List[int]]],
         expr_index: int,
-        ranged: bool
+        ranged: bool,
+        x_only: bool = False,
+        permit_uncompressed: bool = True
     ) -> None:
         """
         :param origin: The key origin if one is available
         :param pubkey: The public key. Either a hex string or a serialized extended pubkey
         :param deriv_path: Additional derivation path if the pubkey is an extended pubkey
         :param expr_index: The position of this key within the descriptor
+        :param x_only: Whether the key appears in a ``tr()`` context, where x-only keys are permitted
+        :param permit_uncompressed: Whether an uncompressed key is permitted in this context
         """
         self.origin = origin
         self.pubkey = pubkey
@@ -136,19 +169,23 @@ class PubkeyProvider(object):
         # Make ExtendedKey from pubkey if it isn't hex
         self.extkey = None
         try:
-            unhexlify(self.pubkey)
-            # Is hex, normal pubkey
+            pubkey_bytes = unhexlify(self.pubkey)
         except Exception:
             # Not hex, maybe xpub
             self.extkey = ExtendedKey.deserialize(self.pubkey)
+        else:
+            # Is hex, a raw public key. Reject it if it is not a valid point.
+            _validate_pubkey(pubkey_bytes, x_only, permit_uncompressed)
 
     @classmethod
-    def parse(cls, s: str, key_expr_index: int) -> 'PubkeyProvider':
+    def parse(cls, s: str, key_expr_index: int, x_only: bool = False, permit_uncompressed: bool = True) -> 'PubkeyProvider':
         """
         Deserialize a key expression from the string into a ``PubkeyProvider``.
 
         :param s: String containing the key expression
         :param key_expr_index: The position of this key within the descriptor
+        :param x_only: Whether the key appears in a ``tr()`` context, where x-only keys are permitted
+        :param permit_uncompressed: Whether an uncompressed key is permitted in this context
         :return: A new ``PubkeyProvider`` containing the details given by ``s``
         """
         origin = None
@@ -171,7 +208,7 @@ class PubkeyProvider(object):
             if len(path_str) > 0:
                 deriv_path = parse_multipath(path_str)
 
-        return cls(origin, pubkey, deriv_path, key_expr_index, ranged)
+        return cls(origin, pubkey, deriv_path, key_expr_index, ranged, x_only, permit_uncompressed)
 
     def to_string(self, hardened_char: str = "h") -> str:
         """
@@ -585,12 +622,14 @@ def _get_expr(s: str) -> Tuple[str, str]:
         return s, ""
     return s[0:i], s[i:]
 
-def parse_pubkey(expr: str, key_expr_index: int) -> Tuple['PubkeyProvider', str, int]:
+def parse_pubkey(expr: str, key_expr_index: int, x_only: bool = False, permit_uncompressed: bool = True) -> Tuple['PubkeyProvider', str, int]:
     """
     Parses an individual pubkey expression from a string that may contain more than one pubkey expression.
 
     :param expr: The expression to parse a pubkey expression from
     :param key_expr_index: The position of the next key to be parsed
+    :param x_only: Whether the key appears in a ``tr()`` context, where x-only keys are permitted
+    :param permit_uncompressed: Whether an uncompressed key is permitted in this context
     :return: The :class:`PubkeyProvider` that is parsed as the first item of a tuple, the remainder of the expression as the second item, and the index of the next key expression as the third.
     """
     end = len(expr)
@@ -599,7 +638,7 @@ def parse_pubkey(expr: str, key_expr_index: int) -> Tuple['PubkeyProvider', str,
     if comma_idx != -1:
         end = comma_idx
         next_expr = expr[end + 1:]
-    return PubkeyProvider.parse(expr[:end], key_expr_index), next_expr, (key_expr_index + 1)
+    return PubkeyProvider.parse(expr[:end], key_expr_index, x_only, permit_uncompressed), next_expr, (key_expr_index + 1)
 
 
 class _ParseDescriptorContext(Enum):
@@ -637,15 +676,16 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
     :raises: ValueError: if the descriptor is malformed
     """
     func, expr = _get_func_expr(desc)
+    permit_uncompressed = ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH
     if func == "pk":
-        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index, ctx == _ParseDescriptorContext.P2TR, permit_uncompressed)
         if expr:
             raise ValueError("more than one pubkey in pk descriptor")
         return PKDescriptor(pubkey), key_expr_index
     if func == "pkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH or ctx == _ParseDescriptorContext.P2WSH):
             raise ValueError("Can only have pkh at top level, in sh(), or in wsh()")
-        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index, permit_uncompressed=permit_uncompressed)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
         return PKHDescriptor(pubkey), key_expr_index
@@ -659,7 +699,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         pubkeys = []
         multipath_len = None
         while expr:
-            pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+            pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index, permit_uncompressed=permit_uncompressed)
             if pubkey.multipath_len > 1:
                 if multipath_len is None:
                     multipath_len = pubkey.multipath_len
@@ -678,7 +718,8 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
     if func == "wpkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wpkh() at top level or inside sh()")
-        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        # A wpkh() key is a segwit witness program, so uncompressed keys are never permitted.
+        pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index, permit_uncompressed=False)
         if expr:
             raise ValueError("More than one pubkey in pkh descriptor")
         return WPKHDescriptor(pubkey), key_expr_index
@@ -696,7 +737,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         if ctx != _ParseDescriptorContext.TOP:
             raise ValueError("Can only have tr at top level")
         multipath_len = None
-        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
+        internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index, x_only=True)
         if internal_key.multipath_len > 1:
             multipath_len = internal_key.multipath_len
         subscripts = []

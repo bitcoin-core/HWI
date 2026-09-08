@@ -99,6 +99,25 @@ def point_to_bytes(p: Point) -> bytes:
     return (b'\x03' if p[1] & 1 else b'\x02') + p[0].to_bytes(32, byteorder="big")
 
 
+def point_on_curve(x: int, y: int) -> bool:
+    """
+    Returns whether the affine point ``(x, y)`` lies on the secp256k1 curve,
+    i.e. both coordinates are field elements and ``y^2 == x^3 + 7 (mod p)``.
+    """
+    return 0 <= x < p and 0 <= y < p and (y * y - (x * x * x + 7)) % p == 0
+
+
+def x_coord_on_curve(x: int) -> bool:
+    """
+    Returns whether ``x`` is the x coordinate of a point on the secp256k1
+    curve, i.e. ``x`` is a field element for which ``x^3 + 7`` is a quadratic
+    residue modulo ``p``.
+    """
+    if not 0 <= x < p:
+        return False
+    return pow((x * x * x + 7) % p, (p - 1) // 2, p) == 1
+
+
 # An extended public key (xpub) or private key (xprv). Just a data container for now.
 # Only handles deserialization of extended keys into component data to be handled by something else
 class ExtendedKey(object):
