@@ -673,14 +673,14 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         elif thresh > len(pubkeys):
             raise ValueError("Multisig threshold cannot be larger than the number of keys; threshold is {} but only {} keys specified".format(thresh, len(pubkeys)))
         if ctx == _ParseDescriptorContext.TOP and len(pubkeys) > 3:
-            raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys")
+            raise ValueError("Cannot have {} pubkeys in bare multisig: only at most 3 pubkeys".format(len(pubkeys)))
         return MultisigDescriptor(pubkeys, thresh, is_sorted), key_expr_index
     if func == "wpkh":
         if not (ctx == _ParseDescriptorContext.TOP or ctx == _ParseDescriptorContext.P2SH):
             raise ValueError("Can only have wpkh() at top level or inside sh()")
         pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
-            raise ValueError("More than one pubkey in pkh descriptor")
+            raise ValueError("More than one pubkey in wpkh descriptor")
         return WPKHDescriptor(pubkey), key_expr_index
     if func == "sh":
         if ctx != _ParseDescriptorContext.TOP:
