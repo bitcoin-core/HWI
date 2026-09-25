@@ -122,6 +122,12 @@ class TestBIP32(unittest.TestCase):
                 xprv_der = par_xprv.derive_pub_path(path)
                 self.assertEqual(xprv_der.to_string(), child_xpub)
 
+    def test_parse_path_rejects_underscore(self):
+        with self.assertRaises(ValueError):
+            parse_path("m/1_0")
+        self.assertEqual(parse_path("m/10"), [10])
+        self.assertEqual(parse_path("m/1h"), [0x80000001])
+
 
 if __name__ == "__main__":
     unittest.main()

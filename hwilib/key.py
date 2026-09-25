@@ -335,11 +335,16 @@ def _parse_path(nstr: str, allow_multipath: bool) -> List[List[int]]:
 
     def str_to_harden(x: str) -> int:
         if x.startswith("-"):
-            return H_(abs(int(x)))
-        elif x.endswith(("h", "'")):
-            return H_(int(x[:-1]))
-        else:
-            return int(x)
+            body = x[1:]
+            if not body.isdigit():
+                raise ValueError(f"Invalid BIP32 path component: {x}")
+            return H_(abs(int(body)))
+        harden = x.endswith(("h", "'"))
+        body = x[:-1] if harden else x
+        if not body.isdigit():
+            raise ValueError(f"Invalid BIP32 path component: {x}")
+        index = int(body)
+        return H_(index) if harden else index
 
     def parse_index(x: str, seen_multipath: bool) -> Tuple[List[int], bool]:
         if x.startswith("<"):
