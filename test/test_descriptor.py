@@ -350,6 +350,50 @@ class TestDescriptor(unittest.TestCase):
             "BIP 388 requires all multipath specifiers to be exactly 2 elements"
         )
 
+    def test_pubkey_validation(self):
+        compressed = "02c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7"
+        uncompressed = "04c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7a4f5dc6a5c6d18b0cea4d35deeddfd9a43f1b4d4bade8f4fd05e3e70d74b1bb4"
+        xonly = "a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd"
+        # A compressed key whose x coordinate (5) is not on the curve
+        off_curve = "020000000000000000000000000000000000000000000000000000000000000005"
+        off_curve_xonly = "0000000000000000000000000000000000000000000000000000000000000005"
+
+        with self.subTest(msg="Valid keys are accepted"):
+            self.assertIsNotNone(parse_descriptor(f"pkh({compressed})"))
+            self.assertIsNotNone(parse_descriptor(f"wpkh({compressed})"))
+            # Both x-only and compressed keys are valid taproot internal keys
+            self.assertIsNotNone(parse_descriptor(f"tr({xonly})"))
+            self.assertIsNotNone(parse_descriptor(f"tr({compressed})"))
+            # A tapscript leaf key is x-only
+            self.assertIsNotNone(parse_descriptor(f"tr({xonly},pk({xonly}))"))
+
+        with self.subTest(msg="Uncompressed keys are accepted at top level and under sh()"):
+            self.assertIsNotNone(parse_descriptor(f"pkh({uncompressed})"))
+            self.assertIsNotNone(parse_descriptor(f"sh(pkh({uncompressed}))"))
+            self.assertIsNotNone(parse_descriptor(f"multi(1,{uncompressed})"))
+            self.assertIsNotNone(parse_descriptor(f"sh(multi(1,{uncompressed}))"))
+
+        with self.subTest(msg="Uncompressed keys are rejected in segwit contexts"):
+            self.assertRaises(ValueError, parse_descriptor, f"wpkh({uncompressed})")
+            self.assertRaises(ValueError, parse_descriptor, f"wsh(pk({uncompressed}))")
+            self.assertRaises(ValueError, parse_descriptor, f"wsh(multi(1,{uncompressed}))")
+            self.assertRaises(ValueError, parse_descriptor, f"sh(wsh(pk({uncompressed})))")
+            self.assertRaises(ValueError, parse_descriptor, f"tr({uncompressed})")
+
+        with self.subTest(msg="Off-curve keys are rejected"):
+            self.assertRaises(ValueError, parse_descriptor, f"pkh({off_curve})")
+            self.assertRaises(ValueError, parse_descriptor, f"wpkh({off_curve})")
+            self.assertRaises(ValueError, parse_descriptor, f"sh(multi(1,{off_curve}))")
+            self.assertRaises(ValueError, parse_descriptor, f"tr({off_curve_xonly})")
+            self.assertRaises(ValueError, parse_descriptor, f"tr({xonly},pk({off_curve_xonly}))")
+
+        with self.subTest(msg="Wrong length or context keys are rejected"):
+            # An x-only key is not allowed outside of a taproot context
+            self.assertRaises(ValueError, parse_descriptor, f"pkh({xonly})")
+
+        with self.subTest(msg="Bad prefix keys are rejected"):
+            self.assertRaises(ValueError, parse_descriptor, "pkh(05c97dc3f4420402e01a113984311bf4a1b8de376cac0bdcfaf1b3ac81f13433c7)")
+
 
 if __name__ == "__main__":
     unittest.main()
