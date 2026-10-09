@@ -128,6 +128,14 @@ class TestBIP32(unittest.TestCase):
         self.assertEqual(parse_path("m/10"), [10])
         self.assertEqual(parse_path("m/1h"), [0x80000001])
 
+    def test_parse_path_rejects_non_ascii_digits_and_out_of_range(self):
+        for path in ("m/١", "m/１h", "m/2147483648", "m/2147483648h", "m/4294967296"):
+            with self.subTest(path=path):
+                with self.assertRaises(ValueError):
+                    parse_path(path)
+        self.assertEqual(parse_path("m/2147483647"), [2147483647])
+        self.assertEqual(parse_path("m/2147483647h"), [2147483647 | 0x80000000])
+
 
 if __name__ == "__main__":
     unittest.main()
