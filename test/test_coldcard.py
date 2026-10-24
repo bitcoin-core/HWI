@@ -21,7 +21,11 @@ from test_device import (
     TestDisplayAddress,
     TestGetKeypool,
     TestGetDescriptors,
+    TestMuSig2Display,
+    TestMuSig2MiniscriptDisplay,
     TestRegisterDescriptor,
+    TestSegwitMiniscriptDisplay,
+    TestTaprootMiniscriptDisplay,
     TestSignMessage,
     TestSignTx,
 )
@@ -63,6 +67,9 @@ class ColdcardSimulator(DeviceEmulator):
         self.supports_xpub_ms_display = False
         self.supports_unsorted_ms = False
         self.supports_taproot = is_edge
+        self.supports_segwit_miniscript = is_edge
+        self.supports_taproot_miniscript = is_edge
+        self.supports_musig2 = is_edge
         self.strict_bip48 = False
         self.include_xpubs = False
         self.supports_device_multiple_multisig = True
@@ -208,8 +215,12 @@ def coldcard_test_suite(simulator, bitcoind, interface, is_edge=False):
         returns_registration=False,
         supports_multiple_policies=is_edge,
     ))
+    suite.addTest(DeviceTestCase.parameterize(TestSegwitMiniscriptDisplay, bitcoind, emulator=dev_emulator, interface=interface))
     if is_edge:
         suite.addTest(DeviceTestCase.parameterize(TestColdcardEdgeDisplayAddress, bitcoind, emulator=dev_emulator, interface=interface))
+        suite.addTest(DeviceTestCase.parameterize(TestTaprootMiniscriptDisplay, bitcoind, emulator=dev_emulator, interface=interface))
+        suite.addTest(DeviceTestCase.parameterize(TestMuSig2Display, bitcoind, emulator=dev_emulator, interface=interface))
+        suite.addTest(DeviceTestCase.parameterize(TestMuSig2MiniscriptDisplay, bitcoind, emulator=dev_emulator, interface=interface))
 
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite)
     return result.wasSuccessful()

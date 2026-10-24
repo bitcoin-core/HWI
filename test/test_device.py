@@ -33,6 +33,9 @@ class DeviceEmulator():
         self.supports_xpub_ms_display = None
         self.supports_unsorted_ms = None
         self.supports_taproot = None
+        self.supports_segwit_miniscript = None
+        self.supports_taproot_miniscript = None
+        self.supports_musig2 = None
         self.strict_bip48 = None
         self.include_xpubs = None
         self.supports_device_multiple_multisig = None
@@ -49,6 +52,9 @@ class DeviceEmulator():
         assert self.supports_ms_display is not None
         assert self.supports_xpub_ms_display is not None
         assert self.supports_unsorted_ms is not None
+        assert self.supports_segwit_miniscript is not None
+        assert self.supports_taproot_miniscript is not None
+        assert self.supports_musig2 is not None
         assert self.strict_bip48 is not None
         assert self.include_xpubs is not None
         assert self.supports_device_multiple_multisig is not None
@@ -963,4 +969,119 @@ class TestRegisterDescriptor(DeviceTestCase):
             registrations[0],
             "--registration",
             registrations[1],
+        )
+
+
+class PolicyDisplayTestCase(DeviceTestCase):
+    EXTERNAL_KEY = "[1a0f5425/48h/1h/0h/2h]tpubDF23ETNjCC283QmYZtJp26GqHkSa6Yw6vPqp3UkMsPCvBzRC4dMQzE1U3WwKsFsx3apUkQA4JHQDSmcC3N1yhE2gF1aKJA1CiVtNyA9Rv4H"
+
+    def _get_account_key(self, account_path):
+        xpub = self.do_command(
+            self.dev_args + ["getxpub", account_path]
+        )["xpub"]
+        return f"[{self.emulator.fingerprint}{account_path[1:]}]{xpub}"
+
+    def _test_display_address(self, name, descriptor, expected_template):
+        address_index = 7
+        multipath_index = 1
+        expected_address = self.rpc.deriveaddresses(
+            AddChecksum(descriptor), [address_index, address_index]
+        )[multipath_index][0]
+
+        registration = self.do_command(self.dev_args + [
+            "registerdescriptor",
+            name,
+            descriptor,
+        ])
+        self.assertNotIn("error", registration)
+        registered = RegisteredDescriptor.deserialize(registration["registration"])
+        self.assertEqual(
+            registered.descriptor.get_bip388_template(),
+            expected_template,
+        )
+
+        result = self.do_command(self.dev_args + [
+            "displayaddress",
+            "--index", str(address_index),
+            "--multipath-index", str(multipath_index),
+            "--registration", registration["registration"],
+        ])
+        self.assertNotIn("error", result)
+        self.assertEqual(
+            bech32.decode("bcrt", expected_address),
+            bech32.decode("tb", result["address"]),
+        )
+        self.assertEqual(result["index"], address_index)
+        self.assertEqual(result["multipath_index"], multipath_index)
+
+class TestSegwitMiniscriptDisplay(PolicyDisplayTestCase):
+    def setUp(self):
+        if not self.emulator.supports_segwit_miniscript:
+            self.skipTest("device does not support Segwit Miniscript policies")
+        super().setUp()
+
+    def test_segwit_miniscript(self):
+        device_key = self._get_account_key("m/48h/1h/0h/2h")
+        descriptor = (
+            f"wsh(and_v(v:pk({device_key}/<0;1>/*),older(12960)))"
+        )
+        self._test_display_address(
+            f"Mini{self.emulator.fingerprint}",
+            descriptor,
+            "wsh(and_v(v:pk(@0/<0;1>/*),older(12960)))",
+        )
+
+class TestTaprootMiniscriptDisplay(PolicyDisplayTestCase):
+    def setUp(self):
+        if not self.emulator.supports_taproot_miniscript:
+            self.skipTest("device does not support tapscript Miniscript policies")
+        super().setUp()
+
+    def test_taproot_miniscript(self):
+        device_key = self._get_account_key("m/86h/1h/0h")
+        descriptor = (
+            f"tr({device_key}/<0;1>/*,"
+            f"and_v(v:pk({self.EXTERNAL_KEY}/<0;1>/*),older(12960)))"
+        )
+        self._test_display_address(
+            f"TapMini{self.emulator.fingerprint}",
+            descriptor,
+            "tr(@0/<0;1>/*,and_v(v:pk(@1/<0;1>/*),older(12960)))",
+        )
+
+class TestMuSig2Display(PolicyDisplayTestCase):
+    def setUp(self):
+        if not self.emulator.supports_musig2:
+            self.skipTest("device does not support MuSig2 policies")
+        super().setUp()
+
+    def test_musig2(self):
+        device_key = self._get_account_key("m/87h/1h/0h")
+        descriptor = f"tr(musig({device_key},{self.EXTERNAL_KEY})/<0;1>/*)"
+        self._test_display_address(
+            f"MuSigDisplay{self.emulator.fingerprint}",
+            descriptor,
+            "tr(musig(@0,@1)/<0;1>/*)",
+        )
+
+class TestMuSig2MiniscriptDisplay(PolicyDisplayTestCase):
+    def setUp(self):
+        if not self.emulator.supports_musig2:
+            self.skipTest("device does not support MuSig2 policies")
+        if not self.emulator.supports_taproot_miniscript:
+            self.skipTest("device does not support tapscript Miniscript policies")
+        super().setUp()
+
+    def test_musig2_miniscript(self):
+        device_key = self._get_account_key("m/87h/1h/0h")
+        recovery_key = self._get_account_key("m/86h/1h/1h")
+        descriptor = (
+            f"tr(musig({device_key},{self.EXTERNAL_KEY})/<0;1>/*,"
+            f"and_v(v:pk({recovery_key}/<0;1>/*),older(12960)))"
+        )
+        self._test_display_address(
+            f"MuSigMini{self.emulator.fingerprint}",
+            descriptor,
+            "tr(musig(@0,@1)/<0;1>/*,"
+            "and_v(v:pk(@2/<0;1>/*),older(12960)))",
         )
