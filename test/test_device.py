@@ -13,7 +13,7 @@ import unittest
 
 from typing import Dict
 
-from authproxy import AuthServiceProxy, JSONRPCException
+from authproxy import AuthServiceProxy, JSONRPCException, HTTP_TIMEOUT
 from hwilib import _bech32 as bech32
 from hwilib._base58 import xpub_to_pub_hex, to_address, decode
 from hwilib._cli import process_commands
@@ -76,7 +76,6 @@ class Bitcoind():
             s.close()
             return port
 
-        self.p2p_port = get_free_port()
         self.rpc_port = get_free_port()
 
         self.bitcoind_proc = subprocess.Popen(
@@ -87,7 +86,7 @@ class Bitcoind():
                 "-noprinttoconsole",
                 "-fallbackfee=0.0002",
                 "-keypool=1",
-                f"-port={self.p2p_port}",
+                "-listen=0",
                 f"-rpcport={self.rpc_port}"
             ]
         )
@@ -121,11 +120,12 @@ class Bitcoind():
         # Make sure there are blocks and coins available
         self.rpc.createwallet(wallet_name="supply")
         self.wrpc = self.get_wallet_rpc("supply")
-        self.wrpc.generatetoaddress(101, self.wrpc.getnewaddress())
+        mining_rpc = self.get_wallet_rpc("supply", timeout=120)
+        mining_rpc.generatetoaddress(101, self.wrpc.getnewaddress())
 
-    def get_wallet_rpc(self, wallet):
+    def get_wallet_rpc(self, wallet, timeout=HTTP_TIMEOUT):
         url = self.rpc_url + f"/wallet/{wallet}"
-        return AuthServiceProxy(url)
+        return AuthServiceProxy(url, timeout=timeout)
 
     def cleanup(self):
         if self.bitcoind_proc is not None and self.bitcoind_proc.poll() is None:
