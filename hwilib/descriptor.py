@@ -155,6 +155,8 @@ class PubkeyProvider(object):
         deriv_path = None
         ranged = False
 
+        if not s:
+            raise ValueError("Empty key expression")
         if s[0] == "[":
             end = s.index("]")
             origin = KeyOriginInfo.from_string(s[1:end])
@@ -167,7 +169,12 @@ class PubkeyProvider(object):
             path_str = s[slash_idx + 1:]
             ranged = path_str.endswith("*")
             if ranged:
-                path_str = path_str[:-2]
+                if path_str == "*":
+                    path_str = ""
+                elif path_str.endswith("/*"):
+                    path_str = path_str[:-2]
+                else:
+                    raise ValueError(f"Invalid ranged derivation path: /{path_str}")
             if len(path_str) > 0:
                 deriv_path = parse_multipath(path_str)
 
@@ -558,6 +565,8 @@ def _get_const(s: str, const: str) -> str:
     :return: The remainder of the string without the constant character
     :raises: ValueError: if the first character is not the constant character
     """
+    if not s:
+        raise ValueError(f"Expected '{const}' but reached the end")
     if s[0] != const:
         raise ValueError(f"Expected '{const}' but got '{s[0]}'")
     return s[1:]
@@ -599,6 +608,8 @@ def parse_pubkey(expr: str, key_expr_index: int) -> Tuple['PubkeyProvider', str,
     if comma_idx != -1:
         end = comma_idx
         next_expr = expr[end + 1:]
+        if not next_expr:
+            raise ValueError("Trailing comma after key expression")
     return PubkeyProvider.parse(expr[:end], key_expr_index), next_expr, (key_expr_index + 1)
 
 

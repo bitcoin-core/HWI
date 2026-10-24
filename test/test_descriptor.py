@@ -165,6 +165,15 @@ class TestDescriptor(unittest.TestCase):
     def test_parse_empty_descriptor(self):
         self.assertRaises(ValueError, parse_descriptor, "")
 
+    def test_parse_invalid_key_expressions(self):
+        xpub = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B"
+        with self.assertRaisesRegex(ValueError, "Invalid ranged derivation path"):
+            parse_descriptor(f"wpkh({xpub}/0*)")
+        with self.assertRaisesRegex(ValueError, "Empty key expression"):
+            parse_descriptor(f"wsh(multi(1,{xpub}/0/*,,{xpub}/1/*))")
+        with self.assertRaisesRegex(ValueError, "Trailing comma"):
+            parse_descriptor(f"wsh(multi(1,{xpub}/0/*,))")
+
     def test_parse_descriptor_replace_h(self):
         d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
         desc = parse_descriptor(d)
@@ -349,6 +358,11 @@ class TestDescriptor(unittest.TestCase):
             "pkh([6738736c/44'/0'/0']xpub6Br37sWxruYfT8ASpCjVHKGwgdnYFEn98DwiN76i2oyY6fgH1LAPmmDcF46xjxJr22gw4jmVjTE2E3URMnRPEPYyo1zoPSUba563ESMXCeb/<0;1;2>/*)",
             "BIP 388 requires all multipath specifiers to be exactly 2 elements"
         )
+
+    def test_parse_incomplete_taproot_tree(self):
+        key = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        with self.assertRaisesRegex(ValueError, "Expected '}' but reached the end"):
+            parse_descriptor(f"tr({key},{{pk({key}),pk({key}))")
 
 
 if __name__ == "__main__":
