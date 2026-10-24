@@ -511,6 +511,8 @@ def displayaddress(
                 return {"address": client.display_multisig_address(addr_type, descriptor)}
         is_wpkh = isinstance(descriptor, WPKHDescriptor)
         if isinstance(descriptor, PKHDescriptor) or is_wpkh or isinstance(descriptor, TRDescriptor):
+            if descriptor.subdescriptors:
+                raise BadArgumentError("tr() descriptors with a script tree require a registered BIP 388 policy; use --registration")
             pubkey = descriptor.pubkeys[0]
             if pubkey.origin is None:
                 raise BadArgumentError(f"Descriptor missing origin info: {desc}")

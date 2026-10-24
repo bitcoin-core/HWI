@@ -32,13 +32,24 @@ from copy import deepcopy
 from enum import Enum
 from io import BufferedReader, BytesIO
 from typing import (
+    Callable,
+    Dict,
     List,
     Optional,
     Tuple,
+    Union,
 )
 
 
 MAX_TAPROOT_NODES = 128
+
+
+_MINISCRIPT_WRAPPERS = set("acdjlnstuv")
+_MINISCRIPT_KEY_FRAGMENTS = {"pk", "pk_k", "pk_h", "pkh"}
+_MINISCRIPT_TAPSCRIPT_MULTI_FRAGMENTS = {"multi_a", "sortedmulti_a"}
+_MINISCRIPT_TIMELOCK_FRAGMENTS = {"older", "after"}
+_MINISCRIPT_HASH_FRAGMENTS = {"sha256": 64, "hash256": 64, "ripemd160": 40, "hash160": 40}
+_MINISCRIPT_BINARY_FRAGMENTS = {"and_v", "and_b", "and_n", "or_b", "or_c", "or_d", "or_i"}
 
 
 def PolyMod(c: int, val: int) -> int:
@@ -124,7 +135,8 @@ class PubkeyProvider(object):
         :param origin: The key origin if one is available
         :param pubkey: The public key. Either a hex string or a serialized extended pubkey
         :param deriv_path: Additional derivation path if the pubkey is an extended pubkey
-        :param expr_index: The position of this key within the descriptor
+        :param expr_index: The index of this key in the BIP 388 Key information vector.
+            A key that appears multiple times in a descriptor uses the same index everywhere.
         """
         self.origin = origin
         self.pubkey = pubkey
@@ -338,23 +350,39 @@ class Descriptor(object):
         )
 
     def get_pubkey_providers(self) -> list['PubkeyProvider']:
-        """
-        Get the strings of all pubkey expressions contained in this descriptor,
-        in the same order that they appear in the descriptor string. These can be used with
-        :func:`get_bip388_template` to get a full BIP 388 Wallet Policy for this descriptor.
+        r"""
+        Get the individual pubkey expressions contained in this descriptor, in the order in
+        which they first appear in the descriptor string. A key that appears more than once
+        is returned only once, matching the BIP 388 Key information vector, so these can be
+        used with :func:`get_bip388_template` to get a full BIP 388 Wallet Policy for this
+        descriptor.
 
-        :return: List of pubkey expression strings
+        :return: List of :class:`PubkeyProvider`\ s
         """
-        out = [p for p in self.pubkeys]
-        for s in self.subdescriptors:
-            out.extend(s.get_pubkey_providers())
+        out: Dict[str, 'PubkeyProvider'] = {}
+        for pubkey in self.get_derivation_providers():
+            out.setdefault(pubkey.get_bip388_key_info(), pubkey)
+        return list(out.values())
+
+    def get_derivation_providers(self) -> list['PubkeyProvider']:
+        r"""
+        Get the key expressions contained in this descriptor whose derivation path suffixes
+        belong to the descriptor, in the same order that they appear in the descriptor
+        string. Unlike :func:`get_pubkey_providers`, a key that appears more than once is
+        returned once for each appearance.
+
+        :return: List of :class:`PubkeyProvider`\ s
+        """
+        out = list(self.pubkeys)
+        for subdescriptor in self.subdescriptors:
+            out.extend(subdescriptor.get_derivation_providers())
         return out
 
     def derive(self, pos: int, multipath_index: int = 0) -> 'Descriptor':
         """Select a multipath entry and address index from a ranged descriptor."""
 
         descriptor = deepcopy(self)
-        for pubkey in descriptor.get_pubkey_providers():
+        for pubkey in descriptor.get_derivation_providers():
             path = pubkey.get_deriv_path(pos, multipath_index)
             pubkey.deriv_path = [[step] for step in path] or None
             pubkey.ranged = False
@@ -532,6 +560,54 @@ class TRDescriptor(Descriptor):
         return r
 
 
+class MiniscriptDescriptor(Descriptor):
+    """
+    A Miniscript expression contained in a descriptor
+    """
+
+    def __init__(
+        self,
+        wrappers: str,
+        name: str,
+        args: List[Union[str, 'PubkeyProvider', 'MiniscriptDescriptor']]
+    ) -> None:
+        """
+        :param wrappers: The Miniscript wrappers applied to this fragment, without the ``:`` separator
+        :param name: The name of the Miniscript fragment
+        :param args: The fragment arguments: key expressions, nested Miniscript expressions,
+            and verbatim strings for numbers and hashes
+        """
+        pubkeys = [arg for arg in args if isinstance(arg, PubkeyProvider)]
+        subdescriptors: List[Descriptor] = [arg for arg in args if isinstance(arg, MiniscriptDescriptor)]
+        super().__init__(pubkeys, subdescriptors, name)
+        self.wrappers = wrappers
+        self.args = args
+
+    def _serialize(self, serialize_arg: Callable[[Union[str, 'PubkeyProvider', 'MiniscriptDescriptor']], str]) -> str:
+        prefix = f"{self.wrappers}:" if self.wrappers else ""
+        if not self.args:
+            return prefix + self.name
+        return "{}{}({})".format(prefix, self.name, ",".join(serialize_arg(arg) for arg in self.args))
+
+    def to_string_no_checksum(self, hardened_char: str = "h") -> str:
+        def serialize_arg(arg: Union[str, 'PubkeyProvider', 'MiniscriptDescriptor']) -> str:
+            if isinstance(arg, MiniscriptDescriptor):
+                return arg.to_string_no_checksum(hardened_char)
+            if isinstance(arg, PubkeyProvider):
+                return arg.to_string(hardened_char)
+            return arg
+        return self._serialize(serialize_arg)
+
+    def get_bip388_template(self) -> str:
+        def serialize_arg(arg: Union[str, 'PubkeyProvider', 'MiniscriptDescriptor']) -> str:
+            if isinstance(arg, MiniscriptDescriptor):
+                return arg.get_bip388_template()
+            if isinstance(arg, PubkeyProvider):
+                return arg.get_bip388_placeholder()
+            return arg
+        return self._serialize(serialize_arg)
+
+
 def _get_func_expr(s: str) -> Tuple[str, str]:
     """
     Get the function name and then the expression inside
@@ -619,8 +695,148 @@ class _ParseDescriptorContext(Enum):
     P2WSH = 3
     """Within a ``wsh()`` descriptor"""
 
-    P2TR = 4
-    """Within a ``tr()`` descriptor"""
+class _MiniscriptContext(Enum):
+    """
+    :meta private:
+
+    Enum representing the script version used to interpret a Miniscript expression.
+    """
+
+    SEGWIT_V0 = 1
+    """A Segwit v0 witness script"""
+
+    TAPSCRIPT = 2
+    """A Taproot leaf script"""
+
+
+def _parse_miniscript_num(name: str, arg: str) -> int:
+    if not arg.isdigit():
+        raise ValueError(f"{name}() argument must be a number, got {arg}")
+    return int(arg)
+
+
+def _parse_miniscript(
+    expr: str,
+    key_expr_index: int,
+    ctx: '_MiniscriptContext',
+) -> Tuple['MiniscriptDescriptor', int]:
+    """
+    :meta private:
+
+    Parse a Miniscript expression. Only the structure of the expression is
+    validated; Miniscript type checking is left to the device.
+
+    :param expr: The Miniscript expression to parse
+    :param key_expr_index: The position of the next key expression within the descriptor
+    :param ctx: The script version used to interpret the Miniscript expression
+    :return: The parsed :class:`MiniscriptDescriptor` and the position of the next key expression
+    :raises: ValueError: if the Miniscript expression is malformed
+    """
+    wrappers = ""
+    paren_idx = expr.find("(")
+    colon_idx = expr.find(":")
+    if colon_idx != -1 and (paren_idx == -1 or colon_idx < paren_idx):
+        wrappers = expr[:colon_idx]
+        expr = expr[colon_idx + 1:]
+        if not wrappers:
+            raise ValueError("Missing Miniscript wrapper before ':'")
+        for wrapper in wrappers:
+            if wrapper not in _MINISCRIPT_WRAPPERS:
+                raise ValueError(f"Unknown Miniscript wrapper: {wrapper}")
+        paren_idx = expr.find("(")
+
+    if expr in ("0", "1"):
+        return MiniscriptDescriptor(wrappers, expr, []), key_expr_index
+
+    if paren_idx == -1 or not expr.endswith(")"):
+        raise ValueError(f"Invalid Miniscript expression: {expr}")
+    name = expr[:paren_idx]
+
+    arg_strs = []
+    rest = expr[paren_idx + 1:-1]
+    while rest:
+        arg, rest = _get_expr(rest)
+        if not arg:
+            raise ValueError(f"Empty argument in {name}()")
+        arg_strs.append(arg)
+        if rest:
+            rest = _get_const(rest, ",")
+            if not rest:
+                raise ValueError(f"Trailing comma in {name}()")
+
+    args: List[Union[str, 'PubkeyProvider', 'MiniscriptDescriptor']] = []
+    if name in _MINISCRIPT_KEY_FRAGMENTS:
+        if len(arg_strs) != 1:
+            raise ValueError(f"{name}() takes exactly one key expression")
+        args.append(PubkeyProvider.parse(arg_strs[0], key_expr_index))
+        key_expr_index += 1
+    elif name == "multi":
+        if ctx != _MiniscriptContext.SEGWIT_V0:
+            raise ValueError("multi() is only allowed in Segwit v0 Miniscript")
+        if len(arg_strs) < 2:
+            raise ValueError("multi() takes a threshold and at least one key expression")
+        if len(arg_strs) - 1 > 20:
+            raise ValueError("multi() supports at most 20 keys")
+        thresh = _parse_miniscript_num(name, arg_strs[0])
+        if not 1 <= thresh <= len(arg_strs) - 1:
+            raise ValueError("multi() threshold must be between 1 and the number of keys")
+        args.append(arg_strs[0])
+        for arg_str in arg_strs[1:]:
+            args.append(PubkeyProvider.parse(arg_str, key_expr_index))
+            key_expr_index += 1
+    elif name in _MINISCRIPT_TAPSCRIPT_MULTI_FRAGMENTS:
+        if ctx != _MiniscriptContext.TAPSCRIPT:
+            raise ValueError(f"{name}() is only allowed in tapscript Miniscript")
+        if len(arg_strs) < 2:
+            raise ValueError(f"{name}() takes a threshold and at least one key expression")
+        if len(arg_strs) - 1 > 999:
+            raise ValueError(f"{name}() supports at most 999 keys")
+        thresh = _parse_miniscript_num(name, arg_strs[0])
+        if not 1 <= thresh <= len(arg_strs) - 1:
+            raise ValueError(f"{name}() threshold must be between 1 and the number of keys")
+        args.append(arg_strs[0])
+        for arg_str in arg_strs[1:]:
+            args.append(PubkeyProvider.parse(arg_str, key_expr_index))
+            key_expr_index += 1
+    elif name in _MINISCRIPT_TIMELOCK_FRAGMENTS:
+        if len(arg_strs) != 1:
+            raise ValueError(f"{name}() takes exactly one number")
+        locktime = _parse_miniscript_num(name, arg_strs[0])
+        if not 1 <= locktime < 2**31:
+            raise ValueError(f"{name}() locktime must be between 1 and 2**31 - 1")
+        args.append(arg_strs[0])
+    elif name in _MINISCRIPT_HASH_FRAGMENTS:
+        if len(arg_strs) != 1:
+            raise ValueError(f"{name}() takes exactly one hash")
+        hash_len = _MINISCRIPT_HASH_FRAGMENTS[name]
+        try:
+            hash_bytes = unhexlify(arg_strs[0])
+        except Exception:
+            raise ValueError(f"{name}() takes a {hash_len} character hex string")
+        if len(hash_bytes) * 2 != hash_len:
+            raise ValueError(f"{name}() takes a {hash_len} character hex string")
+        args.append(arg_strs[0])
+    elif name == "andor" or name in _MINISCRIPT_BINARY_FRAGMENTS:
+        num_args = 3 if name == "andor" else 2
+        if len(arg_strs) != num_args:
+            raise ValueError(f"{name}() takes exactly {num_args} Miniscript expressions")
+        for arg_str in arg_strs:
+            sub, key_expr_index = _parse_miniscript(arg_str, key_expr_index, ctx)
+            args.append(sub)
+    elif name == "thresh":
+        if len(arg_strs) < 2:
+            raise ValueError("thresh() takes a threshold and at least one Miniscript expression")
+        thresh = _parse_miniscript_num(name, arg_strs[0])
+        if not 1 <= thresh <= len(arg_strs) - 1:
+            raise ValueError("thresh() threshold must be between 1 and the number of subexpressions")
+        args.append(arg_strs[0])
+        for arg_str in arg_strs[1:]:
+            sub, key_expr_index = _parse_miniscript(arg_str, key_expr_index, ctx)
+            args.append(sub)
+    else:
+        raise ValueError(f"Unknown Miniscript fragment: {name}")
+
+    return MiniscriptDescriptor(wrappers, name, args), key_expr_index
 
 
 def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index: int) -> Tuple['Descriptor', int]:
@@ -636,7 +852,12 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
     :return: The parsed descriptor as the first item, and the index of the next key expression as the second.
     :raises: ValueError: if the descriptor is malformed
     """
-    func, expr = _get_func_expr(desc)
+    try:
+        func, expr = _get_func_expr(desc)
+    except ValueError:
+        if ctx == _ParseDescriptorContext.P2WSH:
+            return _parse_miniscript(desc, key_expr_index, _MiniscriptContext.SEGWIT_V0)
+        raise
     if func == "pk":
         pubkey, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if expr:
@@ -699,7 +920,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
         internal_key, expr, key_expr_index = parse_pubkey(expr, key_expr_index)
         if internal_key.multipath_len > 1:
             multipath_len = internal_key.multipath_len
-        subscripts = []
+        subscripts: List[Descriptor] = []
         depths = []
         if expr:
             # Path from top of the tree to what we're currently processing.
@@ -718,8 +939,12 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
                         raise ValueError("tr() supports at most {MAX_TAPROOT_NODES} nesting levels")
                 # Process script expression
                 sarg, expr = _get_expr(expr)
-                subdesc, key_expr_index = _parse_descriptor(sarg, _ParseDescriptorContext.P2TR, key_expr_index)
-                for pub in subdesc.pubkeys:
+                subdesc, key_expr_index = _parse_miniscript(
+                    sarg,
+                    key_expr_index,
+                    _MiniscriptContext.TAPSCRIPT,
+                )
+                for pub in subdesc.get_derivation_providers():
                     if pub.multipath_len > 1:
                         if multipath_len is None:
                             multipath_len = pub.multipath_len
@@ -742,7 +967,7 @@ def _parse_descriptor(desc: str, ctx: '_ParseDescriptorContext', key_expr_index:
     if ctx == _ParseDescriptorContext.P2SH:
         raise ValueError("A function is needed within P2SH")
     elif ctx == _ParseDescriptorContext.P2WSH:
-        raise ValueError("A function is needed within P2WSH")
+        return _parse_miniscript(desc, key_expr_index, _MiniscriptContext.SEGWIT_V0)
     raise ValueError("{} is not a valid descriptor function".format(func))
 
 
@@ -762,7 +987,14 @@ def parse_descriptor(desc: str) -> 'Descriptor':
         computed = DescriptorChecksum(desc)
         if computed != checksum:
             raise ValueError("The checksum does not match; Got {}, expected {}".format(checksum, computed))
-    return _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
+    descriptor = _parse_descriptor(desc, _ParseDescriptorContext.TOP, 0)[0]
+
+    # A key that appears more than once must use a single index in the
+    # BIP 388 Key information vector.
+    indexes: Dict[str, int] = {}
+    for pubkey in descriptor.get_derivation_providers():
+        pubkey.expr_index = indexes.setdefault(pubkey.get_bip388_key_info(), len(indexes))
+    return descriptor
 
 class RegisteredDescriptor:
     """

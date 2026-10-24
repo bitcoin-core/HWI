@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
+from hwilib.commands import displayaddress
 from hwilib.descriptor import (
+    MiniscriptDescriptor,
     parse_descriptor,
     MultisigDescriptor,
     SHDescriptor,
@@ -10,11 +12,178 @@ from hwilib.descriptor import (
     WSHDescriptor,
 )
 from hwilib.common import AddressType
-from hwilib.errors import InvalidPolicyError
+from hwilib.errors import BadArgumentError, InvalidPolicyError
 
+import re
 import unittest
 
 class TestDescriptor(unittest.TestCase):
+    def test_segwit_miniscript_policy(self):
+        key_0 = "[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw"
+        key_1 = "[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7"
+        multipath = "<0;1>/*"
+        descriptor = (
+            f"wsh(and_v(v:pk({key_0}/{multipath}),"
+            f"or_d(pk({key_1}/{multipath}),older(12960))))"
+        )
+        parsed = parse_descriptor(descriptor)
+        self.assertIsInstance(parsed, WSHDescriptor)
+        self.assertIsInstance(parsed.subdescriptors[0], MiniscriptDescriptor)
+        self.assertEqual(parsed.to_string_no_checksum(hardened_char="'"), descriptor)
+        self.assertEqual(
+            parsed.get_bip388_template(),
+            "wsh(and_v(v:pk(@0/<0;1>/*),or_d(pk(@1/<0;1>/*),older(12960))))",
+        )
+        self.assertEqual(
+            [provider.get_bip388_key_info() for provider in parsed.get_pubkey_providers()],
+            [key_0, key_1],
+        )
+
+    def test_invalid_segwit_miniscript(self):
+        key = "[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw"
+        multipath = "<0;1>/*"
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript fragment: unknown"):
+            parse_descriptor(f"wsh(unknown({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript fragment: Pk"):
+            parse_descriptor(f"wsh(Pk({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript wrapper: x"):
+            parse_descriptor(f"wsh(x:pk({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Invalid Miniscript expression"):
+            parse_descriptor(f"wsh(and_v(v:pk({key}/{multipath}),older(1)")
+        with self.assertRaisesRegex(ValueError, "takes exactly one number"):
+            parse_descriptor("wsh(older(1,2))")
+        with self.assertRaisesRegex(ValueError, "argument must be a number"):
+            parse_descriptor("wsh(older(-1))")
+        with self.assertRaisesRegex(ValueError, "character hex string"):
+            parse_descriptor("wsh(sha256(abcd))")
+        with self.assertRaisesRegex(ValueError, "threshold must be between"):
+            parse_descriptor(f"wsh(and_v(v:pk({key}/{multipath}),multi(2,{key}/{multipath})))")
+        with self.assertRaisesRegex(ValueError, "only allowed in tapscript"):
+            parse_descriptor(f"wsh(and_v(v:pk({key}/{multipath}),multi_a(1,{key}/{multipath})))")
+        with self.assertRaisesRegex(ValueError, "Empty argument"):
+            parse_descriptor("wsh(and_v(,older(1)))")
+
+        # A non-ranged key parses, but is not a valid BIP 388 policy.
+        non_ranged = parse_descriptor(f"wsh(and_v(v:pk({key}),older(1)))")
+        with self.assertRaisesRegex(InvalidPolicyError, "ranged"):
+            non_ranged.get_bip388_template()
+
+        # Segwit v0 limits multi() to 20 keys.
+        keys = ",".join([f"{key}/{multipath}"] * 21)
+        with self.assertRaisesRegex(ValueError, "at most 20 keys"):
+            parse_descriptor(f"wsh(and_v(v:pk({key}/{multipath}),multi(1,{keys})))")
+
+    def test_tapscript_miniscript_policy(self):
+        key_0 = "[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw"
+        key_1 = "[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7"
+        recovery_key = "[6738736c/86'/0'/0']xpub6CryUDWPS28eR2cDyojB8G354izmx294BdjeSvH469Ty3o2E6Tq5VjBJCn8rWBgesvTJnyXNAJ3QpLFGuNwqFXNt3gn612raffLWfdHNkYL"
+        multipath = "<0;1>/*"
+        # Every leaf requires a signature. jtv: gives the hash condition a
+        # unique empty-vector dissatisfaction for the threshold policy.
+        descriptor = (
+            f"tr({recovery_key}/{multipath},{{"
+            f"multi_a(2,{key_0}/{multipath},{key_1}/{multipath}),"
+            f"{{and_v(v:pk({key_0}/{multipath}),older(1000)),"
+            f"thresh(2,pk({key_1}/{multipath}),s:pk({recovery_key}/{multipath}),"
+            f"sjtv:sha256(6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333))}}}})"
+        )
+        parsed = parse_descriptor(descriptor)
+        self.assertIsInstance(parsed, TRDescriptor)
+        for subdescriptor in parsed.subdescriptors:
+            self.assertIsInstance(subdescriptor, MiniscriptDescriptor)
+        self.assertEqual(parsed.to_string_no_checksum(hardened_char="'"), descriptor)
+        self.assertEqual(
+            parsed.get_bip388_template(),
+            "tr(@0/<0;1>/*,{multi_a(2,@1/<0;1>/*,@2/<0;1>/*),"
+            "{and_v(v:pk(@1/<0;1>/*),older(1000)),"
+            "thresh(2,pk(@2/<0;1>/*),s:pk(@0/<0;1>/*),"
+            "sjtv:sha256(6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333))}})",
+        )
+        self.assertEqual(
+            [provider.get_bip388_key_info() for provider in parsed.get_pubkey_providers()],
+            [recovery_key, key_0, key_1],
+        )
+
+    def test_invalid_tapscript_miniscript(self):
+        key = "[6738736c/86'/0'/0']xpub6CryUDWPS28eR2cDyojB8G354izmx294BdjeSvH469Ty3o2E6Tq5VjBJCn8rWBgesvTJnyXNAJ3QpLFGuNwqFXNt3gn612raffLWfdHNkYL"
+        multipath = "<0;1>/*"
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript fragment: unknown"):
+            parse_descriptor(f"tr({key}/{multipath},unknown({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript fragment: Pk"):
+            parse_descriptor(f"tr({key}/{multipath},Pk({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Invalid Miniscript expression"):
+            parse_descriptor(f"tr({key}/{multipath},12345)")
+        with self.assertRaisesRegex(ValueError, "Unknown Miniscript wrapper: x"):
+            parse_descriptor(f"tr({key}/{multipath},x:pk({key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "only allowed in Segwit v0"):
+            parse_descriptor(f"tr({key}/{multipath},multi(1,{key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "threshold must be between"):
+            parse_descriptor(f"tr({key}/{multipath},multi_a(3,{key}/{multipath},{key}/{multipath}))")
+        with self.assertRaisesRegex(ValueError, "Mismatched multipath"):
+            parse_descriptor(f"tr({key}/{multipath},pk({key}/<0;1;2>/*))")
+
+        non_ranged = parse_descriptor(f"tr({key}/{multipath},and_v(v:pk({key}),older(1)))")
+        with self.assertRaisesRegex(InvalidPolicyError, "ranged"):
+            non_ranged.get_bip388_template()
+
+        xonly = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        keys = ",".join([xonly] * 1000)
+        with self.assertRaisesRegex(ValueError, "at most 999 keys"):
+            parse_descriptor(f"tr({key}/{multipath},multi_a(1,{keys}))")
+
+    def test_bip379_tapscript_corpus(self):
+        expressions = [
+            "andor(and_b(multi_a(2,A,B,C),aj:multi_a(2,D,E,F)),multi_a(2,G,I,J),multi_a(2,K,L,M))",
+            "thresh(1,or_d(multi_a(2,A,B,C),pk(D)),s:pk(E),s:pk(F))",
+            "and_v(and_v(or_c(multi_a(2,A,B,C),v:multi_a(2,D,E,F)),v:after(1)),after(500000001))",
+            "andor(pk(A),older(4194305),pk(B))",
+            "and_n(pk(A),pk(B))",
+            "and_b(after(1),a:or_d(or_i(c:pk_h(A),0),multi_a(2,B,C,D)))",
+            "and_b(after(1),a:and_b(after(1),ac:pk_k(A)))",
+            "and_b(after(1),a:and_b(c:pk_h(A),an:after(500000001)))",
+            "and_v(or_c(sha256(926a54995ca48600920a19bf7bc502ca5f2f7d07e6f804c4f00ebf0325084dbc),v:after(1)),1)",
+            "u:pk(A)",
+            "l:pk(A)",
+            "pkh(A)",
+            "hash160(4355a46b19d348dc2f57c046f8ef63d4538ebb93)",
+            "ripemd160(4355a46b19d348dc2f57c046f8ef63d4538ebb93)",
+            "hash256(926a54995ca48600920a19bf7bc502ca5f2f7d07e6f804c4f00ebf0325084dbc)",
+        ]
+        internal_key = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
+        for expression in expressions:
+            substituted = re.sub(
+                r"(?<![0-9a-zA-Z_])([A-Z])(?![0-9a-zA-Z_])",
+                lambda match: format(0xf9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce03600 + ord(match.group(1)), "064x"),
+                expression,
+            )
+            descriptor = f"tr({internal_key},{substituted})"
+            self.assertEqual(parse_descriptor(descriptor).to_string_no_checksum(), descriptor)
+
+    def test_bip388_taproot_miniscript_vector(self):
+        key_0 = "[6738736c/48'/0'/0'/100']xpub6FC1fXFP1GXQpyRFfSE1vzzySqs3Vg63bzimYLeqtNUYbzA87kMNTcuy9ubr7MmavGRjW2FRYHP4WGKjwutbf1ghgkUW9H7e3ceaPLRcVwa"
+        key_1 = "xpub6Fc2TRaCWNgfT49nRGG2G78d1dPnjhW66gEXi7oYZML7qEFN8e21b2DLDipTZZnfV6V7ivrMkvh4VbnHY2ChHTS9qM3XVLJiAgcfagYQk6K"
+        key_2 = "xpub6GxHB9kRdFfTqYka8tgtX9Gh3Td3A9XS8uakUGVcJ9NGZ1uLrGZrRVr67DjpMNCHprZmVmceFTY4X4wWfksy8nVwPiNvzJ5pjLxzPtpnfEM"
+        key_3 = "xpub6GjFUVVYewLj5no5uoNKCWuyWhQ1rKGvV8DgXBG9Uc6DvAKxt2dhrj1EZFrTNB5qxAoBkVW3wF8uCS3q1ri9fueAa6y7heFTcf27Q4gyeh6"
+        descriptor = parse_descriptor(
+            f"tr({key_0}/<0;1>/*,{{sortedmulti_a(1,{key_0}/<2;3>/*,{key_1}/<0;1>/*),"
+            f"or_b(pk({key_2}/<0;1>/*),s:pk({key_3}/<0;1>/*))}})"
+        )
+        self.assertEqual(
+            descriptor.get_bip388_template(),
+            "tr(@0/<0;1>/*,{sortedmulti_a(1,@0/<2;3>/*,@1/<0;1>/*),"
+            "or_b(pk(@2/<0;1>/*),s:pk(@3/<0;1>/*))})",
+        )
+        self.assertEqual(
+            [provider.get_bip388_key_info() for provider in descriptor.get_pubkey_providers()],
+            [key_0, key_1, key_2, key_3],
+        )
+
+    def test_taproot_script_tree_requires_registration(self):
+        key = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        descriptor = f"tr({key},pk({key}))"
+        with self.assertRaisesRegex(BadArgumentError, "registered BIP 388 policy"):
+            displayaddress(object(), desc=descriptor)
+
     def test_derive(self):
         xpub = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B"
         descriptor_str = "wsh(multi(1,{0}/<0;1;2>/*,{0}/<10;11;12>/*))".format(xpub)
@@ -165,6 +334,19 @@ class TestDescriptor(unittest.TestCase):
     def test_parse_empty_descriptor(self):
         self.assertRaises(ValueError, parse_descriptor, "")
 
+    def test_bip388_key_deduplication(self):
+        key = "[6738736c/48'/0'/0'/2']xpub6FC1fXFP1GXLX5TKtcjHGT4q89SDRehkQLtbKJ2PzWcvbBHtyDsJPLtpLtkGqYNYZdVVAjRQ5kug9CsapegmmeRutpP7PW4u4wVF9JfkDhw"
+        other = "[b2b1f0cf/48'/0'/0'/2']xpub6EWhjpPa6FqrcaPBuGBZRJVjzGJ1ZsMygRF26RwN932Vfkn1gyCiTbECVitBjRCkexEvetLdiqzTcYimmzYxyR1BZ79KNevgt61PDcukmC7"
+        descriptor = parse_descriptor(f"wsh(multi(2,{key}/<0;1>/*,{other}/<0;1>/*,{key}/<2;3>/*))")
+        self.assertEqual(
+            descriptor.get_bip388_template(),
+            "wsh(multi(2,@0/<0;1>/*,@1/<0;1>/*,@0/<2;3>/*))",
+        )
+        self.assertEqual(
+            [provider.get_bip388_key_info() for provider in descriptor.get_pubkey_providers()],
+            [key, other],
+        )
+
     def test_parse_descriptor_replace_h(self):
         d = "wpkh([00000001/84h/1h/0h]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/0)"
         desc = parse_descriptor(d)
@@ -215,10 +397,11 @@ class TestDescriptor(unittest.TestCase):
         self.assertEqual(desc.pubkeys[0].pubkey, "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
         self.assertEqual(desc.pubkeys[0].deriv_path, [[0], [0]])
         self.assertEqual(desc.pubkeys[0].expr_index, 0)
+        # The same key is used in all four leaves, so it shares one BIP 388 key index
         self.assertEqual(desc.subdescriptors[0].pubkeys[0].expr_index, 1)
-        self.assertEqual(desc.subdescriptors[1].pubkeys[0].expr_index, 2)
-        self.assertEqual(desc.subdescriptors[2].pubkeys[0].expr_index, 3)
-        self.assertEqual(desc.subdescriptors[3].pubkeys[0].expr_index, 4)
+        self.assertEqual(desc.subdescriptors[1].pubkeys[0].expr_index, 1)
+        self.assertEqual(desc.subdescriptors[2].pubkeys[0].expr_index, 1)
+        self.assertEqual(desc.subdescriptors[3].pubkeys[0].expr_index, 1)
         self.assertEqual(desc.depths, [1, 3, 3, 2])
         self.assertEqual(desc.to_string_no_checksum(), d)
 
