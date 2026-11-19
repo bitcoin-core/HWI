@@ -150,6 +150,8 @@ def parse_multisig(script: bytes, tx_xpubs: Dict[bytes, KeyOriginInfo], psbt_sco
     if op_cms != 174:
         return (False, None)
 
+    script_keys = [pub.node.public_key for pub in pubkeys]
+
     # check if we know corresponding xpubs from global scope
     for pub in pubkeys:
         if pub.node.public_key in psbt_scope.hd_keypaths:
@@ -165,6 +167,12 @@ def parse_multisig(script: bytes, tx_xpubs: Dict[bytes, KeyOriginInfo], psbt_sco
                     break
     # Build MultisigRedeemScriptType and return it
     multisig = messages.MultisigRedeemScriptType(m=m, signatures=[b''] * n, pubkeys=pubkeys)
+    # Keys in lexicographic order most likely come from sortedmulti(), where the order of
+    # the xpubs changes from one address to the next. Tell the device: otherwise it
+    # fingerprints the xpubs in the order given, the change's fingerprint differs from
+    # the inputs', and the change is shown as a payment.
+    if script_keys == sorted(script_keys):
+        multisig.pubkeys_order = messages.MultisigPubkeysOrder.LEXICOGRAPHIC
     return (True, multisig)
 
 
