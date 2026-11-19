@@ -11,7 +11,7 @@ from test_coldcard import coldcard_test_suite, TestColdcardFirmware
 from test_descriptor import TestDescriptor
 from test_device import Bitcoind
 from test_psbt import TestPSBT
-from test_trezor import trezor_test_suite
+from test_trezor import trezor_test_suite, TestTrezorMultisig
 from test_ledger import ledger_test_suite
 from test_digitalbitbox import digitalbitbox_test_suite
 from test_keepkey import keepkey_test_suite
@@ -90,6 +90,7 @@ if not args.device_only:
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBase58))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestBIP32))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestColdcardFirmware))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestTrezorMultisig))
     if sys.platform.startswith("linux"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUdevRulesInstaller))
     success = unittest.TextTestRunner(stream=sys.stdout, verbosity=2).run(suite).wasSuccessful()
