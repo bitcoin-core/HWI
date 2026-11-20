@@ -2,11 +2,13 @@
 
 import argparse
 import atexit
+import hashlib
 import json
 import os
 import shlex
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -28,7 +30,9 @@ from test_device import (
 )
 
 from hwilib._cli import process_commands
-from hwilib.devices.trezor import TrezorClient
+from hwilib.devices.trezor import TrezorClient, parse_multisig
+from hwilib.key import HARDENED_FLAG, ExtendedKey, KeyOriginInfo
+from hwilib.psbt import PartiallySignedOutput
 
 from types import MethodType
 
@@ -420,6 +424,57 @@ class TestTrezorManCommands(TrezorTestCase):
                 break
         else:
             self.fail("Did not enumerate device")
+
+def trezor_multisig_fingerprint(multisig):
+    # What the device compares to tell change from payments
+    # (multisig_fingerprint in core/src/apps/bitcoin/multisig.py)
+    order = multisig.pubkeys_order or messages.MultisigPubkeysOrder.PRESERVED
+    nodes = [p.node for p in multisig.pubkeys]
+    if order == messages.MultisigPubkeysOrder.LEXICOGRAPHIC:
+        nodes.sort(key=lambda n: n.public_key + n.chain_code)
+    h = hashlib.sha256(struct.pack("<III", multisig.m, len(nodes), order))
+    for n in nodes:
+        h.update(struct.pack("<III", n.depth, n.fingerprint, n.child_num) + n.chain_code + n.public_key)
+    return h.digest()
+
+class TestTrezorMultisig(unittest.TestCase):
+    ORIGIN = [48 | HARDENED_FLAG, 1 | HARDENED_FLAG, HARDENED_FLAG, 2 | HARDENED_FLAG]
+
+    def setUp(self):
+        account = ExtendedKey.deserialize("tpubDCknDegFqAdP4V2AhHhs635DPe8N1aTjfKE9m2UFbdej8zmeNbtqDzK59SxnsYSRSx5uS3AujbwgANUiAk4oHmDNUKoGGkWWUY6c48WgjEx")
+        # Three cosigners, and the global xpubs a PSBT carries for them
+        self.cosigners = [(bytes([0, 0, 0, i]), account.derive_pub(i)) for i in range(1, 4)]
+        self.tx_xpubs = {xpub.serialize(): KeyOriginInfo(fp, self.ORIGIN) for fp, xpub in self.cosigners}
+
+    def multisig(self, branch, index, sort=True):
+        # parse_multisig() on the 2-of-3 script at <branch>/<index>, keys sorted or not
+        scope = PartiallySignedOutput(0)
+        keys = []
+        for fp, xpub in self.cosigners:
+            key = xpub.derive_pub_path([branch, index]).pubkey
+            scope.hd_keypaths[key] = KeyOriginInfo(fp, self.ORIGIN + [branch, index])
+            keys.append(key)
+        keys.sort(reverse=not sort)
+        script = b"\x52" + b"".join(b"\x21" + k for k in keys) + b"\x53\xae"
+        is_ms, multisig = parse_multisig(script, self.tx_xpubs, scope)
+        self.assertTrue(is_ms)
+        return multisig
+
+    def test_sortedmulti_change(self):
+        def xpub_order(multisig):
+            return [p.node.public_key for p in multisig.pubkeys]
+
+        receive = self.multisig(0, 0)
+        # A change address whose script lists the cosigners in another order
+        change = next(ms for ms in (self.multisig(1, i) for i in range(10)) if xpub_order(ms) != xpub_order(receive))
+        self.assertEqual(receive.pubkeys_order, messages.MultisigPubkeysOrder.LEXICOGRAPHIC)
+        self.assertEqual(change.pubkeys_order, messages.MultisigPubkeysOrder.LEXICOGRAPHIC)
+        self.assertEqual(trezor_multisig_fingerprint(receive), trezor_multisig_fingerprint(change))
+
+    def test_unsorted_multi(self):
+        # multi() keeps the order of its keys, so the device has to as well
+        multisig = self.multisig(0, 0, sort=False)
+        self.assertNotEqual(multisig.pubkeys_order, messages.MultisigPubkeysOrder.LEXICOGRAPHIC)
 
 def trezor_test_suite(emulator, bitcoind, interface, model):
     assert model in TREZOR_MODELS
